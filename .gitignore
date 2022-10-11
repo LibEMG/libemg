@@ -1,0 +1,5 @@
+dist/*
+src/emg_feature_extraction.egg-info/*
+*.txt
+.pytest_cache/*
+tests/__pycache__/*
