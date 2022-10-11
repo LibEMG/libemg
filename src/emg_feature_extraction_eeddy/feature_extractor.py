@@ -20,6 +20,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+from curses import window
 import numpy as np
 from scipy.stats import skew, kurtosis
 import sampen
@@ -77,6 +78,22 @@ class FeatureExtractor:
             features[feature] = method_to_call(windows)
             
         return features
+
+    def get_windows(self, data, window_size, window_increment):
+        '''
+        data is a NxM stream of data with N samples and M channels (numpy array)
+        window_size is number of samples in window
+        window_increment is number of samples that advances before the next window
+        '''
+        num_windows = int((data.shape[0]-window_size)/window_increment)
+        windows = []
+        st_id=0
+        ed_id=st_id+window_size
+        for w in range(num_windows):
+            windows.append(data[st_id:ed_id,:])
+            st_id += window_increment
+            ed_id += window_increment
+        return windows
 
     def getMAVfeat(self, windows):
         feat = np.mean(np.abs(windows),2)
