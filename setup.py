@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 # with codecs.open(os.path.join(here,"README.md"), encoding="utf-8") as fh:
 #     long_description = "\n" + fh.read()
 
-VERSION = '0.0.1'
+VERSION = '0.0.4'
 DESCRIPTION = 'Extract Features'
 LONG_DESCRIPTION = 'A package that lets you extract features from time series data (emg based).'
 
@@ -18,8 +18,7 @@ setup(
     description=DESCRIPTION,
     #long_description_content_type="text/markdown",
     #long_description=long_description,
-    packages=find_packages("src"),
-    package_dir={"": "src"},
+    packages=find_packages(),
     install_requires=["numpy", "scipy", "sampen"],
     keywords=['emg','feature_extraction','pattern_recognition'],
     classifiers=[
@@ -32,13 +31,13 @@ setup(
     ]
 )
 
-# setup(
-#     name="emg_feature_extraction",
-#     version="0.0.1",
-#     author="Ethan Eddy",
-#     author_email="eeddy@unb.ca",
-#     packages=find_packages("src"),
-#     package_dir={"": "src"},
-#     setup_requires=["numpy", "scipy", "sampen"],
-#     tests_require=["pytest", "pytest-cov", "numpy", "scipy", "sampen"],
-# )
+
+# In order to push to pypi we first need to build the binaries
+# navigate to the project folder in the cmd
+# run:
+# python setup.py sdist bdist_wheel
+# you should have binaries specific to the new version specified in the setup.py file
+# if you have other version binaries in the /dist folder, delete them.
+# now to actually upload it to pypi, you need twine (pip install twine if you don't have it)
+# now run:
+# twine upload dist/*
