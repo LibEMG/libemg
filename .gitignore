@@ -1,6 +1,7 @@
 dist/*
-src/emg_feature_extraction.egg-info/*
+emg_feature_extraction.egg-info/*
 token.txt
 .pytest_cache/*
 tests/__pycache__/*
 .coverage
+build/*
