@@ -311,6 +311,5 @@ class FeatureExtractor:
     def getSKEWfeat(self, windows):
         return skew(windows, axis=2)
 
-
     def getKURTfeat(self, windows):
         return kurtosis(windows, axis=2)

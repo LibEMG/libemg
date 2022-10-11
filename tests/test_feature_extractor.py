@@ -7,5 +7,38 @@ def fe():
     return fe
 
 def test_get_feature_groups(fe):
-    print(fe.get_feature_groups())
-    assert fe.get_feature_groups() == ['HTD','TD4','TD9']
+    assert fe.get_feature_groups() == ['HTD',
+                                       'TD4',
+                                       'TD9']
+
+def test_get_feature_list(fe):
+    assert fe.get_feature_list() == ['MAV',
+                                     'ZC',
+                                     'SSC',
+                                     'WL',
+                                     'LS',
+                                     'MFL',
+                                     'MSR',
+                                     'WAMP',
+                                     'RMS',
+                                     'IAV',
+                                     'DASDV',
+                                     'VAR',
+                                     'M0',
+                                     'M2',
+                                     'M4',
+                                     'SPARSI',
+                                     'IRF',
+                                     'WLF',
+                                     'AR', 
+                                     'CC',
+                                     'LD',
+                                     'MAVFD',
+                                     'MAVSLP',
+                                     'MDF',
+                                     'MNF',
+                                     'MNP',
+                                     'MPK',
+                                     'SAMPEN',
+                                     'SKEW',
+                                     'KURT']
