@@ -191,7 +191,7 @@ Get the slope between p sections within a window. Here demonstrated for p=2.
 1. L-Score (LS)
 2. Maximum Fractal Length (MFL)
 3. ? (MSR)
-4. Willison Ampplitude (WAMP)
+4. Willison Amplitude (WAMP)
 
 #### **Phinyomark's Time Domain 9 (TD9)**
 1. TD4 Features 
@@ -205,9 +205,27 @@ Get the slope between p sections within a window. Here demonstrated for p=2.
 The documentation can currently be found in the `docs/` directory in the [GitHub Repository](https://github.com/eeddy/emg-feature-extraction).
 
 ## Examples
+### Feature Extraction
+```python
+from emg_feature_extraction.feature_extractor import FeatureExtractor as fe
+import numpy as np
+
+def main():
+    test_file = "data.txt" # NxM where N is samples and M is channels
+    data = np.loadtxt(test_file, delimiter=',')
+    num_channels = data.shape[1]
+
+    feature_extractor = fe(num_channels=num_channels)
+    windows = feature_extractor.get_windows(data, window_size=200, window_increment=100)
+
+    # Extract Individual Features:
+    features = feature_extractor.extract_features(['MAV', 'ZC'], windows)
+
+    # Extract Feature Groups:
+    features = fe.extract_feature_group('TD4', windows)
+```
 
 ## References
-
 ```
 Angkoon Phinyomark, Pornchai Phukpattaranont, Chusak Limsakul,
 Feature reduction and selection for EMG signal classification,
