@@ -89,7 +89,7 @@ class FeatureExtractor:
         st_id=0
         ed_id=st_id+window_size
         for w in range(num_windows):
-            windows.append(data[st_id:ed_id,:])
+            windows.append(data[st_id:ed_id,:].transpose())
             st_id += window_increment
             ed_id += window_increment
         return windows
