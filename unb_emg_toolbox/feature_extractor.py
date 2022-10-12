@@ -31,12 +31,12 @@ class FeatureExtractor:
     def __init__(self, num_channels):
         self.num_channels = num_channels
 
-    """
-    HTD: Hudgins Time Domain
-    TD4: Phinyomark TD4 Feature Set
-    TD9: Phinyomark's TD9 Feature Set
-    """
     def get_feature_groups(self):
+        """
+        HTD: Hudgins Time Domain
+        TD4: Phinyomark TD4 Feature Set
+        TD9: Phinyomark's TD9 Feature Set
+        """
         feature_groups = {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
                           'TD4': ['LS', 'MFL', 'MSR', 'WAMP'],
                           'TD9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR']}
