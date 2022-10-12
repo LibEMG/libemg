@@ -1,1 +1,0 @@
-from emg_feature_extraction import feature_extractor
