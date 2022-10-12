@@ -89,7 +89,7 @@ class FeatureExtractor:
         st_id=0
         ed_id=st_id+window_size
         for w in range(num_windows):
-            windows.append(data[st_id:ed_id,:])
+            windows.append(data[st_id:ed_id,:].transpose())
             st_id += window_increment
             ed_id += window_increment
         return windows
@@ -98,6 +98,7 @@ class FeatureExtractor:
         feat = np.mean(np.abs(windows),2)
         return feat
     
+    # TODO: Add threshold
     def getZCfeat(self, windows):
         sgn_change = np.diff(np.sign(windows),axis=2)
         neg_change = sgn_change == -2
@@ -106,6 +107,7 @@ class FeatureExtractor:
         feat_b = np.sum(pos_change,2)
         return feat_a+feat_b
     
+    # TODO: Add threshold
     def getSSCfeat(self, windows):
         d_sig = np.diff(windows,axis=2)
         return self.getZCfeat(d_sig)
