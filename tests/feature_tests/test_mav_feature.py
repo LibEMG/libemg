@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from emg_feature_extraction.feature_extractor import FeatureExtractor as featureextractor
+from unb_emg_toolbox.feature_extractor import FeatureExtractor as featureextractor
 
 @pytest.fixture(scope='session') 
 def fe():
