@@ -5,3 +5,6 @@ token.txt
 tests/__pycache__/*
 .coverage
 build/*
+emg_feature_extraction/__pycache__/*
+.coverage
+tests/feature_tests/__pycache__/*
