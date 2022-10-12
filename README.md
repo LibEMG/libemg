@@ -4,12 +4,13 @@ The goal of this toolkit is to provide an easy to use API for EMG feature extrac
 
 Authors: Ethan Eddy, Evan Campbell and Erik Scheme
 
-## Overview
+__Table of Contents__
 
-- [Features](#features)
-- [Documentation](#documentation)
-- [Example](#example)
-- [Rerences](#references)
+* [Features](#features)
+* [FeatureSets](#featuresets)
+* [Documentation](#documentation)
+* [Examples](#examples)
+* [References](#references)
 
 ## Features
 
@@ -58,7 +59,7 @@ A feature that uses the Legendre Shift Polynomial.
 ```
 **(?)Should probably elaborate here, but I don't know a condense shorthand for the math**
 
-#### ** Maximum Fractal Length (MFL)**
+#### **Maximum Fractal Length (MFL)**
 A nonlinear information feature for the EMG waveform that is relatively invariant to contraction intensity.
 ```math
     \text{MFL} = log_{10} \sum_{i=1}^{N-1}  | x_{i+1} - x_{i} |
@@ -149,7 +150,7 @@ For order r, the autoregressive coefficient can be calculated by:
 
 #### **? (LD)**
 ```math
-    \text{LD} = e^{\sum_{i=1}{N} log(|x_{i}|) /N}}
+    \text{LD} = e^{\sum_{i=1}{N} log(|x_{i}|) /N}
 ```
 
 #### **Mean Absolute Value First Difference (MAVFD)**
@@ -179,9 +180,31 @@ Get the slope between p sections within a window. Here demonstrated for p=2.
 
 #### **? (KURT)**
 
-## Documentation
+## FeatureSets
+#### **Hudgin's Time Domain (HTD)** 
+1. Mean Absolute Value (MAV)
+2. Zero Crossings (ZC)
+3. Slope Sign Change (SSC)
+4. Waveform Length (WL)
 
-## Example
+#### **Phinyomark's Time Domain 4 (TD4)**
+1. L-Score (LS)
+2. Maximum Fractal Length (MFL)
+3. ? (MSR)
+4. Willison Ampplitude (WAMP)
+
+#### **Phinyomark's Time Domain 9 (TD9)**
+1. TD4 Features 
+2. Zero Crossings (ZC)
+3. Root Mean Square (RMS)
+4. Integral of the Absolute Value (IAV) 
+5. Absolute Square Average Difference Value (DASDV)
+6. Variance (VAR)
+
+## Documentation
+The documentation can currently be found in the `docs/` directory in the [GitHub Repository](https://github.com/eeddy/emg-feature-extraction).
+
+## Examples
 
 ## References
 
@@ -195,4 +218,10 @@ Pages 7420-7431,
 ISSN 0957-4174,
 https://doi.org/10.1016/j.eswa.2012.01.102.
 (https://www.sciencedirect.com/science/article/pii/S0957417412001200)
+```
+```
+Phinyomark, A.; N. Khushaba, R.; Scheme, E. 
+Feature Extraction and Selection for Myoelectric Control Based on Wearable EMG Sensors. 
+Sensors 2018, 18, 1615. 
+https://doi.org/10.3390/s18051615
 ```
