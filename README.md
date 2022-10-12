@@ -207,7 +207,7 @@ The documentation can currently be found in the `docs/` directory in the [GitHub
 ## Examples
 ### Feature Extraction
 ```python
-from emg_feature_extraction.feature_extractor import FeatureExtractor as fe
+from unb_emg_toolbox.feature_extractor import FeatureExtractor as featureextractor
 import numpy as np
 
 def main():
