@@ -1,10 +1,10 @@
 dist/*
-emg_feature_extraction.egg-info/*
+unb_emg_toolbox.egg-info/*
 token.txt
 .pytest_cache/*
 tests/__pycache__/*
 .coverage
 build/*
-emg_feature_extraction/__pycache__/*
+unb_emg_toolbox/__pycache__/*
 .coverage
 tests/feature_tests/__pycache__/*
