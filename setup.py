@@ -7,12 +7,12 @@ here = os.path.abspath(os.path.dirname(__file__))
 # with codecs.open(os.path.join(here,"README.md"), encoding="utf-8") as fh:
 #     long_description = "\n" + fh.read()
 
-VERSION = '0.0.4'
+VERSION = '0.0.1'
 DESCRIPTION = 'Extract Features'
 LONG_DESCRIPTION = 'A package that lets you extract features from time series data (emg based).'
 
 setup(
-    name="emg_feature_extraction",
+    name="unb_emg_toolbox",
     version=VERSION,
     author="Ethan & Evan",
     description=DESCRIPTION,
