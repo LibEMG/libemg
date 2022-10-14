@@ -19,7 +19,7 @@ setup(
     #long_description_content_type="text/markdown",
     #long_description=long_description,
     packages=find_packages(),
-    install_requires=["numpy", "scipy", "sampen"],
+    install_requires=["numpy", "scipy", "sampen", "pickle", "scikit-learn"],
     keywords=['emg','feature_extraction','pattern_recognition'],
     classifiers=[
         "Development Status :: 1 - Planning",

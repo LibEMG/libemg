@@ -39,7 +39,8 @@ class FeatureExtractor:
         """
         feature_groups = {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
                           'TD4': ['LS', 'MFL', 'MSR', 'WAMP'],
-                          'TD9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR']}
+                          'TD9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
+                          'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF']}
         return feature_groups
 
     def get_feature_list(self):
@@ -98,28 +99,11 @@ class FeatureExtractor:
             
         return features
 
-    def get_windows(self, data, window_size, window_increment):
-        '''
-        data is a NxM stream of data with N samples and M channels (numpy array)
-        window_size is number of samples in window
-        window_increment is number of samples that advances before the next window
-        '''
-        num_windows = int((data.shape[0]-window_size)/window_increment)
-        windows = []
-        st_id=0
-        ed_id=st_id+window_size
-        for w in range(num_windows):
-            windows.append(data[st_id:ed_id,:].transpose())
-            st_id += window_increment
-            ed_id += window_increment
-        return np.array(windows)
-
-
     '''
     -----------------------------------------------------------------------------------------
     The following methods are all feature extraction methods. They should follow the same
     format that already exists (i.e., get<FEAT_ABBREVIATION>feat). The feature abbreviation
-    should be added to the get feature_list function.
+    should be added to the get feature_list function. 
     '''
     def getMAVfeat(self, windows):
         feat = np.mean(np.abs(windows),2)
