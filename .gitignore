@@ -10,3 +10,6 @@ unb_emg_toolbox/__pycache__/*
 tests/feature_tests/__pycache__/*
 tests/feature_tests/__pycache__/
 todo.txt
+demos/__pycache__/*
+data/*
+raw_emg.csv

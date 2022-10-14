@@ -185,3 +185,11 @@ Get the slope between p sections within a window. Here demonstrated for p=2.
 4. Integral of the Absolute Value (IAV) 
 5. Absolute Square Average Difference Value (DASDV)
 6. Variance (VAR)
+
+#### **? (TDPSD)**
+1. First Temporal Moment (M0)
+2. Second Temporal Moment (M2)
+3. Fourth Temporal Moment (M4)
+4. Sparsness (SPARSI)
+5. Irregularity Factor (IRF)
+6. Waveform Length Factor (WLF)
