@@ -6,7 +6,7 @@ def get_windows(data, window_size, window_increment):
         window_size is number of samples in window
         window_increment is number of samples that advances before the next window
         '''
-        num_windows = int((data.shape[0]-window_size)/window_increment)
+        num_windows = int((data.shape[0]-window_size)/window_increment) + 1
         windows = []
         st_id=0
         ed_id=st_id+window_size
