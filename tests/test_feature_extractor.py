@@ -93,7 +93,6 @@ def test_get_feature_list(fe):
                                      'MNF',
                                      'MNP',
                                      'MPK',
-                                     'SAMPEN',
                                      'SKEW',
                                      'KURT']
 
@@ -127,7 +126,6 @@ def test_all_features_normal(fe):
                     'MNF',
                     'MNP',
                     'MPK',
-                    'SAMPEN',
                     'SKEW',
                     'KURT']
     features = fe.extract_features(feature_list,windows)
@@ -163,7 +161,6 @@ def test_all_features_zeros(fe):
                     'MNF',
                     'MNP',
                     'MPK',
-                    'SAMPEN',
                     'SKEW',
                     'KURT']
     features = fe.extract_features(feature_list,windows)                
