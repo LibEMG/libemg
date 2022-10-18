@@ -32,7 +32,7 @@ class OfflineDataHandler(DataHandler):
         self._get_data_helper(delimiter, dataset_folder, dictionary)
     
     def parse_windows(self, window_size, window_increment):
-        return self._parse_windows_helper(window_size, window_increment)
+      return self._parse_windows_helper(window_size, window_increment)
 
     def isolate_data(self, key, values):
         assert key in self.extra_attributes
