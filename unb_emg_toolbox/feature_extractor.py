@@ -22,7 +22,6 @@
 
 import numpy as np
 from scipy.stats import skew, kurtosis
-import sampen
 
 class FeatureExtractor:
     """
@@ -71,7 +70,6 @@ class FeatureExtractor:
                         'MNF',
                         'MNP',
                         'MPK',
-                        'SAMPEN',
                         'SKEW',
                         'KURT']
         return feature_list
@@ -329,13 +327,6 @@ class FeatureExtractor:
     def getMPKfeat(self, windows):
         return windows.max(axis=2)
 
-    def getSAMPENfeat(self, windows, m=2, r_multiply_by_sigma=.2):
-        r = r_multiply_by_sigma * np.std(windows, axis=2)
-        output = np.zeros((windows.shape[0], windows.shape[1]*(m+1)))
-        for w in range(0, windows.shape[0]):
-            for c in range(0, windows.shape[1]):
-                output[w,c*(m+1):(c+1)*(m+1)] = np.array(sampen.sampen2(data=windows[w,c,:], mm=m, r=r[w,c]))[:,1]
-        return output
 
     def getSKEWfeat(self, windows):
         return skew(windows, axis=2)
