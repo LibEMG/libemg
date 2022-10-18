@@ -4,6 +4,8 @@ import re
 import socket
 import csv
 import ast
+from glob import glob
+from itertools import compress
 from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
@@ -11,14 +13,9 @@ from unb_emg_toolbox.raw_data import RawData
 from unb_emg_toolbox.utils import get_windows
 
 class DataHandler:
-    def __init__(self, num_classes):
-        self.training_windows = []
-        self.testing_windows = []
-        self.training_labels = []
-        self.testing_labels = []
-        self.train_data = []
-        self.test_data = []
-        self.num_classes = num_classes
+    def __init__(self):
+        self.data = []
+        pass
 
     def get_data(self):
         pass
@@ -28,40 +25,35 @@ class OfflineDataHandler(DataHandler):
     OfflineDataHandler class - responsible for collecting all offline data in a directory.
     '''
     # TODO: Add option for testing and training folders
-    def __init__(self, num_classes, train_folder, train_dic={}, test_folder=None, test_dic=None):
-        super().__init__(num_classes)
-        self.train_folder_loc = train_folder
-        self.test_folder_loc = test_folder
-        self.train_filename_dic = train_dic
-        self.test_filename_dic = test_dic
+    def __init__(self):
+        super().__init__()
     
-    def get_data(self, delimiter=","):
-        self.train_data = self._get_data_helper(delimiter, self.train_folder_loc, self.train_filename_dic)
-        if self.test_folder_loc:
-            self.test_data = self._get_data_helper(delimiter, self.test_folder_loc, self.test_filename_dic)
+    def get_data(self, dataset_folder="", dictionary={},  delimiter=","):
+        self._get_data_helper(delimiter, dataset_folder, dictionary)
     
     def parse_windows(self, window_size, window_increment):
-        self._parse_training_windows_helper(window_size, window_increment)
-        self._parse_test_windows_helper(window_size, window_increment)
+        return self._parse_windows_helper(window_size, window_increment)
 
-    #TODO: I think this might get messed if the folders aren't in sequential order? 
-    def _parse_test_windows_helper(self, window_size, window_increment):
-        for i, rep in enumerate(self.test_data):
-            windows = get_windows(rep,window_size,window_increment)
-            if len(self.testing_windows) > 0:
-                self.testing_windows = np.concatenate((self.testing_windows, windows))
-            else:
-                self.testing_windows = windows
-            self.testing_labels = self.testing_labels + [(i % self.num_classes) for _ in range(len(windows))]
+    def isolate_data(self, key, values):
+        assert key in self.extra_attributes
+        assert type(values) == list 
+        return self._isolate_data_helper(key,values)
 
-    def _parse_training_windows_helper(self, window_size, window_increment):
-        for i, rep in enumerate(self.train_data):
-            windows = get_windows(rep,window_size,window_increment)
-            if len(self.training_windows) > 0:
-                self.training_windows = np.concatenate((self.training_windows, windows))
+    def _parse_windows_helper(self, window_size, window_increment):
+        metadata_ = {}
+        for i, file in enumerate(self.data):
+            windows = get_windows(file,window_size,window_increment)
+            for k in self.extra_attributes:
+                if k not in metadata_.keys():
+                    metadata_[k] = np.ones((windows.shape[0])) * getattr(self, k)[i]
+                else:
+                    metadata_[k] = np.concatenate((metadata_[k], np.ones((windows.shape[0])) * getattr(self, k)[i]))
+            if "windows_" in locals():
+                windows_ = np.concatenate((windows_, windows))
             else:
-                self.training_windows = windows
-            self.training_labels = self.training_labels + [(i % self.num_classes) for _ in range(len(windows))]
+                windows_ = windows
+            
+        return windows_, metadata_
 
     def _get_data_helper(self, delimiter, folder_location, filename_dic):
         data = []
@@ -72,22 +64,32 @@ class OfflineDataHandler(DataHandler):
         for k in keys:
             if not hasattr(self, k):
                 setattr(self, k, [])
+        self.extra_attributes = keys
 
         if not os.path.isdir(folder_location):
             print("Invalid dataset directory: " + folder_location)
         
         # get all files in directory
-        files = os.listdir(folder_location)
+        files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
         for f in files:
-        
             # collect the data from the file
-            data.append(np.genfromtxt(folder_location + "/" + f,delimiter=delimiter))
+            self.data.append(np.genfromtxt(f,delimiter=delimiter))
             # also collect the metadata from the filename
             for k in keys:
                 k_val = re.findall(filename_dic[k+"_regex"],f)[0]
                 k_id  = filename_dic[k].index(k_val)
                 setattr(self, k, getattr(self,k)+[k_id])
-        return data
+
+    def _isolate_data_helper(self, key, values):
+        new_odh = OfflineDataHandler()
+        setattr(new_odh, "extra_attributes", self.extra_attributes)
+        key_attr = getattr(self, key)
+        keep_mask = list([i in values for i in key_attr])
+        setattr(new_odh, "data", list(compress(self.data, keep_mask)))
+        for k in self.extra_attributes:
+            setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
+        return new_odh
+
 
 class OnlineDataHandler(DataHandler):
     '''
