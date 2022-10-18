@@ -27,8 +27,10 @@ class FeatureExtractor:
     """
     Feature extraction class including feature groups, feature list, and feature extraction code.
     """
-    def __init__(self, num_channels):
+    def __init__(self, num_channels, feature_list=[], feature_group=None):
         self.num_channels = num_channels
+        self.feature_list = feature_list
+        self.feature_group = feature_group
 
     def get_feature_groups(self):
         """
@@ -73,6 +75,11 @@ class FeatureExtractor:
                         'SKEW',
                         'KURT']
         return feature_list
+
+    def extract_predefined_features(self, windows):
+        if self.feature_group:
+            return self.extract_feature_group(self.feature_group, windows)
+        return self.extract_features(self.feature_list, windows)
     
     def extract_feature_group(self, feature_group, windows):
         '''

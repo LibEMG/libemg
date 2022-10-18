@@ -16,19 +16,7 @@ def get_windows(data, window_size, window_increment):
             ed_id += window_increment
         return np.array(windows)
 
-def create_folder_dictionary(left_bound, right_bound, class_values, rep_values):
-    classes_regex = _make_regex(left_bound="C_", right_bound="_E", values=class_values)
-    reps_regex = _make_regex(left_bound="R_", right_bound="_C", values=rep_values)
-    dic = {
-        "classes": class_values,
-        "reps":    rep_values,
-        "classes_regex": classes_regex, #r"(?<=_)[^#]+(?=.txt)",# the # here means only a number is accepted... need to find a more wildcard solution
-        "reps_regex": reps_regex # "(?<=e_)[]+(?=_)"
-    }
-    return dic
-
-def _make_regex(left_bound, right_bound, values=[]):
-    regex = ""
+def make_regex(left_bound, right_bound, values=[]):
     left_bound_str = "(?<="+ left_bound +")"
     mid_str = "["
     for i in values:

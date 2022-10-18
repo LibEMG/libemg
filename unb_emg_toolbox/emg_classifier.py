@@ -1,18 +1,20 @@
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
+from sklearn.metrics import *
+from multiprocessing import Process
 import numpy as np
 import pickle
+import socket
+
+from unb_emg_toolbox.utils import get_windows
 
 class EMGClassifier:
     '''
     EMG classification class - used to train and test models.
     Each EMGClassifier corresponds to an individual person.
     '''
-    def __init__(self, 
-                 model, 
-                 data_set, 
-                 arguments=None):
+    def __init__(self, model, data_set, arguments=None):
         '''
         model - the model that you want to train - options: ["LDA", "KNN", "SVM", "QDA"]
         data_set - the dataset acquired from the data loader class 
@@ -22,7 +24,8 @@ class EMGClassifier:
         self.arguments = arguments
         self.classifier = None
         self._format_data('training_features')
-        self._format_data('testing_features')
+        if 'testing_features' in self.data_set.keys():
+            self._format_data('testing_features')
         self._set_up_classifier(model)
     
     @classmethod
@@ -37,43 +40,16 @@ class EMGClassifier:
     '''
     ---------------------- Public Functions ----------------------
     '''
-    def offline_evaluation(self):
+    def run(self):
         '''
         returns a list of typical offline evaluation metrics
         '''
         dic = {}
-        predictions = self.classifier.predict_proba(self.data_set['testing_features'])
-        dic['TER'] = self._get_ca(predictions, self.data_set['testing_labels'])
-        dic['AER'] = self._get_ca(predictions, self.data_set['testing_labels'], include_nm=False, null_label=self.data_set['null_label'])
-        return dic
-
-    def save(self, filename):
-        '''
-        filename - is the location that the classifier gets saved to
-        '''
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
-
-    @classmethod
-    def from_file(self, filename):
-        '''
-        Loads a classifier - rather than creates one.
-        filename - is the location that you want to load the classifier from
-        '''
-        with open(filename, 'rb') as f:
-            classifier = pickle.load(f)
-        return classifier
-    '''
-    ---------------------- Public Functions ----------------------
-    '''
-    def offline_evaluation(self):
-        '''
-        returns a list of typical offline evaluation metrics
-        '''
-        dic = {}
-        predictions = self.classifier.predict_proba(self.data_set['testing_features'])
-        dic['TER'] = self._get_ca(predictions, self.data_set['testing_labels'])
-        dic['AER'] = self._get_ca(predictions, self.data_set['testing_labels'], include_nm=False, null_label=self.data_set['null_label'])
+        predictions = self.classifier.predict(self.data_set['testing_features'])
+        dic['CA'] = self._get_CA(self.data_set['testing_labels'], predictions)
+        if 'null_label' in self.data_set.keys():
+            dic['AER'] = self._get_AER(self.data_set['testing_labels'], predictions, self.data_set['null_label'])
+        dic['INST'] = self._get_INS(self.data_set['testing_labels'], predictions)
         return dic
 
     def save(self, filename):
@@ -111,35 +87,54 @@ class EMGClassifier:
         self.classifier.fit(self.data_set['training_features'],self.data_set['training_labels'])
 
     # Offline Metrics:
-    def _get_ca(self, predictons, gt_labels, include_nm=True, null_label=None):
-        correct = 0
-        num_predictions = 0
-        for i, prediction in enumerate(predictons):
-            predicted_val = np.argmax(prediction)
-            probability = prediction[predicted_val]
-            if not include_nm and predicted_val == null_label:
-                continue
-            if predicted_val == gt_labels[i]:
-                correct += 1
-            num_predictions += 1
-        return correct / num_predictions
-
-    def _get_instability(self, predictons, gt_labels):
-        print("0%")
+    # TODO: Evan Review
+    def _get_CA(self, y_true, y_predictions):
+        return sum(y_predictions == y_true)/len(y_true)
     
-    # Offline Metrics:
-    def _get_ca(self, predictons, gt_labels, include_nm=True, null_label=None):
-        correct = 0
-        num_predictions = 0
-        for i, prediction in enumerate(predictons):
-            predicted_val = np.argmax(prediction)
-            probability = prediction[predicted_val]
-            if not include_nm and predicted_val == null_label:
-                continue
-            if predicted_val == gt_labels[i]:
-                correct += 1
-            num_predictions += 1
-        return correct / num_predictions
+    def _get_AER(self, y_true, y_predictions, null_class):
+        nm_predictions = [i for i, x in enumerate(y_predictions) if x == null_class]
+        return self._get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
 
-    def _get_instability(self, predictons, gt_labels):
-        print("0%")
+    def _get_INS(self, y_true, y_predictions):
+        num_gt_changes = np.count_nonzero(y_true[:-1] != y_true[1:])
+        pred_changes = np.count_nonzero(y_predictions[:-1] != y_predictions[1:])
+        return (pred_changes - num_gt_changes) / len(y_predictions)
+
+    #TODO: Add additional metrics
+    
+class OnlineEMGClassifier(EMGClassifier):
+    def __init__(self, dictionary, std_out=False):
+        super().__init__(dictionary['model'], dictionary['data_set'])
+        self.port = dictionary['port'] 
+        self.ip = dictionary['ip'] 
+        self.window_length = dictionary['window_length'] 
+        self.window_increment = dictionary['window_increment']
+        self.odh = dictionary['online_data_handler']
+        self.fe = dictionary['feature_extractor']
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.process = Process(target=self._stream_emg, daemon=True,)
+        self.std_out = std_out
+
+    def run(self):
+        self.odh.raw_data.reset_emg()
+        while True:
+            data = np.array(self.odh.raw_data.get_emg())
+            if len(data) >= self.window_length:
+                window = get_windows(data, self.window_length, self.window_length)
+                features = self.fe.extract_predefined_features(window)
+                formatted_data = self._format_data_sample(features)
+                self.odh.raw_data.adjust_increment(self.window_length, self.window_increment)
+                prediction = self.classifier.predict(formatted_data)
+                if self.std_out:
+                    print(prediction)
+                self.sock.sendto(bytes(str(prediction), "utf-8"), (self.ip, self.port))
+    
+    def _format_data_sample(self, data):
+        arr = None
+        for feat in data:
+            if arr is None:
+                arr = data[feat]
+            else:
+                arr = np.hstack((arr, data[feat]))
+        return arr
+                
