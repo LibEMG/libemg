@@ -50,11 +50,23 @@ if __name__ == "__main__" :
     data_set['training_labels'] = train_metadata['classes']
     data_set['null_label'] = 2
 
-    classifier = EMGClassifier("SVM", data_set)
+    # Normal Case
+    classifier = EMGClassifier("SVM", data_set.copy())
     offline_metrics = classifier.run()
     print("Offline Metrics:")
     print(offline_metrics)
 
+    # Rejection Case
+    rejection_classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.99)
+    offline_metrics = rejection_classifier.run()
+    print("Offline Rejection Metrics:")
+    print(offline_metrics)
+
+    # Majority Vote Case
+    mv_classifier = EMGClassifier("SVM", data_set.copy(), majority_vote=1)
+    offline_metrics = mv_classifier.run()
+    print("Offline Majority Vote Metrics:")
+    print(offline_metrics)
 
     # another example
     # get metadata from columns in a csv file

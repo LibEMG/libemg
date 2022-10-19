@@ -7,10 +7,6 @@ from pyomyo import Myo, emg_mode
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from unb_emg_toolbox.training_ui import TrainingUI 
 from unb_emg_toolbox.data_handler import OnlineDataHandler
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import create_folder_dictionary
-from unb_emg_toolbox.data_handler import OfflineDataHandler
 
 def worker():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
