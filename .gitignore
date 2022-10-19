@@ -14,3 +14,4 @@ demos/__pycache__/*
 data/*
 raw_emg.csv
 demos/data/*
+docs/build/*
