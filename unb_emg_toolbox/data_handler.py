@@ -10,7 +10,7 @@ from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from unb_emg_toolbox.raw_data import RawData
-from unb_emg_toolbox.utils import get_windows
+from unb_emg_toolbox.utils import get_windows, get_mode_windows
 
 class DataHandler:
     def __init__(self):
@@ -42,16 +42,23 @@ class OfflineDataHandler(DataHandler):
     def _parse_windows_helper(self, window_size, window_increment):
         metadata_ = {}
         for i, file in enumerate(self.data):
+            # emg data windowing
             windows = get_windows(file,window_size,window_increment)
-            for k in self.extra_attributes:
-                if k not in metadata_.keys():
-                    metadata_[k] = np.ones((windows.shape[0])) * getattr(self, k)[i]
-                else:
-                    metadata_[k] = np.concatenate((metadata_[k], np.ones((windows.shape[0])) * getattr(self, k)[i]))
             if "windows_" in locals():
                 windows_ = np.concatenate((windows_, windows))
             else:
                 windows_ = windows
+            # metadata windowing
+            for k in self.extra_attributes:
+                if type(getattr(self,k)[i]) != np.ndarray:
+                    file_metadata = np.ones((windows.shape[0])) * getattr(self, k)[i]
+                else:
+                    file_metadata = get_mode_windows(getattr(self,k)[i], window_size, window_increment)
+                if k not in metadata_.keys():
+                    metadata_[k] = file_metadata
+                else:
+                    metadata_[k] = np.concatenate((metadata_[k], file_metadata))
+
             
         return windows_, metadata_
 
@@ -60,7 +67,7 @@ class OfflineDataHandler(DataHandler):
         # you can insert custom member variables that will be collected from the filename using the dictionary
         # this gives at least a tiny bit of flexibility around what is recorded aside from the data
         dictionary_keys = filename_dic.keys()
-        keys = [k for k in dictionary_keys if not k.endswith("_regex")]
+        keys = [k for k in dictionary_keys if not (k.endswith("_regex") or k.endswith("_column"))]
         for k in keys:
             if not hasattr(self, k):
                 setattr(self, k, [])
@@ -72,22 +79,54 @@ class OfflineDataHandler(DataHandler):
         # get all files in directory
         files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
         for f in files:
+            file_data = np.genfromtxt(f,delimiter=delimiter)
             # collect the data from the file
-            self.data.append(np.genfromtxt(f,delimiter=delimiter))
+            if "data_column" in dictionary_keys:
+                self.data.append(file_data[:, filename_dic["data_column"]])
+            else:
+                self.data.append(file_data)
             # also collect the metadata from the filename
             for k in keys:
-                k_val = re.findall(filename_dic[k+"_regex"],f)[0]
-                k_id  = filename_dic[k].index(k_val)
-                setattr(self, k, getattr(self,k)+[k_id])
+                if k + "_regex" in dictionary_keys:
+                    k_val = re.findall(filename_dic[k+"_regex"],f)[0]
+                    k_id  = filename_dic[k].index(k_val)
+                    setattr(self, k, getattr(self,k)+[k_id])
+                elif k + "_column" in dictionary_keys:
+                    setattr(self, k, getattr(self,k)+[file_data[:,filename_dic[k+"_column"]]])
 
     def _isolate_data_helper(self, key, values):
         new_odh = OfflineDataHandler()
         setattr(new_odh, "extra_attributes", self.extra_attributes)
         key_attr = getattr(self, key)
-        keep_mask = list([i in values for i in key_attr])
-        setattr(new_odh, "data", list(compress(self.data, keep_mask)))
-        for k in self.extra_attributes:
-            setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
+        
+        # if these end up being ndarrays, it means that the metadata was IN the csv file.
+        
+        if type(key_attr[0]) == np.ndarray:
+            # for every file (list element)
+            data = []
+            for f in range(len(key_attr)):
+                keep_mask = list([i in values for i in key_attr[f]])
+                data.append(self.data[f][keep_mask,:])
+            setattr(new_odh, "data", data)
+
+            for k in self.extra_attributes:
+                key_value = getattr(self, k)
+                if type(key_value[0]) != np.ndarray:
+                    # if the other metadata was not in the csv file (i.e. subject label in filename but classes in csv), then just keep it
+                    setattr(new_odh, k, key_value)
+                else:
+                    # the other metadata that is in the csv file should be sliced the same way as the ndarray
+                    key = []
+                    for f in range(len(key_attr)):
+                        keep_mask = list([i in values for i in key_attr[f]])
+                        
+                        key.append(key_value[f][keep_mask,:])
+                    setattr(new_odh, k, key)
+        else:
+            keep_mask = list([i in values for i in key_attr])
+            setattr(new_odh, "data", list(compress(self.data, keep_mask)))
+            for k in self.extra_attributes:
+                setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
 
 

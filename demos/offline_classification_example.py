@@ -54,3 +54,42 @@ if __name__ == "__main__" :
     offline_metrics = classifier.run()
     print("Offline Metrics:")
     print(offline_metrics)
+
+
+    # another example
+    # get metadata from columns in a csv file
+    odh = OfflineDataHandler()
+    dataset_folder = 'demos/data/column_metadata_dataset'
+    # when getting classes and reps from the csv file, you don't need to give a template for the values, just specify where they will appear.
+    classes_values=[]
+    reps_values = []
+    subject_values=["S001"]
+    subject_regex = make_regex(left_bound="SGT_", right_bound="_EMG.csv", values=subject_values)
+    dic = {
+        "subject": subject_values,
+        "subject_regex": subject_regex,
+        "classes": [],
+        "classes_column":[18],
+        "reps": [],
+        "reps_column": [19],
+        "data_column": [2,3,4,5,6,7,8,9] # optionally, you can specify the data columns if you don't want all the columns to be collected
+    }
+    odh.get_data(dataset_folder=dataset_folder, dictionary=dic, delimiter=",")
+    train_odh = odh.isolate_data(key="reps", values=[0])
+    train_windows, train_metadata = train_odh.parse_windows(50,25)
+    test_odh = odh.isolate_data(key="reps", values=[1])
+    test_windows, test_metadata = test_odh.parse_windows(50,25)
+
+    fe = FeatureExtractor(num_channels=8)
+
+    data_set = {}
+    data_set['testing_features'] = fe.extract_feature_group('HTD', test_windows)
+    data_set['training_features'] = fe.extract_feature_group('HTD', train_windows)
+    data_set['testing_labels'] = test_metadata['classes']
+    data_set['training_labels'] = train_metadata['classes']
+    data_set['null_label'] = 2
+
+    classifier = EMGClassifier("SVM", data_set)
+    offline_metrics = classifier.run()
+    print("Offline Metrics:")
+    print(offline_metrics)
