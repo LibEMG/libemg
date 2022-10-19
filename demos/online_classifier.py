@@ -72,7 +72,8 @@ if __name__ == "__main__" :
         'port': 12346,
         'feature_extractor': fe,
         'online_data_handler': online_data_handler,
-        'ip': '127.0.0.1'
+        'ip': '127.0.0.1',
+        'majority_vote': 1,
     }
     # Create Classifier and Evaluate
     classifier = OnlineEMGClassifier(dictionary = dic, std_out=True)
