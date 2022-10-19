@@ -10,19 +10,30 @@ import random
 random. seed(time.time())
 
 class TrainingUI:
-    def __init__(self, num_reps=None, rep_time=None, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False):
-        # TODO: is Rep the correct term?
-        '''
-        UI for acquiring training data 
-        num_reps - the number of reps to go through 
-        rep_time - the amount of time for each rep
-        rep_folder - the location where the images associated with each rep are located 
-        output_folder - the output location for the EMG files associated with each rep
-        data_handler - online data handler object
-        time_between_reps - the time between between reps
-        randomize - if True the reps are presented in a random order 
-        continuous - if True there is no pause between reps 
-        '''
+    """Screen Guided Training class.
+
+    Used to create a screen guided training module for acquiring training or testing data.
+
+    Parameters
+    ----------
+    num_reps: int > 0
+        The number of repetitions per class. 
+    rep_time: int > 0
+        The amount of time for each rep.
+    time_between_reps: int > 0
+        The amount of time between subsequent classes.
+    rep_folder: string 
+        The folder path where the images associated with each rep are located. Each image should be <class_name>.<png,jpg>.
+    output_folder: string
+        The folder path where the acquired data will be written to. 
+    data_handler: OnlineDataHandler
+        Online data handler used for acquiring raw EMG data.
+    randomize: bool (default=False)
+        If True the classes are presented in a random order.
+    continuous: bool (default=False)
+        If True there is no pause between reps.
+    """
+    def __init__(self, num_reps=None, rep_time=None, time_between_reps=3, rep_folder=None, output_folder=None, data_handler=None, randomize=False, continuous=False):
         self.window = Tk()
         
         self.num_reps = IntVar(value=num_reps)
