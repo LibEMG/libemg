@@ -106,7 +106,7 @@ $
 Calculates the variance of the data.
 
 $
-\text{VAR} = \frac{1}{N-1}\sum_{i=1}^{N} x_{i}^{2}
+\text{VAR} = \frac{1}{N-1}\sum_{i=1}^{N} (x_{i}^{2} - \mu _x)
 $
 
 ## **First Temporal Moment (M0)** [[6]](#6)
@@ -160,6 +160,15 @@ $
 $
 
 ## **Cepstral Coefficient (CC)**
+For order r, the cepstral coefficient can be calculated by: **
+
+$
+\text{CC}_{1}= -\text{AR}_{1}
+$
+$
+\text{CC}_{r}= \sum_{i=1}^{r} \frac{r-i}{r} \text{AR}_{r} *\text{CC}_{r-2} 
+$
+
 
 
 ## **Log Detector (LD)** [[1]](#1)
@@ -204,7 +213,12 @@ $
 \text{MNP} = \frac{1}{M}\sum_{j=1}^{M}P_{j}
 $
 
-## **? (MPK)**
+## ** Maximum/Peaks (MPK) [[1]]**
+A feature that records the highest amplitude within the window:
+
+$
+\text{MPK} = max(x)
+$
 
 ## **Skewness (SKEW)** [[7]](#7)
 Characterizes the degree of asymmetry in the distribution of a variable.
