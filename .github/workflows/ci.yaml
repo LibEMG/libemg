@@ -13,7 +13,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run pytest
-        run: pytest --cov emg_feature_extraction
+        run: python -m pytest
       # - name: Run tests and collect coverage
       #   run: pytest --cov emg_feature_extraction
       # - name: Upload coverage to Codecov
