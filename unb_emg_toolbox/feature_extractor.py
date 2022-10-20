@@ -304,7 +304,7 @@ class FeatureExtractor:
         return feat
 
     def getMSRfeat(self, windows):
-        """Extract MSR feature.
+        """Extract Mean Squared Ratio (MSR) feature.
 
         Parameters
         ----------
@@ -368,7 +368,7 @@ class FeatureExtractor:
         return feat
 
     def getDASDVfeat(self, windows):
-        """Extract Absolute Square Average Difference Value (DASDV) feature.
+        """Difference Absolute Standard Deviation Value (DASDV) feature.
 
         Parameters
         ----------
@@ -539,7 +539,7 @@ class FeatureExtractor:
         return R
 
     def getCCfeat(self, windows, order =4):
-        """Extract Correlation Coefficient (CC) feature.
+        """Extract Cepstral Coefficient (CC) feature.
 
         Parameters
         ----------
@@ -561,7 +561,7 @@ class FeatureExtractor:
         return cc
     
     def getLDfeat(self, windows):
-        """Extract (LD) feature.
+        """Extract Log Detector (LD) feature.
 
         Parameters
         ----------
@@ -614,7 +614,8 @@ class FeatureExtractor:
             mavslp.append(mav[i+1]- mav[i])
         return np.asarray(mavslp).squeeze()
 
-    """Extract (MDF) feature.
+    def getMDFfeat(self, windows,fs=1000):
+        """Extract Median Frequency (MDF) feature.
 
         Parameters
         ----------
@@ -625,8 +626,7 @@ class FeatureExtractor:
         ----------
         array_like
             The computed features associated with each window. 
-    """
-    def getMDFfeat(self, windows,fs=1000):
+        """
         spec = np.fft.fft(windows,axis=2)
         spec = spec[:,:,0:int(round(spec.shape[2]/2))]
         POW = spec * np.conj(spec)
@@ -638,7 +638,8 @@ class FeatureExtractor:
                 medfreq[i,j] = fs*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0]/windows.shape[2]/2
         return medfreq
 
-    """Extract (MNF) feature.
+    def getMNFfeat(self, windows, fs=1000):
+        """Extract Mean Frequency (MNF) feature.
 
         Parameters
         ----------
@@ -649,8 +650,7 @@ class FeatureExtractor:
         ----------
         array_like
             The computed features associated with each window. 
-    """
-    def getMNFfeat(self, windows, fs=1000):
+        """
         spec = np.fft.fft(windows, axis=2)
         f = np.fft.fftfreq(windows.shape[-1])*fs
         spec = spec[:,:,0:int(round(spec.shape[2]/2))]
@@ -660,7 +660,8 @@ class FeatureExtractor:
         POW = spec * np.conj(spec)
         return np.real(np.sum(POW*f,axis=2)/np.sum(POW,axis=2))
 
-    """Extract (MNP) feature.
+    def getMNPfeat(self, windows):
+        """Extract Mean Power (MNP) feature.
 
         Parameters
         ----------
@@ -671,14 +672,14 @@ class FeatureExtractor:
         ----------
         array_like
             The computed features associated with each window. 
-    """
-    def getMNPfeat(self, windows):
+        """
         spec = np.fft.fft(windows,axis=2)
         spec = spec[:,:,0:int(round(spec.shape[0]/2))]
         POW = np.real(spec*np.conj(spec))
         return np.sum(POW, axis=2)/POW.shape[2]
 
-    """Extract (MPK) feature.
+    def getMPKfeat(self, windows):
+        """Extract (MPK) feature.
 
         Parameters
         ----------
@@ -689,11 +690,11 @@ class FeatureExtractor:
         ----------
         array_like
             The computed features associated with each window. 
-    """
-    def getMPKfeat(self, windows):
+        """
         return windows.max(axis=2)
 
-    """Extract (SKEW) feature.
+    def getSKEWfeat(self, windows):
+        """Extract Skewness (SKEW) feature.
 
         Parameters
         ----------
@@ -704,11 +705,11 @@ class FeatureExtractor:
         ----------
         array_like
             The computed features associated with each window. 
-    """
-    def getSKEWfeat(self, windows):
+        """
         return skew(windows, axis=2)
 
-    """Extract (KURT) feature.
+    def getKURTfeat(self, windows):
+        """Extract Kurtosis (KURT) feature.
 
         Parameters
         ----------
@@ -719,6 +720,5 @@ class FeatureExtractor:
         ----------
         array_like
             The computed features associated with each window. 
-    """
-    def getKURTfeat(self, windows):
+        """
         return kurtosis(windows, axis=2)
