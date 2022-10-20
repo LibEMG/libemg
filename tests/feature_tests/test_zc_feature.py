@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from unb_emg_toolbox.feature_extractor import FeatureExtractor as featureextractor
+from unb_emg_toolbox.utils import get_windows
 
 @pytest.fixture(scope='session') 
 def fe():
@@ -17,7 +18,7 @@ def test_normal_case(fe):
 
 def test_zero_case(fe):
     data = np.loadtxt('tests/data/emg_data_zeros.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     assert len(fe.getZCfeat(windows)) == len(windows)
     assert len(fe.getZCfeat(windows)[0]) == 8
 
