@@ -1,19 +1,19 @@
 name: Workflow for Codecov example-python
-on: [push, pull_request]
+on: [push]
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set up Python 3.10
+      - name: Set up Python 3.7
         uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.7'
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run pytest
-        run: pytest --cov emg_feature_extraction
+        run: pytest
       # - name: Run tests and collect coverage
       #   run: pytest --cov emg_feature_extraction
       # - name: Upload coverage to Codecov
