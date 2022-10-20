@@ -13,14 +13,4 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run pytest
-<<<<<<< HEAD
-        run: python -m pytest
-=======
         run: pytest
->>>>>>> e2dc15d8212b4936679fff970bbf6bc44b2c96bf
-      # - name: Run tests and collect coverage
-      #   run: pytest --cov emg_feature_extraction
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v3
-      # - name: Check for under 100% coverage
-      #   run: coverage report --fail-under=100
