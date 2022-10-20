@@ -21,20 +21,56 @@ class DataHandler:
         pass
 
 class OfflineDataHandler(DataHandler):
-    '''
-    OfflineDataHandler class - responsible for collecting all offline data in a directory.
-    '''
+    """OfflineDataHandler class - responsible for collecting all offline data in a directory.
+
+    The purpose of this class is to facilitate the process of accumulating offline training
+    and testing data. This class is extensible to a variety of file and folder structures. 
+    """
     # TODO: Add option for testing and training folders
     def __init__(self):
         super().__init__()
     
     def get_data(self, dataset_folder="", dictionary={},  delimiter=","):
+        """TODO: Document this (@ Evan)
+        
+        Parameters:
+        ----------
+        dataset_folder: string
+            TODO: Evan 
+        dictionary: int
+            TODO: Evan
+        delimiter: string (optional), default = ","
+            TODO: Evan
+        """
         self._get_data_helper(delimiter, dataset_folder, dictionary)
     
     def parse_windows(self, window_size, window_increment):
-      return self._parse_windows_helper(window_size, window_increment)
+        """Parses windows based on the acquired data from the get_data function.
+
+        Parameters:
+        ----------
+        window_size: int
+            The number of samples in a window. 
+        window_increment: int
+            The number of samples that advances before next window.
+        """
+        return self._parse_windows_helper(window_size, window_increment)
 
     def isolate_data(self, key, values):
+        """TODO: Document this (@ Evan)
+
+        Parameters:
+        ----------
+        key: ?
+            TODO: Evan 
+        values: ?
+            TODO: Evan
+        
+        Returns:
+        ----------
+        type
+            Returns ?
+        """
         assert key in self.extra_attributes
         assert type(values) == list 
         return self._isolate_data_helper(key,values)
@@ -131,9 +167,25 @@ class OfflineDataHandler(DataHandler):
 
 
 class OnlineDataHandler(DataHandler):
-    '''
-    OnlineDataHandler class - responsible for collecting data streamed in through TCP socket.
-    '''
+    """OnlineDataHandler class - responsible for collecting data streamed in through TCP socket.
+
+    This class is extensible to any device as long as the data is being streamed over TCP.
+
+    Parameters
+    ----------
+    port: int (optional), default = 12345
+        The TCP port to listen for events on. 
+    ip: string (optional), default = '127.0.0.1'
+        The TCP ip to listen for events on.
+    file_path: string (optional), default = "raw_emg.csv"
+        The path of the file to write the raw EMG to. This only gets written to if the file parameter is set to true.
+    file: bool (optional): default = False
+        If True, all data acquired over the TCP port will be written to a file specified by the file_path parameter.
+    std_out: bool (optional): default = False
+        If True, all data acquired over the TCP port will be written to std_out.
+    emg_arr: bool (optional): default = True
+        If True, all data acquired over the TCP port will be written to an array object that can be accessed.
+    """
     def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=False):
         self.port = port 
         self.ip = ip
@@ -144,12 +196,16 @@ class OnlineDataHandler(DataHandler):
         manager = BaseManager()
         manager.start()
         self.raw_data = manager.RawData()
-        self.listener = Process(target=self.listen_for_data_thread, args=[self.raw_data], daemon=True,)
+        self.listener = Process(target=self._listen_for_data_thread, args=[self.raw_data], daemon=True,)
     
     def get_data(self):
+        """Starts listening in a seperate process for data streamed over TCP. 
+
+        The options (file, std_out, and emg_arr) will determine what happens with this data.
+        """
         self.listener.start()
     
-    def listen_for_data_thread(self, raw_data):
+    def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind((self.ip, self.port))
         if self.options['file']:

@@ -28,9 +28,9 @@ class TrainingUI:
         The folder path where the acquired data will be written to. 
     data_handler: OnlineDataHandler
         Online data handler used for acquiring raw EMG data.
-    randomize: bool (default=False)
+    randomize: bool, default=False
         If True the classes are presented in a random order.
-    continuous: bool (default=False)
+    continuous: bool, default=False
         If True there is no pause between reps.
     """
     def __init__(self, num_reps=None, rep_time=None, time_between_reps=3, rep_folder=None, output_folder=None, data_handler=None, randomize=False, continuous=False):

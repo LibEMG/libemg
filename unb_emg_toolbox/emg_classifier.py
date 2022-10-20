@@ -11,16 +11,31 @@ import socket
 from unb_emg_toolbox.utils import get_windows
 
 class EMGClassifier:
-    '''
-    EMG classification class - used to train and test models.
-    Each EMGClassifier corresponds to an individual person.
-    '''
+    """Base EMG Classification class. 
+
+    This class is the base class for offline EMG classification. Trains an sklearn ml model given a set
+    of training and testing data and evalutes the results. 
+
+    Parameters
+    ----------
+    model: string
+        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
+    data_set: dictionary
+        A dictionary including the associated features and labels associated with a set of data. 
+        Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', 
+        'testing_features' and 'null_label' (optional).
+    arguments: dictionary (optional)
+        Used for additional arguments to the classifiers. Currently the only option is for the n_neighbors 
+        option for the KNN classifier.
+    rejection_type: string (optional)
+        Used to specify the type of rejection used by the classifier. The only currently supported option
+        is 'CONFIDENCE'.
+    rejection_threshold: int (optional), default=0.9
+        Used to specify the threshold used for rejection.
+    majority_vote: int (optional) 
+        Used to specify the number of predictions included in the majority vote.
+    """
     def __init__(self, model, data_set, arguments=None, rejection_type=None, rejection_threshold=0.9, majority_vote=None):
-        '''
-        model - the model that you want to train - options: ["LDA", "KNN", "SVM", "QDA"]
-        data_set - the dataset acquired from the data loader class 
-        arguments - a dictionary of arguments
-        '''
         #TODO: Need some way to specify if its continuous testing data or not 
         self.data_set = data_set
         self.arguments = arguments
@@ -36,17 +51,36 @@ class EMGClassifier:
     
     @classmethod
     def from_file(self, filename):
-        '''
-        Loads a classifier - rather than creates one.
-        filename - is the location that you want to load the classifier from
-        '''
+        """Loads a classifier - rather than creates a new one.
+
+        After saving a model, you can recreate it by running EMGClassifier.from_file(). By default 
+        this function loads a previously saved and pickled classifier. 
+
+        Parameters
+        ----------
+        filename: string
+            The file path of the pickled model. 
+
+        Returns
+        ----------
+        EMGClassifier
+            Returns an EMGClassifier object.
+        """
         with open(filename, 'rb') as f:
             classifier = pickle.load(f)
         return classifier
-    '''
-    ---------------------- Public Functions ----------------------
-    '''
+
+ 
     def run(self):
+        """Runs the classifier on a pre-defined set of training data.
+
+        Returns
+        ----------
+        dictionary
+            Returns a dictionary consisting of a variety of offline metrics including: 
+            Classification Accuracy ('CA'), Active Error Rate ('AER'), Instability ('INS'), 
+            and Rejection Rate ('REJ_RATE').
+        """
         '''
         returns a list of typical offline evaluation metrics
         '''
@@ -59,7 +93,7 @@ class EMGClassifier:
         if self.rejection_type:
             prediction_probs = self.classifier.predict_proba(self.data_set['testing_features'])
             predictions = np.array([self._check_for_rejection(pred) for pred in prediction_probs])
-            dic['REJ_RATE'] = self._get_REJ_RATE(predictions)
+            dic['REJ_RATE'] = self.get_REJ_RATE(predictions)
             rejected = np.where(predictions == -1)[0]
             # Update Predictions and Testing Labels Array
             predictions = np.delete(predictions, rejected)
@@ -69,16 +103,22 @@ class EMGClassifier:
             predictions = self._majority_vote_helper(predictions, testing_labels)
         
         # Accumulate Metrics
-        dic['CA'] = self._get_CA(testing_labels, predictions)
+        dic['CA'] = self.get_CA(testing_labels, predictions)
         if 'null_label' in self.data_set.keys():
-            dic['AER'] = self._get_AER(testing_labels, predictions, self.data_set['null_label'])
-        dic['INST'] = self._get_INS(testing_labels, predictions)
+            dic['AER'] = self.get_AER(testing_labels, predictions, self.data_set['null_label'])
+        dic['INST'] = self.get_INS(testing_labels, predictions)
         return dic
 
     def save(self, filename):
-        '''
-        filename - is the location that the classifier gets saved to
-        '''
+        """Saves (pickles) the EMGClassifier object to a file.
+
+        Use this save function to load the object later using the from_file function.
+
+        Parameters
+        ----------
+        filename: string
+            The path of the outputted pickled file. 
+        """
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
@@ -129,53 +169,151 @@ class EMGClassifier:
       
     # Offline Metrics:
     # TODO: Evan Review
-    def _get_CA(self, y_true, y_predictions):
+    def get_CA(self, y_true, y_predictions):
+        """Classification Accuracy.
+
+        The number of correct predictions normalized by the total number of predictions.
+
+        Parameters
+        ----------
+        y_true: array_like
+            A list of ground truth labels.
+        y_predictions: array_like
+            A list of predicted labels.
+
+        Returns
+        ----------
+        float
+            Returns the classification accuracy.
+        """
         return sum(y_predictions == y_true)/len(y_true)
     
-    def _get_AER(self, y_true, y_predictions, null_class):
-        nm_predictions = [i for i, x in enumerate(y_predictions) if x == null_class]
-        return self._get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
+    def get_AER(self, y_true, y_predictions, null_class):
+        """Active Error.
 
-    def _get_INS(self, y_true, y_predictions):
+        Classification accuracy without considering null_label (No Movement) predictions.
+
+        Parameters
+        ----------
+        y_true: array_like
+            A list of ground truth labels.
+        y_predictions: array_like
+            A list of predicted labels.
+        null_class: int
+            The null class that shouldn't be considered.
+
+        Returns
+        ----------
+        float
+            Returns the active error.
+        """
+        nm_predictions = [i for i, x in enumerate(y_predictions) if x == null_class]
+        return self.get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
+
+    def get_INS(self, y_true, y_predictions):
+        """Instability.
+
+        The number of subsequent predicitons that change normalized by the total number of predicitons.
+
+        Parameters
+        ----------
+        y_true: array_like
+            A list of ground truth labels.
+        y_predictions: array_like
+            A list of predicted labels.
+
+        Returns
+        ----------
+        float
+            Returns the instability.
+        """
         num_gt_changes = np.count_nonzero(y_true[:-1] != y_true[1:])
         pred_changes = np.count_nonzero(y_predictions[:-1] != y_predictions[1:])
         ins = (pred_changes - num_gt_changes) / len(y_predictions)
         return ins if ins > 0 else 0.0
 
-    def _get_REJ_RATE(self, y_predictions):
+    def get_REJ_RATE(self, y_predictions):
+        """Rejection Rate.
+
+        The number of rejected predictions, normalized by the total number of predictions.
+
+        Parameters
+        ----------
+        y_predictions: array_like
+            A list of predicted labels. -1 in the list correspond to rejected predictions.
+
+        Returns
+        ----------
+        float
+            Returns the rejection rate.
+        """
         return sum(y_predictions == -1)/len(y_predictions)
 
     #TODO: Add additional metrics
     
 class OnlineEMGClassifier(EMGClassifier):
-    def __init__(self, dictionary, std_out=False):
-        super().__init__(dictionary['model'], dictionary['data_set'])
-        self.port = dictionary['port'] 
-        self.ip = dictionary['ip'] 
-        self.window_length = dictionary['window_length'] 
-        self.window_increment = dictionary['window_increment']
-        self.odh = dictionary['online_data_handler']
-        self.fe = dictionary['feature_extractor']
-        if 'rejection_type' in dictionary.keys():
-            self.rejection_type = dictionary['rejection_type']
-        if 'rejection_threshold' in dictionary.keys():
-            self.rejection_threshold = dictionary['rejection_threshold']
-        if 'majority_vote' in dictionary.keys():
-            self.majority_vote = dictionary['majority_vote']
+    """OnlineEMGClassifier (inherits from EMGClassifier) used for real-time classification.
+
+    Given a set of training data and labels, this class will stream class predictions over TCP.
+
+    Parameters
+    ----------
+    model: string
+        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
+    data_set: dictionary
+        A dictionary including the associated features and labels associated with a set of data. 
+        Dictionary keys should include 'training_labels', 'training_features' and 'null_label' (optional).
+    window_size: int
+        The number of samples in a window. 
+    window_increment: int
+        The number of samples that advances before next window.
+    online_data_handler: OnlineDataHandler
+        An online data handler object.
+    feature_extractor: FeatureExtractor
+        A feature extractor object with the features desired passed into the init.
+    port: int (optional), default = 12346
+        The port used for streaming predictions over TCP.
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over TCP.
+    rejection_type: string (optional)
+        Used to specify the type of rejection used by the classifier. The only currently supported option
+        is 'CONFIDENCE'.
+    rejection_threshold: int (optional), default = 0.9
+        Used to specify the threshold used for rejection.
+    majority_vote: int (optional)
+        Used to specify the number of predictions included in the majority vote.
+    std_out: bool (optional), default = False
+        If True, prints predictions to std_out.
+    """
+    def __init__(self, model, data_set, window_size, window_increment, online_data_handler, feature_extractor, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, std_out=False):
+        super().__init__(model, data_set)
+        self.window_size = window_size
+        self.window_increment = window_increment
+        self.odh = online_data_handler
+        self.fe = feature_extractor
+        self.port = port
+        self.ip = ip
+        self.rejection_type = rejection_type
+        self.rejection_threshold = rejection_threshold
+        self.majority_vote = majority_vote
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # self.process = Process(target=self._stream_emg, daemon=True,)
         self.std_out = std_out
         self.previous_predictions = deque(maxlen=self.majority_vote)
 
     def run(self):
+        """Runs the classifier - continuously streams predictions over TCP.
+
+        Currently this function locks the main thread.
+        """
         self.odh.raw_data.reset_emg()
         while True:
             data = np.array(self.odh.raw_data.get_emg())
-            if len(data) >= self.window_length:
-                window = get_windows(data, self.window_length, self.window_length)
+            if len(data) >= self.window_size:
+                window = get_windows(data, self.window_size, self.window_size)
                 features = self.fe.extract_predefined_features(window)
                 formatted_data = self._format_data_sample(features)
-                self.odh.raw_data.adjust_increment(self.window_length, self.window_increment)
+                self.odh.raw_data.adjust_increment(self.window_size, self.window_increment)
                 prediction = self.classifier.predict(formatted_data)
                 if self.rejection_type:
                     #TODO: Right now this will default to -1
