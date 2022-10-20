@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from unb_emg_toolbox.feature_extractor import FeatureExtractor as featureextractor
+from unb_emg_toolbox.utils import get_windows
 
 @pytest.fixture(scope='session') 
 def fe():
@@ -9,7 +10,7 @@ def fe():
 
 def test_extract_features_valid(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     features = fe.extract_features(['MAV','ZC','WAMP'], windows)
     assert(len(features) == 3)
     assert('MAV' in features)
@@ -18,7 +19,7 @@ def test_extract_features_valid(fe):
 
 def test_extract_features_invalid(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     features = fe.extract_features(['MAV','RANDOM'], windows)
     assert(len(features) == 1)
     assert('MAV' in features)
@@ -26,7 +27,7 @@ def test_extract_features_invalid(fe):
 
 def test_extract_feature_group_valid(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     features = fe.extract_feature_group('TD4', windows)
     assert(len(features) == 4)
     assert('LS' in features)
@@ -36,7 +37,7 @@ def test_extract_feature_group_valid(fe):
 
 def test_extract_TPSD(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     features = fe.extract_feature_group('TDPSD', windows)
     assert(len(features) == 6)
     assert('M0' in features)
@@ -48,14 +49,14 @@ def test_extract_TPSD(fe):
 
 def test_extract_feature_group_invalid(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     features = fe.extract_feature_group('RANDOM', windows)
     assert(len(features) == 0)
 
 def test_get_windows(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
-    assert len(windows) == 18
+    windows = get_windows(data, 50, 25)
+    assert len(windows) == 19
     assert len(windows[0]) == 8
     assert len(windows[0][0]) == 50
 
@@ -98,7 +99,7 @@ def test_get_feature_list(fe):
 
 def test_all_features_normal(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     feature_list = ['MAV',
                     'ZC',
                     'SSC',
@@ -133,7 +134,7 @@ def test_all_features_normal(fe):
 
 def test_all_features_zeros(fe):
     data = np.loadtxt('tests/data/emg_data_zeros.csv', delimiter=',')
-    windows = fe.get_windows(data, 50, 25)
+    windows = get_windows(data, 50, 25)
     feature_list = ['MAV',
                     'ZC',
                     'SSC',
