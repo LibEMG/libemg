@@ -15,3 +15,5 @@ data/*
 raw_emg.csv
 demos/data/*
 docs/build/*
+.DS_Store
+docs/.DS_Store
