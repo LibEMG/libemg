@@ -14,10 +14,7 @@ from unb_emg_toolbox.utils import get_windows
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
 from unb_emg_toolbox.filtering import Filter
-
-
-
-
+from unb_emg_toolbox.helpers.mock_emg_streamer import MockEMGStreamer
 
 
 def offline_dataset_filtering_demo():
@@ -75,22 +72,6 @@ def np_ndarray_filtering_demo():
     plt.show()
 
 
-
-def worker():
-    # used for the online demo -- generate random data and put into tcp/ip socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    def write_to_socket(sock):
-        simulated_emg = random.sample(range(-100, 100), 8)
-        sock.sendto(bytes(str(simulated_emg), "utf-8"), ('127.0.0.1', 12345))
-        time.sleep(0.05)
-    while True:
-        try:
-            write_to_socket(sock)
-        except:
-            print("Worker Stopped")
-            quit()
-
-
 def online_filtering_demo():
     window_size = 100
     window_increment = 20
@@ -107,14 +88,15 @@ def online_filtering_demo():
                         "bandwidth": 3 }
     filter.install_filters(filter_dictionary=filter_dictionary)
     
-    # Create A stream of random data
-    p = multiprocessing.Process(target=worker, daemon=True)
-    p.start()
 
     # variable for the window (windowsizex8 shape)
     window = np.zeros((window_size, 8))
 
-    odh = OnlineDataHandler(file=True, std_out=False, emg_arr=True)
+    # Create A stream of emg data
+    mock_emg = MockEMGStreamer("demos/data/data.csv", sampling_rate=200)
+    mock_emg.stream()
+
+    odh = OnlineDataHandler(file=False, std_out=False, emg_arr=True)
     # start the stream listener
     odh.get_data()
     odh.raw_data.reset_emg()
@@ -141,9 +123,9 @@ def online_filtering_demo():
 
 # Currently this file is for only one individual
 if __name__ == "__main__" :
-    offline_dataset_filtering_demo()
+    # offline_dataset_filtering_demo()
 
-    np_ndarray_filtering_demo()
+    # np_ndarray_filtering_demo()
 
     # this function has a sleep(5) in it, so wait a minute for it to start :)
     online_filtering_demo()
