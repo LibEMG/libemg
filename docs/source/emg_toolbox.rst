@@ -13,6 +13,11 @@ Classification
 .. automodule:: unb_emg_toolbox.emg_classifier
    :members:
 
+Offline Evaluation Metrics
+------------------------------
+.. automodule:: unb_emg_toolbox.offline_metrics
+   :members:
+
 Utils
 ------------------------------
 .. automodule:: unb_emg_toolbox.utils

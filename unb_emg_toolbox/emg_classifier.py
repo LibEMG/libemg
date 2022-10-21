@@ -1,12 +1,14 @@
 from collections import deque
+from site import venv
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.metrics import *
 from multiprocessing import Process
 import numpy as np
 import pickle
 import socket
+from unb_emg_toolbox.feature_extractor import FeatureExtractor
+from unb_emg_toolbox.offline_metrics import *
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -34,8 +36,10 @@ class EMGClassifier:
         Used to specify the threshold used for rejection.
     majority_vote: int (optional) 
         Used to specify the number of predictions included in the majority vote.
+    velocity: bool (optional), default=False
+        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, model, data_set, arguments=None, rejection_type=None, rejection_threshold=0.9, majority_vote=None):
+    def __init__(self, model, data_set, arguments=None, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False):
         #TODO: Need some way to specify if its continuous testing data or not 
         self.data_set = data_set
         self.arguments = arguments
@@ -43,12 +47,20 @@ class EMGClassifier:
         self.rejection_type = rejection_type
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
+        self.velocity = velocity
+
+        # For velocity control
+        self.th_min_dic = None 
+        self.th_max_dic = None 
+
         # Functions to run:
         self._format_data('training_features')
         if 'testing_features' in self.data_set.keys():
             self._format_data('testing_features')
         self._set_up_classifier(model)
-    
+        if self.velocity:
+            self.th_min_dic, self.th_max_dic = self._set_up_velocity_control()
+
     @classmethod
     def from_file(self, filename):
         """Loads a classifier - rather than creates a new one.
@@ -93,7 +105,7 @@ class EMGClassifier:
         if self.rejection_type:
             prediction_probs = self.classifier.predict_proba(self.data_set['testing_features'])
             predictions = np.array([self._check_for_rejection(pred) for pred in prediction_probs])
-            dic['REJ_RATE'] = self.get_REJ_RATE(predictions)
+            dic['REJ_RATE'] = get_REJ_RATE(predictions)
             rejected = np.where(predictions == -1)[0]
             # Update Predictions and Testing Labels Array
             predictions = np.delete(predictions, rejected)
@@ -103,10 +115,10 @@ class EMGClassifier:
             predictions = self._majority_vote_helper(predictions, testing_labels)
         
         # Accumulate Metrics
-        dic['CA'] = self.get_CA(testing_labels, predictions)
+        dic['CA'] = get_CA(testing_labels, predictions)
         if 'null_label' in self.data_set.keys():
-            dic['AER'] = self.get_AER(testing_labels, predictions, self.data_set['null_label'])
-        dic['INST'] = self.get_INS(testing_labels, predictions)
+            dic['AER'] = get_AER(testing_labels, predictions, self.data_set['null_label'])
+        dic['INST'] = get_INS(testing_labels, predictions)
         return dic
 
     def save(self, filename):
@@ -169,90 +181,30 @@ class EMGClassifier:
             values, counts = np.unique(list(predictions[i:i+self.majority_vote]), return_counts=True)
             predictions[i] = values[np.argmax(counts)]
         return predictions
-      
-    # Offline Metrics:
-    # TODO: Evan Review
-    def get_CA(self, y_true, y_predictions):
-        """Classification Accuracy.
-
-        The number of correct predictions normalized by the total number of predictions.
-
-        Parameters
-        ----------
-        y_true: array_like
-            A list of ground truth labels.
-        y_predictions: array_like
-            A list of predicted labels.
-
-        Returns
-        ----------
-        float
-            Returns the classification accuracy.
-        """
-        return sum(y_predictions == y_true)/len(y_true)
     
-    def get_AER(self, y_true, y_predictions, null_class):
-        """Active Error.
+    def _get_velocity(self, window, c):
+        if self.th_max_dic and self.th_min_dic:
+            return '{0:.2f}'.format((np.sum(np.mean(np.abs(window),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c]))
 
-        Classification accuracy without considering null_label (No Movement) predictions.
-
-        Parameters
-        ----------
-        y_true: array_like
-            A list of ground truth labels.
-        y_predictions: array_like
-            A list of predicted labels.
-        null_class: int
-            The null class that shouldn't be considered.
-
-        Returns
-        ----------
-        float
-            Returns the active error.
-        """
-        nm_predictions = [i for i, x in enumerate(y_predictions) if x == null_class]
-        return self.get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
-
-    def get_INS(self, y_true, y_predictions):
-        """Instability.
-
-        The number of subsequent predicitons that change normalized by the total number of predicitons.
-
-        Parameters
-        ----------
-        y_true: array_like
-            A list of ground truth labels.
-        y_predictions: array_like
-            A list of predicted labels.
-
-        Returns
-        ----------
-        float
-            Returns the instability.
-        """
-        num_gt_changes = np.count_nonzero(y_true[:-1] != y_true[1:])
-        pred_changes = np.count_nonzero(y_predictions[:-1] != y_predictions[1:])
-        ins = (pred_changes - num_gt_changes) / len(y_predictions)
-        return ins if ins > 0 else 0.0
-
-    def get_REJ_RATE(self, y_predictions):
-        """Rejection Rate.
-
-        The number of rejected predictions, normalized by the total number of predictions.
-
-        Parameters
-        ----------
-        y_predictions: array_like
-            A list of predicted labels. -1 in the list correspond to rejected predictions.
-
-        Returns
-        ----------
-        float
-            Returns the rejection rate.
-        """
-        return sum(y_predictions == -1)/len(y_predictions)
-
-    #TODO: Add additional metrics
+    def _set_up_velocity_control(self):
+        # Extract classes 
+        th_min_dic = {}
+        th_max_dic = {}
+        classes = np.unique(self.data_set['training_labels'])
+        windows = self.data_set['training_windows']
+        for c in classes:
+            indices = np.where(self.data_set['training_labels'] == c)[0]
+            c_windows = windows[indices]
+            mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
+            mav_tr_max = np.max(mav_tr)
+            mav_tr_min = np.min(mav_tr)
+            # Calculate THmin 
+            th_min = (1-(10/100)) * mav_tr_min + 0.1 * mav_tr_max
+            th_min_dic[c] = th_min 
+            # Calculate THmax
+            th_max = (1-(70/100)) * mav_tr_min + 0.7 * mav_tr_max
+            th_max_dic[c] = th_max
+        return th_min_dic, th_max_dic
     
 class OnlineEMGClassifier(EMGClassifier):
     """OnlineEMGClassifier (inherits from EMGClassifier) used for real-time classification.
@@ -285,11 +237,13 @@ class OnlineEMGClassifier(EMGClassifier):
         Used to specify the threshold used for rejection.
     majority_vote: int (optional)
         Used to specify the number of predictions included in the majority vote.
+    velocity: bool (optional), default = False
+        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     """
-    def __init__(self, model, data_set, window_size, window_increment, online_data_handler, feature_extractor, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, std_out=False):
-        super().__init__(model, data_set)
+    def __init__(self, model, data_set, window_size, window_increment, online_data_handler, feature_extractor, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
+        super().__init__(model, data_set, velocity=velocity)
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
@@ -313,21 +267,33 @@ class OnlineEMGClassifier(EMGClassifier):
         while True:
             data = np.array(self.odh.raw_data.get_emg())
             if len(data) >= self.window_size:
+                # Extract window and predict sample
                 window = get_windows(data, self.window_size, self.window_size)
                 features = self.fe.extract_predefined_features(window)
                 formatted_data = self._format_data_sample(features)
                 self.odh.raw_data.adjust_increment(self.window_size, self.window_increment)
-                prediction = self.classifier.predict(formatted_data)
+                prediction = self.classifier.predict(formatted_data)[0]
+                
+                # Check for rejection
                 if self.rejection_type:
                     #TODO: Right now this will default to -1
                     prediction = self._check_for_rejection(self.classifier.predict_proba(formatted_data)[0])
                 self.previous_predictions.append(prediction)
+                
+                # Check for majority vote
                 if self.majority_vote:
                     values, counts = np.unique(list(self.previous_predictions), return_counts=True)
                     prediction = values[np.argmax(counts)]
+                
+                # Check for velocity vased control
+                calculated_velocity = ""
+                if self.velocity:
+                    calculated_velocity = " " + str(self._get_velocity(window, prediction))
+                
+                # Write classifier output:
+                self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
                 if self.std_out:
-                    print(prediction)
-                self.sock.sendto(bytes(str(prediction), "utf-8"), (self.ip, self.port))
+                    print(str(prediction) + calculated_velocity)
     
     def _format_data_sample(self, data):
         arr = None
@@ -337,4 +303,3 @@ class OnlineEMGClassifier(EMGClassifier):
             else:
                 arr = np.hstack((arr, data[feat]))
         return arr
-                

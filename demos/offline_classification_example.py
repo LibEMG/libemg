@@ -45,6 +45,7 @@ if __name__ == "__main__" :
     fe = FeatureExtractor(num_channels=8)
 
     data_set = {}
+    data_set['training_windows'] = train_windows # used for velocity control
     data_set['testing_features'] = fe.extract_feature_group('HTD', test_windows)
     data_set['training_features'] = fe.extract_feature_group('HTD', train_windows)
     data_set['testing_labels'] = test_metadata['classes']
