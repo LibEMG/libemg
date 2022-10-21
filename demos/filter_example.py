@@ -1,22 +1,14 @@
 import os
 import sys
-import socket
-import random
 import time
 import matplotlib.pyplot as plt
-import multiprocessing
 import numpy as np
+from helpers.mock_emg_streamer import MockEMGStreamer
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import get_windows
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
 from unb_emg_toolbox.filtering import Filter
-from unb_emg_toolbox.helpers.mock_emg_streamer import MockEMGStreamer
-
-
 def offline_dataset_filtering_demo():
     ## Example for filtering an offline dataset.
     dataset_folder = 'demos/data/myo_dataset'
@@ -123,9 +115,9 @@ def online_filtering_demo():
 
 # Currently this file is for only one individual
 if __name__ == "__main__" :
-    # offline_dataset_filtering_demo()
+    offline_dataset_filtering_demo()
 
-    # np_ndarray_filtering_demo()
+    np_ndarray_filtering_demo()
 
     # this function has a sleep(5) in it, so wait a minute for it to start :)
     online_filtering_demo()
