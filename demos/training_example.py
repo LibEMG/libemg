@@ -38,4 +38,4 @@ if __name__ == "__main__" :
     p.start()
     odh = OnlineDataHandler(emg_arr=True)
     odh.get_data()
-    train_ui = TrainingUI(3, 3, "demos/images/", "demos/data/sgt_example/", odh, time_between_reps=2)
+    train_ui = TrainingUI(3, 3, "demos/images/", "demos/data/sgt_example/", odh)

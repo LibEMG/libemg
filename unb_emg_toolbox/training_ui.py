@@ -33,7 +33,7 @@ class TrainingUI:
     continuous: bool, default=False
         If True there is no pause between reps.
     """
-    def __init__(self, num_reps=None, rep_time=None, time_between_reps=3, rep_folder=None, output_folder=None, data_handler=None, randomize=False, continuous=False):
+    def __init__(self, num_reps=None, rep_time=None, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False):
         self.window = Tk()
         
         self.num_reps = IntVar(value=num_reps)

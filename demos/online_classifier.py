@@ -54,6 +54,7 @@ if __name__ == "__main__" :
     data_set = {}
     data_set['training_features'] = training_features
     data_set['training_labels'] = train_metadata['classes']
+    data_set['training_windows'] = train_windows
 
     # Create Stream Bindings
     p = multiprocessing.Process(target=worker, daemon=True)
@@ -62,19 +63,7 @@ if __name__ == "__main__" :
     online_data_handler.get_data()
     time.sleep(5)
 
-    # Create dictionary to pass to online classifier 
-    dic = {
-        'window_length': 50,
-        'window_increment': 25, 
-        'feature_extractor': fe,
-        'model': 'LDA',
-        'data_set': data_set,
-        'port': 12346,
-        'feature_extractor': fe,
-        'online_data_handler': online_data_handler,
-        'ip': '127.0.0.1',
-        'majority_vote': 1,
-    }
-    # Create Classifier and Evaluate
-    classifier = OnlineEMGClassifier(dictionary = dic, std_out=True)
+    # Create Classifier and Run
+    classifier = OnlineEMGClassifier(model="LDA", data_set=data_set, window_size=50, window_increment=25, 
+            online_data_handler=online_data_handler, feature_extractor=fe, velocity=True, std_out=True)
     classifier.run()
