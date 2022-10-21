@@ -59,8 +59,12 @@ class TrainingUI:
 
         # For UI
         self._intialize_UI()
+        self.window.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.window.mainloop()
     
+    def _on_closing(self):
+        self.window.destroy()
+
     def _accumulate_training_images(self):
         filenames = next(walk(self.rep_folder.get()), (None, None, []))[2]
         file_types = [".jpg", ".png"]
