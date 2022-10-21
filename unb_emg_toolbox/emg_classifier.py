@@ -18,7 +18,7 @@ class EMGClassifier:
 
     Parameters
     ----------
-    model: string
+    model: string or custom classifier (must have fit, predict and predic_proba functions)
         The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
@@ -146,6 +146,9 @@ class EMGClassifier:
             self.classifier = SVC(kernel='linear', probability=True)
         elif model == "QDA":
             self.classifier = QuadraticDiscriminantAnalysis()
+        elif not model is None:
+            # Assume a custom classifier has been passed in
+            self.classifier = model
         # Fit the model to the data set
         self.classifier.fit(self.data_set['training_features'],self.data_set['training_labels'])
         

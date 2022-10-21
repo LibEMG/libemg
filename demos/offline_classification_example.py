@@ -7,6 +7,7 @@ from unb_emg_toolbox.feature_extractor import FeatureExtractor
 from unb_emg_toolbox.utils import get_windows
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler
+from sklearn.ensemble import RandomForestClassifier
 
 
 # Currently this file is for only one individual
@@ -66,6 +67,13 @@ if __name__ == "__main__" :
     mv_classifier = EMGClassifier("SVM", data_set.copy(), majority_vote=1)
     offline_metrics = mv_classifier.run()
     print("Offline Majority Vote Metrics:")
+    print(offline_metrics)
+
+    # Custom classifier case
+    clf = RandomForestClassifier(max_depth=5, random_state=0)
+    classifier = EMGClassifier(clf, data_set.copy())
+    offline_metrics = classifier.run()
+    print("Offline Metrics for Custom Random Forest:")
     print(offline_metrics)
 
     # another example
