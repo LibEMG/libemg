@@ -20,7 +20,7 @@ if __name__ == "__main__" :
     # manual dictionary making (showing how you can add more than the default metadata [classes, reps])
     dataset_folder = 'demos/data/myo_dataset'
     sets_values = ["training", "testing"]
-    sets_regex = make_regex(left_bound = "dataset\\\\", right_bound="\\\\", values = sets_values)
+    sets_regex = make_regex(left_bound = "dataset/", right_bound="/", values = sets_values)
     classes_values = ["0","1","2","3","4"]
     classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
     reps_values = ["0","1","2","3"]
