@@ -36,7 +36,10 @@ def plot_decision_stream(y_labels, predictions, probabilities):
     plt.ylabel("Probability")
     for g in np.unique(predictions):
         i = np.where(predictions == g)
-        val = plt.scatter(i, probabilities[i], label=g, alpha=1, color=colors[g])
+        if g == -1:
+            plt.scatter(i, probabilities[i], label=g, alpha=1, color='black')
+        else:
+            plt.scatter(i, probabilities[i], label=g, alpha=1, color=colors[g])
     
     plt.legend(loc='lower right')
     plt.show()
