@@ -61,7 +61,6 @@ if __name__ == "__main__" :
     p.start()
     online_data_handler = OnlineDataHandler(emg_arr=True)
     online_data_handler.get_data()
-    time.sleep(5)
 
     # Create Classifier and Run
     classifier = OnlineEMGClassifier(model="LDA", data_set=data_set, window_size=50, window_increment=25, 
