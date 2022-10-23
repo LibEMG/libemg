@@ -45,7 +45,7 @@ if __name__ == "__main__" :
     data_set['training_labels'] = train_metadata['classes']
     data_set['null_label'] = 2
 
-    classifier = EMGClassifier("SVM", data_set.copy(), majority_vote=5)
+    classifier = EMGClassifier("SVM", data_set.copy())
     offline_metrics = classifier.run()
     print(offline_metrics)
 

@@ -12,30 +12,30 @@ class EMGVisualizer:
     def plot_offline_decision_stream(self):
         predictions = self.offline_classifier.predictions.copy()
         probabilities = self.offline_classifier.probabilities.copy()
-        colors = []
+        colors = {}
 
         plt.gca().set_ylim([0, 1.05])
         plt.gca().xaxis.grid(False)
 
+        # Plot true class labels
+        testing_labels = self.offline_classifier.data_set['testing_labels'].copy()
+        changed_locations = [0] + list(np.where((testing_labels[:-1] != testing_labels[1:]) == True)[0]) + [len(testing_labels)-1]
+
+        for i in range(1, len(changed_locations)):
+            class_label = testing_labels[changed_locations[i]]
+            if class_label in colors.keys():
+                plt.fill_betweenx([0,1.02], changed_locations[i-1], changed_locations[i], color=colors[class_label])
+            else:
+                val = plt.fill_betweenx([0,1.02], changed_locations[i-1], changed_locations[i], alpha=.2)
+                colors[class_label] = val.get_facecolors().tolist()
+            
         # Plot decision stream
         plt.title("Decision Stream")
         plt.xlabel("Class Output")
         plt.ylabel("Probability")
         for g in np.unique(predictions):
             i = np.where(predictions == g)
-            val = plt.scatter(i, probabilities[i], label=g)
-            colors.append(val.get_facecolors().tolist())
-        
-        # Plot true class labels
-        testing_labels = self.offline_classifier.data_set['testing_labels'].copy()
-        for g in np.unique(testing_labels):
-            vals = np.where(testing_labels == g)[0]
-            s_index = vals[0]
-            for i in range(1, len(vals)):
-                if vals[i] - vals[i-1] != 1:
-                    plt.fill_betweenx([0,1.02], s_index, vals[i-1], alpha=.2, color=colors[int(g)])
-                    s_index = vals[i]
-            plt.fill_betweenx([0,1.02], s_index, vals[-1], alpha=.2, color=colors[int(g)])
+            val = plt.scatter(i, probabilities[i], label=g, alpha=1, color=colors[g])
         
         plt.legend(loc='lower right')
         plt.show()
