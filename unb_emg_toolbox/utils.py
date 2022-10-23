@@ -3,7 +3,7 @@ import numpy as np
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
 
-    Parameters:
+    Parameters
     ----------
     data: array_like
         An NxM stream of data with N samples and M channels
@@ -34,7 +34,7 @@ def get_mode_windows(data, window_size, window_increment):
     Rather than capturing an entire window, this function gets the mode of values seen across samples in the window.
     This is useful for metadata.
 
-    Parameters:
+    Parameters
     ----------
     data: array_like
         An NxM stream of data with N samples and M channels.
@@ -60,7 +60,7 @@ def make_regex(left_bound, right_bound, values=[]):
     The Data Handler relies on regexes to parse the file/folder structures and extract data. 
     This function makes the creation of regexes easier.
 
-    Parameters:
+    Parameters
     ----------
     left_bound: string
         The left bound of the regex.

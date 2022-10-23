@@ -3,6 +3,11 @@ Data Handling
 .. automodule:: unb_emg_toolbox.data_handler
    :members:
 
+Filtering
+------------------------------
+.. automodule:: unb_emg_toolbox.filtering
+   :members:
+
 Feature Extraction
 ------------------------------
 .. automodule:: unb_emg_toolbox.feature_extractor

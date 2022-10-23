@@ -10,3 +10,4 @@ matplotlib==3.5.0
 sphinx==4.2.0
 sphinx_rtd_theme==1.0.0
 myst_parser==0.18.1
+linkify-it-py==2.0.0

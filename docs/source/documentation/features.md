@@ -4,14 +4,15 @@ Let $x_{i}$ represents the signal in segment i and $N$ denotes the number of sam
 Let $fj$ be the frequency of the spectrum at frequency bin $j$, $P_{j}$ is the
 EMG power spectrum at frequency bin $j$, and $M$ is the length of the frequency bin.
 
-## **Mean Absolute Value (MAV)** [[1]](#1)
+## **Mean Absolute Value (MAV)** <sup>[1]</sup>
+
 The average of the absolute value of the EMG signal. This is one of the most commonly used features for EMG.
 
 $
 \text{MAV} = \frac{1}{N}\sum_{i=1}^{N} |x_{i}|
 $
 
-## **Zero Crossings (ZC)** [[1]](#1)
+## **Zero Crossings (ZC)** <sup>[1]</sup>
 The number of times that the amplitude of the EMG signal crosses a zero amplitude threshold. 
 
 $
@@ -25,7 +26,7 @@ $
     \end{array}\right\}
 $
 
-## **Slope Sign Change (SSC)** [[1]](#1)
+## **Slope Sign Change (SSC)** <sup>[1]</sup>
 The number of times that the slope of the EMG signal changes (i.e., the number of times that it changes between positive and negative). 
 
 $
@@ -39,35 +40,35 @@ f(x) = \left\{\begin{array}{lr}
     \end{array}\right\}
 $
 
-## **Waveform Length (WL)** [[1]](#1)
+## **Waveform Length (WL)** <sup>[1]</sup>
 The cumulative length of the EMG waveform over the passed in window. This feature is used to measure the overall complexity of the signal (i.e., higher WL means more complex).
 
 $
 \text{WL} = \sum_{i=1}^{N-1}|x_{i+1} - x_{i}|
 $
 
-## **L-score (LS)** [[2]](#2)
+## **L-score (LS)** <sup>[2]</sup>
 A feature that uses the Legendre Shift Polynomial.
 
 $
 \text{LS} = \sum_{i=1}^{N} \text{LSP} * B
 $
 
-## **Maximum Fractal Length (MFL)** [[3]](#3)
+## **Maximum Fractal Length (MFL)** <sup>[3]</sup>
 A nonlinear information feature for the EMG waveform that is relatively invariant to contraction intensity.
 
 $
 \text{MFL} = log_{10} \sum_{i=1}^{N-1}  | x_{i+1} - x_{i} |
 $
 
-## **Mean Squared Ratio	(MSR)** [[4]](#4)
+## **Mean Squared Ratio	(MSR)** <sup>[4]</sup>
 Determines the total amount of activity in a window.
 
 $
 \text{MSR} = \frac{1}{N}\sum_{i=1}^{N}(x_{i})^{\frac{1}{2}}
 $
 
-## **Willison Amplitude (WAMP)** [[1]](#1)
+## **Willison Amplitude (WAMP)** <sup>[1]</sup>
 The number of times that there is a difference between amplitudes of two seperate samples exceeding a pre-defined threshold. This feature is related to the firing of motor unit action potentials and muscle contraction force.
 
 $
@@ -81,49 +82,49 @@ f(x) = \left\{\begin{array}{lr}
     \end{array}\right\}
 $
 
-## **Root Mean Square (RMS)** [[1]](#1)
+## **Root Mean Square (RMS)** <sup>[1]</sup>
 Models the signal as an amplitude modulated Gaussian random process that relates to constant force and non-fatiguing contraction.
 
 $
 \text{RMS} = \sqrt{\frac{1}{N}\sum_{i=1}^{N}x_{i}^{2}}
 $
 
-## **Integral of Absolute Value (IAV)** [[1]](#1)
+## **Integral of Absolute Value (IAV)** <sup>[1]</sup>
 The integral of the absolute value. Also known as IEMG.
 
 $
 \text{IAV} = \sum_{i=i}^{N} |x_{i}|
 $
 
-## **Difference Absolute Standard Deviation Value (DASDV)** [[1]](#1)
+## **Difference Absolute Standard Deviation Value (DASDV)** <sup>[1]</sup>
 Standard deviation of the wavelength.
 
 $
 \text{DASDV}=\sqrt{\frac{1}{N-1}\sum_{i=1}^{N-1} (x_{i+1} - x_{i})^2} 
 $
 
-## **Variance (VAR)** [[5]](#5)
+## **Variance (VAR)** <sup>[5]</sup>
 Calculates the variance of the data.
 
 $
 \text{VAR} = \frac{1}{N-1}\sum_{i=1}^{N} (x_{i}^{2} - \mu _x)
 $
 
-## **First Temporal Moment (M0)** [[6]](#6)
+## **First Temporal Moment (M0)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
 \text{M0} = log(\frac{\sqrt{\sum_{i=1}^{N}x_{i}^2}^{0.1}}{0.1})
 $
 
-## **Second Temporal Moment (M2)** [[6]](#6)
+## **Second Temporal Moment (M2)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
 \text{M2} = log(\frac{\sqrt{\sum_{i=1}^{N-1}(x_{i+1} - x_{i})^2)}^{0.1}}{0.1})
 $
 
-## **Fourth Temporal Moment (M4)** [[6]](#6)
+## **Fourth Temporal Moment (M4)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
@@ -131,28 +132,28 @@ $
 $
 
 
-## **Sparsness (SPARSI)** [[6]](#6)
+## **Sparsness (SPARSI)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
 \text{SPARSI} = log( |\frac{\text{M0}}{\sqrt{ | \text{M0}-\text{M2} | }\sqrt{ | \text{M0}-\text{M4} | }} |)
 $
 
-## **Irregularity Factor (IRF)** [[6]](#6)
+## **Irregularity Factor (IRF)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
 \text{IRF} = log ( | \frac{\text{M2}}{\sqrt{ | \text{M0}*\text{M4} | }} | )
 $
 
-## **Waveform Length Factor (WLF)** [[6]](#6)
-A commonly-used feature part of the TDPSD feature set. **
+## **Waveform Length Factor (WLF)** <sup>[6]</sup>
+A commonly-used feature part of the TDPSD feature set.
 
 $
 \text{WLF} = log (\sum_{i=1}^{N-1} | x_{i+1} - x_{i} | - \sum_{i=1}^{N-2} | x_{i+2} + x_{i} |)
 $
 
-## **Autoregressive Coefficients (AR)** [[1]](#1)
+## **Autoregressive Coefficients (AR)** <sup>[1]</sup>
 For order r, the autoregressive coefficient can be calculated by: **
 
 $
@@ -160,18 +161,19 @@ $
 $
 
 ## **Cepstral Coefficient (CC)**
-For order r, the cepstral coefficient can be calculated by: **
+For order r, the cepstral coefficient can be calculated by:
 
 $
-\text{CC}_{1}= -\text{AR}_{1}
+\text{CC}_{1}= -\text{AR}_{1} \\
 $
+
 $
 \text{CC}_{r}= \sum_{i=1}^{r} \frac{r-i}{r} \text{AR}_{r} *\text{CC}_{r-2} 
 $
 
 
 
-## **Log Detector (LD)** [[1]](#1)
+## **Log Detector (LD)** <sup>[1]</sup>
 Provides an estimate of the muscle contraction force.
 
 $
@@ -185,49 +187,49 @@ $
 \text{MAVFD} = \sum_{i=1}^{N-1} \frac{x_{i+1}-x_{i}}{N-1}
 $
 
-## **Mean Absolute Value Slope (MAVSLP)** [[1]](#1)
+## **Mean Absolute Value Slope (MAVSLP)** <sup>[1]</sup>
 Get the slope between p sections within a window. Here demonstrated for p=2.
 
 $
 \text{MAVSLP}_{p} = \sum_{i=\frac{N}{p} + 1}^{N} \frac{|x_{i}|}{(\frac{N}{P})} - \sum_{j=1}^{\frac{N}{p}}\frac{|x_{j}|}{(\frac{N}{P})}
 $
 
-## **Median Frequency (MDF)** [[1]](#1)
+## **Median Frequency (MDF)** <sup>[1]</sup>
 Frequency at which the EMG spectrum is divided into 2 portions with equal amplitude.
 
 $
 \text{MDF} = \frac{1}{2}\sum_{j=1}^{M}{P_{j}}
 $
 
-## **Mean Frequency (MNF)** [[1]](#1)
+## **Mean Frequency (MNF)** <sup>[1]</sup>
 Computes the average frequency of the EMG spectrum.
 
 $
 \text{MNF} = (\sum_{j=1}^{M}{f_{j}P_{j}})/(\sum_{j=1}^{M}{P_{j}})
 $
 
-## **Mean Power (MNP)** [[1]](#1)
+## **Mean Power (MNP)** <sup>[1]</sup>
 Computes the average power of the EMG spectrum.
 
 $
 \text{MNP} = \frac{1}{M}\sum_{j=1}^{M}P_{j}
 $
 
-## ** Maximum/Peaks (MPK) [[1]]**
+## **Maximum/Peaks (MPK) <sup>[1]</sup>**
 A feature that records the highest amplitude within the window:
 
 $
 \text{MPK} = max(x)
 $
 
-## **Skewness (SKEW)** [[7]](#7)
+## **Skewness (SKEW)** <sup>[7]</sup>
 Characterizes the degree of asymmetry in the distribution of a variable.
 
 $
 \text{SKEW} = (\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^3) / (\sqrt{(\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^2)})
 $
 
-## **Kurtosis (KURT)** [[7]](#7)
+## **Kurtosis (KURT)** <sup>[7]</sup>
 Indicates non-gaussianity and used to identify the peakedness of a distribution.
 
 $
@@ -235,19 +237,19 @@ $
 $
 
 # Feature Sets
-## **Hudgin's Time Domain (HTD)** [[8]](#8)
+## **Hudgin's Time Domain (HTD)** <sup>[8]</sup>
 1. Mean Absolute Value (MAV)
 2. Zero Crossings (ZC)
 3. Slope Sign Change (SSC)
 4. Waveform Length (WL)
 
-## **Phinyomark's Time Domain 4 (TD4)** [[2]](#2)
+## **Phinyomark's Time Domain 4 (TD4)** <sup>[2]</sup>
 1. L-Score (LS)
 2. Maximum Fractal Length (MFL)
 3. Mean Squared Ratio (MSR)
 4. Willison Amplitude (WAMP)
 
-## **Phinyomark's Time Domain 9 (TD9)** [[2]](#2)
+## **Phinyomark's Time Domain 9 (TD9)** <sup>[2]</sup>
 1. TD4 Features 
 2. Zero Crossings (ZC)
 3. Root Mean Square (RMS)
@@ -255,7 +257,7 @@ $
 5. Absolute Square Average Difference Value (DASDV)
 6. Variance (VAR)
 
-## **Time Domain Power Spectral Descriptors (TDPSD)** [[6]](#6)
+## **Time Domain Power Spectral Descriptors (TDPSD)** <sup>[6]</sup>
 1. First Temporal Moment (M0)
 2. Second Temporal Moment (M2)
 3. Fourth Temporal Moment (M4)
@@ -269,7 +271,7 @@ Angkoon Phinyomark, Pornchai Phukpattaranont, Chusak Limsakul,
 Feature reduction and selection for EMG signal classification,
 Expert Systems with Applications,
 Volume 39, Issue 8,
-2012,
+2012, 
 Pages 7420-7431,
 ISSN 0957-4174,
 https://doi.org/10.1016/j.eswa.2012.01.102.
@@ -315,3 +317,6 @@ S. Thongpanja, A. Phinyomark, F. Quaine, Y. Laurillau, C. Limsakul and P. Phukpa
 
 <a id="8">[8]</a> 
 B. Hudgins, P. Parker and R. N. Scott, "A new strategy for multifunction myoelectric control," in IEEE Transactions on Biomedical Engineering, vol. 40, no. 1, pp. 82-94, Jan. 1993, doi: 10.1109/10.204774.
+
+<a id="9">[9]</a> 
+Campbell E, Phinyomark A, Scheme E. Current Trends and Confounding Factors in Myoelectric Control: Limb Position and Contraction Intensity. Sensors. 2020; 20(6):1613. https://doi.org/10.3390/s20061613
