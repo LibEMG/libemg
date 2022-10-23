@@ -7,8 +7,10 @@ from multiprocessing import Process
 import numpy as np
 import pickle
 import socket
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
+import random
 from unb_emg_toolbox.offline_metrics import *
+
+random.seed(0)
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -48,6 +50,8 @@ class EMGClassifier:
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
         self.velocity = velocity
+        self.predictions = []
+        self.probabilities = []
 
         # For velocity control
         self.th_min_dic = None 
@@ -97,28 +101,30 @@ class EMGClassifier:
         returns a list of typical offline evaluation metrics
         '''
         dic = {}
-        predictions = None
         testing_labels = self.data_set['testing_labels'].copy()
+        prob_predictions = self.classifier.predict_proba(self.data_set['testing_features'])
+        
         # Default
-        predictions = self.classifier.predict(self.data_set['testing_features'])
+        self.predictions, self.probabilities = self._prediction_helper(prob_predictions)
+
         # Rejection
         if self.rejection_type:
-            prediction_probs = self.classifier.predict_proba(self.data_set['testing_features'])
-            predictions = np.array([self._check_for_rejection(pred) for pred in prediction_probs])
-            dic['REJ_RATE'] = get_REJ_RATE(predictions)
-            rejected = np.where(predictions == -1)[0]
+            self.predictions = np.array([self._rejection_helper(self.predictions[i], self.probabilities[i]) for i in range(0,len(self.predictions))])
+            dic['REJ_RATE'] = get_REJ_RATE(self.predictions)
+            rejected = np.where(self.predictions == -1)[0]
+            testing_labels[rejected] = -1
             # Update Predictions and Testing Labels Array
-            predictions = np.delete(predictions, rejected)
-            testing_labels = np.delete(testing_labels, rejected)
+            # predictions = np.delete(predictions, rejected)
+            # testing_labels = np.delete(testing_labels, rejected)
         # Majority Vote
         if self.majority_vote:
-            predictions = self._majority_vote_helper(predictions, testing_labels)
-        
+            self.predictions = self._majority_vote_helper(self.predictions)
+
         # Accumulate Metrics
-        dic['CA'] = get_CA(testing_labels, predictions)
+        dic['CA'] = get_CA(testing_labels, self.predictions)
         if 'null_label' in self.data_set.keys():
-            dic['AER'] = get_AER(testing_labels, predictions, self.data_set['null_label'])
-        dic['INST'] = get_INS(testing_labels, predictions)
+            dic['AER'] = get_AER(testing_labels, self.predictions, self.data_set['null_label'])
+        dic['INST'] = get_INS(testing_labels, self.predictions)
         return dic
 
     def save(self, filename):
@@ -163,24 +169,35 @@ class EMGClassifier:
             self.classifier = model
         # Fit the model to the data set
         self.classifier.fit(self.data_set['training_features'],self.data_set['training_labels'])
+    
+    def _prediction_helper(self, predictions):
+        probabilities = [] 
+        prediction_vals = []
+        for i in range(0, len(predictions)):
+            pred_list = list(predictions[i])
+            prediction_vals.append(pred_list.index(max(pred_list)))
+            probabilities.append(pred_list[pred_list.index(max(pred_list))])
+        return np.array(prediction_vals), np.array(probabilities)
         
-    def _check_for_rejection(self, prediction):
+    def _rejection_helper(self, prediction, prob):
         # TODO: Do we just want to do nothing? Or default to null_class? 
-        pred_list = list(prediction)
         if self.rejection_type == "CONFIDENCE":
-            if pred_list[pred_list.index(max(pred_list))] > self.rejection_threshold:
-                return pred_list.index(max(pred_list))
+            if prob > self.rejection_threshold:
+                return prediction
             else:
                 return -1
-        return pred_list.index(max(pred_list))
+        return prediction
     
-    def _majority_vote_helper(self, predictions, testing):
+    def _majority_vote_helper(self, predictions):
+        updated_predictions = []
         # TODO: Decide what we want to do here - talk to Evan 
         # Right now we are just majority voting the whole prediction stream
+        for i in range(0,self.majority_vote):
+            updated_predictions.append(predictions[i])
         for i in range(self.majority_vote, len(predictions)):
-            values, counts = np.unique(list(predictions[i:i+self.majority_vote]), return_counts=True)
-            predictions[i] = values[np.argmax(counts)]
-        return predictions
+            values, counts = np.unique(predictions[(i-self.majority_vote):i], return_counts=True)
+            updated_predictions.append(values[np.argmax(counts)])
+        return np.array(updated_predictions)
     
     def _get_velocity(self, window, c):
         if self.th_max_dic and self.th_min_dic:
@@ -254,15 +271,25 @@ class OnlineEMGClassifier(EMGClassifier):
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # self.process = Process(target=self._stream_emg, daemon=True,)
+        self.process = Process(target=self._run_helper, daemon=True,)
         self.std_out = std_out
         self.previous_predictions = deque(maxlen=self.majority_vote)
 
-    def run(self):
+    def run(self, block=True):
         """Runs the classifier - continuously streams predictions over TCP.
 
-        Currently this function locks the main thread.
+        Parameters
+        ----------
+        block: bool (optional), default = True
+            If True, the run function blocks the main thread. Otherwise it runs in a 
+            seperate process.
         """
+        if block:
+            self._run_helper()
+        else:
+            self.process.start()
+    
+    def _run_helper(self):
         self.odh.raw_data.reset_emg()
         while True:
             data = np.array(self.odh.raw_data.get_emg())
@@ -277,7 +304,7 @@ class OnlineEMGClassifier(EMGClassifier):
                 # Check for rejection
                 if self.rejection_type:
                     #TODO: Right now this will default to -1
-                    prediction = self._check_for_rejection(self.classifier.predict_proba(formatted_data)[0])
+                    prediction = self._rejection_helper(self.classifier.predict_proba(formatted_data)[0])
                 self.previous_predictions.append(prediction)
                 
                 # Check for majority vote
