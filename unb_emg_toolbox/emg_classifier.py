@@ -188,13 +188,13 @@ class EMGClassifier:
         return np.array(predictions)
     
     def _majority_vote_helper(self, predictions):
+        updated_predictions = []
         # TODO: Decide what we want to do here - talk to Evan 
         # Right now we are just majority voting the whole prediction stream
         for i in range(self.majority_vote, len(predictions)):
-            values, counts = np.unique(list(predictions[(i-self.majority_vote):i]), return_counts=True)
-            predictions[i] = values[np.argmax(counts)]
-        # print(predictions[(i-self.majority_vote):i])
-        return np.array(predictions)
+            values, counts = np.unique(predictions[(i-self.majority_vote):i], return_counts=True)
+            updated_predictions.append(values[np.argmax(counts)])
+        return np.array(updated_predictions)
     
     def _get_velocity(self, window, c):
         if self.th_max_dic and self.th_min_dic:
