@@ -67,17 +67,18 @@ if __name__ == "__main__" :
     data_set['training_labels'] = train_metadata['classes']
     data_set['null_label'] = 2
 
-    classifier = EMGClassifier("SVM", data_set.copy())
+    classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.75)
     offline_metrics = classifier.run()
     print(offline_metrics)
 
     plot_decision_stream(data_set['testing_labels'], classifier.predictions, classifier.probabilities)
-    plot_pca(classifier.data_set['testing_features'], data_set['testing_labels'])
     
-    data = np.loadtxt("demos/data/myo_dataset/training/R_0_C_0_EMG.csv", delimiter=",")
-    plot_raw_emg(data, channels=[1,2,3,4,5])
-    windows = get_windows(data, 50, 25)
-    plot_features(windows, ['MAV', 'ZC', 'SSC', 'WL'], 8)
+    # plot_pca(classifier.data_set['testing_features'], data_set['testing_labels'])
+    
+    # data = np.loadtxt("demos/data/myo_dataset/training/R_0_C_0_EMG.csv", delimiter=",")
+    # plot_raw_emg(data, channels=[1,2,3,4,5])
+    # windows = get_windows(data, 50, 25)
+    # plot_features(windows, ['MAV', 'ZC', 'SSC', 'WL'], 8)
 
     # p = multiprocessing.Process(target=worker, daemon=True)
     # p.start()

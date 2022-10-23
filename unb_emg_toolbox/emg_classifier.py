@@ -109,16 +109,17 @@ class EMGClassifier:
 
         # Rejection
         if self.rejection_type:
-            # self.predictions = 
+            self.predictions = np.array([self._rejection_helper(self.predictions[i], self.probabilities[i]) for i in range(0,len(self.predictions))])
             dic['REJ_RATE'] = get_REJ_RATE(self.predictions)
-            # rejected = np.where(predictions == -1)[0]
+            rejected = np.where(self.predictions == -1)[0]
+            testing_labels[rejected] = -1
             # Update Predictions and Testing Labels Array
             # predictions = np.delete(predictions, rejected)
             # testing_labels = np.delete(testing_labels, rejected)
         # Majority Vote
         if self.majority_vote:
             self.predictions = self._majority_vote_helper(self.predictions)
-        
+
         # Accumulate Metrics
         dic['CA'] = get_CA(testing_labels, self.predictions)
         if 'null_label' in self.data_set.keys():
@@ -178,19 +179,21 @@ class EMGClassifier:
             probabilities.append(pred_list[pred_list.index(max(pred_list))])
         return np.array(prediction_vals), np.array(probabilities)
         
-    def _rejection_helper(self, predictions):
+    def _rejection_helper(self, prediction, prob):
         # TODO: Do we just want to do nothing? Or default to null_class? 
         if self.rejection_type == "CONFIDENCE":
-            for i in range(0, len(predictions)):
-                pred_list = list(predictions[i])
-                if pred_list[pred_list.index(max(pred_list))] > self.rejection_threshold:
-                    predictions[i] = pred_list.index(max(pred_list))
-        return np.array(predictions)
+            if prob > self.rejection_threshold:
+                return prediction
+            else:
+                return -1
+        return prediction
     
     def _majority_vote_helper(self, predictions):
         updated_predictions = []
         # TODO: Decide what we want to do here - talk to Evan 
         # Right now we are just majority voting the whole prediction stream
+        for i in range(0,self.majority_vote):
+            updated_predictions.append(predictions[i])
         for i in range(self.majority_vote, len(predictions)):
             values, counts = np.unique(predictions[(i-self.majority_vote):i], return_counts=True)
             updated_predictions.append(values[np.argmax(counts)])
