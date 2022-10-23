@@ -1,7 +1,6 @@
 import multiprocessing
 
 class RawData:
-    # TODO: Make thread safe
     def __init__(self):
         self.emg_lock = multiprocessing.Lock()
         self.imu_lock = multiprocessing.Lock()

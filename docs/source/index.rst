@@ -8,7 +8,7 @@ UNB EMG Toolbox
    :maxdepth: 2
    :caption: Documentation:
 
-   documentation
+   documentation/documentation
 
 .. toctree::
    :maxdepth: 2

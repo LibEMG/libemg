@@ -26,28 +26,17 @@ class OfflineDataHandler(DataHandler):
     The purpose of this class is to facilitate the process of accumulating offline training
     and testing data. This class is extensible to a variety of file and folder structures. 
     """
-    # TODO: Add option for testing and training folders
     def __init__(self):
         super().__init__()
     
+    #TODO: Evan - document 
     def get_data(self, dataset_folder="", dictionary={},  delimiter=","):
-        """TODO: Document this (@ Evan)
-        
-        Parameters:
-        ----------
-        dataset_folder: string
-            TODO: Evan 
-        dictionary: int
-            TODO: Evan
-        delimiter: string (optional), default = ","
-            TODO: Evan
-        """
         self._get_data_helper(delimiter, dataset_folder, dictionary)
     
     def parse_windows(self, window_size, window_increment):
         """Parses windows based on the acquired data from the get_data function.
 
-        Parameters:
+        Parameters
         ----------
         window_size: int
             The number of samples in a window. 
@@ -56,21 +45,8 @@ class OfflineDataHandler(DataHandler):
         """
         return self._parse_windows_helper(window_size, window_increment)
 
+    #TODO: Evan - document 
     def isolate_data(self, key, values):
-        """TODO: Document this (@ Evan)
-
-        Parameters:
-        ----------
-        key: ?
-            TODO: Evan 
-        values: ?
-            TODO: Evan
-        
-        Returns:
-        ----------
-        type
-            Returns ?
-        """
         assert key in self.extra_attributes
         assert type(values) == list 
         return self._isolate_data_helper(key,values)

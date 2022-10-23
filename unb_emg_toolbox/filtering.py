@@ -9,33 +9,37 @@ class Filter:
     1. OfflineDataHandler
     2. OnlineDataHandler
     3. RawData in numpy.ndarrays
+
+    Parameters
+    ----------
+    sampling_frequency: int
+        The sampling frequency of the device used. This must be known for the 
+        digital filters to do what is intended.
     '''
     def __init__(self, sampling_frequency):
-        '''
-        Regardless of the filters that will be installed later (in the self.filters attribute),
-        the sampling frequency must be known for the digital filters to do what is intended.'''
         self.sampling_frequency = sampling_frequency
 
     def install_filters(self, filter_dictionary={}):
-        '''
+        '''Install a particular filter.
+
         Installing filters is required prior to filtering being performed. Filters are created using the scipy.signal package.
         The necessary parameters for these fitlers are included in a dictionary. When multiple filters are intending to be used
         at a time, install them sequentially by calling this function for each filter. If there is an intended order for the filters
         then install them in the intended processing order.
-        filter_dictionary: A dictionary containing the necessary parameters for defining a single filter.
-        Examples:
-        # create a notch filter for removing power line interference
-        filter_dictionary={ "name": "notch",
-                            "cutoff": 60,
-                            "bandwidth": 3}
-        # create a filter for removing high frequency noise and low frequency motion artefacts
-        filter_dictionary={ "name":"bandpass",
-                            "cutoff": [20, 450],
-                            "order": 4}
-        # create a filter for low frequency motion artefacts
-        filter_dictionary={ "name": "highpass",
-                            "cutoff": 20,
-                            "order":2}
+
+        Parameters
+        ----------
+        filter_dictionary: dictionary
+            A dictionary containing the necessary parameters for defining a single filter.
+        
+        Examples
+        -------
+        >>> # create a notch filter for removing power line interference
+        >>> filter_dictionary={ "name": "notch", "cutoff": 60, "bandwidth": 3}
+        >>> # create a filter for removing high frequency noise and low frequency motion artefacts
+        >>> filter_dictionary={ "name":"bandpass", "cutoff": [20, 450], "order": 4}
+        >>> # create a filter for low frequency motion artefacts
+        >>> filter_dictionary={ "name": "highpass", "cutoff": 20, "order":2}
         '''
         installed_filter = {"name":filter_dictionary["name"]}
         if filter_dictionary["name"] == "notch":
@@ -62,8 +66,19 @@ class Filter:
             setattr(self, "filters", [installed_filter])
 
 
-
     def filter(self, data):
+        ''' Run installed filters on data.
+
+        Paramaters
+        ----------
+        data: array_like    
+            The data that will be passed through the filters.
+
+        Returns
+        ------- 
+        array_like
+            Returns the filtered data.
+        '''
         if not hasattr(self, "filters"):
             print("No filters have been installed")
             return data
