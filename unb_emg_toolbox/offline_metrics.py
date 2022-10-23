@@ -40,7 +40,7 @@ def get_AER(y_true, y_predictions, null_class):
         Returns the active error.
     """
     nm_predictions = [i for i, x in enumerate(y_predictions) if x == null_class]
-    return get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
+    return 1 - get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
 
 def get_INS(y_true, y_predictions):
     """Instability.

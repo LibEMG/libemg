@@ -268,15 +268,25 @@ class OnlineEMGClassifier(EMGClassifier):
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # self.process = Process(target=self._stream_emg, daemon=True,)
+        self.process = Process(target=self._run_helper, daemon=True,)
         self.std_out = std_out
         self.previous_predictions = deque(maxlen=self.majority_vote)
 
-    def run(self):
+    def run(self, block=True):
         """Runs the classifier - continuously streams predictions over TCP.
 
-        Currently this function locks the main thread.
+        Parameters
+        ----------
+        block: bool (optional), default = True
+            If True, the run function blocks the main thread. Otherwise it runs in a 
+            seperate process.
         """
+        if block:
+            self._run_helper()
+        else:
+            self.process.start()
+    
+    def _run_helper(self):
         self.odh.raw_data.reset_emg()
         while True:
             data = np.array(self.odh.raw_data.get_emg())
