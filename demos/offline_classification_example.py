@@ -1,13 +1,13 @@
 from cgi import test
 import os
 import sys
+from sklearn.ensemble import RandomForestClassifier
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from unb_emg_toolbox.emg_classifier import EMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import get_windows
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler
-from sklearn.ensemble import RandomForestClassifier
+from unb_emg_toolbox.offline_metrics import OfflineMetrics
 
 
 # Currently this file is for only one individual
@@ -52,31 +52,36 @@ if __name__ == "__main__" :
     data_set['training_labels'] = train_metadata['classes']
     data_set['null_label'] = 2
 
+    om = OfflineMetrics()
+    metrics = ['CA', 'AER', 'INS', 'REJ_RATE', 'CONF_MAT', 'RECALL', 'PREC', 'F1']
     # Normal Case - Test all different classifiers
     for model in ['LDA', 'QDA', 'SVM', 'KNN', 'RF', 'NB', 'GB', 'MLP']:
         classifier = EMGClassifier(model, data_set.copy())
-        offline_metrics = classifier.run()
+        preds = classifier.run()
         print("Classifier: " + model)
-        print(str(offline_metrics) + "\n")
+        out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
+        print(str(out_metrics) + "\n")
+        # om.visualize(out_metrics)
+        # om.visualize_conf_matrix(out_metrics['CONF_MAT'])
 
     # Rejection Case
-    rejection_classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.99)
-    offline_metrics = rejection_classifier.run()
+    rejection_classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.5)
+    preds = rejection_classifier.run()
+    out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     print("Offline Rejection Metrics:")
-    print(offline_metrics)
+    print(out_metrics)
 
     # Majority Vote Case
     mv_classifier = EMGClassifier("SVM", data_set.copy(), majority_vote=1)
-    offline_metrics = mv_classifier.run()
+    preds = mv_classifier.run()
+    out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     print("Offline Majority Vote Metrics:")
-    print(offline_metrics)
+    print(out_metrics)
 
     # Custom classifier case
     clf = RandomForestClassifier(max_depth=5, random_state=0)
     classifier = EMGClassifier(clf, data_set.copy())
-    offline_metrics = classifier.run()
-    print("Offline Metrics for Custom Random Forest:")
-    print(offline_metrics)
+    classifier.run()
 
     # another example
     # get metadata from columns in a csv file
@@ -112,6 +117,7 @@ if __name__ == "__main__" :
     data_set['null_label'] = 2
 
     classifier = EMGClassifier("SVM", data_set)
-    offline_metrics = classifier.run()
+    preds = classifier.run()
+    output = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     print("Offline Metrics:")
-    print(offline_metrics)
+    print(output)
