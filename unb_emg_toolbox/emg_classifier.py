@@ -11,7 +11,6 @@ import numpy as np
 import pickle
 import socket
 import random
-from unb_emg_toolbox.offline_metrics import *
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -113,22 +112,15 @@ class EMGClassifier:
         # Rejection
         if self.rejection_type:
             self.predictions = np.array([self._rejection_helper(self.predictions[i], self.probabilities[i]) for i in range(0,len(self.predictions))])
-            dic['REJ_RATE'] = get_REJ_RATE(self.predictions)
             rejected = np.where(self.predictions == -1)[0]
             testing_labels[rejected] = -1
-            # Update Predictions and Testing Labels Array
-            # predictions = np.delete(predictions, rejected)
-            # testing_labels = np.delete(testing_labels, rejected)
+
         # Majority Vote
         if self.majority_vote:
             self.predictions = self._majority_vote_helper(self.predictions)
 
         # Accumulate Metrics
-        dic['CA'] = get_CA(testing_labels, self.predictions)
-        if 'null_label' in self.data_set.keys():
-            dic['AER'] = get_AER(testing_labels, self.predictions, self.data_set['null_label'])
-        dic['INST'] = get_INS(testing_labels, self.predictions)
-        return dic
+        return self.predictions
 
     def save(self, filename):
         """Saves (pickles) the EMGClassifier object to a file.
