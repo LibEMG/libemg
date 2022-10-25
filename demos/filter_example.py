@@ -85,7 +85,7 @@ def online_filtering_demo():
     window = np.zeros((window_size, 8))
 
     # Create A stream of emg data
-    mock_emg = MockEMGStreamer("demos/data/data.csv", sampling_rate=200)
+    mock_emg = MockEMGStreamer("demos/data/stream_data.csv", sampling_rate=200)
     mock_emg.stream()
 
     odh = OnlineDataHandler(file=False, std_out=False, emg_arr=True)
