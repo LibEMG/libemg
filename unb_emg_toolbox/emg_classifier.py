@@ -1,7 +1,10 @@
 from collections import deque
 from site import venv
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from multiprocessing import Process
 import numpy as np
@@ -9,8 +12,6 @@ import pickle
 import socket
 import random
 from unb_emg_toolbox.offline_metrics import *
-
-random.seed(0)
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -23,14 +24,13 @@ class EMGClassifier:
     Parameters
     ----------
     model: string or custom classifier (must have fit, predict and predic_proba functions)
-        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
+        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
+        'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+        models with no hyperparameter tuning and may not be optimal. Pass in custom classifier for more control.
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', 
         'testing_features' and 'null_label' (optional).
-    arguments: dictionary (optional)
-        Used for additional arguments to the classifiers. Currently the only option is for the n_neighbors 
-        option for the KNN classifier.
     rejection_type: string (optional)
         Used to specify the type of rejection used by the classifier. The only currently supported option
         is 'CONFIDENCE'.
@@ -40,11 +40,13 @@ class EMGClassifier:
         Used to specify the number of predictions included in the majority vote.
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
+    random_seed: float (optional), default=0
+        Used to set the random seed, which effects classifiers with any elements of randomness. Ensures reproducibility.
     """
-    def __init__(self, model, data_set, arguments=None, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False):
+    def __init__(self, model, data_set, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, random_seed=0):
+        random.seed(0)
         #TODO: Need some way to specify if its continuous testing data or not 
         self.data_set = data_set
-        self.arguments = arguments
         self.classifier = None
         self.rejection_type = rejection_type
         self.rejection_threshold = rejection_threshold
@@ -52,6 +54,7 @@ class EMGClassifier:
         self.velocity = velocity
         self.predictions = []
         self.probabilities = []
+        self.random_seed = random_seed
 
         # For velocity control
         self.th_min_dic = None 
@@ -153,17 +156,27 @@ class EMGClassifier:
         self.data_set[i_key] = arr
 
     def _set_up_classifier(self, model):
+        valid_models = ["LDA", "KNN", "SVM", "QDA", "RF", "NB", "GB", "MLP"]
+        if isinstance(model, str):
+            assert model in valid_models
+        
+        # Set up classifier based on input
         if model == "LDA":
             self.classifier = LinearDiscriminantAnalysis()
         elif model == "KNN":
-            num_neighbors = 5
-            if self.arguments and 'n_neighbors' in self.arguments:
-                num_neighbors = self.arguments['n_neighbors']
-            self.classifier = KNeighborsClassifier(n_neighbors=num_neighbors)
+            self.classifier = KNeighborsClassifier(n_neighbors=5)
         elif model == "SVM":
             self.classifier = SVC(kernel='linear', probability=True)
         elif model == "QDA":
             self.classifier = QuadraticDiscriminantAnalysis()
+        elif model == "RF":
+            self.classifier = RandomForestClassifier(random_state=self.random_seed)
+        elif model == "NB":
+            self.classifier = GaussianNB()
+        elif model == "GB":
+            self.classifier = GradientBoostingClassifier(random_state=self.random_seed)
+        elif model == "MLP":
+            self.classifier = MLPClassifier(random_state=self.random_seed, hidden_layer_sizes=126)
         elif not model is None:
             # Assume a custom classifier has been passed in
             self.classifier = model
