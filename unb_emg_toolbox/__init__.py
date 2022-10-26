@@ -6,4 +6,3 @@ from unb_emg_toolbox import training_ui
 from unb_emg_toolbox import offline_metrics
 from unb_emg_toolbox import filtering
 from unb_emg_toolbox import feature_selector
-from unb_emg_toolbox import visualizer

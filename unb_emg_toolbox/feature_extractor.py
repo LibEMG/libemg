@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis
 
 class FeatureExtractor:
@@ -700,3 +701,34 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         return kurtosis(windows, axis=2)
+
+    def visualize(self, feature_dic):
+        """Visualize a set of features.
+
+        Parameters
+        ----------
+        feature_dic: dictionary
+            A dictionary consisting of the different features. This is the output from the 
+            extract_features method.
+        """
+        plt.style.use('ggplot')
+        if len(feature_dic) > 1:
+            fig, ax = plt.subplots(len(feature_dic))
+            index = 0
+            labels = []
+            for f in feature_dic:
+                for i in range(0,len(feature_dic[f][0])):
+                    x = list(range(0,len(feature_dic[f])))
+                    lab = "CH"+str(i)
+                    ax[index].plot(x, feature_dic[f][:], label=lab)
+                    if not lab in labels:
+                        labels.append(lab)
+                    ax[index].set_ylabel(f)
+                index += 1
+                fig.suptitle('Features')
+                fig.legend(labels, loc='upper right')
+        else:
+            key = list(feature_dic.keys())[0]
+            plt.title(key)
+            plt.plot(list(range(0,len(feature_dic[key]))), feature_dic[key])
+        plt.show()

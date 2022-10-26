@@ -11,6 +11,7 @@ import numpy as np
 import pickle
 import socket
 import random
+import matplotlib.pyplot as plt
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -228,6 +229,46 @@ class EMGClassifier:
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
     
+
+    def visualize(self):
+        """Visualize the decision stream of the classifier on the testing data. 
+
+        After running the .run method, you can call this visualize function to get a visual 
+        output of what the decision stream of what the particular classifier looks like. 
+        """
+        assert len(self.predictions) > 0
+        
+        plt.style.use('ggplot')
+        colors = {}
+
+        plt.gca().set_ylim([0, 1.05])
+        plt.gca().xaxis.grid(False)
+
+        # Plot true class labels
+        changed_locations = [0] + list(np.where((self.data_set['testing_labels'][:-1] != self.data_set['testing_labels'][1:]) == True)[0]) + [len(self.data_set['testing_labels'])-1]
+
+        for i in range(1, len(changed_locations)):
+            class_label = self.data_set['testing_labels'][changed_locations[i]]
+            if class_label in colors.keys():
+                plt.fill_betweenx([0,1.02], changed_locations[i-1], changed_locations[i], color=colors[class_label])
+            else:
+                val = plt.fill_betweenx([0,1.02], changed_locations[i-1], changed_locations[i], alpha=.2)
+                colors[class_label] = val.get_facecolors().tolist()
+            
+        # Plot decision stream
+        plt.title("Decision Stream")
+        plt.xlabel("Class Output")
+        plt.ylabel("Probability")
+        for g in np.unique(self.predictions):
+            i = np.where(self.predictions == g)
+            if g == -1:
+                plt.scatter(i, self.probabilities[i], label=g, alpha=1, color='black')
+            else:
+                plt.scatter(i, self.probabilities[i], label=g, alpha=1, color=colors[g])
+        
+        plt.legend(loc='lower right')
+        plt.show()
+    
 class OnlineEMGClassifier(EMGClassifier):
     """OnlineEMGClassifier (inherits from EMGClassifier) used for real-time classification.
 
@@ -340,3 +381,6 @@ class OnlineEMGClassifier(EMGClassifier):
             else:
                 arr = np.hstack((arr, data[feat]))
         return arr
+
+    def visualize():
+        pass

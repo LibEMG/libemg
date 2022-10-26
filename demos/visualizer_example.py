@@ -3,31 +3,13 @@ import os
 import sys
 import socket
 import time
-from pyomyo import Myo, emg_mode
+import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from unb_emg_toolbox.emg_classifier import EMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import get_windows
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.visualizer import *
-
-def worker():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    m = Myo(mode=emg_mode.FILTERED)
-    m.connect()
-    time.sleep(5)
-
-    def write_to_socket(emg, movement):
-        sock.sendto(bytes(str(emg), "utf-8"), ('127.0.0.1', 12345))
-    m.add_emg_handler(write_to_socket)
-
-    m.set_leds([128, 0, 0], [128, 0, 0])
-    m.vibrate(1)
-    
-    while True:
-        m.run()
+from unb_emg_toolbox.utils import get_windows, make_regex, mock_emg_stream
+from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
         
 
 if __name__ == "__main__" :
@@ -66,12 +48,20 @@ if __name__ == "__main__" :
     data_set['training_labels'] = train_metadata['classes']
     data_set['null_label'] = 2
 
-    classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.75)
-    offline_metrics = classifier.run()
-    print(offline_metrics)
+    classifier = EMGClassifier("SVM", data_set.copy())
+    classifier.run()
+    classifier.visualize()
 
-    plot_decision_stream(data_set['testing_labels'], classifier.predictions, classifier.probabilities)
-    
+    data = np.loadtxt("demos/data/myo_dataset/training/R_0_C_0_EMG.csv", delimiter=",")
+    windows = get_windows(data, 50, 25)
+    features = fe.extract_feature_group('HTD', windows)
+    fe.visualize(features)
+
+    odh = OnlineDataHandler(emg_arr=True)
+    odh.get_data()
+    mock_emg_stream("demos/data/stream_data.csv", 8, sampling_rate=100)
+    odh.visualize(num_samples=200)
+
     # plot_pca(classifier.data_set['testing_features'], data_set['testing_labels'])
     
     # data = np.loadtxt("demos/data/myo_dataset/training/R_0_C_0_EMG.csv", delimiter=",")
