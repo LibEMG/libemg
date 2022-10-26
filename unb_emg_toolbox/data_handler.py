@@ -4,6 +4,7 @@ import re
 import socket
 import csv
 import ast
+import matplotlib.pyplot as plt
 from glob import glob
 from itertools import compress
 from datetime import datetime
@@ -141,11 +142,15 @@ class OfflineDataHandler(DataHandler):
                 setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
 
+    def visualize():
+        pass
 
 class OnlineDataHandler(DataHandler):
     """OnlineDataHandler class - responsible for collecting data streamed in through TCP socket.
 
     This class is extensible to any device as long as the data is being streamed over TCP.
+    Note, you should change either file, std_out or emg_arr to True for anything meaningful
+    to happen.
 
     Parameters
     ----------
@@ -180,6 +185,29 @@ class OnlineDataHandler(DataHandler):
         The options (file, std_out, and emg_arr) will determine what happens with this data.
         """
         self.listener.start()
+        
+    def visualize(self, num_samples=500):
+        """Visualize the incoming raw EMG in a plot.
+
+        Parameters
+        ----------
+        num_samples: int (optional), default=500
+            The number of samples to show in the plot.
+        """
+        plt.style.use('ggplot')
+        plt.title("Raw Data")
+        while True:
+            data = np.array(self.raw_data.get_emg())
+            if len(data) > num_samples:
+                data = data[-num_samples:]
+            if len(data) > 0:
+                plt.clf()
+                plt.title("Raw Data")
+                for i in range(0,len(data[0])):
+                    x = list(range(0,len(data)))
+                    plt.plot(x, data[:,i], label="CH"+str(i))
+                plt.legend(loc = 'lower right')
+            plt.pause(0.1)
     
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 

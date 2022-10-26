@@ -150,4 +150,7 @@ class Filter:
             ax[fl,1].set_ylim([-90, 90])
             ax[fl,1].grid(True)
         plt.show()
+    
+    def visualize():
+        pass
             
