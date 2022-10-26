@@ -1,14 +1,10 @@
-from cgi import test
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.emg_classifier import EMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import get_windows
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler
 from unb_emg_toolbox.feature_selector import FeatureSelector
-from sklearn.ensemble import RandomForestClassifier
 
 
 if __name__ == "__main__" :

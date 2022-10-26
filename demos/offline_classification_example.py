@@ -1,4 +1,3 @@
-from cgi import test
 import os
 import sys
 from sklearn.ensemble import RandomForestClassifier

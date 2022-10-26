@@ -16,8 +16,6 @@ class FeatureExtractor:
     """
     def __init__(self, num_channels, feature_list=[], feature_group=None):
         self.num_channels = num_channels
-        self.feature_list = feature_list
-        self.feature_group = feature_group
 
     def get_feature_groups(self):
         """Gets a list of all available feature groups.
@@ -71,26 +69,6 @@ class FeatureExtractor:
                         'SKEW',
                         'KURT']
         return feature_list
-
-    def extract_predefined_features(self, windows):
-        """Extracts features based on the passed in feature_list or feature group from the init function.
-
-        Primarily used by the classification class. 
-        
-        Parameters
-        ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-            
-        Returns
-        ----------
-        dictionary
-            A dictionary where each key is a specific feature and its value is a list of the computed 
-            features for each window.
-        """
-        if self.feature_group:
-            return self.extract_feature_group(self.feature_group, windows)
-        return self.extract_features(self.feature_list, windows)
     
     def extract_feature_group(self, feature_group, windows):
         """Extracts a group of features.
