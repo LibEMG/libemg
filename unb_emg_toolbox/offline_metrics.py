@@ -175,6 +175,7 @@ class OfflineMetrics:
         """Recall Score.
 
         The recall is simply: True Positives / (True Positives + False Negatives).
+        This metric takes into account the corresponding weights of each class.
 
         Parameters
         ----------
@@ -188,19 +189,26 @@ class OfflineMetrics:
         array_like
             Returns a list consisting of the recall for each class.
         """
+        recall, weights = self._get_RECALL_helper(y_true, y_predictions)
+        return np.average(recall, weights=weights)
+
+    def _get_RECALL_helper(self, y_true, y_predictions):
         classes = np.sort(np.unique(y_true))
         recall = np.zeros(shape=(len(classes)))
+        weights = np.zeros(shape=(len(classes)))
         for c in range(0, len(classes)):
             c_true = np.where(y_true == classes[c])
             tp = len(np.where(y_predictions[c_true] == classes[c])[0])
             fn = len(np.where(y_predictions[c_true] != classes[c])[0])
+            weights[c] = len(c_true[0])/len(y_true)
             recall[c] = tp / (tp + fn)
-        return np.mean(recall)
+        return recall, weights
 
     def get_PREC(self, y_true, y_predictions):
         """Precision Score.
 
         The precision is simply: True Positives / (True Positives + False Positive).
+        This metric takes into account the corresponding weights of each class.
 
         Parameters
         ----------
@@ -214,20 +222,27 @@ class OfflineMetrics:
         array_like
             Returns a list consisting of the precision for each class.
         """
+        precision, weights = self._get_PREC_helper(y_true, y_predictions)
+        return np.average(precision, weights=weights)
+    
+    def _get_PREC_helper(self, y_true, y_predictions):
         classes = np.sort(np.unique(y_true))
         precision = np.zeros(shape=(len(classes)))
+        weights = np.zeros(shape=(len(classes)))
         for c in range(0, len(classes)):
             c_true = np.where(y_true == classes[c])
             c_false = np.where(y_true != classes[c])
             tp = len(np.where(y_predictions[c_true] == classes[c])[0])
             fp = len(np.where(y_predictions[c_false] == classes[c])[0])
+            weights[c] = len(c_true[0])/len(y_true)
             precision[c] = tp / (tp + fp)
-        return np.mean(precision)
+        return precision, weights
 
     def get_F1(self, y_true, y_predictions):
         """F1 Score.
 
-        The f1 score is simply: 2 * (Precision * Recall)/(Precision + Recall)
+        The f1 score is simply: 2 * (Precision * Recall)/(Precision + Recall).
+        This metric takes into account the corresponding weights of each class.
 
         Parameters
         ----------
@@ -241,10 +256,10 @@ class OfflineMetrics:
         array_like
             Returns a list consisting of the f1 score for each class.
         """
-        prec = self.get_PREC(y_true, y_predictions)
-        recall = self.get_RECALL(y_true, y_predictions)
+        prec, weights = self._get_PREC_helper(y_true, y_predictions)
+        recall, _ = self._get_RECALL_helper(y_true, y_predictions)
         f1 = 2 * (prec * recall) / (prec + recall)
-        return f1 
+        return np.average(f1, weights=weights)  
     
     def getRELIAB():
         #TODO: Evan - I am going to leave this for you since I am 100% sure what you want.
