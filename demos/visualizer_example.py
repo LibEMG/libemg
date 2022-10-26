@@ -4,14 +4,13 @@ import sys
 import socket
 import time
 from pyomyo import Myo, emg_mode
-import multiprocessing
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.emg_classifier import EMGClassifier, OnlineEMGClassifier
+from unb_emg_toolbox.emg_classifier import EMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
 from unb_emg_toolbox.utils import get_windows
 from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
+from unb_emg_toolbox.data_handler import OfflineDataHandler
 from unb_emg_toolbox.visualizer import *
 
 def worker():

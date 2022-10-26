@@ -28,26 +28,7 @@ def get_windows(data, window_size, window_increment):
         ed_id += window_increment
     return np.array(windows)
 
-def get_mode_windows(data, window_size, window_increment):
-    """Calculate the mode of values seen across a set of windows.
-
-    Rather than capturing an entire window, this function gets the mode of values seen across samples in the window.
-    This is useful for metadata.
-
-    Parameters
-    ----------
-    data: array_like
-        An NxM stream of data with N samples and M channels.
-    window_size: int
-        The number of samples in a window. 
-    window_increment: int
-        The number of samples that advances before next window.
-
-    Returns
-    ----------
-    array_like
-        The mode calculated across a sequence of windows.
-    """
+def _get_mode_windows(data, window_size, window_increment):
     windows = get_windows(data, window_size, window_increment)
     # we want to get the mode along the final dimension
     mode_of_windows = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=2, arr=windows.astype(np.int64))

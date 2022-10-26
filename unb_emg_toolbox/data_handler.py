@@ -10,7 +10,7 @@ from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from unb_emg_toolbox.raw_data import RawData
-from unb_emg_toolbox.utils import get_windows, get_mode_windows
+from unb_emg_toolbox.utils import get_windows, _get_mode_windows
 
 class DataHandler:
     def __init__(self):
@@ -65,7 +65,7 @@ class OfflineDataHandler(DataHandler):
                 if type(getattr(self,k)[i]) != np.ndarray:
                     file_metadata = np.ones((windows.shape[0])) * getattr(self, k)[i]
                 else:
-                    file_metadata = get_mode_windows(getattr(self,k)[i], window_size, window_increment)
+                    file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                 if k not in metadata_.keys():
                     metadata_[k] = file_metadata
                 else:

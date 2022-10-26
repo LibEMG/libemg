@@ -1,6 +1,4 @@
-from genericpath import isdir
 import os
-import time
 import sys
 import socket
 import multiprocessing
@@ -8,7 +6,7 @@ from pyomyo import Myo, emg_mode
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from unb_emg_toolbox.data_handler import OnlineDataHandler, OfflineDataHandler
-from unb_emg_toolbox.emg_classifier import EMGClassifier, OnlineEMGClassifier
+from unb_emg_toolbox.emg_classifier import OnlineEMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
 from unb_emg_toolbox.utils import make_regex
 
@@ -30,10 +28,10 @@ def worker():
     
 if __name__ == "__main__" :
     # Online classification
-    dataset_folder = 'demos/data/sgt_example'
-    classes_values = ["0","1","2","3","4", "5", "6"]
-    classes_regex = make_regex(left_bound = "_C_", right_bound=".csv", values = classes_values)
-    reps_values = ["0", "1", "2"]
+    dataset_folder = 'demos/data/myo_dataset/testing/'
+    classes_values = ["0","1","2","3","4"]
+    classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG", values = classes_values)
+    reps_values = ["0", "1", "2", "3"]
     reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
     dic = {
         "reps": reps_values,
@@ -47,8 +45,9 @@ if __name__ == "__main__" :
     train_windows, train_metadata = odh.parse_windows(50,25)
     
     # # Extract features from data set
-    fe = FeatureExtractor(num_channels=8, feature_group="HTD")
-    training_features = fe.extract_predefined_features(train_windows)
+    fe = FeatureExtractor(num_channels=8)
+    feature_list = fe.get_feature_groups()['HTD']
+    training_features = fe.extract_features(feature_list, train_windows)
 
     # # Create data set dictionary 
     data_set = {}
@@ -63,6 +62,9 @@ if __name__ == "__main__" :
     online_data_handler.get_data()
 
     # Create Classifier and Run
-    classifier = OnlineEMGClassifier(model="LDA", data_set=data_set, window_size=50, window_increment=25, 
-            online_data_handler=online_data_handler, feature_extractor=fe, velocity=True, std_out=True)
-    classifier.run()
+    classifier = OnlineEMGClassifier(model="LDA", data_set=data_set, num_channels=8, window_size=50, window_increment=25, 
+            online_data_handler=online_data_handler, features=feature_list, velocity=True, std_out=True)
+    classifier.run(block=False)
+
+    while(True):
+        pass

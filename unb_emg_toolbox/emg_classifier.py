@@ -1,11 +1,11 @@
 from collections import deque
-from site import venv
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+from unb_emg_toolbox.feature_extractor import FeatureExtractor
 from multiprocessing import Process
 import numpy as np
 import pickle
@@ -240,14 +240,17 @@ class OnlineEMGClassifier(EMGClassifier):
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels', 'training_features' and 'null_label' (optional).
+    num_channels: int
+        The number of EMG channels.
     window_size: int
         The number of samples in a window. 
     window_increment: int
         The number of samples that advances before next window.
     online_data_handler: OnlineDataHandler
         An online data handler object.
-    feature_extractor: FeatureExtractor
-        A feature extractor object with the features desired passed into the init.
+    features: array_like
+        A list of features that will be extracted during real-time classification. These should be the 
+        same list used to train the model.
     port: int (optional), default = 12346
         The port used for streaming predictions over TCP.
     ip: string (option), default = '127.0.0.1'
@@ -264,12 +267,13 @@ class OnlineEMGClassifier(EMGClassifier):
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     """
-    def __init__(self, model, data_set, window_size, window_increment, online_data_handler, feature_extractor, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
+    def __init__(self, model, data_set, num_channels, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
         super().__init__(model, data_set, velocity=velocity)
+        self.num_channels = num_channels
         self.window_size = window_size
         self.window_increment = window_increment
-        self.odh = online_data_handler
-        self.fe = feature_extractor
+        self.raw_data = online_data_handler.raw_data
+        self.features = features
         self.port = port
         self.ip = ip
         self.rejection_type = rejection_type
@@ -295,15 +299,16 @@ class OnlineEMGClassifier(EMGClassifier):
             self.process.start()
     
     def _run_helper(self):
-        self.odh.raw_data.reset_emg()
+        fe = FeatureExtractor(num_channels=self.num_channels)
+        self.raw_data.reset_emg()
         while True:
-            data = np.array(self.odh.raw_data.get_emg())
+            data = np.array(self.raw_data.get_emg())
             if len(data) >= self.window_size:
                 # Extract window and predict sample
                 window = get_windows(data, self.window_size, self.window_size)
-                features = self.fe.extract_predefined_features(window)
+                features = fe.extract_features(self.features, window)
                 formatted_data = self._format_data_sample(features)
-                self.odh.raw_data.adjust_increment(self.window_size, self.window_increment)
+                self.raw_data.adjust_increment(self.window_size, self.window_increment)
                 prediction = self.classifier.predict(formatted_data)[0]
                 
                 # Check for rejection
