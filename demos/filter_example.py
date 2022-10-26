@@ -3,12 +3,12 @@ import sys
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-from helpers.mock_emg_streamer import MockEMGStreamer
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
 from unb_emg_toolbox.filtering import Filter
+from unb_emg_toolbox.utils import mock_emg_stream
 def offline_dataset_filtering_demo():
     ## Example for filtering an offline dataset.
     dataset_folder = 'demos/data/myo_dataset'
@@ -85,8 +85,7 @@ def online_filtering_demo():
     window = np.zeros((window_size, 8))
 
     # Create A stream of emg data
-    mock_emg = MockEMGStreamer("demos/data/stream_data.csv", sampling_rate=200)
-    mock_emg.stream()
+    mock_emg_stream("demos/data/stream_data.csv", sampling_rate=100, num_channels=8)
 
     odh = OnlineDataHandler(file=False, std_out=False, emg_arr=True)
     # start the stream listener
