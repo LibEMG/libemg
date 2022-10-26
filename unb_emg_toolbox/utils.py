@@ -1,4 +1,7 @@
 import numpy as np
+import time
+import socket
+from multiprocessing import Process
 
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
@@ -63,3 +66,38 @@ def make_regex(left_bound, right_bound, values=[]):
     mid_str += "]+"
     right_bound_str = "(?=" + right_bound +")"
     return left_bound_str + mid_str + right_bound_str
+
+def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
+    """Streams EMG from a test file over TCP.
+
+    This function can be used to simulate raw EMG being read over a TCP port. The main purpose 
+    of this function would be to explore real-time interactions without the need for a physical 
+    device. Note: This will start up a seperate process to stream data over. Additionally, 
+    this uses the time module and as such the sampling rate may not be perfect.
+
+    Parameters
+    ----------
+    file_path: string
+        The path of the csv file where the EMG data is located. 
+    num_channels: int
+        The number of channels to stream. This should be <= to 
+        the number of columns in the CSV.
+    sampling_rate: int (optional), default=100
+        The desired sampling rate.
+    port: int (optional), defaul=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over TCP.
+    """
+    Process(target=_stream_thread, args=(file_path, num_channels, sampling_rate, port, ip), daemon=True).start()
+
+def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
+    data = np.loadtxt(file_path, delimiter=",")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    index = 0
+    while True and index < len(data):
+        _ = time.perf_counter() + (1000/sampling_rate)/1000
+        while time.perf_counter() < _:
+            pass
+        sock.sendto(bytes(str(list(data[index][:num_channels])), "utf-8"), (ip, port))
+        index += 1
