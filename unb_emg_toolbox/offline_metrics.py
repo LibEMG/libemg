@@ -46,6 +46,14 @@ class OfflineMetrics:
         ----------
         dictionary
             A dictionary containing the metrics, where each metric is a key in the dictionary.
+        
+        Examples
+        ---------
+        >>> y_true = np.array([1,1,1,2,2,2,3,3,3,4,4,4])
+        >>> y_predictions = np.array([1,1,2,2,2,1,3,3,3,4,1,4])
+        >>> metrics = ['CA', 'AER', 'INS', 'REJ_RATE', 'CONF_MAT', 'RECALL', 'PREC', 'F1']
+        >>> om = OfflineMetrics()
+        >>> computed_metrics = om.extract_offline_metrics(metrics, y_true, y_predictions, 2))
         """
         assert len(y_true) == len(y_predictions)
         og_y_preds = y_predictions.copy()
