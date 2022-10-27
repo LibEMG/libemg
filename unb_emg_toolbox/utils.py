@@ -20,6 +20,11 @@ def get_windows(data, window_size, window_increment):
     array_like
         The set of windows extracted from the data as a NxCxL where N is the number of windows, C is the number of channels 
         and L is the length of each window. 
+
+    Examples
+    ---------
+    >>> data = np.loadtxt('data.csv', delimiter=',')
+    >>> windows = get_windows(data, 100, 50)
     """
     num_windows = int((data.shape[0]-window_size)/window_increment) + 1
     windows = []
@@ -70,7 +75,7 @@ def make_regex(left_bound, right_bound, values=[]):
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
     """Streams EMG from a test file over TCP.
 
-    This function can be used to simulate raw EMG being read over a TCP port. The main purpose 
+    This function can be used to simulate raw EMG being streamed over a TCP port. The main purpose 
     of this function would be to explore real-time interactions without the need for a physical 
     device. Note: This will start up a seperate process to stream data over. Additionally, 
     this uses the time module and as such the sampling rate may not be perfect.
@@ -88,6 +93,10 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
         The desired port to stream over. 
     ip: string (option), default = '127.0.0.1'
         The ip used for streaming predictions over TCP.
+    
+    Examples
+    ----------
+    >>> mock_emg_stream("stream_data.csv", num_channels=8, sampling_rate=100)
     """
     Process(target=_stream_thread, args=(file_path, num_channels, sampling_rate, port, ip), daemon=True).start()
 

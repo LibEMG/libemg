@@ -1,18 +1,20 @@
-# Rejection
+# Post Processing
+
+## Rejection
 Classifier outputs are overridden to a default or inactive state when the output decision is unsure.  This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.  
 
-## CONFIDENCE:<sup>[1]</sup> 
+### CONFIDENCE:<sup>[1]</sup> 
 Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected.
 
-# Majority Voting <sup>[2,3]</sup>
+## Majority Voting <sup>[2,3]</sup>
 Overrides the current output with the label corresponding to the class that occurred most frequently over the past $N$ decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations.
 
-# Velocity Control <sup>[4]</sup>
+## Velocity Control <sup>[4]</sup>
 Outputs an associated *velocity* with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. 
 
 Note: This toolkit leverages method 3 from the cited work.
 
-# References
+## References
 <a id="1">[1]</a> 
 E. J. Scheme, B. S. Hudgins and K. B. Englehart, "Confidence-Based Rejection for Improved Pattern Recognition Myoelectric Control," in IEEE Transactions on Biomedical Engineering, vol. 60, no. 6, pp. 1563-1570, June 2013, doi: 10.1109/TBME.2013.2238939.
 

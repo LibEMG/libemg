@@ -13,6 +13,11 @@ Feature Extraction
 .. automodule:: unb_emg_toolbox.feature_extractor
    :members:
 
+Feature Selection
+------------------------------
+.. automodule:: unb_emg_toolbox.feature_selector
+   :members:
+
 Classification
 ------------------------------
 .. automodule:: unb_emg_toolbox.emg_classifier
