@@ -5,7 +5,7 @@ The goal of this toolkit is to provide an easy to use API for EMG feature extrac
 **Authors**: Ethan Eddy, Evan Campbell, Scott Bateman, Angkoon Phinyomark, and Erik Scheme
 
 ## Documentation
-All documentation can be found at: [Toolbox Documentation](https://eeddy.github.io/unb_emg_toolbox/html/index.html)
+All documentation can be found at: [Toolbox Documentation](https://eeddy.github.io/unb_emg_toolbox)
 
 ## Install 
 `pip install unb_emg_toolbox`
