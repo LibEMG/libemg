@@ -7,3 +7,9 @@ The goal of this toolkit is to provide an easy to use API for everything EMG-rel
 $ pip install unb_emg_toolbox
 ```
 
+# Citing
+We ask that if you leverage this toolkit for any research related purposes please cite the following publication:
+```
+Citation
+```
+
