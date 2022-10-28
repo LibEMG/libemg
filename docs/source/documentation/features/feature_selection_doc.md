@@ -8,7 +8,7 @@ $
 \text{CA} = \frac{1}{T}\sum_{t=1}^{n}(\frac{1}{n}\sum_{i=1}^{n}\hat{y}_{i,t} == {y}_{i,t})
 $
 
-where $T$ is the total number of trials, $t$ is an individual trial, $n$ is the total number of data frames, $\hat{y}_{i,t}$ is the predicted class label for frame i, and $y_{i,t}$ is the true class label for frame i.
+where $T$ is the total number of trials, $t$ is an individual trial, $n$ is the total number of data frames, $\hat{y}_{i,t}$ is the predicted class label for frame $i$, and $y_{i,t}$ is the true class label for frame i.
 
 ## **Active Error (AE)**
 Similar to CA but focuses on active error (i.e., the error of the classifier without considering incorrect No Movmenet predictions). Also known as (1 - active classification accuracy).
@@ -17,7 +17,7 @@ $
 \text{AE} = \frac{1}{T}\sum_{t=1}^{n}(1-(\frac{1}{n}\sum_{i=1}^{n}(\hat{y}_{i,t} == {y}_{i,t}) \text{ or } (\hat{y}_{i,t} == {y}_{NM})))
 $
 
-where $T$ is the total number of trials, $t$ is an individual trial, $n$ is the total number of data frames, $\hat{y}_{i,t}$ is the predicted class label for frame i, $y_{i,t}$ is the true class label for frame i and $y_{NM}$ is the no movement class.
+where $T$ is the total number of trials, $t$ is an individual trial, $n$ is the total number of data frames, $\hat{y}_{i,t}$ is the predicted class label for frame $i$, $y_{i,t}$ is the true class label for frame $i$ and $y_{NM}$ is the no movement class.
 
 ## **Mean Semi Principle Axis (MSA)**
 Quantifies the size of a training elipsoid.
@@ -26,7 +26,7 @@ $
 \text{MSA} = \frac{1}{N}\sum_{j=1}^{N}((\prod_{k=1}^{D}a_{j,k})^{\frac{1}{D}})
 $
 
-where $N$ is the number of classes, $j$ represents a specific class, $D$ is the total dimensionality of the space, and $a_{k} is the geometric mean of each semi-principle axis.
+where $N$ is the number of classes, $j$ represents a specific class, $D$ is the total dimensionality of the space, and $a_{k}$ is the geometric mean of each semi-principle axis.
 
 ## **Feature Efficiency (FE)**
 A measure of the fraction of samples seperable by a particular feature.
