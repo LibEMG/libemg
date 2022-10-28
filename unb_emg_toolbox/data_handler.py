@@ -30,9 +30,61 @@ class OfflineDataHandler(DataHandler):
     def __init__(self):
         super().__init__()
     
-    #TODO: Evan - document 
-    def get_data(self, dataset_folder="", dictionary={},  delimiter=","):
-        self._get_data_helper(delimiter, dataset_folder, dictionary)
+
+    def get_data(self, folder_location="", filename_dic={}, delimiter=","):
+        """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
+        specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
+
+        Parameters
+        ----------
+        folder_location: str
+            Location of the dataset relative to current file path
+        filename_dic: dict
+            dictionary containing the values of the metadata and the regex or columns associated with that metadata.
+        delimiter: int
+            How the columns of the files are separated in the .txt or .csv files.
+
+        Returns
+        ----------
+        None
+        """
+        data = []
+        # you can insert custom member variables that will be collected from the filename using the dictionary
+        # this gives at least a tiny bit of flexibility around what is recorded aside from the data
+        dictionary_keys = filename_dic.keys()
+        keys = [k for k in dictionary_keys if not (k.endswith("_regex") or k.endswith("_column"))]
+        for k in keys:
+            if not hasattr(self, k):
+                setattr(self, k, [])
+        self.extra_attributes = keys
+
+        if not os.path.isdir(folder_location):
+            print("Invalid dataset directory: " + folder_location)
+        
+        # get all files in directory
+        files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
+        files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.txt'))])
+
+        # check files meet all regex
+        regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
+        self._check_file_regex(files, regex_keys)
+
+
+        for f in files:
+            file_data = np.genfromtxt(f,delimiter=delimiter)
+            # collect the data from the file
+            if "data_column" in dictionary_keys:
+                self.data.append(file_data[:, filename_dic["data_column"]])
+            else:
+                self.data.append(file_data)
+            # also collect the metadata from the filename
+            for k in keys:
+                if k + "_regex" in dictionary_keys:
+                    k_val = re.findall(filename_dic[k+"_regex"],f)[0]
+                    k_id  = filename_dic[k].index(k_val)
+                    setattr(self, k, getattr(self,k)+[k_id])
+                elif k + "_column" in dictionary_keys:
+                    setattr(self, k, getattr(self,k)+[file_data[:,filename_dic[k+"_column"]]])
     
     def parse_windows(self, window_size, window_increment):
         """Parses windows based on the acquired data from the get_data function.
@@ -43,16 +95,35 @@ class OfflineDataHandler(DataHandler):
             The number of samples in a window. 
         window_increment: int
             The number of samples that advances before next window.
+        
+        Returns
+        ----------
+        windows_: array_like
+            A np.ndarray of size windows x channels x samples
+        metadata_: array_like
+            A dictionary containing np.ndarrays for each metadata tag of the dataset. Each window will
+            have an associated value for each metadata. Therefore, the dimensions of the metadata should be Wx1 for each field.
         """
         return self._parse_windows_helper(window_size, window_increment)
 
-    #TODO: Evan - document 
-    def isolate_data(self, key, values):
-        assert key in self.extra_attributes
-        assert type(values) == list 
-        return self._isolate_data_helper(key,values)
-
     def _parse_windows_helper(self, window_size, window_increment):
+        """Function that actually performs windowing on the OfflineDataHandler after error checking has been performed.
+
+        Parameters
+        ----------
+        window_size: int
+            The number of samples in a window. 
+        window_increment: int
+            The number of samples that advances before next window.
+        
+        Returns
+        ----------
+        windows_: array_like
+            A np.ndarray of size windows x channels x samples
+        metadata_: array_like
+            A dictionary containing np.ndarrays for each metadata tag of the dataset. Each window will
+            have an associated value for each metadata. Therefore, the dimensions of the metadata should be Wx1 for each field.
+        """
         metadata_ = {}
         for i, file in enumerate(self.data):
             # emg data windowing
@@ -75,39 +146,40 @@ class OfflineDataHandler(DataHandler):
             
         return windows_, metadata_
 
-    def _get_data_helper(self, delimiter, folder_location, filename_dic):
-        data = []
-        # you can insert custom member variables that will be collected from the filename using the dictionary
-        # this gives at least a tiny bit of flexibility around what is recorded aside from the data
-        dictionary_keys = filename_dic.keys()
-        keys = [k for k in dictionary_keys if not (k.endswith("_regex") or k.endswith("_column"))]
-        for k in keys:
-            if not hasattr(self, k):
-                setattr(self, k, [])
-        self.extra_attributes = keys
+    
+    def isolate_data(self, key, values):
+        """Entry point for isolating a single key of data within the offline data handler. First, error checking is performed within this method, then
+        if it passes, the isolate_data_helper is called to make a new OfflineDataHandler that contains only that data.
 
-        if not os.path.isdir(folder_location):
-            print("Invalid dataset directory: " + folder_location)
-        
-        # get all files in directory
-        files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
-        for f in files:
-            file_data = np.genfromtxt(f,delimiter=delimiter)
-            # collect the data from the file
-            if "data_column" in dictionary_keys:
-                self.data.append(file_data[:, filename_dic["data_column"]])
-            else:
-                self.data.append(file_data)
-            # also collect the metadata from the filename
-            for k in keys:
-                if k + "_regex" in dictionary_keys:
-                    k_val = re.findall(filename_dic[k+"_regex"],f)[0]
-                    k_id  = filename_dic[k].index(k_val)
-                    setattr(self, k, getattr(self,k)+[k_id])
-                elif k + "_column" in dictionary_keys:
-                    setattr(self, k, getattr(self,k)+[file_data[:,filename_dic[k+"_column"]]])
+        Parameters
+        ----------
+        key: str
+            The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like)
+        values: list
+            
+        Returns
+        ----------
+        OfflineDataHandler
+            returns a new offline data handler with only the data that satisfies the requested slice.
+        """
+        assert key in self.extra_attributes
+        assert type(values) == list 
+        return self._isolate_data_helper(key,values)
 
     def _isolate_data_helper(self, key, values):
+        """Function that actually performs the isolation of OfflineDataHandler.data according to the elements of metadata[key] being in the values list. 
+
+        Parameters
+        ----------
+        key: str
+            The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like)
+        values: list
+            
+        Returns
+        ----------
+        OfflineDataHandler
+            returns a new offline data handler with only the data that satisfies the requested slice.
+        """
         new_odh = OfflineDataHandler()
         setattr(new_odh, "extra_attributes", self.extra_attributes)
         key_attr = getattr(self, key)
@@ -142,6 +214,44 @@ class OfflineDataHandler(DataHandler):
                 setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
 
+
+    
+
+    def _check_file_regex(self, files, regex_keys):
+        """Function that verifies that the list of files in the dataset folder agree with the metadata regex in the dictionary. It is assumed that
+        if the filename does not match the regex there is either a mistake is creating the regex or those files are not intended to be loaded. The
+        number of files that were excluded are printed to the console, and the excluded files are removed from the files variable (list passed by
+        reference so any changes in the function scope will persist outside the function scope)
+
+        Parameters
+        ----------
+        files: array_like
+            A list containing the path (str) of all the files found in the dataset folder that end in .csv or .txt
+        regex_keys: array_like
+            A list containing the dictionary keys passed during the dataset loading process that indicate metadata to be extracted
+            from the path.
+            
+        Returns
+        ----------
+        None
+        """
+        num_files = len(files)
+        removed_files = []
+        for f in files:
+            violations = 0
+            for k in regex_keys:
+                # regex failed to return a value
+                if len(re.findall(k,f)) == 0:
+                    violations += 1
+            if violations:
+                removed_files.append(f)
+        [files.remove(rf) for rf in removed_files]
+        print(f"{len(removed_files)} of {num_files} files violated regex and were excluded")
+                    
+
+
+
+    
     def visualize():
         pass
 

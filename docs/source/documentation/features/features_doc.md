@@ -146,11 +146,11 @@ $
 \text{IRF} = log ( | \frac{\text{M2}}{\sqrt{ | \text{M0}*\text{M4} | }} | )
 $
 
-## **Waveform Length Factor (WLF)** <sup>[6]</sup>
+## **Waveform Length Factor (WLR)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{WLF} = log (\sum_{i=1}^{N-1} | x_{i+1} - x_{i} | - \sum_{i=1}^{N-2} | x_{i+2} + x_{i} |)
+\text{WLR} = log (\sum_{i=1}^{N-1} | x_{i+1} - x_{i} | / \sum_{i=1}^{N-2} | x_{i+2} + x_{i} |)
 $
 
 ## **Autoregressive Coefficients (AR)** <sup>[1]</sup>

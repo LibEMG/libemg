@@ -59,6 +59,9 @@ class Filter:
             installed_filter["b"], installed_filter["a"] = scipy.signal.butter(N=filter_dictionary["order"],
                                                                                Wn=cutoff,
                                                                                btype=filter_dictionary["name"])
+        elif filter_dictionary["name"] == "standardize":
+            assert "data" in list(filter_dictionary.keys())
+            installed_filter["mean"], installed_filter["std"] = self._get_standardization_params(filter_dictionary["data"])
 
         if hasattr(self, "filters"):
             setattr(self, "filters", getattr(self, "filters")+[(installed_filter)])
@@ -95,17 +98,35 @@ class Filter:
             print("An unsupported data type was passed into the function")
 
     def _filter_offline_data_handler(self, data):
+        ''' Helper function that runs the installed filters across the various files contained in the offline data handler.
+        The data contained in the OfflineDataHandler is updated to reflect the filtered data.
+
+        Paramaters
+        ----------
+        data: OfflineDataHandler    
+            The data that will be passed through the filters.
+
+        Returns
+        ------- 
+        None
         '''
-        I assume we do NOT want to return the data here and instead update the odh'''
         assert hasattr(data,"data")
         for f in range(len(data.data)):
             data.data[f] = self._run_filter(data.data[f])
 
 
     def _filter_online_data_handler(self, data):
-        '''
-        I assume we will almost never use this method.
-        Users would probably rather call the .get_data() method themselves and them pass the output (ndarray) to the filter function.
+        ''' Helper function that runs the installed filters on recently captured data in the online data handler.
+
+        Paramaters
+        ----------
+        data: OnlineDataHandler    
+            The data that will be passed through the filters.
+
+        Returns
+        ------- 
+        np.ndarray
+            Data that has been filtered.
         '''
         # this just gets the data in the tcpip port. it isnt the full window
         # I advise using the np_ndarray with a full window (see demo/filter_example.py -> online_filtering_demo())
@@ -114,22 +135,79 @@ class Filter:
         return self._run_filter(emg_data)
 
     def _filter_np_ndarray(self, data):
-        '''
-        I assume we would want to return the data here?
+        ''' Helper function that runs the installed filters on an np.ndarray.
+
+        Paramaters
+        ----------
+        data: np.ndarray    
+            The data that will be passed through the filters.
+
+        Returns
+        ------- 
+        np.ndarray
+            Data that has been filtered.
         '''
         return self._run_filter(data)
 
     def _run_filter(self, matrix):
+        ''' Helper function that actually runs the installed filters on an np.ndarray. This is where the actual processing happens.
+
+        Paramaters
+        ----------
+        matrix: np.ndarray    
+            The data that will be passed through the filters.
+
+        Returns
+        ------- 
+        matrix: np.ndarray
+            Data that has been filtered.
+        '''
         for fl in range(len(self.filters)):
-            matrix = scipy.signal.filtfilt(self.filters[fl]["b"],
-                                           self.filters[fl]["a"],
-                                           matrix,
-                                           axis=0)
+            if self.filters[fl]["name"] == "standardize":
+                matrix = (matrix - self.filters[fl]["mean"]) / self.filters[fl]["std"]
+            elif self.filters[fl]["name"] in ["lowpass","highpass","bandpass","bandstop","notch"]:
+                matrix = scipy.signal.filtfilt(self.filters[fl]["b"],
+                                            self.filters[fl]["a"],
+                                            matrix,
+                                            axis=0)
         return matrix
 
+    def _get_standardization_params(self, odh):
+        ''' Helper function that computes the mean and standard deviation of data contained in an OfflineDataHandler.
+
+        Paramaters
+        ----------
+        odh: OfflineDataHandler   
+            The data that parameters will be computed from.
+
+        Returns
+        ------- 
+        mean: np.ndarray
+            channel-wise means.
+        std:  np.ndarray
+            channel-wise standard deviations.
+        '''
+        data = np.concatenate(odh.data)
+        filter_mean = np.mean(data,axis=0)
+        filter_std  = np.std(data, axis=0)
+        assert (filter_std != 0).any()
+        return filter_mean, filter_std
+
     def visualize_filters(self):
+        ''' A function that visualizes the bode plot of the installed filters.
+
+        Paramaters
+        ----------
+        None
+
+        Returns
+        ------- 
+        None
+        '''
         fig, ax = plt.subplots(len(self.filters), 2, figsize=(10, 5*len(self.filters)))
         for fl in range(len(self.filters)):
+            if self.filters[fl]["name"] == "standardize":
+                continue# no visualization of standardize filter
             filter_name = self.filters[fl]["name"]
             freq, h = scipy.signal.freqz(self.filters[fl]["b"],
                                          self.filters[fl]["a"],
