@@ -117,6 +117,88 @@ class FeatureExtractor:
             
         return features
 
+
+    def check_features(self, features):
+        """Assesses a features object for np.nan, np.inf, and -np.inf.
+
+        Parameters
+        ----------
+        features: np.ndarray or dict
+            A group of features extracted with the feature extraction package in either dictionary or np.ndarray format
+        
+        Returns
+        ----------
+        violations: int
+            A number of violations found within the data. This is the number of types of violations (nan, inf, -inf) per feature
+            summed across all features. Returning 0 indicates that the features contain no invalid elements.
+        """
+        if type(features) == dict:
+            violations = self._check_dict_features(features)
+        elif type(features) == np.ndarray:
+            violations = self._check_ndarray_features(features)
+        if violations == 0:
+            print("No invalid values across all features")
+        return violations
+
+
+    def _check_dict_features(self, features):
+        """A helper function that assesses specifically dictionary of np.ndarrays (what is returned from the feature extraction module)
+
+        Parameters
+        ----------
+        features: dict
+            A group of features extracted with the feature extraction package in dictionary format
+        
+        Returns
+        ----------
+        violations: int
+            A number of violations found within the dictionary. This is the number of types of violations (nan, inf, -inf) per feature
+            summed across all features. Returning 0 indicates that the features contain no invalid elements.
+
+        """
+        feature_list = list(features.keys())
+        # sanity check that no errors were found in feature computation
+        violations = 0
+        for fk in feature_list:
+            if (features[fk] == np.nan).any():
+                violations += 1
+                print(f"nan in  feature {fk}.")
+            if (features[fk] == np.inf).any():
+                violations += 1
+                print(f"inf in feature {fk}.")
+            if (features[fk] == -1*np.inf).any():
+                violations += 1
+                print(f"-inf in feature {fk}.")
+        return violations
+    
+    def _check_ndarray_features(self, features):
+        """A helper function that assesses np.ndarrays directly.
+
+        Parameters
+        ----------
+        features: np.ndarray
+            A group of features extracted with the feature extraction package in np.ndarray format
+        
+        Returns
+        ----------
+        violations: int
+            A number of violations found within the np.ndarray. This is the number of types of violations (np.nan, np.inf, -np.inf)
+            across all features. Returning 0 indicates that the features contain no invalid elements. Unlike _check_dict_features, this 
+            does not indicate the feature the violation arose from.
+
+        """
+        violations = 0
+        if (features == np.nan).any():
+            violations += 1
+            print(f"nan in  features.")
+        if (features == np.inf).any():
+            violations += 1
+            print(f"inf in features.")
+        if (features == -1*np.inf).any():
+            violations += 1
+            print(f"-inf in features.")
+        return violations
+
     '''
     -----------------------------------------------------------------------------------------
     The following methods are all feature extraction methods. They should follow the same
@@ -493,7 +575,7 @@ class FeatureExtractor:
         d1 = np.diff(windows, n=1, axis=2)
         d2 = np.diff(d1     , n=1, axis=2)
         # Waveform Length Ratio
-        WLR = np.sum( np.abs(d1),axis=2)-np.sum(np.abs(d2),axis=2)
+        WLR = np.sum( np.abs(d1),axis=2)/np.sum(np.abs(d2),axis=2)
         return np.log(np.abs(WLR))
 
 
