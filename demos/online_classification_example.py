@@ -8,23 +8,23 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from unb_emg_toolbox.data_handler import OnlineDataHandler, OfflineDataHandler
 from unb_emg_toolbox.emg_classifier import OnlineEMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import make_regex
+from unb_emg_toolbox.utils import make_regex, mock_emg_stream
 
-def worker():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    m = Myo(mode=emg_mode.FILTERED)
-    m.connect()
+# def worker():
+#     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#     m = Myo(mode=emg_mode.FILTERED)
+#     m.connect()
 
-    def write_to_socket(emg, movement):
-        sock.sendto(bytes(str(emg), "utf-8"), ('127.0.0.1', 12345))
-    m.add_emg_handler(write_to_socket)
+#     def write_to_socket(emg, movement):
+#         sock.sendto(bytes(str(emg), "utf-8"), ('127.0.0.1', 12345))
+#     m.add_emg_handler(write_to_socket)
     
-    while True:
-        try:
-            m.run()
-        except:
-            print("Worker Stopped")
-            quit() 
+#     while True:
+#         try:
+#             m.run()
+#         except:
+#             print("Worker Stopped")
+#             quit() 
     
 if __name__ == "__main__" :
     # Online classification
@@ -41,7 +41,7 @@ if __name__ == "__main__" :
     }
 
     odh = OfflineDataHandler()
-    odh.get_data(dataset_folder=dataset_folder, dictionary = dic, delimiter=",")
+    odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
     train_windows, train_metadata = odh.parse_windows(50,25)
     
     # # Extract features from data set
@@ -56,15 +56,11 @@ if __name__ == "__main__" :
     data_set['training_windows'] = train_windows
 
     # Create Stream Bindings
-    p = multiprocessing.Process(target=worker, daemon=True)
-    p.start()
+    mock_emg_stream(file_path="demos/data/stream_data.csv", sampling_rate=200, num_channels=8)
     online_data_handler = OnlineDataHandler(emg_arr=True)
     online_data_handler.get_data()
 
     # Create Classifier and Run
-    classifier = OnlineEMGClassifier(model="LDA", data_set=data_set, num_channels=8, window_size=50, window_increment=25, 
-            online_data_handler=online_data_handler, features=feature_list, velocity=True, std_out=True)
-    classifier.run(block=False)
-
-    while(True):
-        pass
+    classifier = OnlineEMGClassifier(model="SVM", data_set=data_set, num_channels=8, window_size=50, window_increment=25, 
+            online_data_handler=online_data_handler, features=feature_list, std_out=True, velocity=True)
+    classifier.run(block=True)
