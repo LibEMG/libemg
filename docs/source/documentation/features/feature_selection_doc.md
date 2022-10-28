@@ -30,6 +30,7 @@ where $N$ is the number of classes, $j$ represents a specific class, $D$ is the 
 
 ## **Feature Efficiency (FE)**
 A measure of the fraction of samples seperable by a particular feature.
+
 $
 \text{FE} = \frac{1}{N}\sum_{j=1}^{N}\max\limits_{i=1,...,j-1,j+1,...,N} \\ \times (\max\limits_{k=1,...,D} \frac{n(C_{i}) + n(C_{j}) - n(S_{k})}{n(C_{i}) + n(C_{j})})
 $
