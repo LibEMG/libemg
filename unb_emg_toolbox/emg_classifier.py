@@ -12,6 +12,7 @@ import pickle
 import socket
 import random
 import matplotlib.pyplot as plt
+import time
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -31,6 +32,9 @@ class EMGClassifier:
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', 
         'testing_features' and 'null_label' (optional).
+    continuous: bool (optional), default = False
+        Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
+        majority vote is only applied to individual reps, not between them.
     rejection_type: string (optional)
         Used to specify the type of rejection used by the classifier. The only currently supported option
         is 'CONFIDENCE'.
@@ -43,7 +47,7 @@ class EMGClassifier:
     random_seed: float (optional), default=0
         Used to set the random seed, which effects classifiers with any elements of randomness. Ensures reproducibility.
     """
-    def __init__(self, model, data_set, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, random_seed=0):
+    def __init__(self, model, data_set, continuous=False, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, random_seed=0):
         random.seed(0)
         #TODO: Need some way to specify if its continuous testing data or not 
         self.data_set = data_set
@@ -55,6 +59,7 @@ class EMGClassifier:
         self.predictions = []
         self.probabilities = []
         self.random_seed = random_seed
+        self.contiuous = continuous
 
         # For velocity control
         self.th_min_dic = None 
@@ -159,7 +164,7 @@ class EMGClassifier:
         elif model == "KNN":
             self.classifier = KNeighborsClassifier(n_neighbors=5)
         elif model == "SVM":
-            self.classifier = SVC(kernel='linear', probability=True)
+            self.classifier = SVC(kernel='linear', probability=True, random_state=self.random_seed)
         elif model == "QDA":
             self.classifier = QuadraticDiscriminantAnalysis()
         elif model == "RF":
@@ -186,7 +191,6 @@ class EMGClassifier:
         return np.array(prediction_vals), np.array(probabilities)
         
     def _rejection_helper(self, prediction, prob):
-        # TODO: Do we just want to do nothing? Or default to null_class? 
         if self.rejection_type == "CONFIDENCE":
             if prob > self.rejection_threshold:
                 return prediction
@@ -196,13 +200,15 @@ class EMGClassifier:
     
     def _majority_vote_helper(self, predictions):
         updated_predictions = []
-        # TODO: Decide what we want to do here - talk to Evan 
-        # Right now we are just majority voting the whole prediction stream
-        for i in range(0,self.majority_vote):
-            updated_predictions.append(predictions[i])
-        for i in range(self.majority_vote, len(predictions)):
-            values, counts = np.unique(predictions[(i-self.majority_vote):i], return_counts=True)
-            updated_predictions.append(values[np.argmax(counts)])
+        y_true = self.data_set['testing_labels']
+        for i in range(0, len(predictions)):
+            idxs = np.array(range(i-self.majority_vote+1, i+1))
+            idxs = idxs[idxs >= 0]
+            if not self.continuous:
+                correct_group = y_true[i]
+                idxs = idxs[np.where(y_true[idxs] == correct_group)]
+            group = predictions[idxs]
+            updated_predictions.append(np.argmax(np.bincount(group)))
         return np.array(updated_predictions)
     
     def _get_velocity(self, window, c):
@@ -371,7 +377,7 @@ class OnlineEMGClassifier(EMGClassifier):
                 # Write classifier output:
                 self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
                 if self.std_out:
-                    print(str(prediction) + calculated_velocity)
+                    print(str(prediction) + calculated_velocity + " " + str(time.time()))
     
     def _format_data_sample(self, data):
         arr = None
