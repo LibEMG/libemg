@@ -16,4 +16,6 @@ raw_emg.csv
 docs/build/*
 .DS_Store
 docs/.DS_Store
+tests/feature_tests/*.m
+tests/feature_tests/required_fn/*
 example_data/*

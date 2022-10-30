@@ -6,12 +6,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set up Python 3.7
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt; sudo apt-get install libsndfile1
       - name: Run pytest
         run: pytest
       - name: Build docs
