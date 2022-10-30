@@ -1,11 +1,12 @@
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis
+from librosa import lpc
 
 class FeatureExtractor:
     """
     Feature extraction class including feature groups, feature list, and feature extraction code.
-
     Parameters
     ----------
     num_channels: int > 0
@@ -20,7 +21,6 @@ class FeatureExtractor:
 
     def get_feature_groups(self):
         """Gets a list of all available feature groups.
-
         Returns
         ----------
         dictionary
@@ -34,7 +34,6 @@ class FeatureExtractor:
 
     def get_feature_list(self):
         """Gets a list of all available features.
-
         Returns
         ----------
         array_like
@@ -73,7 +72,6 @@ class FeatureExtractor:
     
     def extract_feature_group(self, feature_group, windows):
         """Extracts a group of features.
-
         Parameters
         ----------
         feature_group: string
@@ -94,7 +92,6 @@ class FeatureExtractor:
 
     def extract_features(self, feature_list, windows):
         """Extracts a list of features.
-
         Parameters
         ----------
         feature_list: list
@@ -117,88 +114,6 @@ class FeatureExtractor:
             
         return features
 
-
-    def check_features(self, features):
-        """Assesses a features object for np.nan, np.inf, and -np.inf.
-
-        Parameters
-        ----------
-        features: np.ndarray or dict
-            A group of features extracted with the feature extraction package in either dictionary or np.ndarray format
-        
-        Returns
-        ----------
-        violations: int
-            A number of violations found within the data. This is the number of types of violations (nan, inf, -inf) per feature
-            summed across all features. Returning 0 indicates that the features contain no invalid elements.
-        """
-        if type(features) == dict:
-            violations = self._check_dict_features(features)
-        elif type(features) == np.ndarray:
-            violations = self._check_ndarray_features(features)
-        if violations == 0:
-            print("No invalid values across all features")
-        return violations
-
-
-    def _check_dict_features(self, features):
-        """A helper function that assesses specifically dictionary of np.ndarrays (what is returned from the feature extraction module)
-
-        Parameters
-        ----------
-        features: dict
-            A group of features extracted with the feature extraction package in dictionary format
-        
-        Returns
-        ----------
-        violations: int
-            A number of violations found within the dictionary. This is the number of types of violations (nan, inf, -inf) per feature
-            summed across all features. Returning 0 indicates that the features contain no invalid elements.
-
-        """
-        feature_list = list(features.keys())
-        # sanity check that no errors were found in feature computation
-        violations = 0
-        for fk in feature_list:
-            if (features[fk] == np.nan).any():
-                violations += 1
-                print(f"nan in  feature {fk}.")
-            if (features[fk] == np.inf).any():
-                violations += 1
-                print(f"inf in feature {fk}.")
-            if (features[fk] == -1*np.inf).any():
-                violations += 1
-                print(f"-inf in feature {fk}.")
-        return violations
-    
-    def _check_ndarray_features(self, features):
-        """A helper function that assesses np.ndarrays directly.
-
-        Parameters
-        ----------
-        features: np.ndarray
-            A group of features extracted with the feature extraction package in np.ndarray format
-        
-        Returns
-        ----------
-        violations: int
-            A number of violations found within the np.ndarray. This is the number of types of violations (np.nan, np.inf, -np.inf)
-            across all features. Returning 0 indicates that the features contain no invalid elements. Unlike _check_dict_features, this 
-            does not indicate the feature the violation arose from.
-
-        """
-        violations = 0
-        if (features == np.nan).any():
-            violations += 1
-            print(f"nan in  features.")
-        if (features == np.inf).any():
-            violations += 1
-            print(f"inf in features.")
-        if (features == -1*np.inf).any():
-            violations += 1
-            print(f"-inf in features.")
-        return violations
-
     '''
     -----------------------------------------------------------------------------------------
     The following methods are all feature extraction methods. They should follow the same
@@ -208,7 +123,6 @@ class FeatureExtractor:
 
     def getMAVfeat(self, windows):
         """Extract Mean Absolute Value (MAV) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -225,7 +139,6 @@ class FeatureExtractor:
     # TODO: Add threshold
     def getZCfeat(self, windows):
         """Extract Zero Crossings (ZC) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -243,10 +156,9 @@ class FeatureExtractor:
         feat_b = np.sum(pos_change,2)
         return feat_a+feat_b
     
-    # TODO: Add threshold
-    def getSSCfeat(self, windows):
-        """Extract Slope Sign Change (SSC) feature.
 
+    def getSSCfeat(self, windows,threshold=0):
+        """Extract Slope Sign Change (SSC) feature.
         Parameters
         ----------
         windows: array_like 
@@ -257,12 +169,14 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        d_sig = np.diff(windows,axis=2)
-        return self.getZCfeat(d_sig)
+        w_2 = windows[:,:,2:]
+        w_1 = windows[:,:,1:-1]
+        w_0 = windows[:,:,:-2]
+        con = (((w_1-w_0)*(w_1-w_2)) >= threshold)
+        return np.sum(con,axis=2)
 
     def getWLfeat(self, windows):
         """Extract Waveform Length (WL) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -278,7 +192,6 @@ class FeatureExtractor:
 
     def getLSfeat(self, windows):
         """Extract L-Score (LS) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -350,7 +263,6 @@ class FeatureExtractor:
 
     def getMFLfeat(self, windows):
         """Extract Maximum Fractal Length (MFL) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -366,7 +278,6 @@ class FeatureExtractor:
 
     def getMSRfeat(self, windows):
         """Extract Mean Squared Ratio (MSR) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -382,7 +293,6 @@ class FeatureExtractor:
 
     def getWAMPfeat(self, windows, threshold=2e-3): # TODO: add optimization if threshold not passed, need class labels
         """Extract Willison Amplitude (WAMP) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -398,7 +308,6 @@ class FeatureExtractor:
 
     def getRMSfeat(self, windows):
         """Extract Root Mean Square (RMS) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -414,7 +323,6 @@ class FeatureExtractor:
 
     def getIAVfeat(self, windows):
         """Extract Integral of Absolute Value (IAV) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -430,7 +338,6 @@ class FeatureExtractor:
 
     def getDASDVfeat(self, windows):
         """Difference Absolute Standard Deviation Value (DASDV) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -441,12 +348,11 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        feat = np.abs(np.sqrt(np.mean(np.diff(np.square(windows.astype('complex')),2),2)))
+        feat = np.sqrt(np.mean(np.diff(windows,axis=2)**2,axis=2))
         return feat
 
     def getVARfeat(self, windows):
         """Extract Variance (VAR) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -462,7 +368,6 @@ class FeatureExtractor:
 
     def getM0feat(self, windows):
         """Extract First Temporal Moment (M0) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -473,15 +378,22 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        # There are 6 features per channel
-        m0 = np.sqrt(np.sum(windows**2,axis=2))
-        m0 = m0 ** 0.1 / 0.1
+        
+        def closure(w):
+            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
+            m0 = m0 ** 0.1 / 0.1
+            return np.log(np.abs(m0))
+        m0_ebp=closure(windows)
+        m0_efp=closure(np.log(windows**2+np.spacing(1)))
+
+        num=-2*np.multiply(m0_efp,m0_ebp)
+        den=np.multiply(m0_efp, m0_efp) + np.multiply(m0_ebp, m0_ebp)
+
         #Feature extraction goes here
-        return np.log(np.abs(m0))
+        return num/den
     
     def getM2feat(self, windows):
         """Extract Second Temporal Moment (M2) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -492,16 +404,23 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        # Prepare derivatives for higher order moments
-        d1 = np.diff(windows, n=1, axis=2)
-        # Root squared 2nd order moments normalized
-        m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (windows.shape[2]-1))
-        m2 = m2 ** 0.1 / 0.1
-        return np.log(np.abs(m2))
+        def closure(w):
+            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
+            m0 = m0 ** 0.1 / 0.1
+            d1 = np.diff(w, n=1, axis=2)
+            m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (w.shape[2]-1))
+            m2 = m2 ** 0.1 / 0.1
+            return np.log(np.abs(m0-m2))
+        m2_ebp=closure(windows)
+        m2_efp=closure(np.log(windows**2+np.spacing(1)))
+
+        num=-2*np.multiply(m2_efp,m2_ebp)
+        den=np.multiply(m2_efp, m2_efp) + np.multiply(m2_ebp, m2_ebp)
+        
+        return num/den
 
     def getM4feat(self, windows):
         """Extract Fourth Temporal Moment (M4) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -512,17 +431,24 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        # Prepare derivatives for higher order moments
-        d1 = np.diff(windows, n=1, axis=2)
-        d2 = np.diff(d1     , n=1, axis=2)
-        # Root squared 4th order moments normalized
-        m4 = np.sqrt(np.sum(d2**2,axis=2) / (windows.shape[2]-1))
-        m4 = m4 **0.1/0.1
-        return np.log(np.abs(m4))
+        def closure(w):
+            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
+            m0 = m0 ** 0.1 / 0.1
+            d1 = np.diff(w, n=1, axis=2)
+            d2 = np.diff(d1, n=1, axis=2)
+            m4 = np.sqrt(np.sum(d2 **2, axis=2)/ (w.shape[2]-1))
+            m4 = m4 ** 0.1 / 0.1
+            return np.log(np.abs(m0-m4))
+        m4_ebp=closure(windows)
+        m4_efp=closure(np.log(windows**2+np.spacing(1)))
+        
+        num=-2*np.multiply(m4_efp,m4_ebp)
+        den=np.multiply(m4_efp, m4_efp) + np.multiply(m4_ebp, m4_ebp)
+        
+        return num/den
     
     def getSPARSIfeat(self, windows):
         """Extract Sparsness (SPARSI) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -533,15 +459,27 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        m0 = self.getM0feat(windows)
-        m2 = self.getM2feat(windows)
-        m4 = self.getM4feat(windows)
-        sparsi = m0/np.sqrt(np.abs((m0-m2)*(m0-m4)))
-        return np.log(np.abs(sparsi))
+        def closure(w):
+            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
+            m0 = m0 ** 0.1 / 0.1
+            d1 = np.diff(w, n=1, axis=2)
+            m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (w.shape[2]-1))
+            m2 = m2 ** 0.1 / 0.1
+            d2 = np.diff(d1, n=1, axis=2)
+            m4 = np.sqrt(np.sum(d2 **2, axis=2)/ (w.shape[2]-1))
+            m4 = m4 ** 0.1 / 0.1
+            sparsi = np.sqrt(np.abs((m0-m2)*(m0-m4)))/m0
+            return np.log(np.abs(sparsi))
+        sparsi_ebp=closure(windows)
+        sparsi_efp=closure(np.log(windows**2+np.spacing(1)))
+        
+        num=-2*np.multiply(sparsi_efp,sparsi_ebp)
+        den=np.multiply(sparsi_efp, sparsi_efp) + np.multiply(sparsi_ebp, sparsi_ebp)
+
+        return num/den
 
     def getIRFfeat(self, windows):
         """Extract Irregularity Factor (IRF) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -552,15 +490,27 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        m0 = self.getM0feat(windows)
-        m2 = self.getM2feat(windows)
-        m4 = self.getM4feat(windows)
-        IRF = m2/np.sqrt(np.multiply(m0,m4))
-        return np.log(np.abs(IRF))
+        def closure(w):
+            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
+            m0 = m0 ** 0.1 / 0.1
+            d1 = np.diff(w, n=1, axis=2)
+            m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (w.shape[2]-1))
+            m2 = m2 ** 0.1 / 0.1
+            d2 = np.diff(d1, n=1, axis=2)
+            m4 = np.sqrt(np.sum(d2 **2, axis=2)/ (w.shape[2]-1))
+            m4 = m4 ** 0.1 / 0.1
+            irf = m2/np.sqrt(m0*m4)
+            return np.log(np.abs(irf))
+        irf_ebp=closure(windows)
+        irf_efp=closure(np.log(windows**2+np.spacing(1)))
+        
+        num=-2*np.multiply(irf_efp,irf_ebp)
+        den=np.multiply(irf_efp, irf_efp) + np.multiply(irf_ebp, irf_ebp)
+
+        return num/den
 
     def getWLFfeat(self, windows):
         """Waveform Length Factor (WLF) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -571,17 +521,24 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        # Prepare derivatives for higher order moments
-        d1 = np.diff(windows, n=1, axis=2)
-        d2 = np.diff(d1     , n=1, axis=2)
-        # Waveform Length Ratio
-        WLR = np.sum( np.abs(d1),axis=2)/np.sum(np.abs(d2),axis=2)
-        return np.log(np.abs(WLR))
+        def closure(w):
+            d1 = np.diff(w, n=1, axis=2)
+            
+            d2 = np.diff(d1, n=1, axis=2)
+            
+            wlf = np.sqrt(np.sum(np.abs(d1),axis=2)/np.sum(np.abs(d2),axis=2))
+            return np.log(np.abs(wlf))
+        wlf_ebp=closure(windows)
+        wlf_efp=closure(np.log(windows**2+np.spacing(1)))
+        
+        num=-2*np.multiply(wlf_efp,wlf_ebp)
+        den=np.multiply(wlf_efp, wlf_efp) + np.multiply(wlf_ebp, wlf_ebp)
+
+        return num/den
 
 
     def getARfeat(self, windows, order=4):
         """Extract Autoregressive Coefficients (AR) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -592,16 +549,15 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        windows = np.asarray(windows)
-        R = np.sum(windows ** 2, axis=2)
-        for i in range(1, order + 1):
-            r = np.sum(windows[:,:,i:] * windows[:,:,:-i], axis=2)
-            R = np.hstack((R,r))
-        return R
+
+
+        # the way they are computed via the matlab script: linear predictive filter
+
+        feature = np.reshape(lpc(windows, order=order,axis=2)[:,:,1:],(windows.shape[0],order*windows.shape[1]),order="C")
+        return feature
 
     def getCCfeat(self, windows, order =4):
         """Extract Cepstral Coefficient (CC) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -614,16 +570,16 @@ class FeatureExtractor:
         """
         AR = self.getARfeat(windows, order)
         cc = np.zeros_like(AR)
-        cc[:,:self.num_channels] = -1*AR[:,:self.num_channels]
+        cc[:,::order] = -1*AR[:,::order]
         if order > 2:
-            for p in range(2,order+2):
+            for p in range(1,order):
                 for l in range(1, p):
-                    cc[:,self.num_channels*(p-1):self.num_channels*(p)] = cc[:,self.num_channels*(p-1):self.num_channels*(p)]+(AR[:,self.num_channels*(p-1):self.num_channels*(p)] * cc[:,self.num_channels*(p-2):self.num_channels*(p-1)] * (1-(l/p)))
+                    cc[:,p::order] = cc[:,p::order]+(AR[:,p::order] * cc[:,p-l::order] * (1-(l/p)))
+                cc[:,p::order] = -1*AR[:,p::order]-cc[:,p::order]
         return cc
     
     def getLDfeat(self, windows):
         """Extract Log Detector (LD) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -638,7 +594,6 @@ class FeatureExtractor:
 
     def getMAVFDfeat(self, windows):
         """Extract Mean Absolute Value First Difference (MAVFD) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -649,13 +604,11 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        dwindows = np.diff(windows,axis=2)
-        mavfd = np.mean(dwindows,axis=2) / windows.shape[2]
+        mavfd = np.mean(np.abs(np.diff(windows,axis=2)),axis=2)
         return mavfd
 
     def getMAVSLPfeat(self, windows, segment=2):
         """Extract Mean Absolute Value Slope (MAVSLP) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -677,7 +630,6 @@ class FeatureExtractor:
 
     def getMDFfeat(self, windows,fs=1000):
         """Extract Median Frequency (MDF) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -688,20 +640,22 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        spec = np.fft.fft(windows,axis=2)
-        spec = spec[:,:,0:int(round(spec.shape[2]/2))]
-        POW = spec * np.conj(spec)
+        def closure(winsize):
+            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
+        nextpow2 = closure(windows.shape[2])
+        spec = np.fft.fft(windows,nextpow2, axis=2)/windows.shape[2]
+        spec = spec[:,:,0:int(nextpow2/2)]
+        POW = np.real(spec * np.conj(spec))
         totalPOW = np.sum(POW, axis=2)
         cumPOW   = np.cumsum(POW, axis=2)
         medfreq = np.zeros((windows.shape[0], windows.shape[1]))
         for i in range(0, windows.shape[0]):
             for j in range(0, windows.shape[1]):
-                medfreq[i,j] = fs*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0]/windows.shape[2]/2
+                medfreq[i,j] = (fs/2)*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0]/(nextpow2/2)
         return medfreq
 
     def getMNFfeat(self, windows, fs=1000):
         """Extract Mean Frequency (MNF) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -712,10 +666,13 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        spec = np.fft.fft(windows, axis=2)
-        f = np.fft.fftfreq(windows.shape[-1])*fs
+        def closure(winsize):
+            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
+        nextpow2 = closure(windows.shape[2])
+        spec = np.fft.fft(windows, n=nextpow2,axis=2)/windows.shape[2]
+        f = np.fft.fftfreq(nextpow2)*fs
         spec = spec[:,:,0:int(round(spec.shape[2]/2))]
-        f = f[0:int(round(f.shape[0]/2))]
+        f = f[0:int(round(nextpow2/2))]
         f = np.repeat(f[np.newaxis, :], spec.shape[0], axis=0)
         f = np.repeat(f[:, np.newaxis,:], spec.shape[1], axis=1)
         POW = spec * np.conj(spec)
@@ -723,7 +680,6 @@ class FeatureExtractor:
 
     def getMNPfeat(self, windows):
         """Extract Mean Power (MNP) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -734,14 +690,16 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        spec = np.fft.fft(windows,axis=2)
-        spec = spec[:,:,0:int(round(spec.shape[0]/2))]
-        POW = np.real(spec*np.conj(spec))
+        def closure(winsize):
+            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
+        nextpow2 = closure(windows.shape[2])
+        spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
+        spec = spec[:,:,0:int(round(nextpow2/2))]
+        POW  = np.real(spec[:,:,:int(nextpow2)]*np.conj(spec[:,:,:int(nextpow2)]))
         return np.sum(POW, axis=2)/POW.shape[2]
 
     def getMPKfeat(self, windows):
         """Extract (MPK) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -756,7 +714,6 @@ class FeatureExtractor:
 
     def getSKEWfeat(self, windows):
         """Extract Skewness (SKEW) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -771,7 +728,6 @@ class FeatureExtractor:
 
     def getKURTfeat(self, windows):
         """Extract Kurtosis (KURT) feature.
-
         Parameters
         ----------
         windows: array_like 
@@ -782,11 +738,10 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        return kurtosis(windows, axis=2)
+        return kurtosis(windows, axis=2, fisher=False)
 
     def visualize(self, feature_dic):
         """Visualize a set of features.
-
         Parameters
         ----------
         feature_dic: dictionary
