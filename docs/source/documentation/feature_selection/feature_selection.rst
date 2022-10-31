@@ -1,4 +1,4 @@
-Features
+Feature Selection
 ------------------------------
-.. include:: features_doc.md
+.. include:: feature_selection_doc.md
    :parser: myst_parser.sphinx_

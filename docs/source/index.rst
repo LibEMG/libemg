@@ -12,6 +12,7 @@ UNB EMG Toolbox
    documentation/data/data
    documentation/filtering/filtering
    documentation/features/features
+   documentation/feature_selection/feature_selection
    documentation/classification/classification
    documentation/evaluation/evaluation
 
