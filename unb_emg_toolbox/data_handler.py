@@ -5,6 +5,7 @@ import socket
 import csv
 import ast
 import matplotlib.pyplot as plt
+from pathlib import Path
 from glob import glob
 from itertools import compress
 from datetime import datetime
@@ -60,10 +61,13 @@ class OfflineDataHandler(DataHandler):
 
         if not os.path.isdir(folder_location):
             print("Invalid dataset directory: " + folder_location)
-        
+                
         # get all files in directory
         files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
         files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.txt'))])
+
+        # Convert all file paths to unix style
+        files = [Path(f).as_posix() for f in files]
 
         # check files meet all regex
         regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
