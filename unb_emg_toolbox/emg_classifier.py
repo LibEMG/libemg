@@ -59,7 +59,7 @@ class EMGClassifier:
         self.predictions = []
         self.probabilities = []
         self.random_seed = random_seed
-        self.contiuous = continuous
+        self.continuous = continuous
 
         # For velocity control
         self.th_min_dic = None 
