@@ -1,27 +1,23 @@
 import os
 import sys
 import numpy as np
+import pickle
 import matplotlib.pyplot as plt
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from unb_emg_toolbox.datasets import _3DCDataset
 from unb_emg_toolbox.emg_classifier import EMGClassifier
 from unb_emg_toolbox.feature_extractor import FeatureExtractor
 from unb_emg_toolbox.utils import make_regex
 from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.dataset import _3DCDataset
 from unb_emg_toolbox.offline_metrics import OfflineMetrics
 from unb_emg_toolbox.filtering import Filter
 
-
-
-
-def main():
+if __name__ == "__main__":
     # get the 3DC Dataset using toolbox handle - this downloads the dataset
     dataset = _3DCDataset(save_dir='example_data',
                           redownload=False)
     # take the downloaded dataset and load it as an offlinedatahandler
     odh = dataset.prepare_data(format=OfflineDataHandler)
-
-
 
     # Perform an analysis where we test all the features available to the toolbox individually for within-subject
     # classification accuracy.
@@ -40,7 +36,6 @@ def main():
 
     # get the variable ready for where we save the results
     results = np.zeros((len(feature_list), len(subject_list)))
-
 
     for s in subject_list:
         subject_data = odh.isolate_data("subjects",[s])
@@ -98,8 +93,3 @@ def main():
     plt.xlabel("Features")
     plt.ylabel("Accuracy")
     plt.show()
-
-
-
-if __name__ == "__main__":
-    main()
