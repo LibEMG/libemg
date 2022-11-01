@@ -19,3 +19,4 @@ docs/.DS_Store
 tests/feature_tests/*.m
 tests/feature_tests/required_fn/*
 example_data/*
+unb_emg_toolbox/datasets/__pycache__/*
