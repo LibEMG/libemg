@@ -4,18 +4,15 @@ import matplotlib.pyplot as plt
 from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
 
 class Filter:
-    '''
-    A class that will perform filtering on:
-    1. OfflineDataHandler
-    2. OnlineDataHandler
-    3. RawData in numpy.ndarrays
+    """ A class that will perform filtering on: (1) OfflineDataHandler, (2) OnlineDataHandler, 
+    and (3) RawData in numpy.ndarrays.
 
     Parameters
     ----------
     sampling_frequency: int
         The sampling frequency of the device used. This must be known for the 
         digital filters to do what is intended.
-    '''
+    """
     def __init__(self, sampling_frequency):
         self.sampling_frequency = sampling_frequency
 
@@ -72,7 +69,7 @@ class Filter:
     def filter(self, data):
         ''' Run installed filters on data.
 
-        Paramaters
+        Parameters
         ----------
         data: array_like    
             The data that will be passed through the filters.
@@ -105,10 +102,6 @@ class Filter:
         ----------
         data: OfflineDataHandler    
             The data that will be passed through the filters.
-
-        Returns
-        ------- 
-        None
         '''
         assert hasattr(data,"data")
         for f in range(len(data.data)):
@@ -194,15 +187,7 @@ class Filter:
         return filter_mean, filter_std
 
     def visualize_filters(self):
-        ''' A function that visualizes the bode plot of the installed filters.
-
-        Paramaters
-        ----------
-        None
-
-        Returns
-        ------- 
-        None
+        '''Visualizes the bode plot of the installed filters.
         '''
         fig, ax = plt.subplots(len(self.filters), 2, figsize=(10, 5*len(self.filters)))
         for fl in range(len(self.filters)):

@@ -1,8 +1,32 @@
+The goal of this module is to simplify the feature extraction stage for developers. We have included approximately 30 popular features from the literature that we have robustly tested and validated. The following code snippet exemplifies how simple feature extraction from raw EMG is leveraging this module:
+
+```Python
+import numpy as np
+from unb_emg_toolbox.feature_extractor import FeatureExtractor
+from unb_emg_toolbox.utils import get_windows
+
+fe = FeatureExtractor(num_channels=8)
+
+# Load data from a csv file:
+data = np.loadtxt("emg_data.csv", delimiter=",")
+# Split the raw EMG into windows 
+windows = get_windows(data, 50, 25)
+
+# Extract a list of features
+feature_list = ['MAV', 'SSC', 'ZC', 'WL']
+features_1 = fe.extract_features(feature_list, windows)
+
+# Extract a predfined feature group
+features_2 = fe.extract_feature_group('HTD', windows)
+```
+
 # Features
 Let $x_{i}$ represents the signal in segment i and $N$ denotes the number of samples in the timeseries.
 
 Let $fj$ be the frequency of the spectrum at frequency bin $j$, $P_{j}$ is the
 EMG power spectrum at frequency bin $j$, and $M$ is the length of the frequency bin.
+
+**Note: every feature and feature group is associated with an abbreviation (e.g., MAV). This is how we refer to a specific feature in our toolbox and is how you should interface with it.**
 
 ## **Mean Absolute Value (MAV)** <sup>[1]</sup>
 
@@ -237,6 +261,8 @@ $
 $
 
 # Feature Sets
+Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the toolkit:
+
 ## **Hudgin's Time Domain (HTD)** <sup>[8]</sup>
 1. Mean Absolute Value (MAV)
 2. Zero Crossings (ZC)

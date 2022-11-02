@@ -7,6 +7,7 @@ from librosa import lpc
 class FeatureExtractor:
     """
     Feature extraction class including feature groups, feature list, and feature extraction code.
+    
     Parameters
     ----------
     num_channels: int > 0
@@ -21,6 +22,7 @@ class FeatureExtractor:
 
     def get_feature_groups(self):
         """Gets a list of all available feature groups.
+        
         Returns
         ----------
         dictionary
@@ -34,6 +36,7 @@ class FeatureExtractor:
 
     def get_feature_list(self):
         """Gets a list of all available features.
+        
         Returns
         ----------
         array_like
@@ -72,6 +75,7 @@ class FeatureExtractor:
     
     def extract_feature_group(self, feature_group, windows):
         """Extracts a group of features.
+        
         Parameters
         ----------
         feature_group: string
@@ -92,6 +96,7 @@ class FeatureExtractor:
 
     def extract_features(self, feature_list, windows):
         """Extracts a list of features.
+        
         Parameters
         ----------
         feature_list: list
@@ -123,6 +128,7 @@ class FeatureExtractor:
 
     def getMAVfeat(self, windows):
         """Extract Mean Absolute Value (MAV) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -139,6 +145,7 @@ class FeatureExtractor:
     # TODO: Add threshold
     def getZCfeat(self, windows):
         """Extract Zero Crossings (ZC) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -159,6 +166,7 @@ class FeatureExtractor:
 
     def getSSCfeat(self, windows,threshold=0):
         """Extract Slope Sign Change (SSC) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -177,6 +185,7 @@ class FeatureExtractor:
 
     def getWLfeat(self, windows):
         """Extract Waveform Length (WL) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -192,6 +201,7 @@ class FeatureExtractor:
 
     def getLSfeat(self, windows):
         """Extract L-Score (LS) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -263,6 +273,7 @@ class FeatureExtractor:
 
     def getMFLfeat(self, windows):
         """Extract Maximum Fractal Length (MFL) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -278,6 +289,7 @@ class FeatureExtractor:
 
     def getMSRfeat(self, windows):
         """Extract Mean Squared Ratio (MSR) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -293,6 +305,7 @@ class FeatureExtractor:
 
     def getWAMPfeat(self, windows, threshold=2e-3): # TODO: add optimization if threshold not passed, need class labels
         """Extract Willison Amplitude (WAMP) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -308,6 +321,7 @@ class FeatureExtractor:
 
     def getRMSfeat(self, windows):
         """Extract Root Mean Square (RMS) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -323,6 +337,7 @@ class FeatureExtractor:
 
     def getIAVfeat(self, windows):
         """Extract Integral of Absolute Value (IAV) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -338,6 +353,7 @@ class FeatureExtractor:
 
     def getDASDVfeat(self, windows):
         """Difference Absolute Standard Deviation Value (DASDV) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -353,6 +369,7 @@ class FeatureExtractor:
 
     def getVARfeat(self, windows):
         """Extract Variance (VAR) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -368,6 +385,7 @@ class FeatureExtractor:
 
     def getM0feat(self, windows):
         """Extract First Temporal Moment (M0) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -394,6 +412,7 @@ class FeatureExtractor:
     
     def getM2feat(self, windows):
         """Extract Second Temporal Moment (M2) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -421,6 +440,7 @@ class FeatureExtractor:
 
     def getM4feat(self, windows):
         """Extract Fourth Temporal Moment (M4) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -449,6 +469,7 @@ class FeatureExtractor:
     
     def getSPARSIfeat(self, windows):
         """Extract Sparsness (SPARSI) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -480,6 +501,7 @@ class FeatureExtractor:
 
     def getIRFfeat(self, windows):
         """Extract Irregularity Factor (IRF) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -511,6 +533,7 @@ class FeatureExtractor:
 
     def getWLFfeat(self, windows):
         """Waveform Length Factor (WLF) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -539,6 +562,7 @@ class FeatureExtractor:
 
     def getARfeat(self, windows, order=4):
         """Extract Autoregressive Coefficients (AR) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -558,6 +582,7 @@ class FeatureExtractor:
 
     def getCCfeat(self, windows, order =4):
         """Extract Cepstral Coefficient (CC) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -580,6 +605,7 @@ class FeatureExtractor:
     
     def getLDfeat(self, windows):
         """Extract Log Detector (LD) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -594,6 +620,7 @@ class FeatureExtractor:
 
     def getMAVFDfeat(self, windows):
         """Extract Mean Absolute Value First Difference (MAVFD) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -609,6 +636,7 @@ class FeatureExtractor:
 
     def getMAVSLPfeat(self, windows, segment=2):
         """Extract Mean Absolute Value Slope (MAVSLP) feature.
+       
         Parameters
         ----------
         windows: array_like 
@@ -630,6 +658,7 @@ class FeatureExtractor:
 
     def getMDFfeat(self, windows,fs=1000):
         """Extract Median Frequency (MDF) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -656,6 +685,7 @@ class FeatureExtractor:
 
     def getMNFfeat(self, windows, fs=1000):
         """Extract Mean Frequency (MNF) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -680,6 +710,7 @@ class FeatureExtractor:
 
     def getMNPfeat(self, windows):
         """Extract Mean Power (MNP) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -700,6 +731,7 @@ class FeatureExtractor:
 
     def getMPKfeat(self, windows):
         """Extract (MPK) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -714,6 +746,7 @@ class FeatureExtractor:
 
     def getSKEWfeat(self, windows):
         """Extract Skewness (SKEW) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -728,6 +761,7 @@ class FeatureExtractor:
 
     def getKURTfeat(self, windows):
         """Extract Kurtosis (KURT) feature.
+        
         Parameters
         ----------
         windows: array_like 
@@ -742,6 +776,7 @@ class FeatureExtractor:
 
     def visualize(self, feature_dic):
         """Visualize a set of features.
+        
         Parameters
         ----------
         feature_dic: dictionary
@@ -763,7 +798,7 @@ class FeatureExtractor:
                     ax[index].set_ylabel(f)
                 index += 1
                 fig.suptitle('Features')
-                fig.legend(labels, loc='upper right')
+                fig.legend(labels, loc='lower right')
         else:
             key = list(feature_dic.keys())[0]
             plt.title(key)

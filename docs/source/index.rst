@@ -26,7 +26,11 @@ UNB EMG Toolbox
    :maxdepth: 1
    :caption: Examples:
 
-   examples/examples
+   examples/example1/example1
+   examples/example2/example2
+   examples/example3/example3
+   examples/example4/example4
+   examples/example5/example5
 
 .. toctree::
    :maxdepth: 1

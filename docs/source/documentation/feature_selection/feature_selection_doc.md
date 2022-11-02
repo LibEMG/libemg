@@ -1,4 +1,4 @@
-# Feature Selection 
+# Selection Strategies
 For a robust summary of the following feature selection techniques, please see *A Multivariate Approach for Predicting Myoelectric Control Usability* <sup>[1]</sup>.
 
 ## **Classification Accuracy (CA)**
