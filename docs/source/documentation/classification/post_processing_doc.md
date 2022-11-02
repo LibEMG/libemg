@@ -2,9 +2,7 @@
 
 ## Rejection
 Classifier outputs are overridden to a default or inactive state when the output decision is unsure.  This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.  
-
-### CONFIDENCE:<sup>[1]</sup> 
-Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected.
+- **Confidence <sup>[1]</sup>:** Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected.
 
 ## Majority Voting <sup>[2,3]</sup>
 Overrides the current output with the label corresponding to the class that occurred most frequently over the past $N$ decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations.

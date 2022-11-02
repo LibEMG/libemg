@@ -63,3 +63,35 @@ class _3DCDataset(Dataset):
             odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
             return odh
         
+class OneSubjectMyoDataset(Dataset):
+    def __init__(self, save_dir='.', redownload=True, dataset_name="OneSubjectMyoDataset"):
+        Dataset.__init__(self, save_dir, redownload)
+        self.url = "https://github.com/eeddy/OneSubjectMyoDataset"
+        self.dataset_name = dataset_name
+        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+
+        if (not self.check_exists(self.dataset_folder)):
+            self.github_download(self.url, self.dataset_folder)
+        elif (self.redownload):
+            self.remove_dataset(self.dataset_folder)
+            self.github_download(self.url, self.dataset_folder)
+
+    def prepare_data(self, format=OfflineDataHandler):
+        if format == OfflineDataHandler:
+            sets_values = ["training", "testing"]
+            sets_regex = make_regex(left_bound = "/", right_bound="/", values = sets_values)
+            classes_values = ["0","1","2","3","4"]
+            classes_regex = make_regex(left_bound = "C_", right_bound=".csv", values = classes_values)
+            reps_values = ["0","1","2","3","4"]
+            reps_regex = make_regex(left_bound = "R_", right_bound="_", values = reps_values)
+            dic = {
+                "sets": sets_values,
+                "sets_regex": sets_regex,
+                "reps": reps_values,
+                "reps_regex": reps_regex,
+                "classes": classes_values,
+                "classes_regex": classes_regex,
+            }
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            return odh

@@ -300,7 +300,7 @@ class OnlineEMGClassifier(EMGClassifier):
         same list used to train the model.
     port: int (optional), default = 12346
         The port used for streaming predictions over TCP.
-    ip: string (option), default = '127.0.0.1'
+    ip: string (optional), default = '127.0.0.1'
         The ip used for streaming predictions over TCP.
     rejection_type: string (optional)
         Used to specify the type of rejection used by the classifier. The only currently supported option

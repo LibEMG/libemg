@@ -5,10 +5,6 @@ from sklearn.decomposition import PCA
 class FeatureSelector:
     """
     Feature selector class including different feature space metrics and sequential feature selection.
-
-    Parameters
-    ----------
-    default constructor has no parameters
     """
     def __init__(self):
         # This will have methods for the evaluation of 33 metrics... eventually 

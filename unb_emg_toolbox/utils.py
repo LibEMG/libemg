@@ -62,6 +62,10 @@ def make_regex(left_bound, right_bound, values=[]):
     ----------
     string
         The created regex.
+    
+    Examples
+    ---------
+    >>> make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = [0,1,2,3,4,5])
     """
     left_bound_str = "(?<="+ left_bound +")"
     mid_str = "["

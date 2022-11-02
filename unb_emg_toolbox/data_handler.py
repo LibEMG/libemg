@@ -44,10 +44,6 @@ class OfflineDataHandler(DataHandler):
             dictionary containing the values of the metadata and the regex or columns associated with that metadata.
         delimiter: int
             How the columns of the files are separated in the .txt or .csv files.
-
-        Returns
-        ----------
-        None
         """
         data = []
         # you can insert custom member variables that will be collected from the filename using the dictionary
@@ -300,16 +296,17 @@ class OnlineDataHandler(DataHandler):
         """
         self.listener.start()
         
-    def visualize(self, num_samples=500):
+    def visualize(self, num_samples=500, y_axes=None):
         """Visualize the incoming raw EMG in a plot.
 
         Parameters
         ----------
         num_samples: int (optional), default=500
             The number of samples to show in the plot.
+        y_axes: array_like (optional)
+            A list of two elements consisting of the y-axes.
         """
         plt.style.use('ggplot')
-        plt.title("Raw Data")
         while True:
             data = np.array(self.raw_data.get_emg())
             if len(data) > num_samples:
@@ -317,6 +314,8 @@ class OnlineDataHandler(DataHandler):
             if len(data) > 0:
                 plt.clf()
                 plt.title("Raw Data")
+                if not y_axes is None:
+                    plt.gca().set_ylim(y_axes)
                 for i in range(0,len(data[0])):
                     x = list(range(0,len(data)))
                     plt.plot(x, data[:,i], label="CH"+str(i))
