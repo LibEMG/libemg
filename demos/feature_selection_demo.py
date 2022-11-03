@@ -11,7 +11,7 @@ if __name__ == "__main__" :
     # import a dataset to work with (as was done in the past demos)
     dataset_folder = 'demos/data/myo_dataset'
     sets_values = ["training", "testing"]
-    sets_regex = make_regex(left_bound = "dataset\\\\", right_bound="\\\\", values = sets_values)
+    sets_regex = make_regex(left_bound = "dataset/", right_bound="/", values = sets_values)
     classes_values = ["0","1","2","3","4"]
     classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
     reps_values = ["0","1","2","3"]
@@ -25,7 +25,7 @@ if __name__ == "__main__" :
         "classes_regex": classes_regex
     }
     odh = OfflineDataHandler()
-    odh.get_data(dataset_folder=dataset_folder, dictionary = dic, delimiter=",")
+    odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
     
     # Let's grab the saved test set (it has multiple reps to perform cross-validation against)
     train_odh = odh.isolate_data(key="sets", values=[1])
@@ -76,13 +76,25 @@ if __name__ == "__main__" :
     fe_results, fe_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
     fs.print(metric, fe_results, fe_fs)
 
+    # demo for repeatability! -- note repeatability takes a long time for large number of reps!
+    metric = "repeatability"
+    class_var = train_metadata["classes"].astype(int)
+    crossvalidation_var = {"var": train_metadata["reps"].astype(int)}
+    repeatability_results, repeatability_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
+    fs.print(metric, repeatability_results, repeatability_fs)
+
+    # demo for separability!
+    metric = "separability"
+    class_var = train_metadata["classes"].astype(int)
+    crossvalidation_var = {"var": train_metadata["reps"].astype(int)}
+    separability_results, separability_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
+    fs.print(metric, separability_results, separability_fs)
+
+
     # demo if you don't have a cross-validation variable and just want to randomly split the dataset (suboptimal choice, but available if necessary)
     class_var = train_metadata["classes"].astype(int)
-    crossvalidation_var = {"crossval_amount": 5,
-                           "crossval_percent": 0.75}
+    crossvalidation_var = {"crossval_amount": 5}
     accuracy_results, accuracy_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
-
-
 
 
     # these results are easy to use with the rest of the toolbox! if you wanted to extract the feature set you just got:

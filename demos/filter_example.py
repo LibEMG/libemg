@@ -11,28 +11,29 @@ from unb_emg_toolbox.filtering import Filter
 from unb_emg_toolbox.utils import mock_emg_stream
 def offline_dataset_filtering_demo():
     ## Example for filtering an offline dataset.
-    dataset_folder = 'demos/data/myo_dataset'
-    sets_values = ["training", "testing"]
-    sets_regex = make_regex(left_bound = "dataset\\\\", right_bound="\\\\", values = sets_values)
-    classes_values = ["0","1","2","3","4"]
-    classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
-    reps_values = ["0","1","2","3"]
-    reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
+    dataset_folder = 'demos/data/data'
+    classes_values = ["0","1","2","3","4","5","6","7","8","9","10"]
+    classes_regex = make_regex(left_bound = "_", right_bound=".txt", values = classes_values)
+    reps_values = ["0"]
+    reps_regex = make_regex(left_bound = "gesture_", right_bound="_", values = reps_values)
     dic = {
-        "sets": sets_values,
-        "sets_regex": sets_regex,
         "reps": reps_values,
         "reps_regex": reps_regex,
         "classes": classes_values,
         "classes_regex": classes_regex
     }
     odh = OfflineDataHandler()
-    odh.get_data(dataset_folder=dataset_folder, dictionary = dic, delimiter=",")
-    
+    odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
 
-    filter = Filter(sampling_frequency=200)
+    # make a filter object
+    filter = Filter(sampling_frequency=1000)
+
+    filter_dictionary={"name":"standardize",
+                       "data": odh}
+    filter.install_filters(filter_dictionary=filter_dictionary)
+    
     filter_dictionary={"name":"bandpass",
-                        "cutoff": [20, 99],
+                        "cutoff": [20, 450],
                         "order": 4 }
     
     filter.install_filters(filter_dictionary=filter_dictionary)
@@ -41,6 +42,12 @@ def offline_dataset_filtering_demo():
                         "bandwidth": 3 }
     filter.install_filters(filter_dictionary=filter_dictionary)
     filter.visualize_filters()
+
+    # get a file from the odh data handler
+    sample_data = odh.data[0]
+    # let's look what our planned filters actually end up doing to the data
+    filter.visualize_affect(sample_data)
+
     # for offlinedatahandlers, the filtered data will overwrite the odh.data attribut
     filter.filter(odh)
 
@@ -60,6 +67,7 @@ def np_ndarray_filtering_demo():
     filter.install_filters(filter_dictionary=filter_dictionary)
     filter.visualize_filters()
     filtered_data = filter.filter(data)
+    plt.clf()
     plt.plot(filtered_data)
     plt.show()
 
@@ -85,7 +93,7 @@ def online_filtering_demo():
     window = np.zeros((window_size, 8))
 
     # Create A stream of emg data
-    mock_emg_stream("demos/data/stream_data.csv", sampling_rate=100, num_channels=8)
+    mock_emg_stream("demos/data/stream_data.csv", sampling_rate=sampling_frequency, num_channels=8)
 
     odh = OnlineDataHandler(file=False, std_out=False, emg_arr=True)
     # start the stream listener
@@ -104,10 +112,11 @@ def online_filtering_demo():
 
         # the data has been grabbed and is in np.ndarray format
         filtered_data = filter.filter(window)
+        plt.clf()
         plt.plot(filtered_data)
         plt.draw()
         plt.pause(window_increment/sampling_frequency)
-        plt.clf()
+        
         # rest for window_increment amount of time
         time.sleep(window_increment/sampling_frequency)
 
