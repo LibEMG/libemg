@@ -13,6 +13,7 @@ import socket
 import random
 import matplotlib.pyplot as plt
 import time
+import inspect
 
 from unb_emg_toolbox.utils import get_windows
 
@@ -32,6 +33,9 @@ class EMGClassifier:
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', and 
         'testing_features'.
+    parameters: dictionary (optional)
+        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+        in the sklearn docs for the given model.
     continuous: bool (optional), default = False
         Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
         majority vote is only applied to individual reps, not between them.
@@ -44,10 +48,8 @@ class EMGClassifier:
         Used to specify the number of predictions included in the majority vote.
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
-    random_seed: float (optional), default=0
-        Used to set the random seed, which effects classifiers with any elements of randomness. Ensures reproducibility.
     """
-    def __init__(self, model, data_set, continuous=False, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, random_seed=0):
+    def __init__(self, model, data_set, parameters=None, continuous=False, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False):
         random.seed(0)
         #TODO: Need some way to specify if its continuous testing data or not 
         self.data_set = data_set
@@ -58,7 +60,6 @@ class EMGClassifier:
         self.velocity = velocity
         self.predictions = []
         self.probabilities = []
-        self.random_seed = random_seed
         self.continuous = continuous
 
         # For velocity control
@@ -69,7 +70,7 @@ class EMGClassifier:
         self._format_data('training_features')
         if 'testing_features' in self.data_set.keys():
             self._format_data('testing_features')
-        self._set_up_classifier(model)
+        self._set_up_classifier(model, parameters)
         if self.velocity:
             self.th_min_dic, self.th_max_dic = self._set_up_velocity_control()
 
@@ -157,33 +158,70 @@ class EMGClassifier:
                 arr = np.hstack((arr, self.data_set[i_key][feat]))
         self.data_set[i_key] = arr
 
-    def _set_up_classifier(self, model):
+    def _set_up_classifier(self, model, parameters):
         valid_models = ["LDA", "KNN", "SVM", "QDA", "RF", "NB", "GB", "MLP"]
         if isinstance(model, str):
             assert model in valid_models
-        
+            valid_parameters = self._validate_parameters(model, parameters)
+
         # Set up classifier based on input
         if model == "LDA":
-            self.classifier = LinearDiscriminantAnalysis()
+            self.classifier = LinearDiscriminantAnalysis(**valid_parameters)
         elif model == "KNN":
-            self.classifier = KNeighborsClassifier(n_neighbors=5)
+            self.classifier = KNeighborsClassifier(**valid_parameters)
         elif model == "SVM":
-            self.classifier = SVC(kernel='linear', probability=True, random_state=self.random_seed)
+            self.classifier = SVC(**valid_parameters)
         elif model == "QDA":
-            self.classifier = QuadraticDiscriminantAnalysis()
+            self.classifier = QuadraticDiscriminantAnalysis(**valid_parameters)
         elif model == "RF":
-            self.classifier = RandomForestClassifier(random_state=self.random_seed)
+            self.classifier = RandomForestClassifier(**valid_parameters)
         elif model == "NB":
-            self.classifier = GaussianNB()
+            self.classifier = GaussianNB(**valid_parameters)
         elif model == "GB":
-            self.classifier = GradientBoostingClassifier(random_state=self.random_seed)
+            self.classifier = GradientBoostingClassifier(**valid_parameters)
         elif model == "MLP":
-            self.classifier = MLPClassifier(random_state=self.random_seed, hidden_layer_sizes=126)
+            self.classifier = MLPClassifier(**valid_parameters)
         elif not model is None:
             # Assume a custom classifier has been passed in
             self.classifier = model
         # Fit the model to the data set
         self.classifier.fit(self.data_set['training_features'],self.data_set['training_labels'])
+
+    def _validate_parameters(self, model, parameters):
+        default_parameters = {
+            'LDA': {}, 
+            'KNN': {"n_neighbors": 5}, 
+            'SVM': {"kernel": "linear", "probability": True, "random_state": 0},
+            'QDA': {},
+            'RF': {"random_state": 0},
+            'NB': {},
+            'GB': {"random_state": 0},
+            'MLP': {"random_state": 0, "hidden_layer_sizes": 126}
+        }
+
+        valid_parameters = default_parameters[model]
+
+        if parameters is None:
+            return valid_parameters
+
+        dic = {'LDA': LinearDiscriminantAnalysis, 
+               'KNN': KNeighborsClassifier, 
+               'SVM': SVC, 
+               'QDA': QuadraticDiscriminantAnalysis,
+               'RF': RandomForestClassifier,
+               'NB': GaussianNB,
+               'GB': GradientBoostingClassifier,
+               'MLP': MLPClassifier
+        }
+
+        signature = list(inspect.signature(dic[model]).parameters.keys())
+        for p in parameters:
+            if p in signature:
+                valid_parameters[p] = parameters[p]
+            else:
+                print(str(p) + "is an invalid parameter.")
+        return valid_parameters
+            
     
     def _prediction_helper(self, predictions):
         probabilities = [] 
@@ -238,7 +276,6 @@ class EMGClassifier:
             th_max = (1-(70/100)) * mav_tr_min + 0.7 * mav_tr_max
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
-    
 
     def visualize(self):
         """Visualize the decision stream of the classifier on the testing data. 
@@ -302,6 +339,9 @@ class OnlineEMGClassifier(EMGClassifier):
     features: array_like
         A list of features that will be extracted during real-time classification. These should be the 
         same list used to train the model.
+    parameters: dictionary (optional)
+        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+        in the sklearn docs for the given model.
     port: int (optional), default = 12346
         The port used for streaming predictions over TCP.
     ip: string (optional), default = '127.0.0.1'
@@ -318,8 +358,8 @@ class OnlineEMGClassifier(EMGClassifier):
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     """
-    def __init__(self, model, data_set, num_channels, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
-        super().__init__(model, data_set, velocity=velocity)
+    def __init__(self, model, data_set, num_channels, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
+        super().__init__(model, data_set, parameters=parameters, velocity=velocity)
         self.num_channels = num_channels
         self.window_size = window_size
         self.window_increment = window_increment
