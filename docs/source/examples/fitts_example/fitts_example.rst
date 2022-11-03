@@ -1,4 +1,4 @@
-2 - Offline Data Handler
+Ex 2 - Fitts Test
 =================================
-.. include:: parsing_offline_data.md
+.. include:: fitts.md
    :parser: myst_parser.sphinx_

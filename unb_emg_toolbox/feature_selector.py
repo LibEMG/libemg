@@ -56,7 +56,7 @@ class FeatureSelector:
         
     
 
-    def run_selection(self, data={}, metric="accuracy", class_var = [], crossvalidation_var={}, verbose=0):
+    def run_selection(self, data={}, metric="accuracy", class_var = [], crossvalidation_var={}, verbose=False):
         """The main method for running feature selection on a dataset. Selection will choose features that result in the ranking 
         of features according to the specified metric and the metric values found through the selection process. This is an entry
         point function that calls the _get_sequential_selection_results and _get_metric_selection_results methods, after finding the
@@ -76,8 +76,8 @@ class FeatureSelector:
             A dictionary containing the method by which crossvalidation is performed (most metrics support crossvalidation). Either specify the 
             "crossval_amount" key <int> to perform k-fold cross validation with k random folds of size (1-1/k) training (1/k) testing, or provide 
             the "var" key to run leave-one-key-out cross validation with the np.ndarray you pass in.
-        verbose: int
-            Do you want to automatically call the print method after getting the results?
+        verbose: bool (optional), default = False
+            If True, automatically calls the print method after getting the results.
         Returns
         ------- 
         filter_results/wrapper_results: np.ndarray

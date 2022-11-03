@@ -49,7 +49,6 @@ if __name__ == "__main__" :
     data_set['training_features'] = fe.extract_feature_group('HTD', train_windows)
     data_set['testing_labels'] = test_metadata['classes']
     data_set['training_labels'] = train_metadata['classes']
-    data_set['null_label'] = 2
 
     om = OfflineMetrics()
     metrics = ['CA', 'AER', 'INS', 'REJ_RATE', 'CONF_MAT', 'RECALL', 'PREC', 'F1']
@@ -57,6 +56,9 @@ if __name__ == "__main__" :
     for model in ['LDA', 'QDA', 'SVM', 'KNN', 'RF', 'NB', 'GB', 'MLP']:
         classifier = EMGClassifier(model, data_set.copy())
         preds = classifier.run()
+        y_true = data_set['testing_labels']
+        metrics = om.extract_offline_metrics(['CONF_MAT'], preds, y_true)
+        om.visualize_conf_matrix(metrics['CONF_MAT'])
         print("Classifier: " + model)
         out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
         print(str(out_metrics) + "\n")
@@ -113,7 +115,6 @@ if __name__ == "__main__" :
     data_set['training_features'] = fe.extract_feature_group('HTD', train_windows)
     data_set['testing_labels'] = test_metadata['classes']
     data_set['training_labels'] = train_metadata['classes']
-    data_set['null_label'] = 2
 
     classifier = EMGClassifier("SVM", data_set)
     preds = classifier.run()

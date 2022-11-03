@@ -30,8 +30,8 @@ class EMGClassifier:
         models with no hyperparameter tuning and may not be optimal. Pass in custom classifier for more control.
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
-        Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', 
-        'testing_features' and 'null_label' (optional).
+        Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', and 
+        'testing_features'.
     continuous: bool (optional), default = False
         Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
         majority vote is only applied to individual reps, not between them.
@@ -89,6 +89,10 @@ class EMGClassifier:
         ----------
         EMGClassifier
             Returns an EMGClassifier object.
+
+        Examples
+        -----------
+        >>> classifier = EMGClassifier.from_file('lda.pickle')
         """
         with open(filename, 'rb') as f:
             classifier = pickle.load(f)
@@ -286,7 +290,7 @@ class OnlineEMGClassifier(EMGClassifier):
         The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
-        Dictionary keys should include 'training_labels', 'training_features' and 'null_label' (optional).
+        Dictionary keys should include 'training_labels' and 'training_features'.
     num_channels: int
         The number of EMG channels.
     window_size: int

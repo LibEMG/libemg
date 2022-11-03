@@ -20,7 +20,7 @@ features_1 = fe.extract_features(feature_list, windows)
 features_2 = fe.extract_feature_group('HTD', windows)
 ```
 
-# Features
+# Implemented Features
 Let $x_{i}$ represents the signal in segment i and $N$ denotes the number of samples in the timeseries.
 
 Let $fj$ be the frequency of the spectrum at frequency bin $j$, $P_{j}$ is the
@@ -177,7 +177,7 @@ $
 \text{WLR} = log (\sum_{i=1}^{N-1} | x_{i+1} - x_{i} | / \sum_{i=1}^{N-2} | x_{i+2} + x_{i} |)
 $
 
-## **Autoregressive Coefficients (AR)** <sup>[1]</sup>
+## **Autoregressive Coefficients (AR4 and AR9)** <sup>[1]</sup>
 For order r, the autoregressive coefficient can be calculated by: **
 
 $
@@ -269,13 +269,13 @@ Feature sets are validated groups of features that have been shown empirically t
 3. Slope Sign Change (SSC)
 4. Waveform Length (WL)
 
-## **Phinyomark's Time Domain 4 (TD4)** <sup>[2]</sup>
+## **Low Sampling Frequency 4 (LS4)** <sup>[2]</sup>
 1. L-Score (LS)
 2. Maximum Fractal Length (MFL)
 3. Mean Squared Ratio (MSR)
 4. Willison Amplitude (WAMP)
 
-## **Phinyomark's Time Domain 9 (TD9)** <sup>[2]</sup>
+## **Low Sampling Frequency 9 (LS9)** <sup>[2]</sup>
 1. TD4 Features 
 2. Zero Crossings (ZC)
 3. Root Mean Square (RMS)
@@ -290,6 +290,19 @@ Feature sets are validated groups of features that have been shown empirically t
 4. Sparsness (SPARSI)
 5. Irregularity Factor (IRF)
 6. Waveform Length Factor (WLF)
+
+## **Time Domain Autoregressive** <sup>[10]</sup>
+1. Mean Absolute Value (MAV)
+2. Zero Crossings (ZC)
+3. Slope Sign Change (SSC)
+4. Waveform Length (WL)
+5. Autoregressive Coefficient 4 (AR4)
+
+## **Combined** <sup>[11]</sup>
+1. Waveform Length (WL)
+2. Slope Sign Change (SSC)
+3. Log Detector (LD)
+4. Autoregressive Coefficient 9 (AR9)
 
 # References
 <a id="1">[1]</a> 
@@ -346,3 +359,9 @@ B. Hudgins, P. Parker and R. N. Scott, "A new strategy for multifunction myoelec
 
 <a id="9">[9]</a> 
 Campbell E, Phinyomark A, Scheme E. Current Trends and Confounding Factors in Myoelectric Control: Limb Position and Contraction Intensity. Sensors. 2020; 20(6):1613. https://doi.org/10.3390/s20061613
+
+<a id="10">[10]</a> 
+Phinyomark A, Khushaba RN, Ibáñez-Marcelo E, Patania A, Scheme E, Petri G. Navigating features: a topologically informed chart of electromyographic features space. J R Soc Interface. 2017 Dec;14(137):20170734. doi: 10.1098/rsif.2017.0734. PMID: 29212759; PMCID: PMC5746577.
+
+<a id="11">[10]</a> 
+Tkach, D., Huang, H. & Kuiken, T.A. Study of stability of time-domain features for electromyographic pattern recognition. J NeuroEngineering Rehabil 7, 21 (2010). https://doi.org/10.1186/1743-0003-7-2

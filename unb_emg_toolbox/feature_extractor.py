@@ -29,9 +29,12 @@ class FeatureExtractor:
             A dictionary with the all available feature groups.
         """
         feature_groups = {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
-                          'TD4': ['LS', 'MFL', 'MSR', 'WAMP'],
-                          'TD9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
-                          'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF']}
+                          'LS4': ['LS', 'MFL', 'MSR', 'WAMP'],
+                          'LS9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
+                          'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
+                          'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR4'],
+                          'COMB': ['WL', 'SSC', 'LD', 'AR9'],     
+                          }
         return feature_groups
 
     def get_feature_list(self):
@@ -60,7 +63,8 @@ class FeatureExtractor:
                         'SPARSI',
                         'IRF',
                         'WLF',
-                        'AR', # note: TODO: AR could probably represent the PACF, not the ACF.
+                        'AR4',
+                        'AR9', # note: TODO: AR could probably represent the PACF, not the ACF.
                         'CC',
                         'LD',
                         'MAVFD',
@@ -634,8 +638,37 @@ class FeatureExtractor:
 
         return num/den
 
+    def getAR4feat(self, windows):
+        """Extract Autoregressive Coefficients (AR4) feature.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        return self._getARfeatHelper(windows, 4)
 
-    def getARfeat(self, windows, order=4):
+    def getAR9feat(self, windows):
+        """Extract Autoregressive Coefficients (AR9) feature.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window.
+        """
+        return self._getARfeatHelper(windows, 9)
+
+    def _getARfeatHelper(self, windows, order=4):
         """Extract Autoregressive Coefficients (AR) feature.
         
         Parameters
@@ -668,7 +701,7 @@ class FeatureExtractor:
         array_like
             The computed features associated with each window. 
         """
-        AR = self.getARfeat(windows, order)
+        AR = self._getARfeatHelper(windows, order)
         cc = np.zeros_like(AR)
         cc[:,::order] = -1*AR[:,::order]
         if order > 2:

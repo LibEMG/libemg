@@ -28,7 +28,7 @@ def test_extract_features_invalid(fe):
 def test_extract_feature_group_valid(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
     windows = get_windows(data, 50, 25)
-    features = fe.extract_feature_group('TD4', windows)
+    features = fe.extract_feature_group('LS4', windows)
     assert(len(features) == 4)
     assert('LS' in features)
     assert('MFL' in features)
@@ -62,9 +62,12 @@ def test_get_windows(fe):
 
 def test_get_feature_groups(fe):
     assert fe.get_feature_groups() == {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
-                                       'TD4': ['LS', 'MFL', 'MSR', 'WAMP'],
-                                       'TD9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
-                                       'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF']}
+                                        'LS4': ['LS', 'MFL', 'MSR', 'WAMP'],
+                                        'LS9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
+                                        'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
+                                        'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR4'],
+                                        'COMB': ['WL', 'SSC', 'LD', 'AR9'], 
+                                       }
 
 def test_get_feature_list(fe):
     assert fe.get_feature_list() == ['MAV',
@@ -85,7 +88,8 @@ def test_get_feature_list(fe):
                                      'SPARSI',
                                      'IRF',
                                      'WLF',
-                                     'AR', 
+                                     'AR4',
+                                     'AR9', 
                                      'CC',
                                      'LD',
                                      'MAVFD',
@@ -100,69 +104,13 @@ def test_get_feature_list(fe):
 def test_all_features_normal(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
     windows = get_windows(data, 50, 25)
-    feature_list = ['MAV',
-                    'ZC',
-                    'SSC',
-                    'WL',
-                    'LS',
-                    'MFL',
-                    'MSR',
-                    'WAMP',
-                    'RMS',
-                    'IAV',
-                    'DASDV',
-                    'VAR',
-                    'M0',
-                    'M2',
-                    'M4',
-                    'SPARSI',
-                    'IRF',
-                    'WLF',
-                    'AR', 
-                    'CC',
-                    'LD',
-                    'MAVFD',
-                    'MAVSLP',
-                    'MDF',
-                    'MNF',
-                    'MNP',
-                    'MPK',
-                    'SKEW',
-                    'KURT']
+    feature_list = fe.get_feature_list()
     features = fe.extract_features(feature_list,windows)
     assert len(features) == len(feature_list)
 
 def test_all_features_zeros(fe):
     data = np.loadtxt('tests/data/emg_data_zeros.csv', delimiter=',')
     windows = get_windows(data, 50, 25)
-    feature_list = ['MAV',
-                    'ZC',
-                    'SSC',
-                    'WL',
-                    'LS',
-                    'MFL',
-                    'MSR',
-                    'WAMP',
-                    'RMS',
-                    'IAV',
-                    'DASDV',
-                    'VAR',
-                    'M0',
-                    'M2',
-                    'M4',
-                    'SPARSI',
-                    'IRF',
-                    'WLF',
-                    'AR', 
-                    'CC',
-                    'LD',
-                    'MAVFD',
-                    'MAVSLP',
-                    'MDF',
-                    'MNF',
-                    'MNP',
-                    'MPK',
-                    'SKEW',
-                    'KURT']
+    feature_list = fe.get_feature_list()
     features = fe.extract_features(feature_list,windows)                
     assert len(features) == len(feature_list)

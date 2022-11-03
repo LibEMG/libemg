@@ -2,15 +2,18 @@
 
 ## Rejection
 Classifier outputs are overridden to a default or inactive state when the output decision is unsure.  This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.  
-- **Confidence <sup>[1]</sup>:** Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected.
+- **Confidence <sup>[1]</sup>:** Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected. Figure 1 exemplifies rejection using an SVM classifier with a threshold of 0.8.
 
 ## Majority Voting <sup>[2,3]</sup>
-Overrides the current output with the label corresponding to the class that occurred most frequently over the past $N$ decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations.
+Overrides the current output with the label corresponding to the class that occurred most frequently over the past $N$ decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations. Figure 1 exemplifies applying a majority vote of 5 samples to a decision stream.
 
 ## Velocity Control <sup>[4]</sup>
 Outputs an associated *velocity* with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. 
 
-Note: This toolkit leverages method 3 from the cited work.
+**Note: This toolkit leverages method 3 from the cited work.**
+
+![alt text](decision_stream.png)
+<center> <p> Figure 1: Decision Stream of No Post Processing, Rejection, and Majority Voting</p> </center>
 
 ## References
 <a id="1">[1]</a> 
