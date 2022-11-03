@@ -99,7 +99,7 @@ class Filter:
         ''' Helper function that runs the installed filters across the various files contained in the offline data handler.
         The data contained in the OfflineDataHandler is updated to reflect the filtered data.
 
-        Paramaters
+        Parameters
         ----------
         data: OfflineDataHandler    
             The data that will be passed through the filters.
@@ -112,7 +112,7 @@ class Filter:
     def _filter_online_data_handler(self, data):
         ''' Helper function that runs the installed filters on recently captured data in the online data handler.
 
-        Paramaters
+        Parameters
         ----------
         data: OnlineDataHandler    
             The data that will be passed through the filters.
@@ -131,7 +131,7 @@ class Filter:
     def _filter_np_ndarray(self, data):
         ''' Helper function that runs the installed filters on an np.ndarray.
 
-        Paramaters
+        Parameters
         ----------
         data: np.ndarray    
             The data that will be passed through the filters.
@@ -146,7 +146,7 @@ class Filter:
     def _run_filter(self, matrix):
         ''' Helper function that actually runs the installed filters on an np.ndarray. This is where the actual processing happens.
 
-        Paramaters
+        Parameters
         ----------
         matrix: np.ndarray    
             The data that will be passed through the filters.
@@ -169,7 +169,7 @@ class Filter:
     def _get_standardization_params(self, odh):
         ''' Helper function that computes the mean and standard deviation of data contained in an OfflineDataHandler.
 
-        Paramaters
+        Parameters
         ----------
         odh: OfflineDataHandler   
             The data that parameters will be computed from.
@@ -218,7 +218,7 @@ class Filter:
     def visualize_affect(self, data):
         '''Visualizes the time and frequency domain before and after features are applied.
 
-        Paramaters
+        Parameters
         ----------
         data: np.ndarray   
             The data that the filter is being applied to for the visualization.
@@ -273,7 +273,7 @@ class Filter:
     def get_frequency_domain(self, data):
         ''' Transform a time series np.ndarray into a frequency domain representation. Assumes that self.sampling_frequency is set.
 
-        Paramaters
+        Parameters
         ----------
         data: np.ndarray   
             The data that will be transformed into the frequency domain. This assumes that the data is NxC size, (n samples, c channels).

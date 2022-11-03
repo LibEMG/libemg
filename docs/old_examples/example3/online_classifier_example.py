@@ -17,8 +17,7 @@ if __name__ == "__main__":
     num_channels = 8
 
     # get the predefined one subject myo dataset
-    dataset = OneSubjectMyoDataset(save_dir='example_data',
-                          redownload=False)
+    dataset = OneSubjectMyoDataset(save_dir='example_data', redownload=False)
     # take the downloaded dataset and load it as an offlinedatahandler
     odh = dataset.prepare_data(format=OfflineDataHandler)
 

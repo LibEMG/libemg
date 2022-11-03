@@ -1,6 +1,7 @@
-As part of the toolbox, we believe visualizations are crucial to help understand each module and the EMG pipeline. Therefore, most modules have a built-in `visualize()` function (check the API for the exact details). In this example, we exemplify several ways to visualize the pipeline associated with their respective visual elements. 
+As part of the toolbox, we believe visualizations are crucial to help understand each module and the EMG pipeline. Therefore, most modules have a built-in `visualize()` function (check the API for the exact details). In this example, we exemplify several ways to visualize the pipeline associated with their visual elements. 
 
 # Decision Stream Visualization
+The decision stream visualization shows the class of each prediction (colour) and the predicted probability associated with it. 
 
 ## Code
 ```Python
@@ -45,6 +46,7 @@ if __name__ == "__main__" :
 ![alt text](photos/decision_stream.png)
 
 # Feature Visualization
+Visualize a number of extracted features on a given set of windows.
 
 ## Code 
 ```Python
@@ -73,6 +75,7 @@ if __name__ == "__main__" :
 ![alt text](photos/features.png)
 
 # Raw EMG (Online Data Handler) Visualization
+Visualize the raw EMG, useful for sanity checking. 
 
 ## Code 
 ```Python

@@ -67,8 +67,11 @@ class OfflineMetrics:
             method_to_call = getattr(self, 'get_' + metric)
             if metric in ['CA', 'INS', 'CONF_MAT', 'RECALL', 'PREC', 'F1']:
                 offline_metrics[metric] = method_to_call(y_true, y_predictions)
-            elif metric in ['AER'] and not null_label is None:
-                offline_metrics[metric] = method_to_call(y_true, y_predictions, null_label)
+            elif metric in ['AER']:
+                if not null_label is None:
+                    offline_metrics[metric] = method_to_call(y_true, y_predictions, null_label)
+                else:
+                    print("AER not computed... Please input the null_label parameter.")
             elif metric in ['REJ_RATE']:
                 offline_metrics[metric] = method_to_call(og_y_preds)
         return offline_metrics

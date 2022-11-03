@@ -1,4 +1,4 @@
-1 - Feature Extraction
+Ex 1 - Snake Game
 =================================
-.. include:: feature_extraction.md
+.. include:: snake.md
    :parser: myst_parser.sphinx_

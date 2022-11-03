@@ -1,4 +1,7 @@
+This module has three main pieces of data-related functionality: **(1) Datasets**, **(2) Offline Data Handling**, and **(3) Online Data Handling**. Together, they correspond to most of the data-related functionality one would ever need for leveraging validated datasets, parsing through file structures of offline data, and processing real-time EMG.
+
 # EMG Datasets
+To enable all interested parties the ability to leverage our toolkit, we have included several validated datasets as part of this toolkit. These datasets can be leveraged for exploring the toolkit's capabilities and, additionally, for future research. We ask that for the latter, please correctly reference the dataset in your work. Note, these datasets are stored on github and will be cloned locally when downloaded. 
 
 ## 3DCDataset
 Short Description goes here.
@@ -13,7 +16,6 @@ Short Description goes here.
 | **Num Reps:**      | 4 Training, 4 Testing       |
 | **Time Per Rep:**      | 5s      |
 | **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
-| **Columns:**       | <ul><li>EMG 1-8: Channels 1-8</li></ul>          |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | EMG (1000 Hz)        |
 | **Continuous:**    | False |
@@ -45,7 +47,6 @@ This is a simple one-subject dataset used for some of the examples. It includes 
 | **Num Reps:**      | 5 Training, 3 Testing       |
 | **Time Per Rep:**      | 5s      |
 | **Classes:**       | <ul><li>0 - Hand Closed</li><li>1 - Hand Open</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
-| **Columns:**       | <ul><li>1-8: Channels 1-8</li></ul>          |
 | **Device:**        | Myo Armband      |
 | **Sampling Rates:** | EMG (200 Hz)        |
 | **Continuous:**    | False |
