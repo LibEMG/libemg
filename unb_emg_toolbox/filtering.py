@@ -1,5 +1,6 @@
 import scipy.signal
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
 
@@ -214,6 +215,89 @@ class Filter:
             ax[fl,1].grid(True)
         plt.show()
     
+    def visualize_affect(self, data):
+        '''Visualizes the time and frequency domain before and after features are applied.
+
+        Paramaters
+        ----------
+        data: np.ndarray   
+            The data that the filter is being applied to for the visualization.
+        '''
+        assert len(self.filters) > 0
+        assert type(data) == np.ndarray
+        num_channels = data.shape[1]
+        fix, ax = plt.subplots(num_channels,4,figsize=(5*num_channels,15))
+
+        time_domain   = np.arange(data.shape[0])/self.sampling_frequency
+        filtered_data = self.filter(data)
+
+        frequency_domain_pre, frequency_bins = self.get_frequency_domain(data)
+        frequency_domain_post, _             = self.get_frequency_domain(filtered_data)
+
+
+
+        for c in range(num_channels):
+            # time series -- pre filter
+            ax[c,0].grid(True)
+            ax[c,0].plot(time_domain, data[:,c], label="original")
+            # styling
+            ax[c,0].set_ylabel("Signal Value")
+            ax[c,0].set_xlabel("Time (s)")
+            ax[c,0].set_title(f"CH{c}, pre filter time series")
+            
+            # time series -- pre filter
+            ax[c,1].grid(True)
+            ax[c,1].plot(time_domain, filtered_data[:,c], label="filtered")
+            # styling
+            ax[c,1].set_ylabel("Signal Value")
+            ax[c,1].set_xlabel("Time (s)")
+            ax[c,1].set_title(f"CH{c}, post filter time series")
+            
+            # frequency domain -- pre filter
+            ax[c,2].grid(True)
+            ax[c,2].plot(frequency_bins, frequency_domain_pre[:,c], label="original")
+            # styling
+            ax[c,2].set_ylabel("Frequency Energy")
+            ax[c,2].set_title(f"CH{c}, pre filter frequency domain")
+            ax[c,2].set_xlabel("Frequency (Hz)")
+
+            # frequency domain -- post filter
+            ax[c,3].grid(True)
+            ax[c,3].plot(frequency_bins, frequency_domain_post[:,c], label="filtered")
+            # styling
+            ax[c,3].set_ylabel("Frequency Energy")
+            ax[c,3].set_title(f"CH{c}, post filter frequency domain")
+            ax[c,3].set_xlabel("Frequency (Hz)")
+        plt.show()
+
+    def get_frequency_domain(self, data):
+        ''' Transform a time series np.ndarray into a frequency domain representation. Assumes that self.sampling_frequency is set.
+
+        Paramaters
+        ----------
+        data: np.ndarray   
+            The data that will be transformed into the frequency domain. This assumes that the data is NxC size, (n samples, c channels).
+
+        Returns
+        ------- 
+        power_spectrum: np.ndarray
+            The power spectrum of the signal in the frequency domain.
+        f:  np.ndarray
+            The frequencies that correspond the the bins of the power spectrum.
+        '''
+
+        def closure(winsize):
+            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
+        nextpow2 = closure(data.shape[0])
+        spec = np.fft.fft(data,nextpow2, axis=0)/data.shape[0]
+        spec = spec[0:int(nextpow2/2),:]
+        power_spectrum = np.real(spec * np.conj(spec))
+        f = np.fft.fftfreq(nextpow2)*self.sampling_frequency
+        spec = spec[0:int(round(spec.shape[0]/2)),:]
+        f = f[0:int(round(nextpow2/2))]
+
+        return power_spectrum, f
+
     def visualize():
         pass
             
