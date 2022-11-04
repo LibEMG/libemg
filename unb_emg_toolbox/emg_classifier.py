@@ -388,7 +388,7 @@ class OnlineEMGClassifier(EMGClassifier):
             self._run_helper()
         else:
             self.process.start()
-            
+
     def stop_running(self):
         """Kills the process streaming classification decisions.
         """
@@ -405,12 +405,14 @@ class OnlineEMGClassifier(EMGClassifier):
                 features = fe.extract_features(self.features, window)
                 formatted_data = self._format_data_sample(features)
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                prediction = self.classifier.predict(formatted_data)[0]
-                
+                prediction, probability = self._prediction_helper(self.classifier.predict_proba(formatted_data))
+                prediction = prediction[0]
+                probability = probability[0]
+
                 # Check for rejection
                 if self.rejection_type:
                     #TODO: Right now this will default to -1
-                    prediction = self._rejection_helper(self.classifier.predict_proba(formatted_data)[0])
+                    prediction = self._rejection_helper(prediction, probability)
                 self.previous_predictions.append(prediction)
                 
                 # Check for majority vote
