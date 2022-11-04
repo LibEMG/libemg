@@ -295,6 +295,11 @@ class OnlineDataHandler(DataHandler):
         The options (file, std_out, and emg_arr) will determine what happens with this data.
         """
         self.listener.start()
+
+    def stop_data(self):
+        """Terminates the process listening for data.
+        """
+        self.listener.terminate()
         
     def visualize(self, num_samples=500, y_axes=None):
         """Visualize the incoming raw EMG in a plot.
