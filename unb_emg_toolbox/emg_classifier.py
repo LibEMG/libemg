@@ -388,7 +388,12 @@ class OnlineEMGClassifier(EMGClassifier):
             self._run_helper()
         else:
             self.process.start()
-    
+            
+    def stop_running(self):
+        """Kills the process streaming classification decisions.
+        """
+        self.process.terminate()
+
     def _run_helper(self):
         fe = FeatureExtractor(num_channels=self.num_channels)
         self.raw_data.reset_emg()
