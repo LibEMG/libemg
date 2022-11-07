@@ -45,7 +45,6 @@ class OfflineDataHandler(DataHandler):
         delimiter: int
             How the columns of the files are separated in the .txt or .csv files.
         """
-        data = []
         # you can insert custom member variables that will be collected from the filename using the dictionary
         # this gives at least a tiny bit of flexibility around what is recorded aside from the data
         dictionary_keys = filename_dic.keys()
