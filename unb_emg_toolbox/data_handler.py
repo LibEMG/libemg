@@ -83,7 +83,10 @@ class OfflineDataHandler(DataHandler):
                     k_id  = filename_dic[k].index(k_val)
                     setattr(self, k, getattr(self,k)+[k_id])
                 elif k + "_column" in dictionary_keys:
-                    setattr(self, k, getattr(self,k)+[file_data[:,filename_dic[k+"_column"]]])
+                    column = file_data[:,filename_dic[k+"_column"]]
+                    k_id = np.array([filename_dic[k].index(i) for i in column])
+                    k_id = np.expand_dims(k_id, axis=1)
+                    setattr(self, k, getattr(self,k)+[k_id])
     
     def parse_windows(self, window_size, window_increment):
         """Parses windows based on the acquired data from the get_data function.

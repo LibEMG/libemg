@@ -175,9 +175,12 @@ class NinaDB1(Dataset):
     
     def prepare_data(self, format=OfflineDataHandler):
         if format == OfflineDataHandler:
-            classes_values = [str(i) for i in list(range(0,17))]
+            classes_values = list(range(1,24))
             classes_column = [10]
-            reps_values = [str(i) for i in list(range(0,11))]
+            classset_values = [str(i) for i in list(range(1,4))]
+            classset_regex  = make_regex(left_bound="_E", right_bound=".csv",values=classset_values)
+            reps_values = list(range(1,11))
+
             reps_column = [11]
             subjects_values = [str(i) for i in list(range(1,28))]
             subjects_regex = make_regex(left_bound="NinaDB1/S", right_bound="_A",values=subjects_values)
@@ -189,6 +192,8 @@ class NinaDB1(Dataset):
                 "classes_column": classes_column,
                 "subjects": subjects_values,
                 "subjects_regex": subjects_regex,
+                "classset": classset_values,
+                "classset_regex": classset_regex,
                 "data_column": data_column
             }
             odh = OfflineDataHandler()
