@@ -20,6 +20,104 @@ features_1 = fe.extract_features(feature_list, windows)
 features_2 = fe.extract_feature_group('HTD', windows)
 ```
 
+# Feature Performance
+We currently have 35 features installed in the toolbox. These features were tested individually with a linear discriminant analysis classifier on the 3DC dataset and achieve a wide range of accuracies. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as a result don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for a real-world task.
+
+![alt text](feature_accuracies.png)
+<center> <p> Figure 1: Individual Feature Accuracy</p> </center>
+
+```Python
+import os
+import sys
+import numpy as np
+import pickle
+import matplotlib.pyplot as plt
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from unb_emg_toolbox.datasets import _3DCDataset
+from unb_emg_toolbox.emg_classifier import EMGClassifier
+from unb_emg_toolbox.feature_extractor import FeatureExtractor
+from unb_emg_toolbox.utils import make_regex
+from unb_emg_toolbox.data_handler import OfflineDataHandler
+from unb_emg_toolbox.offline_metrics import OfflineMetrics
+from unb_emg_toolbox.filtering import Filter
+
+if __name__ == "__main__":
+    # get the 3DC Dataset using toolbox handle - this downloads the dataset
+    dataset = _3DCDataset(save_dir='example_data',
+                          redownload=False)
+    # take the downloaded dataset and load it as an offlinedatahandler
+    odh = dataset.prepare_data(format=OfflineDataHandler)
+
+    # Perform an analysis where we test all the features available to the toolbox individually for within-subject
+    # classification accuracy.
+
+    # setup out model type and output metrics
+    model = "LDA"
+    om = OfflineMetrics()
+    metrics = ['CA']
+
+    # get the subject list
+    subject_list = np.unique(odh.subjects)
+    
+    # initialize our feature extractor
+    fe = FeatureExtractor(num_channels=10)
+    feature_list = fe.get_feature_list()
+
+    # get the variable ready for where we save the results
+    results = np.zeros((len(feature_list), len(subject_list)))
+
+    for s in subject_list:
+        subject_data = odh.isolate_data("subjects",[s])
+        subject_train = subject_data.isolate_data("sets",[0])
+        subject_test  = subject_data.isolate_data("sets",[1])
+
+        # apply a standardization on the raw data (x - mean)/std
+        filter = Filter(sampling_frequency=1000)
+        filter_dic = {
+            "name": "standardize",
+            "data": subject_train
+        }
+        filter.install_filters(filter_dic)
+        filter.filter(subject_train)
+        filter.filter(subject_test)
+
+        # from the standardized data, perform windowing
+        train_windows, train_metadata = subject_train.parse_windows(200,100)
+        test_windows, test_metadata = subject_test.parse_windows(200,100)
+
+        # for each feature in the feature list
+        for i, f in enumerate(feature_list):
+            train_features = fe.extract_features([f], train_windows)
+            test_features  = fe.extract_features([f], test_windows)
+
+            # get the dataset ready for the classifier
+            data_set = {}
+            data_set['testing_features'] = test_features
+            data_set['training_features'] = train_features
+            data_set['testing_labels'] = test_metadata["classes"]
+            data_set['training_labels'] = train_metadata["classes"]
+            # setup the classifier
+            classifier = EMGClassifier(model, data_set.copy())
+
+            # running the classifier analyzes the test data we already passed it
+            preds = classifier.run()
+            # get the CA: classification accuracy offline metric and add it to the results
+            results[i,s] = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds)[metrics[0]] * 100
+            # print(f"S{s} {f}: {results[i,s]}%")
+    # the feature accuracy is represented by the mean accuracy across the subjects
+    mean_feature_accuracy = results.mean(axis=1)
+    std_feature_accuracy  = results.std(axis=1)
+
+
+    plt.bar(feature_list, mean_feature_accuracy, yerr=std_feature_accuracy)
+    plt.grid()
+    plt.xlabel("Features")
+    plt.ylabel("Accuracy")
+    plt.show()
+
+```
+
+
 # Implemented Features
 Let $x_{i}$ represents the signal in segment i and $N$ denotes the number of samples in the timeseries.
 
@@ -260,6 +358,62 @@ $
 \text{KURT} = [(\frac{1}{N}\sum_{i=1}^{N}{x_{i}^4})/(\frac{1}{N}\sum_{i=1}^{N}{x_{i}^2})^2] - 3
 $
 
+## **Root Mean Squared Phasor (RMSPHASOR)** <sup>[12]</sup>
+A feature that computes all channel-wise differences in RMS values and incorporates spatial resolution to get
+the predominant directions of RMS and the derivative of RMS. RMSi_{c} refers to the complex-valued spatial RMS
+of channel i. dRMSi_{c} refers to the same complex-valued spatial RMS computed on the derivative of the channel i signal.
+This feature set returns (N)(N-1)/2 RMSPHASOR features and (N)(N-1)/2 dRMSPHASOR features for a total of (N)(N-1) features for N channels.
+
+$
+\text{RMSPHASOR_{i,j}} = \text{log}(\text{norm}(RMSi_{c} - RMSj_{c}))
+$
+$
+\text{dRMSPHASOR_{i,j}} = \text{log}(\text{norm}(dRMSi_{c} - dRMSj_{c}))
+$
+
+## **Waveform Length Phasor (WLPHASOR)** <sup>[12]</sup>
+A feature that computes all channel-wise differences in WL values and incorporates spatial resolution to get
+the predominant directions of WL and the derivative of WL. WLi_{c} refers to the complex-valued spatial WL
+of channel i. dWL_{c} refers to the same complex-valued spatial WL computed on the derivative of the channel i signal.
+This feature set returns (N)(N-1)/2 WLPHASOR features and (N)(N-1)/2 dWLPHASOR features for a total of (N)(N-1) features for N channels.
+
+$
+\text{WLPHASOR_{i,j}} = \text{norm}(WLi_{c} - WLj_{c})
+$
+$
+\text{dWLPHASOR_{i,j}} = \text{norm}(dWLi_{c} - dWLj_{c})
+$
+
+## **Peak Average Power (PAP)** <sup>[13]</sup>
+A peak average power computation using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 0th, 2nd, and 4th order
+moments are used to compute PAP using the following equation:
+$
+\text{PAP} = \frac{M0}{M4/M2}
+$
+
+## **Multiplication of Peaks (MZP)** <sup>[13]</sup>
+A spectral peak product using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 2nd, and 4th order
+moments are used to compute PAP using the following equation:
+$
+\text{MZP} = \sqrt(\frac{M4}{M2})
+$
+
+
+## **Temporal Moment (TM)** <sup>[1]</sup>
+A temporal moment feature computed directly from the time domain. An order parameter is passed in that scales the signal prior to computing the moments. The zeroth order moment is the windowsize, the first order moment is like the MAV, and the second order moment is like the variance;therefore the feature should be used with order > 3 (this is set as the default).
+$
+\text{TM} =  \sum_{i=1}^{N} |x_{i}^{order}|
+$
+
+## **Spectral Moment (SM)** <sup>[1]</sup>
+A spectral moment feature computed from the frequency domain. An order parameter is passed in that scales the signal prior to computing the moments. POW is the power spectrum of the signal and f is the frequencies associated with every sample of the power spectrum.
+
+$
+\text{SM} =  \sum_{i=1}^{F} pow_{i}*f_{i}^{order}
+$
+
+
+
 # Feature Sets
 Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the toolkit:
 
@@ -363,5 +517,11 @@ Campbell E, Phinyomark A, Scheme E. Current Trends and Confounding Factors in My
 <a id="10">[10]</a> 
 Phinyomark A, Khushaba RN, Ibáñez-Marcelo E, Patania A, Scheme E, Petri G. Navigating features: a topologically informed chart of electromyographic features space. J R Soc Interface. 2017 Dec;14(137):20170734. doi: 10.1098/rsif.2017.0734. PMID: 29212759; PMCID: PMC5746577.
 
-<a id="11">[10]</a> 
+<a id="11">[11]</a> 
 Tkach, D., Huang, H. & Kuiken, T.A. Study of stability of time-domain features for electromyographic pattern recognition. J NeuroEngineering Rehabil 7, 21 (2010). https://doi.org/10.1186/1743-0003-7-2
+
+<a id="12">[12]</a> 
+Onay, F., Mert, A. Phasor represented EMG feature extraction against varying contraction level of prosthetic control. Biomedical Signal Processing and Control 59 (2020). https://doi.org/10.1016/j.bspc.2020.101881
+
+<a id="13">[13]</a> 
+Pancholi, S., Jain, P., Varghese, A., Joshi, A. A Novel Time-Domain based Feature for EMG-PR Prosthetic and Rehabilitation Application. 2019 41st Annual International Conference of the IEEE Engineering in Medicine and Biology Society (EMBC) (2019). https://doi.org/10.1109/EMBC.2019.8857399

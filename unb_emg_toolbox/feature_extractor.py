@@ -64,7 +64,7 @@ class FeatureExtractor:
                         'IRF',
                         'WLF',
                         'AR4',
-                        'AR9', # note: TODO: AR could probably represent the PACF, not the ACF.
+                        'AR9',
                         'CC',
                         'LD',
                         'MAVFD',
@@ -74,7 +74,13 @@ class FeatureExtractor:
                         'MNP',
                         'MPK',
                         'SKEW',
-                        'KURT']
+                        'KURT',
+                        "RMSPHASOR",
+                        "PAP",
+                        "WLPHASOR",
+                        "MZP",
+                        "TM",
+                        "SM"]
         return feature_list
     
     def extract_feature_group(self, feature_group, windows):
@@ -881,6 +887,157 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         return kurtosis(windows, axis=2, fisher=False)
+
+    def getRMSPHASORfeat(self, windows):
+        """Extract RMS Phasor feature (RMSPHASOR) feature. This 
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        n_channels = windows.shape[1]
+        n_windows = windows.shape[0]
+        D_r = np.zeros((n_windows, n_channels*(n_channels-1)//2))
+        del_D_r = np.zeros((n_windows, n_channels*(n_channels-1)//2))
+        c_vec = np.zeros((n_windows, n_channels), dtype=np.complex64)
+        for ch in range(n_channels):
+            c_vec[:,ch] = np.exp(1j * (ch)*2*math.pi/n_channels)
+        
+        d1 = np.diff(windows,axis=2)
+
+        r_c   = np.sqrt(np.mean(windows**2,axis=2)) * c_vec
+        r_del = np.sqrt(np.mean(d1**2,axis=2)) * c_vec
+        counter = 0
+        for ch_i in range(n_channels):
+            for ch_j in range(ch_i+1,n_channels):
+                D_r[:,counter]     =np.real(np.sqrt((r_c[:,ch_i]-r_c[:,ch_j])*np.conj(r_c[:,ch_i]-r_c[:,ch_j])))
+                del_D_r[:,counter] = np.real(np.sqrt((r_del[:,ch_i]-r_del[:,ch_j])*np.conj(r_del[:,ch_i]-r_del[:,ch_j])))
+                counter += 1
+        log_D_r = np.log(D_r)
+        log_del_D_r = np.log(D_r/del_D_r)
+        return np.concatenate((log_D_r, log_del_D_r),axis=1)
+
+    def getWLPHASORfeat(self, windows):
+        """Extract WL Phasor feature (WLPHASOR) feature. This 
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        n_channels = windows.shape[1]
+        n_windows = windows.shape[0]
+        D_r = np.zeros((n_windows, n_channels*(n_channels-1)//2))
+        del_D_r = np.zeros((n_windows, n_channels*(n_channels-1)//2))
+        c_vec = np.zeros((n_windows, n_channels), dtype=np.complex64)
+        for ch in range(n_channels):
+            c_vec[:,ch] = np.exp(1j * (ch)*2*math.pi/n_channels)
+        
+        d1 = np.diff(windows,axis=2)
+        
+        r_c   = np.sum(np.abs(np.diff(windows,axis=2)),axis=2) * c_vec
+        r_del = np.sum(np.abs(np.diff(d1,axis=2)),axis=2) * c_vec
+        counter = 0
+        for ch_i in range(n_channels):
+            for ch_j in range(ch_i+1,n_channels):
+                D_r[:,counter]     = np.real(np.sqrt((r_c[:,ch_i]-r_c[:,ch_j])*np.conj(r_c[:,ch_i]-r_c[:,ch_j])))
+                del_D_r[:,counter] = np.real(np.sqrt((r_del[:,ch_i]-r_del[:,ch_j])*np.conj(r_del[:,ch_i]-r_del[:,ch_j])))
+                counter += 1
+        log_D_r = np.log(D_r)
+        log_del_D_r = np.log(D_r/del_D_r)
+        return np.concatenate((log_D_r, log_del_D_r),axis=1)
+
+    def getPAPfeat(self, windows):
+        """Extract Peak Average Power (PaP) feature.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        d1 = np.diff(windows, axis=2)
+        d2 = np.diff(d1, axis=2)
+        m0 = np.sqrt(np.sum(windows**2,axis=2))
+        m2 = np.sqrt(np.sum(d1**2, axis=2))
+        m4 = np.sqrt(np.sum(d2**2, axis=2))
+        return  m0 / (m4/m2)
+
+
+    def getMZPfeat(self, windows):
+        """Extract Multiplication of Power and Peaks (MZP) feature.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        d1 = np.diff(windows, axis=2)
+        phi = np.sqrt(1/windows.shape[2] * np.sum(d1 ** 2, axis=2))
+        return phi
+
+    def getTMfeat(self, windows, order=3):
+        """Extract Temporal Moment (TM) feature. Order should be defined 3->
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        return np.mean(np.abs(windows**order), axis=2)
+
+    def getSMfeat(self, windows, order=2, fs=1000):
+        """Extract Spectral Moment (TM) feature. Order should be defined 2->, Sampling frequency should be accurate
+        for getting accurate frequency moments (physiological meaning). For pure pattern recognition problems, the 
+        sampling frequency parameter is not a large issue.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        def closure(winsize):
+            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
+        nextpow2 = closure(windows.shape[2])
+        spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
+        pow  =  np.real(spec[:,:,0:int(round(nextpow2/2))] * np.conj(spec[:,:,0:int(round(nextpow2/2))]))
+        f = np.fft.fftfreq(nextpow2)*fs
+        f = f[0:int(round(nextpow2/2))]
+        f = np.repeat(f[np.newaxis, :], spec.shape[0], axis=0)
+        f = np.repeat(f[:, np.newaxis,:], spec.shape[1], axis=1)
+        return np.sum( pow*(f**order),axis=2)
+
+
 
     def visualize(self, feature_dic):
         """Visualize a set of features.
