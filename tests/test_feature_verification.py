@@ -13,34 +13,40 @@ def test_all_features_versus_matlab():
                           window_size=window_size,
                           window_increment=window_inc)
     feature_list = ['MAV',
-                    'ZC',
-                    'SSC',
-                    'WL',
-                    'LS',
-                    'MFL',
-                    'MSR',
-                    'WAMP',
-                    'RMS',
-                    'IAV',
-                    'DASDV',
-                    'VAR',
-                    'M0',
-                    'M2',
-                    'M4',
-                    'SPARSI',
-                    'IRF',
-                    'WLF',
-                    'AR4',
-                    'CC',
-                    'LD',
-                    'MAVFD',
-                    'MAVSLP',
-                    'MDF',
-                    'MNF',
-                    'MNP',
-                    'MPK',
-                    'SKEW',
-                    'KURT']
+                        'ZC',
+                        'SSC',
+                        'WL',
+                        'LS',
+                        'MFL',
+                        'MSR',
+                        'WAMP',
+                        'RMS',
+                        'IAV',
+                        'DASDV',
+                        'VAR',
+                        'M0',
+                        'M2',
+                        'M4',
+                        'SPARSI',
+                        'IRF',
+                        'WLF',
+                        'AR4',
+                        'CC',
+                        'LD',
+                        'MAVFD',
+                        'MAVSLP',
+                        'MDF',
+                        'MNF',
+                        'MNP',
+                        'MPK',
+                        'SKEW',
+                        'KURT',
+                        "RMSPHASOR",
+                        "PAP",
+                        "WLPHASOR",
+                        "MZP",
+                        "TM",
+                        "SM"]
 
     print("Highest percent difference between matlab and python:")
     print("-"*50)
@@ -52,7 +58,7 @@ def test_all_features_versus_matlab():
         dic[f] = [np.median(feature_percent_diff)*100, np.max(feature_percent_diff)*100]
         print(f"{f.ljust(6)}:: med: {np.median(feature_percent_diff)*100:.2f}%; max: {np.max(feature_percent_diff)*100:.2f}%")
 
-    exclusions = ['VAR', 'AR4', 'CC']
+    exclusions = ['VAR', 'AR4', 'CC', 'SM']
     for d in dic:
         if d in exclusions:
             continue

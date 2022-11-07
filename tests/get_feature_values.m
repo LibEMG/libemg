@@ -32,7 +32,13 @@ feature_list = {'MAV';
                 'MNP';
                 'MPK';
                 'SKEW';
-                'KURT'};
+                'KURT';
+                'RMSPHASOR';
+                'WLPHASOR';
+                'MZP';
+                'PAP';
+                'TM';
+                'SM'};
 feature_functions = cellfun( @(a) "get" + lower(a) + "feat",feature_list);
 
 for f =1:length(feature_functions)

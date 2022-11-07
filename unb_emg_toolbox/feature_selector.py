@@ -318,7 +318,7 @@ class FeatureSelector:
             predictions = lda.predict(test_features)
             errors = (predictions != test_labels).astype(int)
             activepredictions = (predictions != 0)
-            metric_value.append(100*sum((errors+activepredictions==2))/predictions.shape[0])
+            metric_value.append(100*sum((errors+activepredictions==0))/predictions.shape[0])
 
         return np.mean(metric_value)
 

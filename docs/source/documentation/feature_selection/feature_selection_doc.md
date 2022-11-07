@@ -39,7 +39,8 @@ accuracy_results, accuracy_fs = fs.run_selection(training_features, metric, clas
 ```
 
 ## **Active Error (AE)**
-Similar to CA but focuses on active error (i.e., the error of the classifier without considering incorrect No Movmenet predictions). Also known as (1 - active classification accuracy).
+Similar to CA but focuses on active error (i.e., the error of the classifier without considering incorrect No Movmenet predictions). Also known as (1 - active classification accuracy). The active error metric assumes that class label 0 is associated with the no motion class. The easiest way to ensure this is to make the
+first element of the class_values key of the offlinedatahandler dictionary the no motion class.
 
 $
 \text{AE} = \frac{1}{T}\sum_{t=1}^{n}(1-(\frac{1}{n}\sum_{i=1}^{n}(\hat{y}_{i,t} == {y}_{i,t}) \text{ or } (\hat{y}_{i,t} == {y}_{NM})))
