@@ -41,7 +41,8 @@ extensions = [
 myst_enable_extensions = [
     "amsmath",
     "dollarmath",
-    "linkify"
+    "linkify",
+    "html_image"
 ]
 
 
