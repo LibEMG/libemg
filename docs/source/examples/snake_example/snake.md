@@ -10,46 +10,46 @@ To explore the game design code, please review `snake_game.py`. This section, ho
 Most game engines (including pygame) update the graphical user interface (GUI) based on a looping system. By setting `self.clock.tick(30)` the screen refresh rate is capped at 30 Hz. As a result, the GUI will update 30 times every second. Interestingly, this has significant consequences for our EMG-based control system. The important thing to note here is that the `handle_movement` function is called in this loop - meaning it is called 30 times a second.
 
 ```Python
-    # Game loop 
-    def run_game(self):
-        while self.running: 
-            # Listen for movement events
-            self.handle_movement()
+# Game loop 
+def run_game(self):
+    while self.running: 
+        # Listen for movement events
+        self.handle_movement()
 
-            # Additional game related code... (see snake_game.py)
+        # Additional game related code... (see snake_game.py)
 
-            pygame.display.update()
-            # Refresh rate is 30 Hz 
-            self.clock.tick(30)
+        pygame.display.update()
+        # Refresh rate is 30 Hz 
+        self.clock.tick(30)
 
-        pygame.quit()
+    pygame.quit()
 ```
 
 In the initial version, the arrow keys were used to move the snake. Note that we are appending the movement direction to an array to keep track of the previous movement of all parts of the snake. The `move_snake` function moves each part of the snake in the specified direction.
 
 ```Python
 def handle_movement(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False 
-                
-            # Listen for key presses:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.previous_key_presses.append("left")
-                elif event.key == pygame.K_RIGHT:
-                    self.previous_key_presses.append("right")
-                elif event.key == pygame.K_UP:
-                    self.previous_key_presses.append("up")
-                elif event.key == pygame.K_DOWN:
-                    self.previous_key_presses.append("down")
-                else:
-                    return 
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            self.running = False 
+            
+        # Listen for key presses:
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT:
+                self.previous_key_presses.append("left")
+            elif event.key == pygame.K_RIGHT:
+                self.previous_key_presses.append("right")
+            elif event.key == pygame.K_UP:
+                self.previous_key_presses.append("up")
+            elif event.key == pygame.K_DOWN:
+                self.previous_key_presses.append("down")
+            else:
+                return 
 
-                self.move_snake()
+            self.move_snake()
 ```
 
-Now let's look at how we can move the snake using EMG-based input. As our toolkit streams all classification decisions over TCP, we need to set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. We opted not to change these default values. 
+Now let's look at how we can move the snake using EMG-based input. As our toolkit streams all classification decisions over UDP, we need to set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. We opted not to change these default values. 
 ```Python
 # Socket for reading EMG
 self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -85,9 +85,9 @@ def handle_emg(self):
 Now that we have shown how to leverage EMG predictions to replace traditional key presses for snake control, we need to explore the design of the control system. But first, all of this is impossible without training data. Leveraging the Training UI module, we have built the data accumulation directly into the game menu.
 
 <div>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/menu.PNG?raw=true" width="150" display="inline-block" float="left"/>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen1.PNG?raw=true" width="200" float="left"/>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen2.PNG?raw=true" width="200" float="left"/>
+    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
 </div>
 
 Note that we are passing an online data handler into the training UI. This same data handler will be used for training and classification.
@@ -108,7 +108,7 @@ def launch_training(self):
 
 The other button option is to play the game. When it is clicked, we create and start the game. However, the first thing that we have to do is spin up an `OnlineEMGClassifier` to make predictions in a separate process that the game can use.
 ```Python
- def play_snake(self):
+def play_snake(self):
     self.window.destroy()
     self.set_up_classifier()
     SnakeGame().run_game()
@@ -171,4 +171,4 @@ WINDOW_INCREMENT = 50
 ```
 
 ## **EMG Streamers (streamers.py)**
-Finally, we needed to add a streamer for each of the devices. These streamers read the raw data and stream them over TCP to be read by the `OnlineDataHandler`. We have included streamers for the `Myo`, `Delsys`, and `SIFI Labs Armband`. These streamers can be found in `streamers.py`. 
+Finally, we needed to add a streamer for each of the devices. These streamers read the raw data and stream them over UDP to be read by the `OnlineDataHandler`. We have included streamers for the `Myo`, `Delsys`, and `SIFI Labs Armband`. These streamers can be found in `streamers.py`. 
