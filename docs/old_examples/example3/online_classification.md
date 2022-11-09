@@ -65,6 +65,6 @@ if __name__ == "__main__":
 ```
 
 # Output
-Since the std-out flag is true, the classifier will print to the command line. The number on the left is the predicted class label with its associated timestamp in milliseconds. Note that this same data will be streaming to the specified TCP socket.
+Since the std-out flag is true, the classifier will print to the command line. The number on the left is the predicted class label with its associated timestamp in milliseconds. Note that this same data will be streaming to the specified UDP socket.
 
 ![Alt Text](std-out.gif)

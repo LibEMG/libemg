@@ -62,7 +62,7 @@ odh = dataset.prepare_data(format=OfflineDataHandler)
 TODO: Evan
 
 # Online Data Handler 
-One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the toolkit, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a TCP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. While this means that developers must create their custom TCP streamer, it is often quite simple. For example, Figure 2 shows how simple this implementation is for the Myo Armband. The advantage of this architecture, is that it enables our toolkit to interface with any device at any sampling rate as long as data can be streamed over TCP. 
+One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the toolkit, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. While this means that developers must create their custom UDP streamer, it is often quite simple. For example, Figure 2 shows how simple this implementation is for the Myo Armband. The advantage of this architecture, is that it enables our toolkit to interface with any device at any sampling rate as long as data can be streamed over UDP. 
 
 ![alt text](online_dh.png)
 <center> <p> Figure 1: Online Data Handler Architecture</p> </center>
@@ -72,7 +72,7 @@ import socket
 import multiprocessing
 from pyomyo import Myo, emg_mode
 
-def tcp_streamer():
+def streamer():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     m = Myo(mode=emg_mode.FILTERED)
     m.connect()
@@ -85,8 +85,8 @@ def tcp_streamer():
         m.run()
         
 if __name__ == "__main__" :
-    # Create TCP Streamer in a seperate Proces:
-    p = multiprocessing.Process(target=tcp_streamer, daemon=True)
+    # Create streamer in a seperate Proces:
+    p = multiprocessing.Process(target=streamer, daemon=True)
     p.start()
     
     # Code leveraging the data goes here:

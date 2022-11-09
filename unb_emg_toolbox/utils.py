@@ -77,9 +77,9 @@ def make_regex(left_bound, right_bound, values=[]):
     return left_bound_str + mid_str + right_bound_str
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
-    """Streams EMG from a test file over TCP.
+    """Streams EMG from a test file over UDP.
 
-    This function can be used to simulate raw EMG being streamed over a TCP port. The main purpose 
+    This function can be used to simulate raw EMG being streamed over a UDP port. The main purpose 
     of this function would be to explore real-time interactions without the need for a physical 
     device. Note: This will start up a seperate process to stream data over. Additionally, 
     this uses the time module and as such the sampling rate may not be perfect.
@@ -96,7 +96,7 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
     port: int (optional), defaul=12345
         The desired port to stream over. 
     ip: string (option), default = '127.0.0.1'
-        The ip used for streaming predictions over TCP.
+        The ip used for streaming predictions over UDP.
     
     Examples
     ----------

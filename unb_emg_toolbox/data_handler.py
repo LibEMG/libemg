@@ -258,26 +258,26 @@ class OfflineDataHandler(DataHandler):
         pass
 
 class OnlineDataHandler(DataHandler):
-    """OnlineDataHandler class - responsible for collecting data streamed in through TCP socket.
+    """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
 
-    This class is extensible to any device as long as the data is being streamed over TCP.
+    This class is extensible to any device as long as the data is being streamed over UDP.
     Note, you should change either file, std_out or emg_arr to True for anything meaningful
     to happen.
 
     Parameters
     ----------
     port: int (optional), default = 12345
-        The TCP port to listen for events on. 
+        The UDP port to listen for events on. 
     ip: string (optional), default = '127.0.0.1'
-        The TCP ip to listen for events on.
+        The UDP ip to listen for events on.
     file_path: string (optional), default = "raw_emg.csv"
         The path of the file to write the raw EMG to. This only gets written to if the file parameter is set to true.
     file: bool (optional): default = False
-        If True, all data acquired over the TCP port will be written to a file specified by the file_path parameter.
+        If True, all data acquired over the UDP port will be written to a file specified by the file_path parameter.
     std_out: bool (optional): default = False
-        If True, all data acquired over the TCP port will be written to std_out.
+        If True, all data acquired over the UDP port will be written to std_out.
     emg_arr: bool (optional): default = True
-        If True, all data acquired over the TCP port will be written to an array object that can be accessed.
+        If True, all data acquired over the UDP port will be written to an array object that can be accessed.
     """
     def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=False):
         self.port = port 
@@ -292,7 +292,7 @@ class OnlineDataHandler(DataHandler):
         self.listener = Process(target=self._listen_for_data_thread, args=[self.raw_data], daemon=True,)
     
     def get_data(self):
-        """Starts listening in a seperate process for data streamed over TCP. 
+        """Starts listening in a seperate process for data streamed over UDP. 
 
         The options (file, std_out, and emg_arr) will determine what happens with this data.
         """
