@@ -11,7 +11,7 @@ As displayed in Figure 1, this project consists of six main modules. Although ma
 
 For offline analysis, loading, parsing, and extracting EMG data can be time consuming and tedious. Additionally, naming and folder conventions are often unique to specific projects. **For the offline component of this module, the goal is to facilitate this process.** 
 
-All EMG hardware is unique, making it challenging to interface with different devices. **The online component of this module abstracts the hardware complexities and acts as a middleware, listening for EMG data over a TCP socket.** In turn, this module can interface with any device, regardless of its technical specifications, with minor modifications.  
+All EMG hardware is unique, making it challenging to interface with different devices. **The online component of this module abstracts the hardware complexities and acts as a middleware, listening for EMG data over a UDP socket.** In turn, this module can interface with any device, regardless of its technical specifications, with minor modifications.  
 
 <h3 style="background-color:#D3A8FF;padding-left: 10px;"> Filtering </h3>
 

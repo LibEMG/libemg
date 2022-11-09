@@ -270,10 +270,10 @@ class EMGClassifier:
             mav_tr_max = np.max(mav_tr)
             mav_tr_min = np.min(mav_tr)
             # Calculate THmin 
-            th_min = (1-(10/100)) * mav_tr_min + 0.1 * mav_tr_max
+            th_min = ((1-(10/100)) * mav_tr_min) + (0.1 * mav_tr_max)
             th_min_dic[c] = th_min 
             # Calculate THmax
-            th_max = (1-(70/100)) * mav_tr_min + 0.7 * mav_tr_max
+            th_max = ((1-(70/100)) * mav_tr_min) + (0.7 * mav_tr_max)
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
 
@@ -319,7 +319,7 @@ class EMGClassifier:
 class OnlineEMGClassifier(EMGClassifier):
     """OnlineEMGClassifier (inherits from EMGClassifier) used for real-time classification.
 
-    Given a set of training data and labels, this class will stream class predictions over TCP.
+    Given a set of training data and labels, this class will stream class predictions over UDP.
 
     Parameters
     ----------
@@ -343,9 +343,9 @@ class OnlineEMGClassifier(EMGClassifier):
         A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
         in the sklearn docs for the given model.
     port: int (optional), default = 12346
-        The port used for streaming predictions over TCP.
+        The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
-        The ip used for streaming predictions over TCP.
+        The ip used for streaming predictions over UDP.
     rejection_type: string (optional)
         Used to specify the type of rejection used by the classifier. The only currently supported option
         is 'CONFIDENCE'.
@@ -376,7 +376,7 @@ class OnlineEMGClassifier(EMGClassifier):
         self.previous_predictions = deque(maxlen=self.majority_vote)
 
     def run(self, block=True):
-        """Runs the classifier - continuously streams predictions over TCP.
+        """Runs the classifier - continuously streams predictions over UDP.
 
         Parameters
         ----------
@@ -420,10 +420,13 @@ class OnlineEMGClassifier(EMGClassifier):
                     values, counts = np.unique(list(self.previous_predictions), return_counts=True)
                     prediction = values[np.argmax(counts)]
                 
-                # Check for velocity vased control
+                # Check for velocity based control
                 calculated_velocity = ""
                 if self.velocity:
-                    calculated_velocity = " " + str(self._get_velocity(window, prediction))
+                    calculated_velocity = " 0"
+                    # Dont check if rejected 
+                    if prediction >= 0:
+                        calculated_velocity = " " + str(self._get_velocity(window, prediction))
                 
                 # Write classifier output:
                 self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))

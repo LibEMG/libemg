@@ -49,7 +49,7 @@ def handle_movement(self):
                 self.move_snake()
 ```
 
-Now let's look at how we can move the snake using EMG-based input. As our toolkit streams all classification decisions over TCP, we need to set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. We opted not to change these default values. 
+Now let's look at how we can move the snake using EMG-based input. As our toolkit streams all classification decisions over UDP, we need to set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. We opted not to change these default values. 
 ```Python
 # Socket for reading EMG
 self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -85,9 +85,9 @@ def handle_emg(self):
 Now that we have shown how to leverage EMG predictions to replace traditional key presses for snake control, we need to explore the design of the control system. But first, all of this is impossible without training data. Leveraging the Training UI module, we have built the data accumulation directly into the game menu.
 
 <div>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/menu.PNG?raw=true" width="150" display="inline-block" float="left"/>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen1.PNG?raw=true" width="200" float="left"/>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen2.PNG?raw=true" width="200" float="left"/>
+    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
 </div>
 
 Note that we are passing an online data handler into the training UI. This same data handler will be used for training and classification.
@@ -171,4 +171,4 @@ WINDOW_INCREMENT = 50
 ```
 
 ## **EMG Streamers (streamers.py)**
-Finally, we needed to add a streamer for each of the devices. These streamers read the raw data and stream them over TCP to be read by the `OnlineDataHandler`. We have included streamers for the `Myo`, `Delsys`, and `SIFI Labs Armband`. These streamers can be found in `streamers.py`. 
+Finally, we needed to add a streamer for each of the devices. These streamers read the raw data and stream them over UDP to be read by the `OnlineDataHandler`. We have included streamers for the `Myo`, `Delsys`, and `SIFI Labs Armband`. These streamers can be found in `streamers.py`. 
