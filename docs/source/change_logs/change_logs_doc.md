@@ -43,7 +43,6 @@
 
 This is the first release of the UNB EMG Toolbox! Thanks to everyone who has made this possible, and we look forward to seeing where this goes.
 
-
 <h2 style="background-color:#B1B1B1;padding-left: 10px;"> Core Module Changes </h2>
 
 As part of V 1.0.0 we have included 7 main core modules: data handling, filtering, feature extraction, feature selection, classification, and evaluation.
@@ -61,10 +60,3 @@ Facilitating the process of offline and online data processing. Additionally, ad
 Applying filters to raw EMG data for eliminating common sources of noise/contamination.
 
 - <span class="enhancement"> New Feature </span>**Filter (class):** Facilitates the process of filtering raw emg data. Works for both online and offline data. 
-
-<!-- - **Data Handling**: Facilitating the handling of **Offline** and **Online** data.
-- **Filtering**: Applying filters to raw EMG data for eliminating common sources of noise/contamination.
-- **Feature Extraction**: Extract ~30 common EMG-related features.
-- **Feature Selection**: Selecting the optimal features based on predefined metrics.
-- **Classification**: Classifying offline or online data. Simple options for post-processing are included. 
- - **Evaluation**: Extract nine popular offline metrics. -->
