@@ -29,6 +29,7 @@ UNB EMG Toolbox
    examples/snake_example/snake_example
    examples/fitts_example/fitts_example
    examples/unity_example/unity_example
+   examples/deep_learning_example/deep_learning_example
 
 .. toctree::
    :maxdepth: 1

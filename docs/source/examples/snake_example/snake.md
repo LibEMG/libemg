@@ -1,10 +1,10 @@
-[View Source Code](https://github.com/eeddy/PyGaMEDemo)
+[View Source Code](https://github.com/eeddy/Snake-Demo)
 
 In this example, we created an adapted version of the traditional snake game. The idea of the game is that the player will collect as much food as possible to grow the snake. The only difference between our version and the original is that we require individual input for each movement. This is dissimilar to the traditional snake game, where the snake continuously moves in a specified direction until a new input. We made this change because the original control scheme does not lend well to traditional continuous myoelectric control.
 
-<img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/myo_game.gif?raw=true" width="500"/>
+<img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/myo_game.gif?raw=true" width="500"/>
 
-## **Game Design (snake_game.py)**
+# Game Design
 To explore the game design code, please review `snake_game.py`. This section, however, focuses on the important design considerations for interfacing the game with EMG-based input.
 
 Most game engines (including pygame) update the graphical user interface (GUI) based on a looping system. By setting `self.clock.tick(30)` the screen refresh rate is capped at 30 Hz. As a result, the GUI will update 30 times every second. Interestingly, this has significant consequences for our EMG-based control system. The important thing to note here is that the `handle_movement` function is called in this loop - meaning it is called 30 times a second.
@@ -81,13 +81,13 @@ def handle_emg(self):
         self.move_snake()
 ```
 
-## **EMG Control, Training and Data Collection (game_menu.py)**
-Now that we have shown how to leverage EMG predictions to replace traditional key presses for snake control, we need to explore the design of the control system. But first, all of this is impossible without training data. Leveraging the Training UI module, we have built the data accumulation directly into the game menu.
+# Menu
+Now that we have shown how to leverage EMG predictions to replace traditional key presses for snake control, we need to explore the design of the control system. But first, all of this is impossible without training data. Leveraging the Training UI module, we have built the data accumulation directly into the game menu. This can be found in `game_menu.py`.
 
 <div>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
-    <img src="https://github.com/eeddy/PyGaMEDemo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+    <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
 </div>
 
 Note that we are passing an online data handler into the training UI. This same data handler will be used for training and classification.
@@ -107,6 +107,7 @@ def launch_training(self):
 ```
 
 The other button option is to play the game. When it is clicked, we create and start the game. However, the first thing that we have to do is spin up an `OnlineEMGClassifier` to make predictions in a separate process that the game can use.
+
 ```Python
 def play_snake(self):
     self.window.destroy()
@@ -170,5 +171,5 @@ WINDOW_SIZE = 100
 WINDOW_INCREMENT = 50
 ```
 
-## **EMG Streamers (streamers.py)**
+# EMG Streamers
 Finally, we needed to add a streamer for each of the devices. These streamers read the raw data and stream them over UDP to be read by the `OnlineDataHandler`. We have included streamers for the `Myo`, `Delsys`, and `SIFI Labs Armband`. These streamers can be found in `streamers.py`. 

@@ -156,8 +156,9 @@ class OfflineDataHandler(DataHandler):
         Parameters
         ----------
         key: str
-            The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like)
-        values: list
+            The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like).
+        values: array_like
+            A list of values that you want to isolate. (e.g. [1,2,3]).
             
         Returns
         ----------
