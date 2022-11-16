@@ -21,3 +21,4 @@ tests/feature_tests/required_fn/*
 example_data/*
 unb_emg_toolbox/datasets/__pycache__/*
 demos/data/sgt_example/*
+unb_emg_toolbox/streamers/__pycache__/*
