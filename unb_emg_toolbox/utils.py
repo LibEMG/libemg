@@ -2,6 +2,8 @@ import numpy as np
 import time
 import socket
 from multiprocessing import Process
+from unb_emg_toolbox.streamers.sifi_streamer import SiFiLabServer
+from unb_emg_toolbox.streamers.myo_streamer import MyoStreamer
 
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
@@ -93,7 +95,7 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
         the number of columns in the CSV.
     sampling_rate: int (optional), default=100
         The desired sampling rate.
-    port: int (optional), defaul=12345
+    port: int (optional), default=12345
         The desired port to stream over. 
     ip: string (option), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
@@ -114,3 +116,44 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
             pass
         sock.sendto(bytes(str(list(data[index][:num_channels])), "utf-8"), (ip, port))
         index += 1
+
+
+def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
+    """The UDP streamer for the myo armband. 
+
+    This function connects to the Myo and streams its data over UDP. It leverages the PyoMyo 
+    library. Note: this version requires the blue dongle to be plugged in.
+
+    Parameters
+    ----------
+    filtered: bool (optional), default=True
+        If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    """
+    myo = MyoStreamer(filtered, ip, port)
+    p = Process(target=myo.start_stream, daemon=True)
+    p.start()
+
+def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi_ip='127.0.0.1'):
+    """The UDP streamer for the sifi cuff. 
+
+    This function connects to the Sifi cuff and streams its data over UDP. Note that you must have the Sifi UI
+    installed for this to work.
+
+    Parameters
+    ----------
+    stream_port: int (optional), default=12345
+        The desired port to stream over. 
+    stream_ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    sifi_port: int (optional), default=5000
+        The port that the SIFI cuff is streaming over.
+    sifi_ip: string (optional), default='127.0.0.1'
+        The ip that the SIFI cuff is streaming over.
+    """
+    sifi = SiFiLabServer(stream_port=stream_port, stream_ip=stream_ip, sifi_port=sifi_port, sifi_ip=sifi_ip)
+    p = Process(target=sifi.start_stream, daemon=True)
+    p.start()
