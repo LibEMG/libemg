@@ -46,6 +46,7 @@ class TrainingUI:
         self.inputs = []
         self.data_handler = data_handler
         self.og_inputs = []
+        self.photo_width = 450
         
         # For Data Accumulation Screen:
         self.pb = None
@@ -54,15 +55,19 @@ class TrainingUI:
         self.class_label = None
         self.rep_label = None
         self.next_rep_button = None
+        self.redo_rep_button = None
+        self.start_training_button = None
         self.rep_number = 0
         self.data_collecting_thread = None
+        self.error_label = None
 
         # For UI
         self._intialize_UI()
         self.window.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.window.mainloop()
-    
+
     def _on_closing(self):
+        self.data_handler.stop_data()
         self.window.destroy()
 
     def _accumulate_training_images(self):
@@ -80,10 +85,10 @@ class TrainingUI:
     def _intialize_UI(self):
         self._clear_frame()
         self.window.title("Startup Screen")
-        self.window.geometry("450x400")
+        self.window.geometry("500x450")
         self.window.resizable(False, False)
-        Label(text="EMG Training", font=("Arial", 30)).pack(pady=10)
-        label_font = ("Arial bold", 10)
+        Label(text="Training Module", font=("Arial", 30)).pack(pady=10)
+        label_font = ("Arial bold", 12)
         
         # Create Form
         form_frame = Frame(self.window)
@@ -95,13 +100,30 @@ class TrainingUI:
         self._create_text_input(3, 0, 2, self.rep_folder, form_frame)
         Label(form_frame, text="Output Folder:", font=label_font).grid(row=4, column=0, columnspan=2, sticky=W, pady=(10,5))
         self._create_text_input(5, 0, 2, self.output_folder, form_frame)
-        Checkbutton(form_frame, text='Randomize', font=label_font, variable=self.randomize, onvalue=True, offvalue=False).grid(row=6, column=0, pady=(10,5))
-        Checkbutton(form_frame, text='Continuous', font=label_font, variable=self.continuous, onvalue=True, offvalue=False).grid(row=6, column=1, pady=(10,5))
-        Button(form_frame, text = 'Start Training', command=self._create_data_recording_screen).grid(row=7, column=0, columnspan=2, pady=(10,5))
+        Checkbutton(form_frame, text='Randomize', font=label_font, variable=self.randomize, onvalue=True, offvalue=False).grid(row=6, column=0, pady=(20,10))
+        Checkbutton(form_frame, text='Continuous', font=label_font, variable=self.continuous, onvalue=True, offvalue=False).grid(row=6, column=1, pady=(20,10))
+        self.start_training_button = Button(form_frame, text = 'Start Training', font= ("Arial", 14), command=self._create_data_recording_screen)
+        self.start_training_button.grid(row=7, column=0, columnspan=2, pady=(10,5))
+        self.error_label = Label(form_frame, text="Online Data Handler not reading data...", font=('Arial', 12), bg='#FFFFFF', fg='#FF0000')
+        self.error_label.grid(row=8, column=0, columnspan=5, sticky=N, pady=(10,5))
         form_frame.pack()
+
+        # Listening for data in thread
+        thread = Thread(target=self._listen_for_data)
+        thread.daemon = True
+        thread.start()
     
+    def _listen_for_data(self):
+        self.start_training_button['state'] = 'disabled'
+        # Error Checking - Waiting for ODH to start reading data
+        while True:
+            if len(self.data_handler.raw_data.get_emg()) > 0:
+                self.error_label.destroy()
+                self.start_training_button['state'] = 'normal'
+                break 
+
     def _create_text_input(self, row, col, col_span, default_text, frame):
-        text_box_font = ("Arial", 10)
+        text_box_font = ("Arial", 12)
         entry = Entry(frame, font=text_box_font, textvariable=default_text)
         entry.grid(row=row, column=col, columnspan=col_span, sticky=N+S+W+E, padx=(0,10))
         return entry
@@ -109,11 +131,12 @@ class TrainingUI:
     def _create_data_recording_screen(self):
         self._clear_frame()
         self.window.title("Data Accumulation")
-        self.window.geometry("1000x1000")
+        self.window.geometry("800x750")
+        self.window.resizable(True, True)
         self._accumulate_training_images()
         
         # Create UI Elements
-        self.pb = Progressbar(self.window, orient='horizontal', length=500, mode='determinate')
+        self.pb = Progressbar(self.window, orient='horizontal', length=self.photo_width, mode='determinate')
         self.cd_label = Label(text="X", font=("Arial", 25))
         self.image_label = Label(self.window, image = None)
         self.class_label = Label(text="Label", font=("Arial", 25))
@@ -139,6 +162,7 @@ class TrainingUI:
         if self.rep_number < int(self.num_reps.get()):
             if self.randomize.get(): 
                 random.shuffle(self.inputs)
+            data = {}
             for file in self.inputs:
                 for val in range(0,2):
                     image_file = str(self.rep_folder.get() + file)
@@ -146,26 +170,34 @@ class TrainingUI:
                     if val == 0:
                         if self.continuous.get():
                             continue
-                        img = ImageTk.PhotoImage(Image.open(image_file).convert('L').resize((500,500)))
+                        img = ImageTk.PhotoImage(Image.open(image_file).convert('L').resize((self.photo_width, self.photo_width)))
                     else:
-                        img = ImageTk.PhotoImage(Image.open(image_file).resize((500,500)))
+                        img = ImageTk.PhotoImage(Image.open(image_file).resize((self.photo_width, self.photo_width)))
                         cd_time = self.rep_time.get()
                     self._update_class(str(file.split(".")[0]),img)
                     if val != 0:
                         self.data_handler.raw_data.reset_emg()
                     self._bar_count_down(cd_time)
                     if val != 0:
-                        self._write_data(file, self.rep_number)
-            self.rep_number = self.rep_number + 1
-            self.next_rep_button = Button(self.window, text = 'Next Rep', command=self._next_rep)
-            self.next_rep_button.pack(pady = 10)
+                        data[self.og_inputs.index(file)] = self.data_handler.raw_data.get_emg()
+            self._write_data(data)
+            self.rep_number += 1
+            self.next_rep_button = Button(self.window, text = 'Next Rep', font = ("Arial", 12), command=self._next_rep)
+            self.redo_rep_button = Button(self.window, text = 'Redo Rep', font = ("Arial", 12), command=self._redo_rep)
+            self.next_rep_button.pack()
+            self.redo_rep_button.pack(pady = 10)
         else:
             self._intialize_UI()  
             self.rep_number = 0
             return
     
+    def _redo_rep(self):
+        self.rep_number -= 1
+        self._next_rep()
+
     def _next_rep(self):
         self.next_rep_button.destroy()
+        self.redo_rep_button.destroy()
         self._collect_data_in_thread()
         
     def _bar_count_down(self, seconds):
@@ -181,12 +213,12 @@ class TrainingUI:
         self.image_label['image'] = image
         self.window.update_idletasks()
     
-    def _write_data(self, input, rep):
+    def _write_data(self, data):
         if not os.path.isdir(self.output_folder.get()):
             os.makedirs(self.output_folder.get()) 
-        emg_file = self.output_folder.get() + "R_" + str(rep) + "_C_" + str(self.og_inputs.index(input)) + ".csv"
-        with open(emg_file, "w", newline='', encoding='utf-8') as file:
-            emg_writer = csv.writer(file)
-            for row in self.data_handler.raw_data.get_emg():
-                emg_writer.writerow(row)
-            # emg_writer.writerows(self.data_handler.raw_data.get_emg_data())
+        for c in data.keys():
+            emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + ".csv"
+            with open(emg_file, "w", newline='', encoding='utf-8') as file:
+                emg_writer = csv.writer(file)
+                for row in data[c]:
+                    emg_writer.writerow(row)
