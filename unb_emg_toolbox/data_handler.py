@@ -4,6 +4,7 @@ import re
 import socket
 import csv
 import ast
+import pickle
 import matplotlib.pyplot as plt
 from pathlib import Path
 from glob import glob
@@ -250,10 +251,6 @@ class OfflineDataHandler(DataHandler):
                 removed_files.append(f)
         [files.remove(rf) for rf in removed_files]
         print(f"{len(removed_files)} of {num_files} files violated regex and were excluded")
-                    
-
-
-
     
     def visualize():
         pass
@@ -336,15 +333,16 @@ class OnlineDataHandler(DataHandler):
         if self.options['file']:
             open(self.options['file_path'], "w").close()
         while True:
-            data, _ = sock.recvfrom(1024)
-            data = data.decode("utf-8")
+            data = sock.recv(4096)
+
             if data:
+                data = pickle.loads(data)
                 timestamp = datetime.now()
                 if self.options['std_out']:
-                    print(data + " " + str(timestamp))  
+                    print(str(data) + " " + str(timestamp))  
                 if self.options['file']:
                     with open(self.options['file_path'], 'a', newline='') as file:
                         writer = csv.writer(file)
-                        writer.writerow(ast.literal_eval(data))
+                        writer.writerow(data)
                 if self.options['emg_arr']:
-                    raw_data.add_emg(ast.literal_eval(data))
+                    raw_data.add_emg(data)
