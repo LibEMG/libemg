@@ -38,7 +38,9 @@ feature_list = {'MAV';
                 'MZP';
                 'PAP';
                 'TM';
-                'SM'};
+                'SM';
+                'SAMPEN';
+                'FUZZYEN'};
 feature_functions = cellfun( @(a) "get" + lower(a) + "feat",feature_list);
 
 for f =1:length(feature_functions)

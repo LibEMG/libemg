@@ -30,7 +30,7 @@ def test_all_features_versus_matlab():
                         'SPARSI',
                         'IRF',
                         'WLF',
-                        'AR4',
+                        'AR',
                         'CC',
                         'LD',
                         'MAVFD',
@@ -46,7 +46,9 @@ def test_all_features_versus_matlab():
                         "WLPHASOR",
                         "MZP",
                         "TM",
-                        "SM"]
+                        "SM",
+                        "SAMPEN",
+                        "FUZZYEN"]
 
     print("Highest percent difference between matlab and python:")
     print("-"*50)
@@ -58,7 +60,7 @@ def test_all_features_versus_matlab():
         dic[f] = [np.median(feature_percent_diff)*100, np.max(feature_percent_diff)*100]
         print(f"{f.ljust(6)}:: med: {np.median(feature_percent_diff)*100:.2f}%; max: {np.max(feature_percent_diff)*100:.2f}%")
 
-    exclusions = ['VAR', 'AR4', 'CC', 'SM']
+    exclusions = ['VAR', 'AR', 'CC', 'SM','SAMPEN',"FUZZYEN"]
     for d in dic:
         if d in exclusions:
             continue

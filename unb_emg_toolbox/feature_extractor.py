@@ -1,6 +1,8 @@
 import math
 import numpy as np
+import numpy.matlib as matlib
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 
@@ -29,10 +31,14 @@ class FeatureExtractor:
             A dictionary with the all available feature groups.
         """
         feature_groups = {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
+                          'TSFS': ['MAVFD','DASDV','WAMP','ZC','MFL','SAMPEN','M0','M2','M4','SPARSI','IRF','WLF'],
+                          'DFTR': ['DFTR'],
+                          'ITD': ['ISD','COR','MDIFF','MLK'],
+                          'HJORTH': ['ACT','MOB','COMP'],
                           'LS4': ['LS', 'MFL', 'MSR', 'WAMP'],
                           'LS9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
                           'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
-                          'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR4'],
+                          'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR'],
                           'COMB': ['WL', 'SSC', 'LD', 'AR9'],     
                           }
         return feature_groups
@@ -63,8 +69,7 @@ class FeatureExtractor:
                         'SPARSI',
                         'IRF',
                         'WLF',
-                        'AR4',
-                        'AR9',
+                        'AR',
                         'CC',
                         'LD',
                         'MAVFD',
@@ -80,10 +85,20 @@ class FeatureExtractor:
                         "WLPHASOR",
                         "MZP",
                         "TM",
-                        "SM"]
+                        "SM",
+                        "SAMPEN",
+                        "FUZZYEN",
+                        "DFTR",
+                        "ISD",
+                        "COR",
+                        "MDIFF",
+                        "MLK",
+                        "ACT",
+                        "MOB",
+                        "COMP"]
         return feature_list
     
-    def extract_feature_group(self, feature_group, windows):
+    def extract_feature_group(self, feature_group, windows, feature_dic={}):
         """Extracts a group of features.
         
         Parameters
@@ -92,7 +107,8 @@ class FeatureExtractor:
             The group of features to extract. Valid options include: 'HTD', 'TD4', 'TD9' and 'TDPSD'.
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        feature_dic: dictionary
+            A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
         Returns
         ----------
         dictionary
@@ -102,9 +118,9 @@ class FeatureExtractor:
         features = {}
         if not feature_group in self.get_feature_groups():
             return features
-        return self.extract_features(self.get_feature_groups()[feature_group], windows)
+        return self.extract_features(self.get_feature_groups()[feature_group], windows, feature_dic)
 
-    def extract_features(self, feature_list, windows):
+    def extract_features(self, feature_list, windows, feature_dic={}):
         """Extracts a list of features.
         
         Parameters
@@ -114,7 +130,8 @@ class FeatureExtractor:
             to find an up-to-date feature list.  
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        feature_dic: dictionary
+            A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
         Returns
         ----------
         dictionary
@@ -125,7 +142,9 @@ class FeatureExtractor:
         for feature in feature_list:
             if feature in self.get_feature_list():
                 method_to_call = getattr(self, 'get' + feature + 'feat')
-                features[feature] = method_to_call(windows)
+                valid_keys = [i for i in list(feature_dic.keys()) if feature+"_" in i]
+                smaller_dictionary = dict((k, feature_dic[k]) for k in valid_keys if k in feature_dic)
+                features[feature] = method_to_call(windows, **smaller_dictionary)
             
         return features
 
@@ -227,7 +246,7 @@ class FeatureExtractor:
         feat = np.mean(np.abs(windows),2)
         return feat
     
-    # TODO: Add threshold
+
     def getZCfeat(self, windows):
         """Extract Zero Crossings (ZC) feature.
         
@@ -249,23 +268,26 @@ class FeatureExtractor:
         return feat_a+feat_b
     
 
-    def getSSCfeat(self, windows,threshold=0):
+    def getSSCfeat(self, windows,SSC_threshold=0.0):
         """Extract Slope Sign Change (SSC) feature.
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        SSC_threshold: float
+            The threshold the derivative must exceed to be counted as a sign change
+
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
+        assert type(SSC_threshold) == float 
         w_2 = windows[:,:,2:]
         w_1 = windows[:,:,1:-1]
         w_0 = windows[:,:,:-2]
-        con = (((w_1-w_0)*(w_1-w_2)) >= threshold)
+        con = (((w_1-w_0)*(w_1-w_2)) >= SSC_threshold)
         return np.sum(con,axis=2)
 
     def getWLfeat(self, windows):
@@ -388,20 +410,22 @@ class FeatureExtractor:
         feat = np.abs(np.mean(np.sqrt(windows.astype('complex')),axis=2))
         return feat
 
-    def getWAMPfeat(self, windows, threshold=2e-3): # TODO: add optimization if threshold not passed, need class labels
+    def getWAMPfeat(self, windows, WAMP_threshold=2e-3):
         """Extract Willison Amplitude (WAMP) feature.
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        WAMP_threshold: float
+            The value that must be exceeded by the derivative to be counted as a high variability sample
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
-        feat = np.sum(np.abs(np.diff(windows, axis=2)) > threshold, axis=2)
+        assert type(WAMP_threshold) == float
+        feat = np.sum(np.abs(np.diff(windows, axis=2)) > WAMP_threshold, axis=2)
         return feat
 
     def getRMSfeat(self, windows):
@@ -644,77 +668,49 @@ class FeatureExtractor:
 
         return num/den
 
-    def getAR4feat(self, windows):
-        """Extract Autoregressive Coefficients (AR4) feature.
-        
-        Parameters
-        ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        
-        Returns
-        ----------
-        array_like
-            The computed features associated with each window. 
-        """
-        return self._getARfeatHelper(windows, 4)
-
-    def getAR9feat(self, windows):
-        """Extract Autoregressive Coefficients (AR9) feature.
-        
-        Parameters
-        ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        
-        Returns
-        ----------
-        array_like
-            The computed features associated with each window.
-        """
-        return self._getARfeatHelper(windows, 9)
-
-    def _getARfeatHelper(self, windows, order=4):
+    def getARfeat(self, windows, AR_order=4):
         """Extract Autoregressive Coefficients (AR) feature.
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        AR_order: int
+            The order of the autoregressive model
+
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
-
-
-        # the way they are computed via the matlab script: linear predictive filter
-
-        feature = np.reshape(lpc(windows, order=order,axis=2)[:,:,1:],(windows.shape[0],order*windows.shape[1]),order="C")
+        assert type(AR_order) == int
+        feature = np.reshape(lpc(windows, order=AR_order,axis=2)[:,:,1:],(windows.shape[0],AR_order*windows.shape[1]),order="C")
         return feature
 
-    def getCCfeat(self, windows, order =4):
+    def getCCfeat(self, windows, CC_order =4):
         """Extract Cepstral Coefficient (CC) feature.
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        CC_order: int
+            The order of the autoregressive and cepstral coefficient models
+
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
-        AR = self._getARfeatHelper(windows, order)
+        assert type(CC_order) == int
+        AR = self.getARfeat(windows, CC_order)
         cc = np.zeros_like(AR)
-        cc[:,::order] = -1*AR[:,::order]
-        if order > 2:
-            for p in range(1,order):
+        cc[:,::CC_order] = -1*AR[:,::CC_order]
+        if CC_order > 2:
+            for p in range(1,CC_order):
                 for l in range(1, p):
-                    cc[:,p::order] = cc[:,p::order]+(AR[:,p::order] * cc[:,p-l::order] * (1-(l/p)))
-                cc[:,p::order] = -1*AR[:,p::order]-cc[:,p::order]
+                    cc[:,p::CC_order] = cc[:,p::CC_order]+(AR[:,p::CC_order] * cc[:,p-l::CC_order] * (1-(l/p)))
+                cc[:,p::CC_order] = -1*AR[:,p::CC_order]-cc[:,p::CC_order]
         return cc
     
     def getLDfeat(self, windows):
@@ -748,41 +744,46 @@ class FeatureExtractor:
         mavfd = np.mean(np.abs(np.diff(windows,axis=2)),axis=2)
         return mavfd
 
-    def getMAVSLPfeat(self, windows, segment=2):
+    def getMAVSLPfeat(self, windows, MAVSLP_segment=2):
         """Extract Mean Absolute Value Slope (MAVSLP) feature.
        
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        MAVSLP_segment: int
+            The number of segments to divide the window into
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
-        m = int(round(windows.shape[2]/segment))
+        assert type(MAVSLP_segment) == int
+        m = int(round(windows.shape[2]/MAVSLP_segment))
         mav = []
         mavslp = []
-        for i in range(0,segment):
+        for i in range(0,MAVSLP_segment):
             mav.append(np.mean(np.abs(windows[:,:,i*m:(i+1)*m]), axis=2))
-        for i in range (0, segment-1):
+        for i in range (0, MAVSLP_segment-1):
             mavslp.append(mav[i+1]- mav[i])
         return np.asarray(mavslp).squeeze()
 
-    def getMDFfeat(self, windows,fs=1000):
+    def getMDFfeat(self, windows,MDF_fs=1000):
         """Extract Median Frequency (MDF) feature.
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        MDF_fs: int, float
+            The sampling frequency of the signal
+
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
+        assert type(MDF_fs) == int or type(MDF_fs) == float 
         def closure(winsize):
             return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
         nextpow2 = closure(windows.shape[2])
@@ -794,27 +795,29 @@ class FeatureExtractor:
         medfreq = np.zeros((windows.shape[0], windows.shape[1]))
         for i in range(0, windows.shape[0]):
             for j in range(0, windows.shape[1]):
-                medfreq[i,j] = (fs/2)*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0]/(nextpow2/2)
+                medfreq[i,j] = (MDF_fs/2)*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0]/(nextpow2/2)
         return medfreq
 
-    def getMNFfeat(self, windows, fs=1000):
+    def getMNFfeat(self, windows, MNF_fs=1000):
         """Extract Mean Frequency (MNF) feature.
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
-        
+        MNF_fs: int, float
+            The sampling frequency of the signal
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
+        assert type(MNF_fs) == int or type(MNF_fs) == float 
         def closure(winsize):
             return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
         nextpow2 = closure(windows.shape[2])
         spec = np.fft.fft(windows, n=nextpow2,axis=2)/windows.shape[2]
-        f = np.fft.fftfreq(nextpow2)*fs
+        f = np.fft.fftfreq(nextpow2)*MNF_fs
         spec = spec[:,:,0:int(round(spec.shape[2]/2))]
         f = f[0:int(round(nextpow2/2))]
         f = np.repeat(f[np.newaxis, :], spec.shape[0], axis=0)
@@ -996,22 +999,25 @@ class FeatureExtractor:
         phi = np.sqrt(1/windows.shape[2] * np.sum(d1 ** 2, axis=2))
         return phi
 
-    def getTMfeat(self, windows, order=3):
+    def getTMfeat(self, windows, TM_order=3):
         """Extract Temporal Moment (TM) feature. Order should be defined 3->
         
         Parameters
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
+        TM_order: int
+            The exponent the time series is raised to before the MAV is computed.
         
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
-        return np.mean(np.abs(windows**order), axis=2)
+        assert type(TM_order)==int
+        return np.mean(np.abs(windows**TM_order), axis=2)
 
-    def getSMfeat(self, windows, order=2, fs=1000):
+    def getSMfeat(self, windows, SM_order=2, SM_fs=1000):
         """Extract Spectral Moment (TM) feature. Order should be defined 2->, Sampling frequency should be accurate
         for getting accurate frequency moments (physiological meaning). For pure pattern recognition problems, the 
         sampling frequency parameter is not a large issue.
@@ -1020,24 +1026,325 @@ class FeatureExtractor:
         ----------
         windows: array_like 
             A list of windows - should be computed using the utils.get_windows() function.
+        SM_order: int
+            The exponent that the frequency domain is raised to.
+        SM_fs: int, float
+            The sampling frequency.
         
         Returns
         ----------
         array_like
             The computed features associated with each window. 
         """
+        assert type(SM_order)==int
+        assert type(SM_fs)==int or type(SM_fs) == float
         def closure(winsize):
             return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
         nextpow2 = closure(windows.shape[2])
         spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
         pow  =  np.real(spec[:,:,0:int(round(nextpow2/2))] * np.conj(spec[:,:,0:int(round(nextpow2/2))]))
-        f = np.fft.fftfreq(nextpow2)*fs
+        f = np.fft.fftfreq(nextpow2)*SM_fs
         f = f[0:int(round(nextpow2/2))]
         f = np.repeat(f[np.newaxis, :], spec.shape[0], axis=0)
         f = np.repeat(f[:, np.newaxis,:], spec.shape[1], axis=1)
-        return np.sum( pow*(f**order),axis=2)
+        return np.sum( pow*(f**SM_order),axis=2)
+
+    def getSAMPENfeat(self, windows, SAMPEN_dim=2, SAMPEN_tolerance=0.3):
+        """Extract Sample Entropy (SAMPEN) feature. SAMPEN_dim should be specified 1-> and is the number of samaples that 
+        are used to define patterns. SAMPEN_tolerance depends on the dataset and is the minimum distance between patterns
+        to be considered the same pattern; we recommend a value near 0.3.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        SAMPEN_dim: int
+            The number of samples patterns are defined under. Note: SAMPEN_dim and SAMPEN_dim+1 samples are used to get the two
+            patterns of the final logarithmic ratio.
+        SAMPEN_tolerance: float
+            The threshold for patterns to be considered similar
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        assert type(SAMPEN_dim) == int
+        assert SAMPEN_dim > 1
+        assert type(SAMPEN_tolerance) == float
+        assert SAMPEN_tolerance > 0
+        #standardize within window
+        N = windows.shape[2]
+        window_mean = np.mean(windows,axis=2)
+        window_std = np.std(windows, axis=2)
+        series = (windows - np.repeat(window_mean[:,:,None], N, axis=2))/np.repeat(window_std[:,:,None], N, axis=2)
+        # get sampen feature variable ready
+        sampen = np.zeros((windows.shape[0], windows.shape[1]))
+        # We don't have an efficient implementation (doing all channels/windows with matrix multiplication)
+        # so do it one window at a time
+        for w  in range(windows.shape[0]):
+            for ch in range(windows.shape[1]):
+                results = []
+                for j in [1,2]:
+                    m = SAMPEN_dim + j - 1
+                    patterns = np.zeros((m,N-m+1))
+                    count = np.zeros((N-m))
+                    # if 1 d embedding
+                    if m == 1:
+                        patterns = series[w,ch,:]
+                    else:
+                        for k in range(0,m):
+                            patterns[k,:] = series[w,ch, k:N-m+k+1]
+                    
+                    # Count the number of patterns whose distance is less than the tolerance
+                    for k in range(N-m):
+                        # compute the distance between each pattern and other patterns
+                        if m == 1:
+                            tmp = np.abs(patterns - matlib.repmat(patterns[:,k],1,N-m+1))
+                        else:
+                            tmp = np.max(np.abs(patterns - matlib.repmat(patterns[:,k,np.newaxis],1,N-m+1)),axis=0)
+                        mask = (tmp <= SAMPEN_tolerance)
+                        count[k] = (np.sum(mask)-1) # we remove 1 to avoid self comparison, in theory this means we can eventually do log of 0 (error)
+                        # that is why we need the eps / np.spacing(1)
+                    # average the number of similar patterns
+                    count = count / (N-SAMPEN_dim-1)
+                    results.append(np.mean(count)) 
+                sampen[w,ch] = np.log((results[0]+np.spacing(1))/(results[1]+np.spacing(1)))
+        return sampen
+
+    def getFUZZYENfeat(self, windows, FUZZYEN_dim=2, FUZZYEN_tolerance=0.3, FUZZYEN_win=2):
+        """Extract Fuzzy Entropy (FUZZYEN) feature. SAMPEN_dim should be specified 1-> and is the number of samaples that 
+        are used to define patterns. SAMPEN_tolerance depends on the dataset and is the minimum distance between patterns
+        to be considered the same pattern; we recommend a value near 0.3.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        FUZZYEN_dim: int
+            The number of samples patterns are defined under. Note: SAMPEN_dim and SAMPEN_dim+1 samples are used to get the two
+            patterns of the final logarithmic ratio.
+        FUZZYEN_tolerance: float
+            The threshold for patterns to be considered similar
+        FUZZYEN_win: array-like
+            the order the distance matrix is raised to prior to determining the similarity.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        # check arguments
+        assert type(FUZZYEN_dim) == int
+        assert FUZZYEN_dim > 1
+        assert type(FUZZYEN_tolerance) == float
+        assert FUZZYEN_tolerance > 0
+        assert type(FUZZYEN_win) == int
+        assert FUZZYEN_win > 0
+
+        #standardize within window
+        FUZZYEN_tolerance = FUZZYEN_tolerance*np.std(windows,axis=2)
+        N = windows.shape[2]
+        fuzzyen = np.zeros((windows.shape[0], windows.shape[1]))
+        # We don't have an efficient implementation (doing all channels/windows with matrix multiplication)
+        # so do it one window at a time
+        for w  in range(windows.shape[0]):
+            for ch in range(windows.shape[1]):
+                results = []
+                for j in [1,2]:
+                    m = FUZZYEN_dim + j - 1
+                    dataMat = np.zeros((m,N-m+1))
+                    phi = np.zeros((N-m+1))
+                    # setup the patterns
+                    if m == 1:
+                        dataMat[m,:] = windows[w,ch,:]
+                    else:
+                        for k in range(0,m):
+                            dataMat[k,:] = windows[w,ch, k:N-m+k+1]
+                    
+                    # Count the number of patterns whose distance is less than the tolerance
+                    for k in range(N-m+1):
+                        # make the patterns zero mean
+                        dataMat[:,k] = dataMat[:,k]-np.mean(dataMat[:,k])
+
+                    for k in range(N-m):
+                        # compute the distance between each pattern and other patterns
+                        if m == 1:
+                            tmp = np.abs(dataMat - matlib.repmat(dataMat[:,k],1,N-m+1))
+                        else:
+                            tmp = np.max(np.abs(dataMat - matlib.repmat(dataMat[:,k,np.newaxis],1,N-m+1)),axis=0)
+                        # now get the similarity
+                        simi = np.exp(((-1)*((tmp)**FUZZYEN_win))/FUZZYEN_tolerance[w,ch])
+                        phi[k]=(np.sum(simi)-1) / (windows.shape[2]-m-1)
+
+                    # average the number of similar patterns
+                    
+                    results.append(np.sum(phi)/(N-m)) 
+                fuzzyen[w,ch] = np.log((results[0]+np.spacing(1))/(results[1]+np.spacing(1)))
+        return fuzzyen
+
+    def getDFTRfeat(self, windows, DFTR_fs=1000):
+        """Extract Discrete Time Fourier Transform Representation (DFTR) feature. He et al., 2015 used this feature set with various normalization approaches
+        (channel-wise and global), and achieved robustness to contraction intensity variability, but the normalization is required for the robustness. DFTR divides 
+        the frequency spectrum into bins (20-92, 92-163, 163-235, 235-307, 307-378, 378-450). The number of returned bands depends on the DFTR_fs supplied. Note, it will
+        only extract the band if the entire band lies under the frequency bin.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        DFTR_fs: int, float
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        assert type(DFTR_fs)==int or type(DFTR_fs) == float
+        def closure(winsize):
+            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
+        init_freq = 20
+        upper_freqs = [92, 163, 235, 305, 378, 450]
+        nyquist = DFTR_fs/2
+        num_bins = sum([i <nyquist for i in upper_freqs])
+        feat = np.zeros((windows.shape[0], windows.shape[1]*num_bins))
+
+        nextpow2 = closure(windows.shape[2])
+        spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
+        pow  =  np.abs(spec[:,:,0:int(round(nextpow2/2))])
+        f = np.fft.fftfreq(nextpow2)*DFTR_fs
+        f = f[0:int(round(nextpow2/2))]
+        for bin in range(num_bins):
+            upper_freq = upper_freqs[bin]
+            included_bins =  np.logical_and((f > init_freq) , (f < upper_freq))
+            bin_energy = np.sum(pow[:,:,included_bins], axis=2)/ np.sum(included_bins)
+            feat[:,bin*windows.shape[1]: (bin+1)*windows.shape[1]] = bin_energy **(2/3)
+            init_freq = upper_freqs[bin]
+        return feat
+
+    def getISDfeat(self, windows):
+        """Extract Integral Square Descriptor (ISD) feature. Another signal amplitude and power feature. In the invTD feature set, this feature
+        is meant to capture energy levels (not be robust to contraction intensity).
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        return np.sum(windows**2, axis=2)
 
 
+
+    def getCORfeat(self, windows):
+        """Extract Coefficient of Regularization (COR) feature. Very similar formulation to some of the TDPSD features.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        ISD = np.sum(windows**2, axis=2)
+        normRSd1 = np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
+        normRSd2 = np.sum(np.diff(np.diff(windows, axis=2),axis=2)**2,axis=2)/windows.shape[2]
+        COR = normRSd1/(normRSd2*ISD)
+        return COR
+        
+    def getMDIFFfeat(self, windows):
+        """Extract Mean Difference Derivative (MDIFF) feature. This is a feature that is the same metric as normRSD1 from COR.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        return np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
+
+    def getMLKfeat(self, windows):
+        """Extract Mean Logarithm Kernel (MLK) feature. This implementation is different than the equation listed in the paper; however, I can only 
+        surmise this is what they meant for the feature to encode given the name.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        return np.log(np.sum(np.abs(windows),axis=2)+np.spacing(1))/windows.shape[2]
+
+    def getACTfeat(self, windows):
+        """Extract Activation (ACT) feature. This feature is very similar to the zeroth order moment feature of TDPSD (M0); however, it undergoes 
+        no nonlinear normalization.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        return np.mean(windows**2,axis=2)
+
+    def getMOBfeat(self, windows):
+        """Extract Mobility (MOB) feature. This feature is sqrt(m2/m0), where m0 and m2 are the first and second order moments found via
+        Parseval's theorem. Interestingly, the Gabor frequency tells us that the number of zero crossings per unit time can be described 
+        using 1/pi * mobility.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        m0 =  self.getACTfeat(windows)
+        m2 =  np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
+        return np.sqrt(m2/m0)
+
+    def getCOMPfeat(self, windows):
+        """Extract Complexity (COMP) feature. This feature is sqrt(m4/m2), where m2 and m4 are the second and fourth order moments found via
+        Parseval's theorem. It is a measure of the the similarity of the shape of a signal compared to a pure sine waveform. Because the Gabor frequency 
+        tells us the number of zero crossings per unit time, the derivative of this metric gives us the number of extrema per unit time.
+        
+        Parameters
+        ----------
+        windows: array_like 
+            A list of windows - should be computed using the utils.get_windows() function.
+        
+        Returns
+        ----------
+        array_like
+            The computed features associated with each window. 
+        """
+        m2 =  np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
+        m4 =  np.sum(np.diff(np.diff(windows, axis=2),axis=2)**2)/windows.shape[2]
+        return np.sqrt(m4/m2)
+
+   
 
     def visualize(self, feature_dic):
         """Visualize a set of features.
@@ -1069,3 +1376,155 @@ class FeatureExtractor:
             plt.title(key)
             plt.plot(list(range(0,len(feature_dic[key]))), feature_dic[key])
         plt.show()
+    
+    def visualize_all_distributions(self, feature_dic, classes=None, savedir=None, render=True):
+        """Visualize the distribution of each feature using a histogram. This will render the histograms all together.
+        
+        Parameters
+        ----------
+        feature_dic: dictionary
+            A dictionary consisting of the different features. This is the output from the 
+            extract_features method.
+        classes: array-like
+            The classes for each window. Easily obtained from the odh.parse_windows() method.
+        savedir: string
+            The location the plot should be saved to. Specify the full filepath i.e., "figs/subject1.png".
+        render: boolean
+            Boolean to indicate whether the plot is shown or not.
+        """
+        # visualize the distribution of features
+        plt.style.use('ggplot')
+        if classes is not None:
+            class_list = np.unique(classes)
+        # get highest number of "features" per metric
+        largest_metric = 0
+        for key in feature_dic.keys():
+            if feature_dic[key].shape[1] > largest_metric:
+                largest_metric = feature_dic[key].shape[1]
+        num_features = len(feature_dic.keys())
+        fig, ax = plt.subplots(num_features, largest_metric, figsize=(largest_metric*4, num_features*4))
+        if len(ax.shape) == 1:
+            ax = ax[np.newaxis,:]
+        for i, k in enumerate(feature_dic.keys()):
+            for f in range(feature_dic[k].shape[1]):
+                if classes is None:
+                    ax[i,f].hist(feature_dic[k][:,f], 30)
+                else:
+                    for c in class_list:
+                        class_id = classes == c
+                        ax[i,f].hist(feature_dic[k][class_id,f],30,label=str(c),alpha=0.75)
+                    if i == 0 and f == 0:
+                        ax[i,f].legend()
+                ax[i,f].set_title(k+str(f))
+        plt.tight_layout()
+        if savedir is not None:
+            plt.savefig(savedir)
+        if render:
+            plt.show()
+                    
+        
+
+
+    def visualize_single_distributions(self, feature_dic, classes=None, savedir=None, render=False):
+        """Visualize the distribution of each feature using a histogram. This will render one histogram per feature.
+        
+        Parameters
+        ----------
+        feature_dic: dictionary
+            A dictionary consisting of the different features. This is the output from the 
+            extract_features method.
+        classes: array-like
+            The classes for each window. Easily obtained from the odh.parse_windows() method.
+        savedir: string
+            The location the plot should be saved to. Specify the prefix i.e., "figs/subject". Feature names and .png are appended to this prefix
+        render: boolean
+            Boolean to indicate whether the plot is shown or not. Defaults to False.
+        """
+        # visualize the distribution of features
+        plt.style.use('ggplot')
+        if classes is not None:
+            class_list = np.unique(classes)
+        # get highest number of "features" per metric
+        
+        for i, k in enumerate(feature_dic.keys()):
+            metric_length = feature_dic[k].shape[1]
+            nearest_square = int(np.ceil(np.sqrt(metric_length)))
+            fig, ax = plt.subplots(nearest_square, nearest_square, figsize=(nearest_square*4, nearest_square*4))
+            ax = np.reshape(ax,-1)
+ 
+            for f in range(feature_dic[k].shape[1]):
+                if classes is None:
+                    ax[f].hist(feature_dic[k][:,f], 30)
+                else:
+                    for c in class_list:
+                        class_id = classes == c
+                        ax[f].hist(feature_dic[k][class_id,f],30,label=str(c),alpha=0.75)
+                    if i == 0 and f == 0:
+                        ax[f].legend()
+                ax[f].set_title(k+str(f))
+            plt.tight_layout()
+            if savedir is not None:
+                plt.savefig(savedir+k+".png")
+            if render:
+                plt.show()
+
+    def visualize_feature_space(self, feature_dic, projection, classes=None, savedir=None, render=True, test_feature_dic=None, t_classes=None):
+        """Visualize the the feature space
+        
+        Parameters
+        ----------
+        feature_dic: dictionary
+            A dictionary consisting of the different features. This is the output from the 
+            extract_features method.
+        classes: array-like
+            The classes for each window. Easily obtained from the odh.parse_windows() method.
+        savedir: string
+            The location the plot should be saved to. Specify the prefix i.e., "figs/subject". Feature names and .png are appended to this prefix
+        render: boolean
+            Boolean to indicate whether the plot is shown or not. Defaults to False.
+        """
+        for i, k in enumerate(feature_dic.keys()):
+            feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
+            if test_feature_dic is not None:
+                t_feature_matrix = test_feature_dic[k] if i == 0 else np.hstack((t_feature_matrix, test_feature_dic[k]))
+        
+        if classes is not None:
+            class_list = np.unique(classes)
+        fig, ax = plt.subplots(1,2,figsize=(8,4))
+        if projection == "PCA":
+            pca = PCA(n_components=feature_matrix.shape[1])
+            train_data = pca.fit_transform(feature_matrix)
+            if classes is not None:
+                for c in class_list:
+                    class_ids = classes == c
+                    ax[0].scatter(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr"+str(int(c)))
+            else:
+                ax[0].scatter(train_data[:,0], train_data[:,1], marker=".", label="tr")
+            ax[0].set_prop_cycle(None)
+            if test_feature_dic is not None:
+                test_data = pca.transform(t_feature_matrix)
+                if t_classes is not None:
+                    for c in class_list:
+                        class_ids = t_classes == c 
+                        ax[0].scatter(test_data[class_ids,0], test_data[class_ids,1], marker='+', alpha=0.75, label="te"+str(int(c)))
+                else:
+                    ax[0].scatter(test_data[:,0], test_data[:,1], marker="+", label="te")
+            
+            ax[0].legend()
+            ax[0].set_xlabel("PC0")
+            ax[0].set_ylabel("PC1")
+            ax[0].set_title("PCA Visualization")
+            ax[1].stem(np.cumsum(pca.explained_variance_ratio_))
+            ax[1].set_xlabel("Number of Components")
+            ax[1].set_ylabel("Explained Variance")
+            ax[1].set_title("Cumulative Variance Expressed by PCA")
+
+            plt.tight_layout()
+            if savedir is not None:
+                plt.savefig(savedir+projection+".png")
+            if render:
+                plt.show()
+
+        else:
+            print("unsupported projection method passed to FeatureExtractor.visualize_feature_space")
+            
