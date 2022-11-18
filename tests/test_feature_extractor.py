@@ -62,11 +62,15 @@ def test_get_windows(fe):
 
 def test_get_feature_groups(fe):
     assert fe.get_feature_groups() == {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
-                                        'LS4': ['LS', 'MFL', 'MSR', 'WAMP'],
-                                        'LS9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
-                                        'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
-                                        'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR4'],
-                                        'COMB': ['WL', 'SSC', 'LD', 'AR9'], 
+                                    'TSFS': ['MAVFD','DASDV','WAMP','ZC','MFL','SAMPEN','M0','M2','M4','SPARSI','IRF','WLF'],
+                                    'DFTR': ['DFTR'],
+                                    'ITD': ['ISD','COR','MDIFF','MLK'],
+                                    'HJORTH': ['ACT','MOB','COMP'],
+                                    'LS4': ['LS', 'MFL', 'MSR', 'WAMP'],
+                                    'LS9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
+                                    'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
+                                    'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR'],
+                                    'COMB': ['WL', 'SSC', 'LD', 'AR9'],     
                                        }
 
 def test_get_feature_list(fe):
@@ -88,8 +92,7 @@ def test_get_feature_list(fe):
                                     'SPARSI',
                                     'IRF',
                                     'WLF',
-                                    'AR4',
-                                    'AR9',
+                                    'AR',
                                     'CC',
                                     'LD',
                                     'MAVFD',
@@ -105,7 +108,17 @@ def test_get_feature_list(fe):
                                     "WLPHASOR",
                                     "MZP",
                                     "TM",
-                                    "SM"]
+                                    "SM",
+                                    "SAMPEN",
+                                    "FUZZYEN",
+                                    "DFTR",
+                                    "ISD",
+                                    "COR",
+                                    "MDIFF",
+                                    "MLK",
+                                    "ACT",
+                                    "MOB",
+                                    "COMP"]
 
 def test_all_features_normal(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
