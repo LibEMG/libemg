@@ -132,6 +132,10 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
         The desired port to stream over. 
     ip: string (option), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> myo_streamer()
     """
     myo = MyoStreamer(filtered, ip, port)
     p = Process(target=myo.start_stream, daemon=True)
@@ -153,6 +157,10 @@ def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi
         The port that the SIFI cuff is streaming over.
     sifi_ip: string (optional), default='127.0.0.1'
         The ip that the SIFI cuff is streaming over.
+
+    Examples
+    ---------
+    >>> sifi_streamer()
     """
     sifi = SiFiLabServer(stream_port=stream_port, stream_ip=stream_ip, sifi_port=sifi_port, sifi_ip=sifi_ip)
     p = Process(target=sifi.start_stream, daemon=True)

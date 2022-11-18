@@ -1,3 +1,5 @@
+[View Source Code](https://github.com/eeddy/Isofitts)
+
 <style>
     .center {
         display: block;
@@ -6,7 +8,6 @@
         width: 50%;
     }
 </style>
-[View Source Code](https://github.com/eeddy/Isofitts)
 
 For EMG-based control systems, it has been shown that the offline performance of a system does not necessarily correlate to online usability. This example tests this idea through a simple experiment that you can try out on yourself or a friend. To do this we evaluate and compare the offline and online performance of four popular classifiers (**LDA, SVM, NB,** and **KNN (k=5**)). 
 

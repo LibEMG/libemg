@@ -32,6 +32,14 @@ class TrainingUI:
         If True the classes are presented in a random order.
     continuous: bool, default=False
         If True there is no pause between reps.
+    
+    Examples
+    --------
+    >>> from unb_emg_toolbox.utils import myo_streamer
+    >>> myo_streamer()
+    >>> odh = OnlineDataHandler(emg_arr=True)
+    >>> odh.get_data()
+    >>> TrainingUI(3, 3, "classes/images/", "data/training/", odh)
     """
     def __init__(self, num_reps=None, rep_time=None, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False):
         self.window = Tk()
