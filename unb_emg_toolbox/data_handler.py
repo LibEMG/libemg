@@ -334,7 +334,6 @@ class OnlineDataHandler(DataHandler):
             open(self.options['file_path'], "w").close()
         while True:
             data = sock.recv(4096)
-
             if data:
                 data = pickle.loads(data)
                 timestamp = datetime.now()

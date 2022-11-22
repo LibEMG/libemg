@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import socket
+import pickle
 from multiprocessing import Process
 from unb_emg_toolbox.streamers.sifi_streamer import SiFiLabServer
 from unb_emg_toolbox.streamers.myo_streamer import MyoStreamer
@@ -110,13 +111,14 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
     data = np.loadtxt(file_path, delimiter=",")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     index = 0
+    t = time.time()
     while True and index < len(data):
-        _ = time.perf_counter() + (1000/sampling_rate)/1000
-        while time.perf_counter() < _:
+        val = time.perf_counter() + (1000/sampling_rate)/1000
+        while time.perf_counter() < val:
             pass
-        sock.sendto(bytes(str(list(data[index][:num_channels])), "utf-8"), (ip, port))
+        data_arr = pickle.dumps(list(data[index][:num_channels]))
+        sock.sendto(data_arr, (ip, port))
         index += 1
-
 
 def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
     """The UDP streamer for the myo armband. 
