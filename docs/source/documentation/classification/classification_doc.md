@@ -1,5 +1,20 @@
 # Classifiers
-The classifiers that we have implemented all leverage the sklearn package. For most cases, the "base" classifiers use the default options, meaning that the pre-defined models are not necessarily optimal. However, you can use the `parameters` attribute when initializing the classifiers to pass in additional sklearn parameters in a dictionary. Please reference the sklearn docs for additional parameter options. Note that any custom classifier should be modeled after the sklearn classifiers and must have the `fit`, `predict`, and `predict_proba` functions. 
+The classifiers that we have implemented all leverage the sklearn package. For most cases, the "base" classifiers use the default options, meaning that the pre-defined models are not necessarily optimal. However, you can use the `parameters` attribute when initializing the classifiers to pass in additional sklearn parameters in a dictionary. For example, looking at the `RandomForestClassifier` docs on sklearn:
+
+![Random Forest](random_forest.png)
+
+We could create a custom classifier with any of those parameters using the `parameters` attribute. For example:
+```Python
+parameters = {
+    'n_estimators': 99,
+    'max_depth': 20,
+    'random_state': 5,
+    'max_leaf_nodes': 10
+}
+classifier = EMGClassifier('RF', data_set, parameters=parameters)
+```
+
+Please reference the sklearn docs for parameter options for each classifier. Note that any custom classifier should be modeled after the sklearn classifiers and must have the `fit`, `predict`, and `predict_proba` functions. 
 
 ## Linear Discriminant Analysis (LDA)
 A statistical linear boundary is used to discriminate between inputs. 
