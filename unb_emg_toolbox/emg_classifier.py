@@ -428,7 +428,7 @@ class OnlineEMGClassifier(EMGClassifier):
                 # Write classifier output:
                 self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
                 if self.std_out:
-                    print(str(prediction) + calculated_velocity + " " + str(time.time()))
+                    print(f"{prediction} {calculated_velocity} {time.time()}")
     
     def _format_data_sample(self, data):
         arr = None
