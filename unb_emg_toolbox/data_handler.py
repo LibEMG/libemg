@@ -3,9 +3,9 @@ import os
 import re
 import socket
 import csv
-import ast
 import pickle
-import matplotlib.pyplot as plt
+from matplotlib import pyplot
+from matplotlib.animation import FuncAnimation
 from pathlib import Path
 from glob import glob
 from itertools import compress
@@ -18,9 +18,6 @@ from unb_emg_toolbox.utils import get_windows, _get_mode_windows
 class DataHandler:
     def __init__(self):
         self.data = []
-        pass
-
-    def get_data(self):
         pass
 
 class OfflineDataHandler(DataHandler):
@@ -217,10 +214,7 @@ class OfflineDataHandler(DataHandler):
             for k in self.extra_attributes:
                 setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
-
-
     
-
     def _check_file_regex(self, files, regex_keys):
         """Function that verifies that the list of files in the dataset folder agree with the metadata regex in the dictionary. It is assumed that
         if the filename does not match the regex there is either a mistake is creating the regex or those files are not intended to be loaded. The
@@ -282,6 +276,9 @@ class OnlineDataHandler(DataHandler):
         self.ip = ip
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr}
         
+        if not file and not std_out and not emg_arr:
+            raise Exception("Set either file, std_out, or emg_arr parameters or this class will have no functionality.")
+
         # Deal with threading:
         BaseManager.register('RawData', RawData)
         manager = BaseManager()
@@ -289,20 +286,20 @@ class OnlineDataHandler(DataHandler):
         self.raw_data = manager.RawData()
         self.listener = Process(target=self._listen_for_data_thread, args=[self.raw_data], daemon=True,)
     
-    def get_data(self):
+    def start_listening(self):
         """Starts listening in a seperate process for data streamed over UDP. 
 
         The options (file, std_out, and emg_arr) will determine what happens with this data.
         """
         self.listener.start()
 
-    def stop_data(self):
+    def stop_listenting(self):
         """Terminates the process listening for data.
         """
         self.listener.terminate()
         
-    def visualize(self, num_samples=500, y_axes=None):
-        """Visualize the incoming raw EMG in a plot.
+    def visualize(self, num_channels, num_samples=500, y_axes=None):
+        """Visualize the incoming raw EMG in a plot (all channels together).
 
         Parameters
         ----------
@@ -311,22 +308,72 @@ class OnlineDataHandler(DataHandler):
         y_axes: array_like (optional)
             A list of two elements consisting of the y-axes.
         """
-        plt.style.use('ggplot')
-        while True:
+        pyplot.style.use('ggplot')
+        emg_plots = []
+        figure, ax = pyplot.subplots()
+        figure.suptitle('Raw Data', fontsize=16)
+        for i in range(0,num_channels):
+            emg_plots.append(ax.plot([],[],label="CH"+str(i)))
+        figure.legend()
+        
+        def update(frame):
             data = np.array(self.raw_data.get_emg())
             if len(data) > num_samples:
                 data = data[-num_samples:]
             if len(data) > 0:
-                plt.clf()
-                plt.title("Raw Data")
+                x_data = list(range(0,len(data)))
+                for i in range(0,num_channels):
+                    y_data = data[:,i]
+                    emg_plots[i][0].set_data(x_data, y_data)
+                figure.gca().relim()
+                figure.gca().autoscale_view()
                 if not y_axes is None:
-                    plt.gca().set_ylim(y_axes)
-                for i in range(0,len(data[0])):
-                    x = list(range(0,len(data)))
-                    plt.plot(x, data[:,i], label="CH"+str(i))
-                plt.legend(loc = 'lower right')
-            plt.pause(0.1)
-    
+                    figure.gca().set_ylim(y_axes)
+            return emg_plots,
+
+        animation = FuncAnimation(figure, update, interval=100)
+        pyplot.show()
+
+    def visualize_channels(self, channels, num_samples=500, y_axes=None):
+        """Visualize individual channels (each channel in its own plot).
+
+        Parameters
+        ----------
+        channels: list
+            A list of channels to graph indexing starts at 0.
+        num_samples: int (optional), default=500
+            The number of samples to show in the plot.
+        y_axes: array_like (optional)
+            A list of two elements consisting of the y-axes.
+        """
+        pyplot.style.use('ggplot')
+        emg_plots = []
+        figure, axs = pyplot.subplots(len(channels), 1)
+        figure.suptitle('Raw Data', fontsize=16)
+        for i in range(0,len(channels)):
+            axs[i].set_ylabel("Channel " + str(channels[i]))
+            emg_plots.append(axs[i].plot([],[]))
+
+        def update(frame):
+            data = np.array(self.raw_data.get_emg())
+            if len(data) > num_samples:
+                data = data[-num_samples:]
+            if len(data) > 0:
+                x_data = list(range(0,len(data)))
+                for i in range(0,len(channels)):
+                    y_data = data[:,i]
+                    emg_plots[i][0].set_data(x_data, y_data)
+                
+                    axs[i].relim()
+                    axs[i].autoscale_view()
+                    if not y_axes is None:
+                        axs[i].set_ylim(y_axes)
+            return emg_plots,
+
+        animation = FuncAnimation(figure, update, interval=100)
+        pyplot.show()
+
+
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind((self.ip, self.port))

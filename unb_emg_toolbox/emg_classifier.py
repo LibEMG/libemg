@@ -105,15 +105,12 @@ class EMGClassifier:
 
         Returns
         ----------
-        dictionary
-            Returns a dictionary consisting of a variety of offline metrics including: 
-            Classification Accuracy ('CA'), Active Error Rate ('AER'), Instability ('INS'), 
-            and Rejection Rate ('REJ_RATE').
+        list
+            Returns a list of predictions, based on the passed in testing features.
         """
         '''
         returns a list of typical offline evaluation metrics
         '''
-        dic = {}
         testing_labels = self.data_set['testing_labels'].copy()
         prob_predictions = self.classifier.predict_proba(self.data_set['testing_features'])
         
