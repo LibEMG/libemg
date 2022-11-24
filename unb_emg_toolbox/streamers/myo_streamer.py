@@ -1,5 +1,3 @@
-
-
 # -- "importing" pyomyo core -- all credit goes to PerlinWarp and others for this block of code,
 # see his links in license block
 '''
@@ -63,7 +61,6 @@ def multichr(ords):
 	else:
 		return ''.join(map(chr, ords))
 
-
 def multiord(b):
 	if sys.version_info[0] >= 3:
 		return list(b)
@@ -76,28 +73,6 @@ class emg_mode(enum.Enum):
 	FILTERED = 2 # Sends 200Hz filtered but not rectified data
 	RAW = 3 # Sends raw 200Hz data from the ADC ranged between -128 and 127
 
-class Arm(enum.Enum):
-	UNKNOWN = 0
-	RIGHT = 1
-	LEFT = 2
-
-
-class XDirection(enum.Enum):
-	UNKNOWN = 0
-	X_TOWARD_WRIST = 1
-	X_TOWARD_ELBOW = 2
-
-
-class Pose(enum.Enum):
-	REST = 0
-	FIST = 1
-	WAVE_IN = 2
-	WAVE_OUT = 3
-	FINGERS_SPREAD = 4
-	THUMB_TO_PINKY = 5
-	UNKNOWN = 255
-
-
 class Packet(object):
 	def __init__(self, ords):
 		self.typ = ords[0]
@@ -109,7 +84,6 @@ class Packet(object):
 		return 'Packet(%02X, %02X, %02X, [%s])' % \
 			(self.typ, self.cls, self.cmd,
 			 ' '.join('%02X' % b for b in multiord(self.payload)))
-
 
 class BT(object):
 	'''Implements the non-Myo-specific details of the Bluetooth protocol.'''
@@ -232,8 +206,6 @@ class Myo(object):
 		self.conn = None
 		self.emg_handlers = []
 		self.imu_handlers = []
-		self.arm_handlers = []
-		self.pose_handlers = []
 		self.battery_handlers = []
 		self.mode = mode
 
@@ -375,22 +347,10 @@ class Myo(object):
 				acc = vals[4:7]
 				gyro = vals[7:10]
 				self.on_imu(quat, acc, gyro)
-			# Read classifier characteristic handle
-			elif attr == 0x23:
-				typ, val, xdir, _, _, _ = unpack('6B', pay)
-
-				if typ == 1:  # on arm
-					self.on_arm(Arm(val), XDirection(xdir))
-				elif typ == 2:  # removed from arm
-					self.on_arm(Arm.UNKNOWN, XDirection.UNKNOWN)
-				elif typ == 3:  # pose
-					self.on_pose(Pose(val))
 			# Read battery characteristic handle
 			elif attr == 0x11:
 				battery_level = ord(pay)
 				self.on_battery(battery_level)
-			else:
-				print('data with unknown attr: %02X %s' % (attr, p))
 
 		self.bt.add_handler(handle_data)
 
@@ -558,12 +518,6 @@ class Myo(object):
 	def add_imu_handler(self, h):
 		self.imu_handlers.append(h)
 
-	def add_pose_handler(self, h):
-		self.pose_handlers.append(h)
-
-	def add_arm_handler(self, h):
-		self.arm_handlers.append(h)
-
 	def add_battery_handler(self, h):
 		self.battery_handlers.append(h)
 
@@ -574,14 +528,6 @@ class Myo(object):
 	def on_imu(self, quat, acc, gyro):
 		for h in self.imu_handlers:
 			h(quat, acc, gyro)
-
-	def on_pose(self, p):
-		for h in self.pose_handlers:
-			h(p)
-
-	def on_arm(self, arm, xdir):
-		for h in self.arm_handlers:
-			h(arm, xdir)
 
 	def on_battery(self, battery_level):
 		for h in self.battery_handlers:
