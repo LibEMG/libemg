@@ -1,8 +1,23 @@
+<style>
+    .box {
+        margin:0;
+        width:50%;
+        float:left;
+    }
+</style>
 [View Source Code](https://github.com/eeddy/Snake-Demo)
 
 In this example, we created an adapted version of the traditional snake game. The idea of the game is that the player will collect as much food as possible to grow the snake. The only difference between our version and the original is that we require individual input for each movement. This is dissimilar to the traditional snake game, where the snake continuously moves in a specified direction until a new input. We made this change because the original control scheme does not lend well to traditional continuous myoelectric control.
-
-<img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/myo_game.gif?raw=true" width="500"/>
+<div>
+    <div class="box"> 
+        <center><p> <b> <u> Myo </u> </b> </p></center>
+        <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/myo_game.gif?raw=true"/>
+    </div>
+    <div class="box"> 
+    <center><p> <b> <u> Delsys </u> </b> </p></center>
+        <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/delsys.gif?raw=true" width="100%"/>
+    </div>
+</div>
 
 # Game Design
 To explore the game design code, please review `snake_game.py`. This section, however, focuses on the important design considerations for interfacing the game with EMG-based input.
