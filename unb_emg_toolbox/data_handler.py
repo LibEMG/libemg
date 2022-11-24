@@ -293,7 +293,7 @@ class OnlineDataHandler(DataHandler):
         """
         self.listener.start()
 
-    def stop_listenting(self):
+    def stop_listening(self):
         """Terminates the process listening for data.
         """
         self.listener.terminate()
