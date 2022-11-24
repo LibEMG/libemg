@@ -3,9 +3,9 @@ import os
 import re
 import socket
 import csv
-import ast
 import pickle
-import matplotlib.pyplot as plt
+from matplotlib import pyplot
+from matplotlib.animation import FuncAnimation
 from pathlib import Path
 from glob import glob
 from itertools import compress
@@ -217,10 +217,7 @@ class OfflineDataHandler(DataHandler):
             for k in self.extra_attributes:
                 setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
-
-
     
-
     def _check_file_regex(self, files, regex_keys):
         """Function that verifies that the list of files in the dataset folder agree with the metadata regex in the dictionary. It is assumed that
         if the filename does not match the regex there is either a mistake is creating the regex or those files are not intended to be loaded. The
@@ -311,21 +308,47 @@ class OnlineDataHandler(DataHandler):
         y_axes: array_like (optional)
             A list of two elements consisting of the y-axes.
         """
-        plt.style.use('ggplot')
-        while True:
+        pyplot.style.use('ggplot')
+        x_data, y_data = [], []
+
+        figure = pyplot.figure()
+        emg_plot, = pyplot.plot(x_data, y_data)
+        figure.legend(loc = 'lower right')
+        if not y_axes is None:
+            figure.gca().set_ylim(y_axes)
+
+        def update(frame):
             data = np.array(self.raw_data.get_emg())
             if len(data) > num_samples:
                 data = data[-num_samples:]
             if len(data) > 0:
-                plt.clf()
-                plt.title("Raw Data")
-                if not y_axes is None:
-                    plt.gca().set_ylim(y_axes)
-                for i in range(0,len(data[0])):
-                    x = list(range(0,len(data)))
-                    plt.plot(x, data[:,i], label="CH"+str(i))
-                plt.legend(loc = 'lower right')
-            plt.pause(0.1)
+                x_data = list(range(0,len(data)))
+                for i in range(0,8):
+                    y_data = data[:,i]
+                    emg_plot.set_data(x_data, y_data)
+                figure.gca().relim()
+                if y_axes is None:
+                    figure.gca().autoscale_view()
+            return emg_plot,
+
+        animation = FuncAnimation(figure, update, interval=100)
+        pyplot.show()
+
+        # pyplot.show()
+        # while True:
+        #     data = np.array(self.raw_data.get_emg())
+        #     if len(data) > num_samples:
+        #         data = data[-num_samples:]
+        #     if len(data) > 0:
+        #         plt.clf()
+        #         plt.title("Raw Data")
+        #         if not y_axes is None:
+        #             plt.gca().set_ylim(y_axes)
+        #         for i in range(0,len(data[0])):
+        #             x = list(range(0,len(data)))
+        #             plt.plot(x, data[:,i], label="CH"+str(i))
+        #         plt.legend(loc = 'lower right')
+        #     plt.pause(0.1)
     
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
