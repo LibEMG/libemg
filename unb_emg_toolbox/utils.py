@@ -5,6 +5,7 @@ import pickle
 from multiprocessing import Process
 from unb_emg_toolbox.streamers.sifi_streamer import SiFiLabServer
 from unb_emg_toolbox.streamers.myo_streamer import MyoStreamer
+from unb_emg_toolbox.streamers.delsys_streamer import DelsysEMGStreamer
 
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
@@ -166,4 +167,40 @@ def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi
     """
     sifi = SiFiLabServer(stream_port=stream_port, stream_ip=stream_ip, sifi_port=sifi_port, sifi_ip=sifi_ip)
     p = Process(target=sifi.start_stream, daemon=True)
+    p.start()
+
+def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localhost',cmd_port=50040, emg_port=50043, channel_list=list(range(8))):
+    """The UDP streamer for the Delsys device (Avanti/Trigno). 
+
+    This function connects to the Delsys and streams its data over UDP. Note that you must have the Delsys Control Utility
+    installed for this to work.
+
+    Parameters
+    ----------
+    stream_port: int (optional), default=12345
+        The desired port to stream over. 
+    stream_ip: string (option), default = 'localhost'
+        The ip used for streaming predictions over UDP.
+    cmd_port: int (optional), default=50040.
+        The port that commands are sent to the Delsys system (ie., the start command and the stop command.)
+    delsys_port: int (optional), default=50043. 
+        The port that the Delsys is streaming over. Note this value reflects the EMG data port for the Delsys Avanti system. For the Trigno system (legacy), the port is 50041.
+    delsys_ip: string (optional), default='localhost'
+        The ip that the Delsys is streaming over.
+    channel_list: array-like, default=[0,1,2,3,4,5,6,7].
+        The channels that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
+    
+
+    Examples
+    ---------
+    >>> delsys_streamer()
+    """
+    delsys = DelsysEMGStreamer(stream_ip = stream_ip,
+                            stream_port = stream_port,
+                            recv_ip=delsys_ip,
+                            cmd_port=cmd_port,
+                            data_port=emg_port,
+                            total_channels=channel_list,
+                            timeout=10)
+    p = Process(target=delsys.start_stream, daemon=True)
     p.start()
