@@ -9,7 +9,10 @@ This module has three main pieces of data-related functionality: **(1) Datasets*
 # Datasets
 To enable all interested parties the ability to leverage our toolkit, we have included several validated datasets as part of this toolkit. These datasets can be leveraged for exploring the toolkit's capabilities and, additionally, for future research. We ask that for the latter, please correctly reference the dataset in your work. Note, these datasets are stored on github and will be cloned locally when downloaded. 
 
-----------
+<details>
+<summary>Show Datasets</summary>
+<br/>
+
 ## Fougner
 
 Short Description.
@@ -33,7 +36,6 @@ Short Description.
 ```
 Fougner A, Scheme E, Chan AD, Englehart K, Stavdahl O. Resolving the limb position effect in myoelectric pattern recognition. IEEE Trans Neural Syst Rehabil Eng. 2011 Dec;19(6):644-51. doi: 10.1109/TNSRE.2011.2163529. Epub 2011 Aug 15. PMID: 21846608.
 ```
------------
 
 ## Radmand
 
@@ -311,9 +313,36 @@ odh = dataset.prepare_data(format=OfflineDataHandler)
 @article{cote2020interpreting, title={Interpreting deep learning features for myoelectric control: A comparison with handcrafted features}, author={C{^o}t{'e}-Allard, Ulysse and Campbell, Evan and Phinyomark, Angkoon and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit and Scheme, Erik}, journal={Frontiers in Bioengineering and Biotechnology}, volume={8}, pages={158}, year={2020}, publisher={Frontiers Media SA} }
 ```
 -------------
+</details>
+<br/>
 
 # Offline Data Handler 
-TODO: Evan
+A large overhead in projects is simply interfacing with the dataset. We are providing a means to quickly get your in-house or public datasets interfaced with the toolkit so you can get to improving performance as fast as possible. The offline data handler is incredibly flexible with the format of the data trying to be ingested. Simply specify the base directory and it will capture all .csv and .txt files in nested folders. There can be important metadata in the file addresses that are crucial for later analysis (i.e., extracting a training set flag, subject number, repetition number, and class number from a file named `C:\User\CoolProgrammer\Dataset\training\S1_C12_R3.txt`), and we provide a simple function for defining regular expressions for all the metadata you could desire. Using these regular expressions, you can create a dictionary that you pass into the offlinedatahandler that will collect the metadata, along with the emg contents of the within the files for all files that satisfy your regexp's. If the metadata is within the file, you can alternatively hand in a column id for the metadata. Once the data handler has collected all the information available, you can use it to slice the dataset however you'd like, then proceed to feature extraction!
+
+```Python
+dataset_folder = 'demos/data/myo_dataset'
+sets_values = ["training", "testing"]
+sets_regex = make_regex(left_bound = "dataset/", right_bound="/", values = sets_values)
+classes_values = ["0","1","2","3","4"]
+classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
+reps_values = ["0","1","2","3"]
+reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
+dic = {
+    "sets": sets_values,
+    "sets_regex": sets_regex,
+    "reps": reps_values,
+    "reps_regex": reps_regex,
+    "classes": classes_values,
+    "classes_regex": classes_regex
+}
+odh = OfflineDataHandler()
+odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
+train_odh = odh.isolate_data(key="sets", values=[1])
+train_windows, train_metadata = train_odh.parse_windows(50,25)
+fe = FeatureExtractor(num_channels=8)
+feature_list = fe.get_feature_list()
+training_features = fe.extract_features(feature_list, train_windows)
+```
 
 # Online Data Handler 
 One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the toolkit, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. 
