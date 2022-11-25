@@ -347,6 +347,11 @@ training_features = fe.extract_features(feature_list, train_windows)
 # Online Data Handler 
 One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the toolkit, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. 
 
+<div>
+    <img src="https://github.com/eeddy/unb_emg_toolbox/blob/main/docs/source/documentation/data/all_channels.gif?raw=true" width="48%" display="inline-block" float="left"/>
+    <img src="https://github.com/eeddy/unb_emg_toolbox/blob/main/docs/source/documentation/data/multi_channel.gif?raw=true" width="48%" float="left"/>
+</div>
+
 ![alt text](online_dh.png)
 <center> <p> Figure 1: Online Data Handler Architecture</p> </center>
 
@@ -378,7 +383,7 @@ if __name__ == "__main__" :
     
     # Code leveraging the data goes here:
     odh = OnlineDataHandler(emg_arr=True, port=12345, ip='127.0.0.1')
-    odh.get_data()
+    odh.start_listening()
 
     # Do stuff with data...
 ```
