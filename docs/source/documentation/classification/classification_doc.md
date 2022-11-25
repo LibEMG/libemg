@@ -3,7 +3,7 @@ The classifiers that we have implemented all leverage the sklearn package. For m
 
 ![Random Forest](random_forest.png)
 
-We could create a custom classifier with any of those parameters using the `parameters` attribute. For example:
+We could create a classifier with any of those parameters using the `parameters` attribute. For example:
 ```Python
 parameters = {
     'n_estimators': 99,
@@ -14,17 +14,23 @@ parameters = {
 classifier = EMGClassifier('RF', data_set, parameters=parameters)
 ```
 
-Please reference the sklearn docs for parameter options for each classifier. Note that any custom classifier should be modeled after the sklearn classifiers and must have the `fit`, `predict`, and `predict_proba` functions. 
+Please reference the sklearn docs for parameter options for each classifier. 
+
+Additionally, we can also create our own classifiers. Any custom classifier should be modeled after the sklearn classifiers and must have the `fit`, `predict`, and `predict_proba` functions to work correctly. 
+
+```Python
+from sklearn.ensemble import RandomForestClassifier
+from unb_emg_toolbox import EMGClassifier
+
+rf_custom_classifier = RandomForestClassifier(max_depth=5, random_state=0)
+classifier = EMGClassifier(rf_custom_classifier, data_set)
+classifier.run()
+```
 
 ## Linear Discriminant Analysis (LDA)
 A statistical linear boundary is used to discriminate between inputs. 
 ```Python
-# default
 classifier = EMGClassifier('LDA', data_set)
-
-# or passing in a custom LDA sklearn classifier 
-lda = sklearn.discriminant_analysis.LinearDiscriminantAnalysis()
-classifier = EMGClassifier(lda, data_set)
 ```
 Check out the LDA docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html)
 

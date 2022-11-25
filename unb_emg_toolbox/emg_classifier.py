@@ -28,7 +28,7 @@ class EMGClassifier:
     model: string or custom classifier (must have fit, predict and predic_proba functions)
         The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
         'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-        models with no hyperparameter tuning and may not be optimal. Pass in custom classifier for more control.
+        models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', and 
@@ -438,6 +438,3 @@ class OnlineEMGClassifier(EMGClassifier):
             else:
                 arr = np.hstack((arr, data[feat]))
         return arr
-
-    def visualize():
-        pass

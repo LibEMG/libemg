@@ -17,12 +17,15 @@ if __name__ == "__main__" :
     metrics = om.get_available_metrics()
     offline_metrics = om.extract_offline_metrics(metrics=metrics, y_true=y_true, y_predictions=y_preds, null_label=2)
     print(offline_metrics)
+    om.visualize(offline_metrics)
 
     # Get and extract a subset of metrics:
     metrics = ['AER', 'CA', 'INS']
     offline_metrics = om.extract_offline_metrics(metrics=metrics, y_true=y_true, y_predictions=y_preds, null_label=2)
     print(offline_metrics)
 ```
+
+![](visualize.png)
 
 
 ### **Classification Accuracy (CA)** 
@@ -51,19 +54,6 @@ $
 $
 
 where $N$ is the total number of data frames/predictions, and $\hat{y}_{i}$ is the predicted class label for frame $i$.
-
-### **Confusion Matrix (CONF_MAT)**
-A confusion Matrix is a $C$ x $C$ matrix, where $C$ is the number of classes. Each row of the matrix represents the true label, and each column represents the predicted label. This matrix provides valuable insight into what classes get confused with others.
-
-<style>
-    img {
-        width: 30%;
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-</style>
-![alt text](conf_mat.png)
 
 ### **Recall (RECALL)**
 TODO: Evan
@@ -102,8 +92,21 @@ $
 
 where $N$ is the total number of data frames/predictions, $\hat{y}_{i}$ is the predicted class label for frame $i$, and $y_{rej}$ is the rejection label (default = -1).
 
+### **Confusion Matrix (CONF_MAT)**
+A confusion Matrix is a $C$ x $C$ matrix, where $C$ is the number of classes. Each row of the matrix represents the true label, and each column represents the predicted label. This matrix provides valuable insight into what classes get confused with others.
+
+<style>
+    img {
+        width: 50%;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+![alt text](conf_mat.png)
+
 ## Online Evaluation 
-Online evaluation involves user-in-the-loop interaction, meaning that users get real-time feedback as they interact with the control system. One common form of online evaluation in the prosthetics community involves leveraging Fitts law tests <sup>1</sup>. Check out our [second example](../../examples/fitts_example/fitts.md) if you are interested. This is common as prosthetic devices are expensive, and fittings are complicated. However, for more generic use cases, online evaluation should involve interaction between the users and the designed application. For control system evaluation in an online setting, the **OnlineEMGClassifier** module should be leveraged.
+Online evaluation involves user-in-the-loop interaction, meaning that users get real-time feedback as they interact with the control system. One common form of online evaluation in the prosthetics community involves leveraging Fitts law tests <sup>1</sup>. Check out our [second example](../../examples/fitts_example/fitts.md) if you are interested. This is common as prosthetic devices are expensive, and fittings are complicated. However, for more generic use cases, online evaluation should involve interaction between the users and the designed application. For control system evaluation in an online setting, the **OnlineEMGClassifier** module should be leveraged. 
 
 # References
 <a id="1">[1]</a> 

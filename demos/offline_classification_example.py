@@ -53,21 +53,22 @@ if __name__ == "__main__" :
     om = OfflineMetrics()
     metrics = ['CA', 'AER', 'INS', 'REJ_RATE', 'CONF_MAT', 'RECALL', 'PREC', 'F1']
     # Normal Case - Test all different classifiers
-    for model in ['LDA', 'QDA', 'SVM', 'KNN', 'RF', 'NB', 'GB', 'MLP']:
-        classifier = EMGClassifier(model, data_set.copy())
-        preds = classifier.run()
-        y_true = data_set['testing_labels']
-        metrics = om.extract_offline_metrics(['CONF_MAT'], preds, y_true)
-        om.visualize_conf_matrix(metrics['CONF_MAT'])
-        print("Classifier: " + model)
-        out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
-        print(str(out_metrics) + "\n")
-        # om.visualize(out_metrics)
-        # om.visualize_conf_matrix(out_metrics['CONF_MAT'])
+    # for model in ['LDA', 'QDA', 'SVM', 'KNN', 'RF', 'NB', 'GB', 'MLP']:
+    #     classifier = EMGClassifier(model, data_set.copy())
+    #     preds = classifier.run()
+    #     y_true = data_set['testing_labels']
+    #     metrics = om.extract_offline_metrics(['CONF_MAT'], preds, y_true)
+    #     om.visualize_conf_matrix(metrics['CONF_MAT'])
+    #     print("Classifier: " + model)
+    #     out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
+    #     print(str(out_metrics) + "\n")
+    #     # om.visualize(out_metrics)
+    #     # om.visualize_conf_matrix(out_metrics['CONF_MAT'])
 
     # Rejection Case
     rejection_classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.5)
     preds = rejection_classifier.run()
+    rejection_classifier.visualize()
     out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     print("Offline Rejection Metrics:")
     print(out_metrics)

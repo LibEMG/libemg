@@ -276,16 +276,19 @@ class OfflineMetrics:
         #TODO: Evan - I am going to leave this for you since I am 100% sure what you want.
         pass
     
-    def visualize(self, dic):
+    def visualize(self, dic, y_axis=[0,1]):
         """Visualize the computed metrics in a bar chart.
 
         Parameters
         ----------
         dic: dictionary
             The output from the extract_offline_metrics function.
+        y_axis: dictionary (optional), default=[0,1]
+            A dictionary for lower and upper bounds of y axis. 
         """
         plt.style.use('ggplot')
         plt.title('Offline Metrics')
+        plt.gca().set_ylim(y_axis)
         x = []
         y = []
         for key in dic:

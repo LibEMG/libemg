@@ -56,7 +56,7 @@ def visualize_features():
 def visualize_live_emg():
     mock_emg_stream("example_data/OneSubjectMyoDataset/stream/raw_emg.csv", num_channels=8, sampling_rate=200)
     online_dh = OnlineDataHandler(emg_arr=True)
-    online_dh.get_data()
+    online_dh.start_listening()
     online_dh.visualize(y_axes=[-120,120])
 
 if __name__ == "__main__" :
