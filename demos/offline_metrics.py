@@ -1,9 +1,8 @@
 import os
 import sys
+import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-import numpy as np
 from unb_emg_toolbox.offline_metrics import OfflineMetrics
 
 if __name__ == "__main__" :
@@ -16,6 +15,7 @@ if __name__ == "__main__" :
     metrics = om.get_available_metrics()
     offline_metrics = om.extract_offline_metrics(metrics=metrics, y_true=y_true, y_predictions=y_preds, null_label=2)
     print(offline_metrics)
+    om.visualize(offline_metrics)
 
     # Get and extract a subset of metrics:
     metrics = ['AER', 'CA', 'INS']

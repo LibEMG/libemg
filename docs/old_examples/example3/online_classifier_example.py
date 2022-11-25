@@ -60,6 +60,6 @@ if __name__ == "__main__":
     # run mock online classifier 
     mock_emg_stream("example_data/OneSubjectMyoDataset/stream/raw_emg.csv", num_channels=num_channels, sampling_rate=200)
     online_dh = OnlineDataHandler(emg_arr=True)
-    online_dh.get_data()
+    online_dh.start_listening()
     online_classifier = OnlineEMGClassifier(model=model, data_set=data_set.copy(), num_channels=num_channels, window_size=window_size, window_increment=25, online_data_handler=online_dh, features=fe.get_feature_groups()['HTD'], std_out=True)
     online_classifier.run(block=True)

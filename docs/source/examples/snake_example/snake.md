@@ -108,7 +108,7 @@ Now that we have shown how to leverage EMG predictions to replace traditional ke
 Note that we are passing an online data handler into the training UI. This same data handler will be used for training and classification.
 ```Python
 self.odh = OnlineDataHandler(emg_arr=True)
-self.odh.get_data()
+self.odh.start_listening()
 ```
 
 When the data accumulation button is pressed, we present the training UI. After finishing the data accumulation, we re-initialize the simple game menu.

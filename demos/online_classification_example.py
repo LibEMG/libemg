@@ -58,7 +58,7 @@ if __name__ == "__main__" :
     # Create Stream Bindings
     mock_emg_stream(file_path="demos/data/stream_data.csv", sampling_rate=200, num_channels=8)
     online_data_handler = OnlineDataHandler(emg_arr=True)
-    online_data_handler.get_data()
+    online_data_handler.start_listening()
 
     # Create Classifier and Run
     classifier = OnlineEMGClassifier(model="SVM", data_set=data_set, num_channels=8, window_size=50, window_increment=25, 

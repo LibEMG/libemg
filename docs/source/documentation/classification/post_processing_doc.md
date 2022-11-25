@@ -13,7 +13,7 @@ Outputs an associated *velocity* with each prediction that estimates the level o
 **Note: This toolkit leverages method 3 from the cited work.**
 
 ![alt text](decision_stream.png)
-<center> <p> Figure 1: Decision Stream of No Post Processing, Rejection, and Majority Voting</p> </center>
+<center> <p> Figure 1: Decision Stream of No Post Processing, Rejection, and Majority Voting. This can be created using the <b>.visualize()</b> method call. </p> </center>
 
 ## References
 <a id="1">[1]</a> 
@@ -27,3 +27,6 @@ Wahid MF, Tafreshi R, Langari R. A Multi-Window Majority Voting Strategy to Impr
 
 <a id="4">[4]</a> 
 E. Scheme, B. Lock, L. Hargrove, W. Hill, U. Kuruganti and K. Englehart, "Motion Normalized Proportional Control for Improved Pattern Recognition-Based Myoelectric Control," in IEEE Transactions on Neural Systems and Rehabilitation Engineering, vol. 22, no. 1, pp. 149-157, Jan. 2014, doi: 10.1109/TNSRE.2013.2247421.
+
+<a>[Sklearn]</a>
+Fabian Pedregosa, Gaël Varoquaux, Alexandre Gramfort, Vincent Michel, Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron Weiss, Vincent Dubourg, Jake Vanderplas, Alexandre Passos, David Cournapeau, Matthieu Brucher, Matthieu Perrot, and Édouard Duchesnay. 2011. Scikit-learn: Machine Learning in Python. J. Mach. Learn. Res. 12, null (2/1/2011), 2825–2830.
