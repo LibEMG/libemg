@@ -97,7 +97,7 @@ def online_filtering_demo():
 
     odh = OnlineDataHandler(file=False, std_out=False, emg_arr=True)
     # start the stream listener
-    odh.get_data()
+    odh.start_listening()
     odh.raw_data.reset_emg()
     while True:
         # get the new data
