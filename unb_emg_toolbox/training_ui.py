@@ -75,7 +75,7 @@ class TrainingUI:
         self.window.mainloop()
 
     def _on_closing(self):
-        self.data_handler.stop_data()
+        self.data_handler.stop_listening()
         self.window.destroy()
 
     def _accumulate_training_images(self):

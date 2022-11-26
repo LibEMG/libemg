@@ -11,7 +11,7 @@ from unb_emg_toolbox.data_handler import OnlineDataHandler
 #     while len(online_data_handler.raw_data.get_emg()) < 2000:
 #         if len(online_data_handler.raw_data.get_emg()) == 1:
 #             s_time = time.time()
-#     online_data_handler.stop_data()
+#     online_data_handler.stop_listening()
 #     assert np.abs(4 - (time.time() - s_time)) < 0.1 # Giving 0.1 second room for error
 
 # def test_mock_stream_1000HZ():
@@ -21,7 +21,7 @@ from unb_emg_toolbox.data_handler import OnlineDataHandler
 #     while len(online_data_handler.raw_data.get_emg()) < 2000:
 #         if len(online_data_handler.raw_data.get_emg()) == 1:
 #             s_time = time.time()
-#     online_data_handler.stop_data()
+#     online_data_handler.stop_listening()
 #     assert np.abs(2 - (time.time() - s_time)) < 0.1 # Giving 0.1 second room for error
 
 @pytest.mark.skip(reason="Doesn't Work in CI")
@@ -33,5 +33,5 @@ def test_mock_stream_2000HZ():
     while len(online_data_handler.raw_data.get_emg()) < 2000:
         if len(online_data_handler.raw_data.get_emg()) > 0 and s_time is None:
             s_time = time.time()
-    online_data_handler.stop_data()
+    online_data_handler.stop_listening()
     assert np.abs(1 - (time.time() - s_time)) < 0.1 # Giving 0.1 second room for error
