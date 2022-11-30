@@ -1511,8 +1511,8 @@ class FeatureExtractor:
                     ax[0].scatter(test_data[:,0], test_data[:,1], marker="+", label="te")
             
             ax[0].legend()
-            ax[0].set_xlabel("PC0")
-            ax[0].set_ylabel("PC1")
+            ax[0].set_xlabel("PC1")
+            ax[0].set_ylabel("PC2")
             ax[0].set_title("PCA Visualization")
             ax[1].stem(np.cumsum(pca.explained_variance_ratio_))
             ax[1].set_xlabel("Number of Components")

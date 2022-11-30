@@ -76,7 +76,8 @@ if __name__ == "__main__":
             data_set['testing_labels'] = test_metadata["classes"]
             data_set['training_labels'] = train_metadata["classes"]
             # setup the classifier
-            classifier = EMGClassifier(model, data_set.copy())
+            classifier = EMGClassifier()
+            classifier.fit(model, feature_dictionary=data_set.copy())
 
             # running the classifier analyzes the test data we already passed it
             preds = classifier.run()

@@ -50,23 +50,21 @@ if __name__ == "__main__" :
 
     tr_features = fe.extract_features(features, train_windows, feature_dict)
     te_features = fe.extract_features(features, test_windows, feature_dict)
-    fe.visualize_feature_space(tr_features, projection="PCA", savedir="f1")
-    fe.visualize_feature_space(tr_features, projection="PCA",classes=train_metadata["classes"], savedir="f2")
-    fe.visualize_feature_space(tr_features, projection="PCA",classes=train_metadata["classes"], savedir="f3", render=True, test_feature_dic=te_features)
     fe.visualize_feature_space(tr_features, projection="PCA",classes=train_metadata["classes"], savedir="f2", render=True, test_feature_dic=te_features, t_classes=test_metadata["classes"])
-    # data_set['training_windows'] = train_windows # used for velocity control
-    # data_set['testing_features'] = fe.extract_features(test_feature, test_windows,feature_dict)
-    # data_set['training_features'] = fe.extract_features(test_feature, train_windows,feature_dict)
-    # data_set['testing_labels'] = test_metadata['classes']
-    # data_set['training_labels'] = train_metadata['classes']
-
-    # om = OfflineMetrics()
-    # metrics = ['CA', 'AER', 'INS', 'REJ_RATE', 'CONF_MAT', 'RECALL', 'PREC', 'F1']
-    # # Normal Case - Test all different classifiers
     
-    # classifier = EMGClassifier("LDA", data_set.copy())
-    # preds = classifier.run()
-    # y_true = data_set['testing_labels']
-    # metrics = om.extract_offline_metrics(['CONF_MAT'], preds, y_true)
-    # metrics = om.extract_offline_metrics(['CA'], preds, y_true)
-    A = 1
+    data_set['training_windows'] = train_windows # used for velocity control
+    data_set['testing_features'] = fe.extract_features(te_features, test_windows,feature_dict)
+    data_set['training_features'] = fe.extract_features(tr_features, train_windows,feature_dict)
+    data_set['testing_labels'] = test_metadata['classes']
+    data_set['training_labels'] = train_metadata['classes']
+
+    om = OfflineMetrics()
+    metrics = ['CA', 'AER', 'INS', 'REJ_RATE', 'CONF_MAT', 'RECALL', 'PREC', 'F1']
+    # Normal Case - Test all different classifiers
+    
+    classifier = EMGClassifier()
+    classifier.fit("LDA", data_set.copy())
+    preds = classifier.run()
+    y_true = data_set['testing_labels']
+    metrics = om.extract_offline_metrics(['CONF_MAT'], preds, y_true)
+    metrics = om.extract_offline_metrics(['CA'], preds, y_true)

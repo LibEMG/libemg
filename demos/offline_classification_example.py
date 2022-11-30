@@ -66,7 +66,8 @@ if __name__ == "__main__" :
     #     # om.visualize_conf_matrix(out_metrics['CONF_MAT'])
 
     # Rejection Case
-    rejection_classifier = EMGClassifier("SVM", data_set.copy(), rejection_type="CONFIDENCE", rejection_threshold=0.5)
+    rejection_classifier = EMGClassifier(rejection_type="CONFIDENCE", rejection_threshold=0.5)
+    rejection_classifier.fit("SVM", data_set.copy())
     preds = rejection_classifier.run()
     rejection_classifier.visualize()
     out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
@@ -74,7 +75,8 @@ if __name__ == "__main__" :
     print(out_metrics)
 
     # Majority Vote Case
-    mv_classifier = EMGClassifier("SVM", data_set.copy(), majority_vote=1)
+    mv_classifier = EMGClassifier(majority_vote=1)
+    mv_classifier.fit("SVM", data_set.copy())
     preds = mv_classifier.run()
     out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     print("Offline Majority Vote Metrics:")
@@ -82,7 +84,8 @@ if __name__ == "__main__" :
 
     # Custom classifier case
     clf = RandomForestClassifier(max_depth=5, random_state=0)
-    classifier = EMGClassifier(clf, data_set.copy())
+    classifier = EMGClassifier()
+    classifier.fit(clf, data_set.copy())
     classifier.run()
 
     # another example
@@ -117,7 +120,8 @@ if __name__ == "__main__" :
     data_set['testing_labels'] = test_metadata['classes']
     data_set['training_labels'] = train_metadata['classes']
 
-    classifier = EMGClassifier("SVM", data_set)
+    classifier = EMGClassifier()
+    classifier.fit("SVM", data_set.copy())
     preds = classifier.run()
     output = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     print("Offline Metrics:")
