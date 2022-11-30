@@ -2,11 +2,11 @@ import os
 import sys
 from sklearn.ensemble import RandomForestClassifier
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
+from libemg.emg_classifier import EMGClassifier
+from libemg.feature_extractor import FeatureExtractor
+from libemg.utils import make_regex
+from libemg.data_handler import OfflineDataHandler
+from libemg.offline_metrics import OfflineMetrics
 
 
 # Currently this file is for only one individual

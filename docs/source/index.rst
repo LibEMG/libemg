@@ -1,4 +1,4 @@
-UNB_EMG_Toolbox
+LibEMG
 =========================================
 .. include:: doc.md
    :parser: myst_parser.sphinx_

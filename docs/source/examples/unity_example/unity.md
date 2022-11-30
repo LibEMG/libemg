@@ -1,4 +1,4 @@
-In [Example 1](https://github.com/eeddy/Snake-Demo/blob/main/README.md), we showed how to leverage the [UNB_EMG_Toolbox](https://eeddy.github.io/unb_emg_toolbox/) to interface with a simple pygame. Often, however, it may be desirable to use a different game engine or tech stack. For example, Unity is a common game development environment that enables high-quality games and VR/AR development. As such, developers may want to use it for their EMG-related applications. The good news is that these tools can still leverage the library very easily! This example shows how to leverage the library using a simple Unity game. It is important to note that although this is a simple game, the concept is applicable to more complex applications (e.g., AR/VR). 
+In [Example 1](https://github.com/eeddy/Snake-Demo/blob/main/README.md), we showed how to leverage the [LibEMG](https://eeddy.github.io/libemg/) to interface with a simple pygame. Often, however, it may be desirable to use a different game engine or tech stack. For example, Unity is a common game development environment that enables high-quality games and VR/AR development. As such, developers may want to use it for their EMG-related applications. The good news is that these tools can still leverage the library very easily! This example shows how to leverage the library using a simple Unity game. It is important to note that although this is a simple game, the concept is applicable to more complex applications (e.g., AR/VR). 
 
 <img src="https://github.com/eeddy/Momo-Demo/blob/main/Docs/Momo_Myo.gif?raw=True">
 
@@ -61,11 +61,11 @@ public class MovementController : MonoBehaviour
 Once we developed the initial game to work with simple keyboard controls, we then implemented the EMG-based input. Unfortunately, since the library is written in Python, we had to include the machine learning/training portion as a Python application. While there may be ways to call Python from within C#, this was outside the scope of this example. Instead, we created a simple UI with two buttons: `Get Training Data` and `Start Classifying`. All python code is located in `myo_control.py`. The library imports required for this example are as follows:
 
 ```Python
-from unb_emg_toolbox.training_ui import TrainingUI
-from unb_emg_toolbox.data_handler import OnlineDataHandler, OfflineDataHandler
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.emg_classifier import OnlineEMGClassifier
+from libemg.training_ui import TrainingUI
+from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
+from libemg.utils import make_regex
+from libemg.feature_extractor import FeatureExtractor
+from libemg.emg_classifier import OnlineEMGClassifier
 ```
 
 <div>

@@ -17,7 +17,7 @@ import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
-project = 'unb_emg_toolbox'
+project = 'libemg'
 copyright = '2022, Ethan Eddy and Evan Campbell'
 author = 'Ethan Eddy and Evan Campbell'
 
@@ -57,7 +57,7 @@ exclude_patterns = []
 html_context = {
   'display_github': True,
   'github_user': 'eeddy',
-  'github_repo': 'unb_emg_toolbox',
+  'github_repo': 'libemg',
   'github_version': 'main/docs/source/',
 }
 

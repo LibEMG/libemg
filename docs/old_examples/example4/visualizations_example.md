@@ -6,10 +6,10 @@ The decision stream visualization shows the class of each prediction (colour) an
 ## Code
 ```Python
 import numpy as np
-from unb_emg_toolbox.datasets import OneSubjectMyoDataset
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.data_handler import OfflineDataHandler
+from libemg.datasets import OneSubjectMyoDataset
+from libemg.emg_classifier import EMGClassifier
+from libemg.feature_extractor import FeatureExtractor
+from libemg.data_handler import OfflineDataHandler
         
 def visualize_offline_decision_stream():
     # get the predefined one subject myo dataset
@@ -51,8 +51,8 @@ Visualize a number of extracted features on a given set of windows.
 ## Code 
 ```Python
 import numpy as np
-from unb_emg_toolbox.utils import get_windows
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
+from libemg.utils import get_windows
+from libemg.feature_extractor import FeatureExtractor
 
 def visualize_features():
     # Load data and split into windows
@@ -79,8 +79,8 @@ Visualize the raw EMG, useful for sanity checking.
 
 ## Code 
 ```Python
-from unb_emg_toolbox.utils import mock_emg_stream
-from unb_emg_toolbox.data_handler import OnlineDataHandler
+from libemg.utils import mock_emg_stream
+from libemg.data_handler import OnlineDataHandler
 
 def visualize_live_emg():
     mock_emg_stream("example_data/OneSubjectMyoDataset/stream/raw_emg.csv", num_channels=8, sampling_rate=200)

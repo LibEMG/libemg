@@ -28,11 +28,11 @@ The steps of this 'mini experiment' are as follows:
 
 # Menu
 ```Python
-from unb_emg_toolbox.training_ui import TrainingUI
-from unb_emg_toolbox.data_handler import OnlineDataHandler, OfflineDataHandler
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.emg_classifier import OnlineEMGClassifier
+from libemg.training_ui import TrainingUI
+from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
+from libemg.utils import make_regex
+from libemg.feature_extractor import FeatureExtractor
+from libemg.emg_classifier import OnlineEMGClassifier
 ```
 Similarly to previous examples, we decided to create a simple menu to (1) leverage the training module and (2) enable the use of different classifiers. To do this, we have included two buttons in `menu.py`. When the "accumulate training data button" is clicked, we leverage the training UI module. For this example, we want five reps (3 training - 2 testing), and we point it to the "classes" folder as it contains images for each class.
 

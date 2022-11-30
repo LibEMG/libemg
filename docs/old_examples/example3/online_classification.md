@@ -2,12 +2,12 @@ In this example, we show how to simulate an online classifier using a pre-record
 
 # Code
 ```Python
-from unb_emg_toolbox.datasets import OneSubjectMyoDataset
-from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.emg_classifier import EMGClassifier, OnlineEMGClassifier
-from unb_emg_toolbox.utils import mock_emg_stream
+from libemg.datasets import OneSubjectMyoDataset
+from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
+from libemg.offline_metrics import OfflineMetrics
+from libemg.feature_extractor import FeatureExtractor
+from libemg.emg_classifier import EMGClassifier, OnlineEMGClassifier
+from libemg.utils import mock_emg_stream
 
 if __name__ == "__main__":
     # setup variables

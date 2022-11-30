@@ -35,7 +35,7 @@ class TrainingUI:
     
     Examples
     --------
-    >>> from unb_emg_toolbox.utils import myo_streamer
+    >>> from libemg.utils import myo_streamer
     >>> myo_streamer()
     >>> odh = OnlineDataHandler(emg_arr=True)
     >>> odh.start_listening()

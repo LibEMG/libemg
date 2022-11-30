@@ -3,7 +3,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
+from libemg.offline_metrics import OfflineMetrics
 
 if __name__ == "__main__" :
     y_true = np.array([0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3])

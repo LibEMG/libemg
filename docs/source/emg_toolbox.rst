@@ -1,39 +1,39 @@
 Data Handling
 ------------------------------
-.. automodule:: unb_emg_toolbox.data_handler
+.. automodule:: libemg.data_handler
    :members:
 
 Filtering
 ------------------------------
-.. automodule:: unb_emg_toolbox.filtering
+.. automodule:: libemg.filtering
    :members:
 
 Feature Extraction
 ------------------------------
-.. automodule:: unb_emg_toolbox.feature_extractor
+.. automodule:: libemg.feature_extractor
    :members:
 
 Feature Selection
 ------------------------------
-.. automodule:: unb_emg_toolbox.feature_selector
+.. automodule:: libemg.feature_selector
    :members:
 
 Classification
 ------------------------------
-.. automodule:: unb_emg_toolbox.emg_classifier
+.. automodule:: libemg.emg_classifier
    :members:
 
 Offline Evaluation Metrics
 ------------------------------
-.. automodule:: unb_emg_toolbox.offline_metrics
+.. automodule:: libemg.offline_metrics
    :members:
 
 Utils
 ------------------------------
-.. automodule:: unb_emg_toolbox.utils
+.. automodule:: libemg.utils
    :members:
 
 Screen Guided Training
 ------------------------------
-.. automodule:: unb_emg_toolbox.training_ui
+.. automodule:: libemg.training_ui
    :members:

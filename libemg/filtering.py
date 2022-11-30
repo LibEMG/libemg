@@ -2,7 +2,7 @@ import scipy.signal
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
+from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
 
 class Filter:
     """ A class that will perform filtering on: (1) OfflineDataHandler, (2) OnlineDataHandler, 
