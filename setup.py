@@ -12,7 +12,7 @@ DESCRIPTION = 'Extract Features'
 LONG_DESCRIPTION = 'A package that lets you extract features from time series data (emg based).'
 
 setup(
-    name="unb_emg_toolbox",
+    name="libemg",
     version=VERSION,
     author="Ethan & Evan",
     description=DESCRIPTION,

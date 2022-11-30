@@ -15,7 +15,7 @@ The goal of this library is to provide an easy to use API for everything EMG-rel
 
 # Installing the Latest Release
 ```
-$ pip install unb_emg_toolbox
+$ pip install libemg
 ```
 
 # Citing

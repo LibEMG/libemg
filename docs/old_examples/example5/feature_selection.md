@@ -1,9 +1,9 @@
 # Code 
 ```Python
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.feature_selector import FeatureSelector
-from unb_emg_toolbox.datasets import OneSubjectMyoDataset
+from libemg.feature_extractor import FeatureExtractor
+from libemg.data_handler import OfflineDataHandler
+from libemg.feature_selector import FeatureSelector
+from libemg.datasets import OneSubjectMyoDataset
 
 
 if __name__ == "__main__" :

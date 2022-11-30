@@ -2,8 +2,8 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.utils import make_regex
+from libemg.data_handler import OfflineDataHandler
+from libemg.utils import make_regex
 from glob import glob
 # this assumes you have git downloaded (not pygit, but the command line program git)
 
