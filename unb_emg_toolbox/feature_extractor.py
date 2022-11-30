@@ -1468,7 +1468,7 @@ class FeatureExtractor:
             if render:
                 plt.show()
 
-    def visualize_feature_space(self, feature_dic, projection, classes=None, savedir=None, render=True, test_feature_dic=None, t_classes=None):
+    def visualize_feature_space(self, feature_dic, projection, classes=None, savedir=None, render=True, test_feature_dic=None, t_classes=None, normalize=True):
         """Visualize the the feature space
         
         Parameters
@@ -1482,12 +1482,27 @@ class FeatureExtractor:
             The location the plot should be saved to. Specify the prefix i.e., "figs/subject". Feature names and .png are appended to this prefix
         render: boolean
             Boolean to indicate whether the plot is shown or not. Defaults to False.
+        test_feature_dic: dictionary
+            A dictionary consisting of the different features. This is the output from the extract_features method.
+        t_classes: boolean
+            The classes for each window. Easily obtained from the odh.parse_windows() method.
+        normalize: boolean
+            Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
         """
         for i, k in enumerate(feature_dic.keys()):
             feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
             if test_feature_dic is not None:
                 t_feature_matrix = test_feature_dic[k] if i == 0 else np.hstack((t_feature_matrix, test_feature_dic[k]))
         
+        # normalization
+        if normalize:
+            feature_means = np.mean(feature_matrix, axis=0)
+            feature_stds  = np.std(feature_matrix, axis=0)
+            feature_matrix = (feature_matrix - feature_means) / feature_stds
+
+        if test_feature_dic is not None:
+            t_feature_matrix = (t_feature_matrix - feature_means)/feature_stds
+
         if classes is not None:
             class_list = np.unique(classes)
         fig, ax = plt.subplots(1,2,figsize=(8,4))
@@ -1497,7 +1512,7 @@ class FeatureExtractor:
             if classes is not None:
                 for c in class_list:
                     class_ids = classes == c
-                    ax[0].scatter(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr"+str(int(c)))
+                    ax[0].scatter(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)))
             else:
                 ax[0].scatter(train_data[:,0], train_data[:,1], marker=".", label="tr")
             ax[0].set_prop_cycle(None)
@@ -1506,7 +1521,7 @@ class FeatureExtractor:
                 if t_classes is not None:
                     for c in class_list:
                         class_ids = t_classes == c 
-                        ax[0].scatter(test_data[class_ids,0], test_data[class_ids,1], marker='+', alpha=0.75, label="te"+str(int(c)))
+                        ax[0].scatter(test_data[class_ids,0], test_data[class_ids,1], marker='+', alpha=0.75, label="te "+str(int(c)))
                 else:
                     ax[0].scatter(test_data[:,0], test_data[:,1], marker="+", label="te")
             
