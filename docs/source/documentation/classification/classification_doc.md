@@ -41,6 +41,7 @@ Check out the LDA docs [here.](https://scikit-learn.org/stable/modules/generated
 
 ### K-Nearest Neighbour (KNN)
 Discriminates between inputs using the K closest samples in feature space. The implemented version in the library defaults to k = 5.
+
 ```Python
 params = {'n_neighbors': 5} # Optional
 classifier = EMGClassifier('KNN', data_set, parameters=params)
