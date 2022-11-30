@@ -86,7 +86,8 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
     This function can be used to simulate raw EMG being streamed over a UDP port. The main purpose 
     of this function would be to explore real-time interactions without the need for a physical 
     device. Note: This will start up a seperate process to stream data over. Additionally, 
-    this uses the time module and as such the sampling rate may not be perfect.
+    this uses the time module and as such the sampling rate may not be perfect and there may 
+    be some latency.
 
     Parameters
     ----------

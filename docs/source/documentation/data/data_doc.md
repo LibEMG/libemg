@@ -7,7 +7,7 @@
 This module has three main pieces of data-related functionality: **(1) Datasets**, **(2) Offline Data Handling**, and **(3) Online Data Handling**. Together, they correspond to most of the data-related functionality one would ever need for leveraging validated datasets, parsing through file structures of offline data, and processing real-time EMG.
 
 # Datasets
-To enable all interested parties the ability to leverage our toolkit, we have included several validated datasets as part of this toolkit. These datasets can be leveraged for exploring the toolkit's capabilities and, additionally, for future research. We ask that for the latter, please correctly reference the dataset in your work. Note, these datasets are stored on github and will be cloned locally when downloaded. 
+To enable all interested parties the ability to leverage our library, we have included several validated datasets as part of this library. These datasets can be leveraged for exploring the library's capabilities and, additionally, for future research. We ask that for the latter, please correctly reference the dataset in your work. Note, these datasets are stored on github and will be cloned locally when downloaded. 
 
 <details>
 <summary>Show Datasets</summary>
@@ -317,7 +317,7 @@ odh = dataset.prepare_data(format=OfflineDataHandler)
 <br/>
 
 # Offline Data Handler 
-A large overhead in projects is simply interfacing with the dataset. We are providing a means to quickly get your in-house or public datasets interfaced with the toolkit so you can get to improving performance as fast as possible. The offline data handler is incredibly flexible with the format of the data trying to be ingested. Simply specify the base directory and it will capture all .csv and .txt files in nested folders. There can be important metadata in the file addresses that are crucial for later analysis (i.e., extracting a training set flag, subject number, repetition number, and class number from a file named `C:\User\CoolProgrammer\Dataset\training\S1_C12_R3.txt`), and we provide a simple function for defining regular expressions for all the metadata you could desire. Using these regular expressions, you can create a dictionary that you pass into the offlinedatahandler that will collect the metadata, along with the emg contents of the within the files for all files that satisfy your regexp's. If the metadata is within the file, you can alternatively hand in a column id for the metadata. Once the data handler has collected all the information available, you can use it to slice the dataset however you'd like, then proceed to feature extraction!
+A large overhead in projects is simply interfacing with the dataset. We are providing a means to quickly get your in-house or public datasets interfaced with the library so you can get to improving performance as fast as possible. The offline data handler is incredibly flexible with the format of the data trying to be ingested. Simply specify the base directory and it will capture all .csv and .txt files in nested folders. There can be important metadata in the file addresses that are crucial for later analysis (i.e., extracting a training set flag, subject number, repetition number, and class number from a file named `C:\User\CoolProgrammer\Dataset\training\S1_C12_R3.txt`), and we provide a simple function for defining regular expressions for all the metadata you could desire. Using these regular expressions, you can create a dictionary that you pass into the offlinedatahandler that will collect the metadata, along with the emg contents of the within the files for all files that satisfy your regexp's. If the metadata is within the file, you can alternatively hand in a column id for the metadata. Once the data handler has collected all the information available, you can use it to slice the dataset however you'd like, then proceed to feature extraction!
 
 ```Python
 dataset_folder = 'demos/data/myo_dataset'
@@ -350,7 +350,7 @@ training_features = fe.extract_features(feature_list, train_windows)
 | ![alt text](all_channels.gif)  | ![alt text](multi_channel.gif)   |
 <center> <p> Table 1: Raw Data from the <b>OnlineDataHandler</b></p> </center>
 
-One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the toolkit, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. 
+One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the library, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. 
 
 <div>
     <img src="https://github.com/eeddy/unb_emg_toolbox/blob/main/docs/source/documentation/data/all_channels.gif?raw=true" width="48%" display="inline-block" float="left"/>
@@ -360,7 +360,7 @@ One of the major complications in interfacing with EMG devices is that they are 
 ![alt text](online_dh.png)
 <center> <p> Figure 1: Online Data Handler Architecture</p> </center>
 
-Streamers have been included for the following devices: `Myo Armband`, `Sifi Labs Armband`, and the `Delsys`. To leverage these streamers, look at the `utils` api. Additionally, if none of these suit your needs you can simply create your own streamer. For example, Figure 2 shows how simple this implementation is for the Myo Armband. All you must do is pickle each EMG reading as a single 1xN array, where N is the number of channels and send it over UDP. The advantage of this architecture, is that it enables our toolkit to interface with any device at any sampling rate as long as data can be streamed over UDP. 
+Streamers have been included for the following devices: `Myo Armband`, `Sifi Labs Armband`, and the `Delsys`. To leverage these streamers, look at the `utils` api. Additionally, if none of these suit your needs you can simply create your own streamer. For example, Figure 2 shows how simple this implementation is for the Myo Armband. All you must do is pickle each EMG reading as a single 1xN array, where N is the number of channels and send it over UDP. The advantage of this architecture, is that it enables our library to interface with any device at any sampling rate as long as data can be streamed over UDP. 
 
 ```Python
 import socket

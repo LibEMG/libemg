@@ -1,6 +1,5 @@
-UNB EMG Toolbox
-*******************************
-
+UNB_EMG_Toolbox
+=========================================
 .. include:: doc.md
    :parser: myst_parser.sphinx_
 

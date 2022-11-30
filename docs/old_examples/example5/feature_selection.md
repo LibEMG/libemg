@@ -15,11 +15,11 @@ if __name__ == "__main__" :
     train_data = odh.isolate_data("sets",[0])
     train_windows, train_metadata = train_data.parse_windows(50, 25)
 
-    # we want to get all the features our toolbox can extract
+    # we want to get all the features our library can extract
     fe = FeatureExtractor(num_channels=8)
     feature_list = fe.get_feature_list()
     
-    # extract every feature in the toolbox on the training data
+    # extract every feature in the library on the training data
     training_features = fe.extract_features(feature_list, train_windows)
 
     # first we initialize the feature selector class
@@ -39,7 +39,7 @@ if __name__ == "__main__" :
     ss_accuracy_results, ss_accuracy_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
     fs.print(metric, ss_accuracy_results, ss_accuracy_fs)
 
-    # these results are easy to use with the rest of the toolbox!
+    # these results are easy to use with the rest of the library!
     # if you want the best 5 features from one of these selections
     top_feature_set = accuracy_fs[:5]
     top_training_features = fe.extract_features(top_feature_set, train_windows)

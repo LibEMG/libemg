@@ -64,7 +64,7 @@ def handle_movement(self):
             self.move_snake()
 ```
 
-Now let's look at how we can move the snake using EMG-based input. As our toolkit streams all classification decisions over UDP, we need to set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. We opted not to change these default values. 
+Now let's look at how we can move the snake using EMG-based input. As our library streams all classification decisions over UDP, we need to set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. We opted not to change these default values. 
 ```Python
 # Socket for reading EMG
 self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 

@@ -40,7 +40,7 @@ classifier = EMGClassifier('LDA', data_set)
 Check out the LDA docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html)
 
 ### K-Nearest Neighbour (KNN)
-Discriminates between inputs using the K closest samples in feature space. The implemented version in the toolkit defaults to k = 5.
+Discriminates between inputs using the K closest samples in feature space. The implemented version in the library defaults to k = 5.
 ```Python
 params = {'n_neighbors': 5} # Optional
 classifier = EMGClassifier('KNN', data_set, parameters=params)
