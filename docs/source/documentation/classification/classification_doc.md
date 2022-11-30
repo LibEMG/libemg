@@ -23,7 +23,7 @@ Additionally, we can also create our own classifiers. Any custom classifier shou
 
 ```Python
 from sklearn.ensemble import RandomForestClassifier
-from unb_emg_toolbox import EMGClassifier
+from libemg.classification import EMGClassifier
 
 rf_custom_classifier = RandomForestClassifier(max_depth=5, random_state=0)
 classifier = EMGClassifier()

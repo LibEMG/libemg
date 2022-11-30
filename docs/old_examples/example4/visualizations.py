@@ -5,13 +5,13 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../..'))
 import numpy as np
-from unb_emg_toolbox.utils import get_windows, mock_emg_stream
-from unb_emg_toolbox.data_handler import OnlineDataHandler
-from unb_emg_toolbox.emg_classifier import OnlineEMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.datasets import OneSubjectMyoDataset
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.data_handler import OfflineDataHandler
+from libemg.utils import get_windows, mock_emg_stream
+from libemg.data_handler import OnlineDataHandler
+from libemg.emg_classifier import OnlineEMGClassifier
+from libemg.feature_extractor import FeatureExtractor
+from libemg.datasets import OneSubjectMyoDataset
+from libemg.emg_classifier import EMGClassifier
+from libemg.data_handler import OfflineDataHandler
         
 def visualize_offline_decision_stream():
     # get the predefined one subject myo dataset

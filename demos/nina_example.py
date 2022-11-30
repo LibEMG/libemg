@@ -4,12 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from unb_emg_toolbox.datasets import _3DCDataset, NinaDB1
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
-from unb_emg_toolbox.filtering import Filter
+from libemg.datasets import _3DCDataset, NinaDB1
+from libemg.emg_classifier import EMGClassifier
+from libemg.feature_extractor import FeatureExtractor
+from libemg.data_handler import OfflineDataHandler
+from libemg.offline_metrics import OfflineMetrics
+from libemg.filtering import Filter
 
 if __name__ == "__main__" :
     nina_1 = NinaDB1(save_dir='example_data', redownload=False, subjects=[1,2])

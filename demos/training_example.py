@@ -2,14 +2,14 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.training_ui import TrainingUI 
-from unb_emg_toolbox.data_handler import OnlineDataHandler
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.emg_classifier import OnlineEMGClassifier, EMGClassifier
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.utils import  delsys_streamer#myo_streamer, sifi_streamer,
+from libemg.training_ui import TrainingUI 
+from libemg.data_handler import OnlineDataHandler
+from libemg.data_handler import OfflineDataHandler
+from libemg.feature_extractor import FeatureExtractor
+from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier
+from libemg.offline_metrics import OfflineMetrics
+from libemg.utils import make_regex
+from libemg.utils import  delsys_streamer#myo_streamer, sifi_streamer,
 
 def offline_analysis():
     odh = OfflineDataHandler()

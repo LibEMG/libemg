@@ -1,10 +1,10 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.feature_selector import FeatureSelector
+from libemg.feature_extractor import FeatureExtractor
+from libemg.utils import make_regex
+from libemg.data_handler import OfflineDataHandler
+from libemg.feature_selector import FeatureSelector
 
 
 if __name__ == "__main__" :

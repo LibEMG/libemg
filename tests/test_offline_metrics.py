@@ -2,7 +2,7 @@ import pytest
 import pickle
 import numpy as np
 from sklearn.metrics import *
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
+from libemg.offline_metrics import OfflineMetrics
 
 """
 Validation testing to ensure that our offline metrics are the same as sklearn. 

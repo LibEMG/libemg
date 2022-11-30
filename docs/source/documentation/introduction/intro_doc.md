@@ -34,7 +34,7 @@ Classification involves taking in EMG data and making predictions using a partic
 System evaluation is a crucial part of evaluating the performance of any EMG control system. The two evaluation techniques are **offline** and **online** evaluation. **This module provides programmers with a means to extract common offline evaluation metrics.** Online evaluation is application dependent, so this library does not directly address this issue. This module stands independently from the others and can be leveraged for any offline evluation tasks.
 
 # Contributing
-We invite all those interested in contributing to this library to do so. Feel free to reach out to the authors if you have any questions. The repo is open-sourced and can be found [here](https://github.com/eeddy/unb_emg_toolbox). For any bugs, improvements, or suggestions please create an issue and we will review it as soon as possible.
+We invite all those interested in contributing to this library to do so. Feel free to reach out to the authors if you have any questions. The repo is open-sourced and can be found [here](https://github.com/eeddy/libemg). For any bugs, improvements, or suggestions please create an issue and we will review it as soon as possible.
 
 # Citing
 We ask that if you leverage this library for any research related purposes please cite the following publication:

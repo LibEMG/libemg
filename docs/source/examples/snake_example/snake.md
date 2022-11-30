@@ -134,7 +134,7 @@ def play_snake(self):
     self.initialize_ui()
 ```
 
-Creating an online classifier is quite easy when leveraging the `unb_emg_toolbox`. Step 1 involves parsing the accumulated training data for a particular user. This training data can be then split into `train_windows` and `train_metadata`.
+Creating an online classifier is quite easy when leveraging the `libemg`. Step 1 involves parsing the accumulated training data for a particular user. This training data can be then split into `train_windows` and `train_metadata`.
 
 ```Python
 # Step 1: Parse offline training data

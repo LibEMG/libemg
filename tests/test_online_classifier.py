@@ -2,10 +2,10 @@ import numpy as np
 import time
 import socket
 import pytest
-from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
-from unb_emg_toolbox.utils import make_regex, get_windows, mock_emg_stream
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.emg_classifier import EMGClassifier, OnlineEMGClassifier
+from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
+from libemg.utils import make_regex, get_windows, mock_emg_stream
+from libemg.feature_extractor import FeatureExtractor
+from libemg.emg_classifier import EMGClassifier, OnlineEMGClassifier
 
 """
 By default these tests are marked @slow - and they do not work in the CI

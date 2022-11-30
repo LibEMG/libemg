@@ -3,9 +3,9 @@ import time
 import socket
 import pickle
 from multiprocessing import Process
-from unb_emg_toolbox.streamers.sifi_streamer import SiFiLabServer
-from unb_emg_toolbox.streamers.myo_streamer import MyoStreamer
-from unb_emg_toolbox.streamers.delsys_streamer import DelsysEMGStreamer
+from libemg.streamers.sifi_streamer import SiFiLabServer
+from libemg.streamers.myo_streamer import MyoStreamer
+from libemg.streamers.delsys_streamer import DelsysEMGStreamer
 
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
