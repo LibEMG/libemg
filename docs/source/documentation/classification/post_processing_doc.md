@@ -10,7 +10,7 @@ Overrides the current output with the label corresponding to the class that occu
 ## Velocity Control <sup>[4]</sup>
 Outputs an associated *velocity* with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. 
 
-**Note: This toolkit leverages method 3 from the cited work.**
+**Note: This library leverages method 3 from the cited work.**
 
 ![alt text](decision_stream.png)
 <center> <p> Figure 1: Decision Stream of No Post Processing, Rejection, and Majority Voting. This can be created using the <b>.visualize()</b> method call. </p> </center>

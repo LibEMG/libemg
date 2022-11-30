@@ -21,7 +21,7 @@ features_2 = fe.extract_feature_group('HTD', windows)
 ```
 
 # Feature Performance
-We currently have 35 features installed in the toolbox. These features were tested individually with a linear discriminant analysis classifier on the 3DC dataset and achieve a wide range of accuracies. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as a result don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for a real-world task. The code associate with Figure 1 is located <a href="#code">below</a>.
+We currently have 35 features installed in the library. These features were tested individually with a linear discriminant analysis classifier on the 3DC dataset and achieve a wide range of accuracies. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as a result don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for a real-world task. The code associate with Figure 1 is located <a href="#code">below</a>.
 
 ![alt text](feature_accuracies.png)
 <center> <p> Figure 1: Individual Feature Accuracy</p> </center>
@@ -32,7 +32,7 @@ Let $x_{i}$ represents the signal in segment i and $N$ denotes the number of sam
 Let $fj$ be the frequency of the spectrum at frequency bin $j$, $P_{j}$ is the
 EMG power spectrum at frequency bin $j$, and $M$ is the length of the frequency bin.
 
-**Note: every feature and feature group is associated with an abbreviation (e.g., MAV). This is how we refer to a specific feature in our toolbox and is how you should interface with it.**
+**Note: every feature and feature group is associated with an abbreviation (e.g., MAV). This is how we refer to a specific feature in our library and is how you should interface with it.**
 
 ## **Mean Absolute Value (MAV)** <sup>[1]</sup>
 
@@ -317,7 +317,7 @@ $
 $
 
 # Feature Sets
-Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the toolkit:
+Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the library:
 
 ## **Hudgin's Time Domain (HTD)** <sup>[8]</sup>
 1. Mean Absolute Value (MAV)
@@ -444,13 +444,13 @@ from unb_emg_toolbox.offline_metrics import OfflineMetrics
 from unb_emg_toolbox.filtering import Filter
 
 if __name__ == "__main__":
-    # get the 3DC Dataset using toolbox handle - this downloads the dataset
+    # get the 3DC Dataset using library handle - this downloads the dataset
     dataset = _3DCDataset(save_dir='example_data',
                           redownload=False)
     # take the downloaded dataset and load it as an offlinedatahandler
     odh = dataset.prepare_data(format=OfflineDataHandler)
 
-    # Perform an analysis where we test all the features available of the toolbox individually for within-subject
+    # Perform an analysis where we test all the features available of the library individually for within-subject
     # classification accuracy.
 
     # setup out model type and output metrics
