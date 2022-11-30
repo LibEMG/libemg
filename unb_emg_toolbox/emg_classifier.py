@@ -20,22 +20,11 @@ from unb_emg_toolbox.utils import get_windows
 class EMGClassifier:
     """Base EMG Classification class. 
 
-    This class is the base class for offline EMG classification. Trains an sklearn ml model given a set
-    of training and testing data and evalutes the results. 
+    This class is the base class for offline EMG classification. 
 
     Parameters
     ----------
-    model: string or custom classifier (must have fit, predict and predic_proba functions)
-        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-        'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-        models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
-    data_set: dictionary
-        A dictionary including the associated features and labels associated with a set of data. 
-        Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', and 
-        'testing_features'.
-    parameters: dictionary (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
+    
     continuous: bool (optional), default = False
         Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
         majority vote is only applied to individual reps, not between them.
@@ -49,10 +38,9 @@ class EMGClassifier:
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, model, data_set, parameters=None, continuous=False, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False):
-        random.seed(0)
-        #TODO: Need some way to specify if its continuous testing data or not 
-        self.data_set = data_set
+    def __init__(self, continuous=False, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, random_seed=0):
+        random.seed(random_seed)
+        
         self.classifier = None
         self.rejection_type = rejection_type
         self.rejection_threshold = rejection_threshold
@@ -66,13 +54,42 @@ class EMGClassifier:
         self.th_min_dic = None 
         self.th_max_dic = None 
 
-        # Functions to run:
-        self._format_data('training_features')
-        if 'testing_features' in self.data_set.keys():
-            self._format_data('testing_features')
-        self._set_up_classifier(model, parameters)
-        if self.velocity:
-            self.th_min_dic, self.th_max_dic = self._set_up_velocity_control()
+        
+
+    def fit(self, model, feature_dictionary=None, dataloader_dictionary=None, parameters=None):
+        """The fit function for the EMG Classification class. 
+
+        This is the method called that actually optimizes model weights for the dataset. This method presents a fork for two 
+        different kind of models being trained. The first we call "statistical" models (i.e., LDA, QDA, XGBoost etc.)
+        and these are interfaced with sklearn. The second we call "deep learning" models and these are designed to fit around
+        the conventional programming style of pytorch. We distinguish which of these models are being trained by passing in a
+        feature_dictionary for "statistical" models and a "dataloader_dictionary" for deep learning models.
+
+        Parameters
+        ----------
+    
+        model: string or custom classifier (must have fit, predict and predic_proba functions)
+            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
+            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+        feature_dictionary: dictionary
+            A dictionary including the associated features and labels associated with a set of data. 
+            Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', and 
+            'testing_features'.
+        dataloader_dictionary: dictionary
+            A dictionary including the associated dataloader objects for the dataset you'd like to train with. 
+            Dictionary keys should include 'training_dataloader', and 'validation_dataloader'.
+        parameters: dictionary (optional)
+            A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+            in the sklearn docs for the given model.
+        """
+        # determine what sort of model we are fitting:
+        if feature_dictionary is not None:
+            self._fit_statistical_model(model, feature_dictionary, parameters)
+        elif dataloader_dictionary is not None:
+            self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
+
+    
 
     @classmethod
     def from_file(self, filename):
@@ -146,6 +163,28 @@ class EMGClassifier:
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
+
+    def _fit_statistical_model(self, model, feature_dictionary, parameters):
+        assert 'training_features' in feature_dictionary.keys()
+        assert 'testing_features'  in feature_dictionary.keys()
+        assert 'training_labels'   in feature_dictionary.keys()
+        assert 'testing_labels'    in feature_dictionary.keys()
+        # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
+        self.data_set = feature_dictionary
+        self._format_data('training_features')
+        if 'testing_features' in feature_dictionary.keys():
+            self._format_data('testing_features')
+        self._set_up_classifier(model, parameters)
+        if self.velocity:
+            self.th_min_dic, self.th_max_dic = self._set_up_velocity_control()
+
+    def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
+        assert 'training_dataloader' in dataloader_dictionary.keys()
+        assert 'validation_dataloader'  in dataloader_dictionary.keys()
+        self.classifier = model
+        self.classifier.fit(dataloader_dictionary, **parameters)
+        pass
+
     def _format_data(self, i_key):
         arr = None
         for feat in self.data_set[i_key]:
@@ -356,7 +395,7 @@ class OnlineEMGClassifier(EMGClassifier):
         If True, prints predictions to std_out.
     """
     def __init__(self, model, data_set, num_channels, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
-        super().__init__(model, data_set, parameters=parameters, velocity=velocity)
+        super().__init__(velocity=velocity)
         self.num_channels = num_channels
         self.window_size = window_size
         self.window_increment = window_increment
@@ -367,10 +406,14 @@ class OnlineEMGClassifier(EMGClassifier):
         self.rejection_type = rejection_type
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
+
+        self.fit(model, feature_dictionary=data_set, parameters=parameters)
+
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.process = Process(target=self._run_helper, daemon=True,)
         self.std_out = std_out
         self.previous_predictions = deque(maxlen=self.majority_vote)
+        
 
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
@@ -428,7 +471,7 @@ class OnlineEMGClassifier(EMGClassifier):
                 # Write classifier output:
                 self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
                 if self.std_out:
-                    print(f"{prediction} {calculated_velocity} {time.time()}")
+                    print(f"{int(prediction)} {calculated_velocity} {time.time()}")
     
     def _format_data_sample(self, data):
         arr = None

@@ -44,7 +44,8 @@ def offline_analysis():
 
     om = OfflineMetrics()
     metrics = ['CA']
-    classifier = EMGClassifier("LDA", data_set.copy())
+    classifier = EMGClassifier()
+    classifier.fit("LDA", data_set.copy())
     preds = classifier.run()
     y_true = data_set['testing_labels']
     metrics = om.extract_offline_metrics(metrics, preds, y_true)
