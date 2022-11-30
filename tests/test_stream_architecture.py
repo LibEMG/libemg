@@ -1,8 +1,8 @@
 import time
 import pytest
 import numpy as np
-from unb_emg_toolbox.utils import mock_emg_stream
-from unb_emg_toolbox.data_handler import OnlineDataHandler
+from libemg.utils import mock_emg_stream
+from libemg.data_handler import OnlineDataHandler
 
 """
 By default these tests are marked @slow - and they do not work in the CI

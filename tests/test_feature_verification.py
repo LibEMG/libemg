@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from unb_emg_toolbox.feature_extractor import FeatureExtractor as featureextractor
-from unb_emg_toolbox.utils import get_windows 
+from libemg.feature_extractor import FeatureExtractor as featureextractor
+from libemg.utils import get_windows 
 
 def test_all_features_versus_matlab():
     fe = featureextractor(num_channels=8)

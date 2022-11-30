@@ -12,8 +12,8 @@ from itertools import compress
 from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
-from unb_emg_toolbox.raw_data import RawData
-from unb_emg_toolbox.utils import get_windows, _get_mode_windows
+from libemg.raw_data import RawData
+from libemg.utils import get_windows, _get_mode_windows
 
 class DataHandler:
     def __init__(self):

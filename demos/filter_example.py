@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.data_handler import OfflineDataHandler, OnlineDataHandler
-from unb_emg_toolbox.filtering import Filter
-from unb_emg_toolbox.utils import mock_emg_stream
+from libemg.utils import make_regex
+from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
+from libemg.filtering import Filter
+from libemg.utils import mock_emg_stream
 def offline_dataset_filtering_demo():
     ## Example for filtering an offline dataset.
     dataset_folder = 'demos/data/data'

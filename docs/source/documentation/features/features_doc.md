@@ -2,8 +2,8 @@ The goal of this module is to simplify the feature extraction stage for develope
 
 ```Python
 import numpy as np
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import get_windows
+from libemg.feature_extractor import FeatureExtractor
+from libemg.utils import get_windows
 
 fe = FeatureExtractor(num_channels=8)
 
@@ -435,13 +435,13 @@ import sys
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
-from unb_emg_toolbox.datasets import _3DCDataset
-from unb_emg_toolbox.emg_classifier import EMGClassifier
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
-from unb_emg_toolbox.utils import make_regex
-from unb_emg_toolbox.data_handler import OfflineDataHandler
-from unb_emg_toolbox.offline_metrics import OfflineMetrics
-from unb_emg_toolbox.filtering import Filter
+from libemg.datasets import _3DCDataset
+from libemg.emg_classifier import EMGClassifier
+from libemg.feature_extractor import FeatureExtractor
+from libemg.utils import make_regex
+from libemg.data_handler import OfflineDataHandler
+from libemg.offline_metrics import OfflineMetrics
+from libemg.filtering import Filter
 
 if __name__ == "__main__":
     # get the 3DC Dataset using library handle - this downloads the dataset

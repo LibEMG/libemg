@@ -5,7 +5,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
-from unb_emg_toolbox.feature_extractor import FeatureExtractor
+from libemg.feature_extractor import FeatureExtractor
 from multiprocessing import Process
 import numpy as np
 import pickle
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import time
 import inspect
 
-from unb_emg_toolbox.utils import get_windows
+from libemg.utils import get_windows
 
 class EMGClassifier:
     """Base EMG Classification class. 
