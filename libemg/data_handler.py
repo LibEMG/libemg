@@ -298,7 +298,7 @@ class OnlineDataHandler(DataHandler):
         """
         self.listener.terminate()
         
-    def visualize(self, num_channels, num_samples=500, y_axes=None):
+    def visualize(self, num_channels=None, num_samples=500, y_axes=None):
         """Visualize the incoming raw EMG in a plot (all channels together).
 
         Parameters
@@ -309,11 +309,17 @@ class OnlineDataHandler(DataHandler):
             A list of two elements consisting of the y-axes.
         """
         pyplot.style.use('ggplot')
+        if num_channels is None:
+            if len(self.raw_data.get_emg()) > 0:
+                num_channels = len(self.raw_data.get_emg()[0])
+            else:
+                print("No data being read from the online streamer.")
+                return 
         emg_plots = []
         figure, ax = pyplot.subplots()
         figure.suptitle('Raw Data', fontsize=16)
         for i in range(0,num_channels):
-            emg_plots.append(ax.plot([],[],label="CH"+str(i)))
+            emg_plots.append(ax.plot([],[],label="CH"+str(i+1)))
         figure.legend()
         
         def update(frame):
