@@ -20,7 +20,7 @@ class ScreenGuidedTraining:
     def __init__(self):
         pass 
 
-    def download_gestures(self, gesture_ids, folder, download_gifs=False, redownload=False):
+    def download_gestures(self, gesture_ids, folder, download_imgs=True, download_gifs=False, redownload=False):
         """
         Downloads gesture images (either .png or .gif form) from https://github.com/eeddy/LibEMGGestures.
         This function dowloads gestures using the "curl" command. 
@@ -55,14 +55,14 @@ class ScreenGuidedTraining:
             idx = str(id)
             img_file = json_file[idx] + ".png"
             gif_file = json_file[idx] + ".gif"
-            if not img_file in files or redownload:
+            if download_imgs and (not img_file in files or redownload):
                 os.system(curl_commands + git_url + img_folder + img_file)
             if download_gifs:
                 if not gif_file in files or redownload:
                     os.system(curl_commands + git_url + gif_folder + gif_file)
 
 
-    def launch_training(self, data_handler, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, time_between_reps=3, randomize=False, continuous=False):
+    def launch_training(self, data_handler, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[]):
         """Launches the Screen Guided Training UI.
 
         Parameters
@@ -82,14 +82,22 @@ class ScreenGuidedTraining:
         randomize: bool, default=False
             If True the classes are presented in a random order.
         continuous: bool, default=False
-            If True there is no pause between reps."""
-        _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, time_between_reps=time_between_reps, randomize=randomize, continuous=continuous)
+            If True there is no pause between reps.
+        gifs: bool, default=False
+            If True looks and plays gifs (this option of for discrete training).
+        exclude_files: list, default=None
+            A list of files to exclude. 
+        """
+        _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, time_between_reps=time_between_reps, randomize=randomize, continuous=continuous, gifs=gifs, exclude_files=exclude_files)
 
 
 class _SGTUI:
-    def __init__(self, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False):
+    def __init__(self, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[]):
         self.window = Tk()
+
+        self.meta_data_dic = {}
         
+        self.exclude_files = exclude_files
         self.num_reps = IntVar(value=num_reps)
         self.rep_time = IntVar(value=rep_time)
         self.rep_folder = StringVar(value=rep_folder)
@@ -97,6 +105,7 @@ class _SGTUI:
         self.time_between_reps = IntVar(value=time_between_reps)
         self.randomize = BooleanVar(value=randomize)
         self.continuous = BooleanVar(value=continuous)
+        self.gifs = BooleanVar(value=gifs)
         self.inputs = []
         self.data_handler = data_handler
         self.og_inputs = []
@@ -114,7 +123,6 @@ class _SGTUI:
         self.rep_number = 0
         self.data_collecting_thread = None
         self.error_label = None
-
         # For UI
         self._intialize_UI()
         self.window.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -126,10 +134,13 @@ class _SGTUI:
 
     def _accumulate_training_images(self):
         filenames = next(walk(self.rep_folder.get()), (None, None, []))[2]
-        file_types = [".jpg", ".png", ".gif"]
+        file_types = [".jpg", ".png"]
+        if self.gifs.get():
+            file_types = [".gif"]
         for file in filenames:
             if any(sub_str in file for sub_str in file_types):
-                self.inputs.append(file)
+                if not file in self.exclude_files:
+                    self.inputs.append(file)
         self.og_inputs = list(self.inputs)
     
     def _clear_frame(self):
@@ -156,8 +167,9 @@ class _SGTUI:
         self._create_text_input(3, 0, 3, self.rep_folder, form_frame)
         Label(form_frame, text="Output Folder:", font=label_font).grid(row=4, column=0, columnspan=3, sticky=W, pady=(10,5))
         self._create_text_input(5, 0, 3, self.output_folder, form_frame)
-        Checkbutton(form_frame, text='Randomize', font=label_font, variable=self.randomize, onvalue=True, offvalue=False).grid(row=6, column=0, pady=(20,10), padx=(100,0))
-        Checkbutton(form_frame, text='Continuous', font=label_font, variable=self.continuous, onvalue=True, offvalue=False).grid(row=6, column=2, pady=(20,10), padx=(0,100))
+        Checkbutton(form_frame, text='Randomize', font=label_font, variable=self.randomize, onvalue=True, offvalue=False).grid(row=6, column=0, pady=(20,10), padx=(10,10))
+        Checkbutton(form_frame, text='Continuous', font=label_font, variable=self.continuous, onvalue=True, offvalue=False).grid(row=6, column=1, pady=(20,10), padx=(10,10))
+        Checkbutton(form_frame, text='GIFs', font=label_font, variable=self.gifs, onvalue=True, offvalue=False).grid(row=6, column=2, pady=(20,10), padx=(10,10))
         self.start_training_button = Button(form_frame, text = 'Start Training', font= ("Arial", 14), command=self._create_data_recording_screen)
         self.start_training_button.grid(row=7, column=0, columnspan=3, pady=(10,5))
         Button(form_frame, text = 'Visualize', font= ("Arial", 14), command=self._visualize).grid(row=8, column=0, columnspan=3, pady=(10,5))
@@ -194,11 +206,16 @@ class _SGTUI:
         self.window.geometry("800x750")
         self.window.resizable(True, True)
         self._accumulate_training_images()
+
+        # Create metadata
+        self.meta_data_dic['continuous'] = self.continuous.get()
+        self.meta_data_dic['randomize'] = self.randomize.get()
+        self.meta_data_dic['gifs'] = self.gifs.get()
         
         # Create UI Elements
         self.pb = Progressbar(self.window, orient='horizontal', length=self.photo_width, mode='determinate')
         self.cd_label = Label(text="X", font=("Arial", 25))
-        self.image_label = Label(self.window, image = None)
+        self.image_label = ImageLabel(self.window)
         self.class_label = Label(text="Label", font=("Arial", 25))
         self.rep_label = Label(text="Rep X of Y", font=("Arial", 25))
 
@@ -230,11 +247,13 @@ class _SGTUI:
                     if val == 0:
                         if self.continuous.get():
                             continue
-                        img = ImageTk.PhotoImage(Image.open(image_file).convert('L').resize((self.photo_width, self.photo_width)))
+                        self.image_label.unload()
+                        self.image_label.load(image_file, True, self.photo_width, self.photo_width, self.rep_time.get(), self.time_between_reps.get())
                     else:
-                        img = ImageTk.PhotoImage(Image.open(image_file).resize((self.photo_width, self.photo_width)))
+                        self.image_label.unload()
+                        self.image_label.load(image_file, False, self.photo_width, self.photo_width, self.rep_time.get(), self.time_between_reps.get())
                         cd_time = self.rep_time.get()
-                    self._update_class(str(file.split(".")[0]),img)
+                    self._update_class(str(file.split(".")[0]))
                     if val != 0:
                         self.data_handler.raw_data.reset_emg()
                     self._bar_count_down(cd_time)
@@ -268,17 +287,68 @@ class _SGTUI:
             self.window.update_idletasks()
             time.sleep(1)
     
-    def _update_class(self,label,image):
+    def _update_class(self,label):
         self.class_label['text'] = "Class: " + str(label)
-        self.image_label['image'] = image
         self.window.update_idletasks()
     
     def _write_data(self, data):
         if not os.path.isdir(self.output_folder.get()):
             os.makedirs(self.output_folder.get()) 
         for c in data.keys():
+            # Write EMG Files
             emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + ".csv"
+            self.meta_data_dic[emg_file] = {
+                'rep_idx': self.rep_number,
+                'class_idx': c,
+                'class_name': self.og_inputs[c].split(".")[0],
+                'file_type': self.og_inputs[c].split(".")[1]
+            }
             with open(emg_file, "w", newline='', encoding='utf-8') as file:
                 emg_writer = csv.writer(file)
                 for row in data[c]:
                     emg_writer.writerow(row)
+        # Write Metadata file
+        with open(self.output_folder.get() + "metadata.json", 'w') as f: 
+            f.write(json.dumps(self.meta_data_dic))
+        
+
+from itertools import count, cycle
+"""
+Credit goes to: https://pythonprogramming.altervista.org/animate-gif-in-tkinter/
+"""
+class ImageLabel(Label):
+    def load(self, im_file, gray, width, height, rep_time, btwn_rep_time):
+        if ".gif" in im_file:
+            im = Image.open(im_file)
+        else:
+            im = Image.open(im_file).resize((width, height))
+        frames = []
+        try:
+            for i in count(1):
+                if gray:
+                    frames.append(ImageTk.PhotoImage(im.copy().convert('L').resize((width, height))))
+                else:
+                    frames.append(ImageTk.PhotoImage(im.copy().resize((width, height))))
+                im.seek(i)
+        except EOFError:
+            pass
+        self.frames = cycle(frames)
+
+        if gray:
+            self.delay = int(btwn_rep_time * 1000 / len(frames))
+        else:
+            self.delay = int(rep_time * 1000 / len(frames))
+
+        if len(frames) == 1:
+            self.config(image=next(self.frames))
+        else:
+            self.next_frame()
+ 
+    def unload(self):
+        self.config(image=None)
+        self.frames = None
+ 
+    def next_frame(self):
+        if self.frames:
+            self.config(image=next(self.frames))
+            self.after(self.delay, self.next_frame)

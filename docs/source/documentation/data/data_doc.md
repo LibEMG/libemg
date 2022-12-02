@@ -356,40 +356,29 @@ One of the major complications in interfacing with EMG devices is that they are 
     <img src="https://github.com/eeddy/libemg/blob/main/docs/source/documentation/data/all_channels.gif?raw=true" width="48%" display="inline-block" float="left"/>
     <img src="https://github.com/eeddy/libemg/blob/main/docs/source/documentation/data/multi_channel.gif?raw=true" width="48%" float="left"/>
 </div>
+<center> <p> Table 1: Visualize function output</p> </center>
 
 ![alt text](online_dh.png)
 <center> <p> Figure 1: Online Data Handler Architecture</p> </center>
 
-Streamers have been included for the following devices: `Myo Armband`, `Sifi Labs Armband`, and the `Delsys`. To leverage these streamers, look at the `utils` api. Additionally, if none of these suit your needs you can simply create your own streamer. For example, Figure 2 shows how simple this implementation is for the Myo Armband. All you must do is pickle each EMG reading as a single 1xN array, where N is the number of channels and send it over UDP. The advantage of this architecture, is that it enables our library to interface with any device at any sampling rate as long as data can be streamed over UDP. 
+We have added some convenient functionality to the `OnlineDataHandler` to help developers. Firstly, we have added two visualize functions: `visualize` and `visualize_channels`, exemplified in Table 1. Additionally, we have added a function `analyze_hardware` to run a simple analysis on the hardware device being used. This output of this function is as follows:
 
-```Python
-import socket
-import multiprocessing
-import pickle
-from pyomyo import Myo, emg_mode
-
-def streamer():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    m = Myo(mode=emg_mode.FILTERED)
-    m.connect()
-
-    def write_to_socket(emg, movement):
-        data_arr = pickle.dumps(list(emg))
-        sock.sendto(data_arr, ('127.0.0.1' 12345))
-    m.add_emg_handler(write_to_socket)
-    
-    while True:
-        m.run()
-        
-if __name__ == "__main__" :
-    # Create streamer in a seperate Proces:
-    p = multiprocessing.Process(target=streamer, daemon=True)
-    p.start()
-    
-    # Code leveraging the data goes here:
-    odh = OnlineDataHandler(emg_arr=True, port=12345, ip='127.0.0.1')
-    odh.start_listening()
-
-    # Do stuff with data...
 ```
-<center> <p> Figure 2: Example of an EMG Streamer for the Myo Armband</p> </center>
+Starting analysis (10s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.
+Sampling Rate: 200
+Num Channels: 8
+Max Value: 127
+Min Value: -128
+Resolution: 8 bits
+Time Between Samples - Mean: 0.005005508407569851s STD: 0.007183463266367916s
+Repeating Values: 0
+```
+
+- `sampling rate` is the number of samples read per second
+- `num channels` is the number of channels that data is being read from
+- `min and max values` are the maximum values read from the data, 
+- `resolution` is the predicted resolution in bits based on the data seen
+- `time between_samples` is the average and standard deviation between sample reads 
+- `repeating values` is the number of repeated values in the input data. Repeating values of > 0 indicate that there might be some issues.
+
+Additionally, we have added a streamer module that makes creating the `UDP Streamer` much easier. Information on the streamer module can be found [here]().
