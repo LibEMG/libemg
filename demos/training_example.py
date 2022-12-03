@@ -2,7 +2,7 @@ import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from libemg.training_ui import TrainingUI 
+from libemg.screen_guided_training import TrainingUI 
 from libemg.data_handler import OnlineDataHandler
 from libemg.data_handler import OfflineDataHandler
 from libemg.feature_extractor import FeatureExtractor

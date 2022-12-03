@@ -33,7 +33,12 @@ Utils
 .. automodule:: libemg.utils
    :members:
 
+Streamers
+------------------------------
+.. automodule:: libemg.streamers
+   :members:
+
 Screen Guided Training
 ------------------------------
-.. automodule:: libemg.training_ui
+.. automodule:: libemg.screen_guided_training
    :members:
