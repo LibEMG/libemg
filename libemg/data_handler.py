@@ -4,6 +4,8 @@ import re
 import socket
 import csv
 import pickle
+import time
+import math
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
@@ -19,6 +21,30 @@ class DataHandler:
     def __init__(self):
         self.data = []
         pass
+
+    def _get_repeating_values(self, data):
+        repeats = 0
+        for i in range(1, len(data)):
+            if data[i] == data[i-1]:
+                repeats += 1
+        return repeats
+
+
+    def _get_num_channels(self, data):
+        return len(data[0])
+
+    def _get_sampling_rate(self, data, time):
+        return int(math.ceil(len(data)/time))
+
+    def _get_resolution(self, data):
+        return int(math.ceil(math.log2(len(np.unique(data)))))
+    
+    def _get_max_value(self, data):
+        return np.max(data)
+    
+    def _get_min_value(self, data):
+        return np.min(data)
+
 
 class OfflineDataHandler(DataHandler):
     """OfflineDataHandler class - responsible for collecting all offline data in a directory.
@@ -297,8 +323,50 @@ class OnlineDataHandler(DataHandler):
         """Terminates the process listening for data.
         """
         self.listener.terminate()
+
+    def analyze_hardware(self, analyze_time=10):
+        """Analyzes several metrics from the hardware:
+        (1) sampling rate
+        (2) resolution
+        (3) min val
+        (4) max val
+        (5) time between samples
+        (6) reapeating values
+        (7) number of channels
+
+        Parameters
+        ----------
+        analyze_time: int (optional), default=10 (seconds)
+            The time in seconds that you want to analyze the device for. 
+        """
+        if not self._check_streaming():
+            return
+
+        btwn_sample_time = []
+        self.raw_data.reset_emg()
+        st = time.time()
+        current_size = 0
+        print("Starting analysis " + "(" + str(analyze_time) + "s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.")
+        while(time.time() - st < analyze_time):
+            if len(self.raw_data.get_emg()) > current_size:
+                current_size += 1
+                btwn_sample_time.append(time.time())
+        emg_data = self.raw_data.get_emg().copy()
+        print("Sampling Rate: " + str(self._get_sampling_rate(emg_data,analyze_time)))
+        print("Num Channels: " + str(self._get_num_channels(emg_data)))
+        print("Max Value: " + str(self._get_max_value(emg_data)))
+        print("Min Value: " + str(self._get_min_value(emg_data)))
+        print("Resolution: " + str(self._get_resolution(emg_data)) + " bits")
+        for i in range(1,len(btwn_sample_time)):
+            btwn_sample_time[i-1] = btwn_sample_time[i] - btwn_sample_time[i-1]
+        btwn_sample_time.pop()
+        print("Time Between Samples - Mean: " + str(np.mean(btwn_sample_time)) + "s STD: " + str(np.std(btwn_sample_time)) + "s")
+        print("Repeating Values: " + str(self._get_repeating_values(emg_data)))
         
-    def visualize(self, num_channels, num_samples=500, y_axes=None):
+        self.stop_listening()
+        print("Analysis sucessfully complete. ODH process has stopped.")
+
+    def visualize(self, num_samples=500, y_axes=None):
         """Visualize the incoming raw EMG in a plot (all channels together).
 
         Parameters
@@ -309,11 +377,14 @@ class OnlineDataHandler(DataHandler):
             A list of two elements consisting of the y-axes.
         """
         pyplot.style.use('ggplot')
+        if not self._check_streaming():
+            return
+        num_channels = len(self.raw_data.get_emg()[0])
         emg_plots = []
         figure, ax = pyplot.subplots()
         figure.suptitle('Raw Data', fontsize=16)
         for i in range(0,num_channels):
-            emg_plots.append(ax.plot([],[],label="CH"+str(i)))
+            emg_plots.append(ax.plot([],[],label="CH"+str(i+1)))
         figure.legend()
         
         def update(frame):
@@ -392,3 +463,12 @@ class OnlineDataHandler(DataHandler):
                         writer.writerow(data)
                 if self.options['emg_arr']:
                     raw_data.add_emg(data)
+
+    def _check_streaming(self, timeout=10):
+        wt = time.time()
+        while(True):
+            if len(self.raw_data.get_emg()) > 0: 
+                return True
+            if time.time() - wt > timeout:
+                print("Not reading any data.... Check hardware connection.")
+                return False

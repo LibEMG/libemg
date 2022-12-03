@@ -7,6 +7,20 @@ class OfflineMetrics:
     """Offline Metrics class is used for extracting offline performance metrics.
     """
 
+    def get_common_metrics(self):
+        """Gets a list of the common metrics used for assessing EMG performance.
+
+        Returns
+        ----------
+        array_like
+            A list of common metrics (CA, AER, and INS).
+        """
+        return [
+            'CA',
+            'AER',
+            'INS'
+        ]
+
     def get_available_metrics(self):
         """Gets a list of all available offline performance metrics.
 

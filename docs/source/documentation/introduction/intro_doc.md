@@ -1,6 +1,5 @@
 Welcome to the UNB EMG library user guide. This library aims to facilitate the development of EMG-based control systems for offline and online use. In this guide, we will introduce our library,  provide a walk through of many core EMG concepts, and by the end, you will hopefully be ready and excited to explore EMG-based interactions.
 
-
 # Core Modules
 As displayed in Figure 1, this project consists of six main modules. Although many of these modules have been built to stand independently from the others (e.g., Feature Extraction), they work symbiotically together to make up the EMG pipeline. Note that any modules with a dashed border are optional in the context of the pipeline. 
 
@@ -41,4 +40,3 @@ We ask that if you leverage this library for any research related purposes pleas
 ```
 Citation
 ```
-

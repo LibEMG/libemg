@@ -1363,7 +1363,7 @@ class FeatureExtractor:
             for f in feature_dic:
                 for i in range(0,len(feature_dic[f][0])):
                     x = list(range(0,len(feature_dic[f])))
-                    lab = "CH"+str(i)
+                    lab = "CH"+str(i+1)
                     ax[index].plot(x, feature_dic[f][:], label=lab)
                     if not lab in labels:
                         labels.append(lab)

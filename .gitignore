@@ -21,4 +21,6 @@ tests/feature_tests/required_fn/*
 example_data/*
 libemg/datasets/__pycache__/*
 demos/data/sgt_example/*
-libemg/streamers/__pycache__/*
+libemg/_streamers/__pycache__/*
+demos/images/
+demos/data/sgt/*
