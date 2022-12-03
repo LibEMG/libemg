@@ -15,14 +15,17 @@ class ScreenGuidedTraining:
 
     By default, this module has two purposes: 
     (1) Launching a Screen Guided Training window. 
-    (2) Downloading gesture sets from our library of gestures located at https://github.com/eeddy/LibEMGGestures
+    (2) Downloading gesture sets from our library of gestures located at:
+    https://github.com/eeddy/LibEMGGestures
     """
     def __init__(self):
         pass 
 
     def download_gestures(self, gesture_ids, folder, download_imgs=True, download_gifs=False, redownload=False):
         """
-        Downloads gesture images (either .png or .gif form) from https://github.com/eeddy/LibEMGGestures.
+        Downloads gesture images (either .png or .gif form) from: 
+        https://github.com/eeddy/LibEMGGestures.
+        
         This function dowloads gestures using the "curl" command. 
 
         Parameters
@@ -215,7 +218,7 @@ class _SGTUI:
         # Create UI Elements
         self.pb = Progressbar(self.window, orient='horizontal', length=self.photo_width, mode='determinate')
         self.cd_label = Label(text="X", font=("Arial", 25))
-        self.image_label = ImageLabel(self.window)
+        self.image_label = _ImageLabel(self.window)
         self.class_label = Label(text="Label", font=("Arial", 25))
         self.rep_label = Label(text="Rep X of Y", font=("Arial", 25))
 
@@ -316,7 +319,7 @@ from itertools import count, cycle
 """
 Credit goes to: https://pythonprogramming.altervista.org/animate-gif-in-tkinter/
 """
-class ImageLabel(Label):
+class _ImageLabel(Label):
     def load(self, im_file, gray, width, height, rep_time, btwn_rep_time):
         if ".gif" in im_file:
             im = Image.open(im_file)

@@ -3,7 +3,8 @@ import time
 import socket
 import pytest
 from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
-from libemg.utils import make_regex, get_windows, mock_emg_stream
+from libemg.utils import make_regex, get_windows
+from libemg.streamers import mock_emg_stream
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_classifier import EMGClassifier, OnlineEMGClassifier
 

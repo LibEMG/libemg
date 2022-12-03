@@ -14,6 +14,7 @@ LibEMG
    documentation/feature_selection/feature_selection
    documentation/classification/classification
    documentation/evaluation/evaluation
+   documentation/screen_guided_training/sgt
 
 .. toctree::
    :maxdepth: 2

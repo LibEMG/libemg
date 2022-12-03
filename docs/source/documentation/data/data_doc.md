@@ -2,6 +2,13 @@
     table {
         width: 100%;
     }
+    .device_img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+        height: 50%;
+    }
 </style>
 
 This module has three main pieces of data-related functionality: **(1) Datasets**, **(2) Offline Data Handling**, and **(3) Online Data Handling**. Together, they correspond to most of the data-related functionality one would ever need for leveraging validated datasets, parsing through file structures of offline data, and processing real-time EMG.
@@ -345,23 +352,33 @@ training_features = fe.extract_features(feature_list, train_windows)
 ```
 
 # Online Data Handler 
+
+One of the major complications in interfacing with EMG devices is that they are all unique.  The thing that they all share in common, however, is that they sample EMG at a specific frequency. The goal of this library was to abstract these differences in hardware and be hardware agnostic (meaning that it works with any hardware). To handle these differences, we have decided to abstract the device out of the library, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. This means that the `UDP streamer` and `OnlineDataHandler` are completely independent from eachother as they communicate over a specified UDP port. Both run in their own processes, and so the main thread is never blocked.
+
+![alt text](online_dh.png)
+<center> <p> Figure 1: Online Data Handler Architecture</p> </center>
+
+The typial setup for any problem is exemplified in the code snippet below. The order in which the `OnlineDataHandler` and the `streamer` get created does not matter (as they are independent). The only important thing to note, is that both are in fact getting created before you can do anything with the data. 
+
+```Python
+# Create Online Data Handler - This listens for data 
+odh = OnlineDataHandler(emg_arr=True)
+odh.start_listening()
+# Create UDP Streamer - This streams data 
+[preferred]_streamer()
+# Do something with the data... 
+```
+
+## Visualizations
+We have added some convenient functionality to the `OnlineDataHandler` to help developers. Firstly, we have added two visualize functions: `visualize` and `visualize_channels`, exemplified in Table 1.
+
 | <center>Combined</center>  | <center>All Channels</center> |
 | ------------- | ------------- |
 | ![alt text](all_channels.gif)  | ![alt text](multi_channel.gif)   |
 <center> <p> Table 1: Raw Data from the <b>OnlineDataHandler</b></p> </center>
 
-One of the major complications in interfacing with EMG devices is that they are all unique. The thing that they all share in common, however, is that they sample EMG at a specific frequency. To handle these differences, we have decided to abstract the device out of the library, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. 
-
-<div>
-    <img src="https://github.com/eeddy/libemg/blob/main/docs/source/documentation/data/all_channels.gif?raw=true" width="48%" display="inline-block" float="left"/>
-    <img src="https://github.com/eeddy/libemg/blob/main/docs/source/documentation/data/multi_channel.gif?raw=true" width="48%" float="left"/>
-</div>
-<center> <p> Table 1: Visualize function output</p> </center>
-
-![alt text](online_dh.png)
-<center> <p> Figure 1: Online Data Handler Architecture</p> </center>
-
-We have added some convenient functionality to the `OnlineDataHandler` to help developers. Firstly, we have added two visualize functions: `visualize` and `visualize_channels`, exemplified in Table 1. Additionally, we have added a function `analyze_hardware` to run a simple analysis on the hardware device being used. This output of this function is as follows:
+## Inspecting Hardware
+Additionally, we have added a function `analyze_hardware` to run a simple analysis on the hardware device being used. This is a good way to sanity check that your device is working as expected. Example output from this function for the Myo Armband is:
 
 ```
 Starting analysis (10s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.
@@ -374,11 +391,57 @@ Time Between Samples - Mean: 0.005005508407569851s STD: 0.007183463266367916s
 Repeating Values: 0
 ```
 
-- `sampling rate` is the number of samples read per second
-- `num channels` is the number of channels that data is being read from
-- `min and max values` are the maximum values read from the data, 
-- `resolution` is the predicted resolution in bits based on the data seen
-- `time between_samples` is the average and standard deviation between sample reads 
+- `sampling rate` is the number of samples read per second.
+- `num channels` is the number of channels that are being read.
+- `min and max values` are the maximum values read from the data.
+- `resolution` is the predicted resolution in bits based on the data seen.
+- `time between_samples` is the average and standard deviation between sample reads. 
 - `repeating values` is the number of repeated values in the input data. Repeating values of > 0 indicate that there might be some issues.
 
-Additionally, we have added a streamer module that makes creating the `UDP Streamer` much easier. Information on the streamer module can be found [here]().
+## Using Prebuilt Streamers
+Additionally, we have added a streamer module that makes creating the `UDP Streamer` much easier. We have included streamers for a variety of common EMG devices shown in Table 2. Reference the <b>streamers API</b> for additional information on how to use each streamer.
+
+| <center>Hardware</center> | <center>Function</center> | <center>Image</center> |
+| ------------- | ------------- | ------------- |
+| Myo Armband  | `myo_streamer()`  | <div class="device_img">![](devices/Myo.png) </div>|
+| Delsys  | `delsys_streamer()` | |
+| SIFI Cuff | `sifi_streamer()` | |
+| UNB Electrodes | `unb_streamer()` |  |
+
+<center> <p>Table 2: The list of all implemented streamers.</p> </center>
+
+## Creating Custom Streamers
+We understand that there will be times when developers are using non-standard hardware. Conveniently, our architecture is hardware agnostic, so developers can write their own UDP streamers. A UDP streamer simply reads a value from a device, pickles it, and sends it over UDP - the `OnlineDataHandler` takes care of the rest. An example of a streamer for the Myo Armband is exemplified below:
+
+```Python
+import socket
+import multiprocessing
+import pickle
+from pyomyo import Myo, emg_mode
+
+def streamer():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    m = Myo(mode=emg_mode.FILTERED)
+    m.connect()
+
+    # On every new sample it, simply pickle it and write it over UDP
+    def write_to_socket(emg, movement):
+        data_arr = pickle.dumps(list(emg))
+        sock.sendto(data_arr, ('127.0.0.1' 12345))
+    m.add_emg_handler(write_to_socket)
+    
+    while True:
+        m.run()
+        
+if __name__ == "__main__" :
+    # Create streamer in a seperate Proces so that the main thread is free
+    p = multiprocessing.Process(target=streamer, daemon=True)
+    p.start()
+    
+    # Code leveraging the data goes here:
+    odh = OnlineDataHandler(emg_arr=True, port=12345, ip='127.0.0.1')
+    odh.start_listening()
+
+    # Do stuff with data...
+```
+<center> <p> Figure 2: Example of an EMG Streamer for the Myo Armband</p> </center>

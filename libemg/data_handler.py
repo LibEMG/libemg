@@ -19,6 +19,7 @@ from libemg.utils import get_windows, _get_mode_windows
 
 class DataHandler:
     def __init__(self):
+        self.data = []
         pass
 
     def _get_repeating_values(self, data):
@@ -324,12 +325,19 @@ class OnlineDataHandler(DataHandler):
         self.listener.terminate()
 
     def analyze_hardware(self, analyze_time=10):
-        """Analyze the hardware: sampling rate, resolution, min val, max val, time between samples.
+        """Analyzes several metrics from the hardware:
+        (1) sampling rate
+        (2) resolution
+        (3) min val
+        (4) max val
+        (5) time between samples
+        (6) reapeating values
+        (7) number of channels
 
         Parameters
         ----------
-        num_samples: int (optional), default=500
-            The number of samples to show in the plot.
+        analyze_time: int (optional), default=10 (seconds)
+            The time in seconds that you want to analyze the device for. 
         """
         if not self._check_streaming():
             return

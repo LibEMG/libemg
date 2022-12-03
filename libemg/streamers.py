@@ -40,10 +40,9 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
     data = np.loadtxt(file_path, delimiter=",")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     index = 0
-    t = time.time()
     while True and index < len(data):
-        val = time.perf_counter() + (1000/sampling_rate)/1000
-        while time.perf_counter() < val:
+        val = time.time() + (1000/sampling_rate)/1000
+        while time.time() < val:
             pass
         data_arr = pickle.dumps(list(data[index][:num_channels]))
         sock.sendto(data_arr, (ip, port))

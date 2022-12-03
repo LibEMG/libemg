@@ -40,5 +40,5 @@ Streamers
 
 Screen Guided Training
 ------------------------------
-.. automodule:: libemg.training_ui
+.. automodule:: libemg.screen_guided_training
    :members:

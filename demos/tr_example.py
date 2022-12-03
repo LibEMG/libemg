@@ -12,7 +12,6 @@ if __name__ == "__main__" :
     odh.start_listening()
 
     myo_streamer()
-    odh.visualize()
     
     # train_ui = ScreenGuidedTraining()
     # train_ui.download_gestures(list(range(1,10)), "demos/images/test/", download_gifs=True)

@@ -1,7 +1,7 @@
 import time
 import pytest
 import numpy as np
-from libemg.utils import mock_emg_stream
+from libemg.streamers import mock_emg_stream
 from libemg.data_handler import OnlineDataHandler
 
 """
