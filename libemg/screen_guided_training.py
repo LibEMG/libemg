@@ -137,7 +137,7 @@ class _SGTUI:
 
     def _accumulate_training_images(self):
         filenames = next(walk(self.rep_folder.get()), (None, None, []))[2]
-        file_types = [".jpg", ".png"]
+        file_types = [".jpg",".jpeg",".png"]
         if self.gifs.get():
             file_types = [".gif"]
         for file in filenames:
