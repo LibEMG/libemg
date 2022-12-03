@@ -13,6 +13,6 @@ if __name__ == "__main__" :
 
     myo_streamer()
     
-    # train_ui = ScreenGuidedTraining()
-    # train_ui.download_gestures(list(range(1,10)), "demos/images/test/", download_gifs=True)
-    # train_ui.launch_training(odh,output_folder="demos/data/sgt/", rep_folder="demos/images/test/", exclude_files=['Chuck_Grip.png', 'Hand_Close.png'])
+    train_ui = ScreenGuidedTraining()
+    train_ui.download_gestures(list(range(1,10)), "demos/images/test/", download_gifs=True)
+    train_ui.launch_training(odh,output_folder="demos/data/sgt/", rep_folder="demos/images/test/")

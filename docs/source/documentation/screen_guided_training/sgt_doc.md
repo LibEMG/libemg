@@ -4,11 +4,11 @@
     }
 </style>
 
-While not directly part of the core pipeline itself, the `Screen Guided Training` module is a crucial aspect of this project. For those who wish to run data collection studies, or anyone looking to develop online interactions, this module will be helpful.
+While not directly part of the core pipeline itself, the `Screen Guided Training` module is a crucial aspect of this project. For those who wish to run data collection studies, or anyone looking to develop online interactions, this module will be helpful. Note that our SGT tool can handle image types of `png`, `jpg` and `jpeg`. Additionally, it can handle `.gifs` for dynamic movements/contractions.
 
 | <center>Menu</center>  | <center>SGT</center> |
 | ------------- | ------------- |
-|  |  |
+| ![](menu.PNG) | ![](training.PNG) |
 <center> <p> Table 1: Screen Guided Training UI</p> </center>
 
 
