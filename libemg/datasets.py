@@ -35,6 +35,8 @@ class _3DCDataset(Dataset):
         self.url = "https://github.com/ECEEvanCampbell/3DCDataset"
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.class_list = ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Supination",
+               "Pronation", "Power Grip", "Open Hand", "Chuck Grip", "Pinch Grip"]
 
         if (not self.check_exists(self.dataset_folder)):
             self.github_download(self.url, self.dataset_folder)

@@ -112,12 +112,54 @@ class OfflineDataHandler(DataHandler):
                 if k + "_regex" in dictionary_keys:
                     k_val = re.findall(filename_dic[k+"_regex"],f)[0]
                     k_id  = filename_dic[k].index(k_val)
-                    setattr(self, k, getattr(self,k)+[k_id])
+                    metadata_column = k_id * np.ones((file_data.shape[0],1), dtype=int)
+                    setattr(self, k, getattr(self,k)+[metadata_column])
                 elif k + "_column" in dictionary_keys:
                     column = file_data[:,filename_dic[k+"_column"]]
-                    k_id = np.array([filename_dic[k].index(i) for i in column])
-                    k_id = np.expand_dims(k_id, axis=1)
-                    setattr(self, k, getattr(self,k)+[k_id])
+                    if type(filename_dic[k]) == list:
+                        k_id = np.array([filename_dic[k].index(i) for i in column])
+                        metadata_column = np.expand_dims(k_id, axis=1)
+                    else:
+                        # if a tuple is passed in (range of values)
+                        # we can put a check here later
+                        metadata_column = np.expand_dims(column,1)
+                    setattr(self, k, getattr(self,k)+[metadata_column])
+    
+    def active_threshold(self, num_std=1.5, nm_label=0, class_attribute="class"):
+        """Replaces class labels with the no motion label when amplitude is outside of the no motion range. This is
+        an in-place operation on the offline data handler.
+
+        Parameters
+        ----------
+        num_std: float
+            The number of standard deviations that must be exceeded to be considered an active class.
+        nm_label: int
+            The class label associated with the no motion class.
+        class_attribute: string
+            The key used in the dictionary for classes when the dataset was constructed. This should exist in 
+            the extra_attributes of the offline data handler.
+        """
+        # get the mean and std of channel amplitudes for nm class
+        assert class_attribute in self.extra_attributes
+        for data, labels in zip(self.data, getattr(self, class_attribute)):
+            nm_ids = (labels == nm_label).reshape(-1)
+            new_mavs = np.mean(np.abs(data[nm_ids,:]),axis=1)# mean across channels
+            nm_mavs = np.concatenate((nm_mavs, new_mavs)) if "nm_mavs" in locals() else new_mavs
+        nm_mav_mean = np.mean(nm_mavs)
+        nm_mav_std  = np.std(nm_mavs)
+        # act on the data, replacing all class labels that don't exceed the threshold
+        class_copy = getattr(self, class_attribute)
+        num_relabel = 0
+        total_samples = 0
+        for i, (data, labels) in enumerate(zip(self.data, getattr(self, class_attribute))):
+            nm_labels = labels == nm_label
+            mavs = np.mean(np.abs(data),axis=1)
+            relabel_ids = mavs < nm_mav_mean + num_std * nm_mav_std
+            num_relabel += sum(relabel_ids) - sum(nm_labels) # only count changed from active -> nm
+            total_samples += relabel_ids.shape[0] - sum(nm_labels) # only count changes from active -> nm
+            class_copy[i][relabel_ids] = nm_label
+        setattr(self, class_attribute, class_copy)
+        print(f"{num_relabel} of {total_samples} active class samples were relabelled to no motion.")
     
     def parse_windows(self, window_size, window_increment):
         """Parses windows based on the acquired data from the get_data function.

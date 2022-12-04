@@ -65,6 +65,25 @@ class Filter:
             setattr(self, "filters", getattr(self, "filters")+[(installed_filter)])
         else:
             setattr(self, "filters", [installed_filter])
+    
+    def install_common_filters(self):
+        '''Install a set of common filters to minimize motion arteface and power line interference in North America. This will install a 
+        bandpass filter from 20Hz-450Hz and a notch filter at 60Hz.
+        '''
+        if self.sampling_frequency < 1000:
+            print("sampling frequency is inadaquate for the set of common filters.")
+            return
+        filter_dictionary={"name":"bandpass",
+                        "cutoff": [20, 450],
+                        "order": 4 }
+    
+        self.install_filters(filter_dictionary=filter_dictionary)
+        filter_dictionary={"name":"notch",
+                            "cutoff": 60,
+                            "bandwidth": 3 }
+        self.install_filters(filter_dictionary=filter_dictionary)
+
+        
 
 
     def filter(self, data):
