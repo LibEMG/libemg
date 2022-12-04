@@ -45,7 +45,7 @@ if __name__ == "__main__" :
     train_windows, train_metadata = odh.parse_windows(50,25)
     
     # # Extract features from data set
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
     feature_list = fe.get_feature_groups()['HTD']
     training_features = fe.extract_features(feature_list, train_windows)
 

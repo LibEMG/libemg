@@ -33,7 +33,7 @@ if __name__ == "__main__" :
 
 
     # we want to get all the features our toolbox can extract, so call the get feature list method to return a list of all computable features
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
     feature_list = fe.get_feature_list()
     # and extract those features. this returns a dictionary
     training_features = fe.extract_features(feature_list, train_windows)

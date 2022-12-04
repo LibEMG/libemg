@@ -24,3 +24,5 @@ demos/data/sgt_example/*
 libemg/_streamers/__pycache__/*
 demos/images/
 demos/data/sgt/*
+demos/data/GRABMyo/*
+demos/data/*

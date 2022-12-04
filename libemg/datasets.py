@@ -8,7 +8,7 @@ from glob import glob
 # this assumes you have git downloaded (not pygit, but the command line program git)
 
 class Dataset:
-    def __init__(self, save_dir='.', redownload=True):
+    def __init__(self, save_dir='.', redownload=False):
         self.save_dir = save_dir
         self.redownload=redownload
 
@@ -21,16 +21,16 @@ class Dataset:
         os.system(remove_command)
 
     def check_exists(self, dataset_folder):
-        if os.path.exists(dataset_folder):
-            return True
-        else:
-            return False
+        return os.path.exists(dataset_folder)
 
     def prepare_data(self, format=OfflineDataHandler):
         pass
 
+    def print_info(self):
+        pass
+
 class _3DCDataset(Dataset):
-    def __init__(self, save_dir='.', redownload=True, dataset_name="_3DCDataset"):
+    def __init__(self, save_dir='.', redownload=False, dataset_name="_3DCDataset"):
         Dataset.__init__(self, save_dir, redownload)
         self.url = "https://github.com/ECEEvanCampbell/3DCDataset"
         self.dataset_name = dataset_name
@@ -68,7 +68,7 @@ class _3DCDataset(Dataset):
             return odh
         
 class OneSubjectMyoDataset(Dataset):
-    def __init__(self, save_dir='.', redownload=True, dataset_name="OneSubjectMyoDataset"):
+    def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
         Dataset.__init__(self, save_dir, redownload)
         self.url = "https://github.com/eeddy/OneSubjectMyoDataset"
         self.dataset_name = dataset_name
@@ -99,6 +99,89 @@ class OneSubjectMyoDataset(Dataset):
             odh = OfflineDataHandler()
             odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
             return odh
+
+    def print_info(self):
+        print('This is a \'toy\' dataset for getting started.')
+        print('Reference: https://github.com/eeddy/OneSubjectMyoDataset') 
+        print('Name: ' + self.dataset_name)
+        print('Gestures: 4 (Hand Close, Hand Open, No Movement, Wrist Extension, Wrist Flexion)')
+        print('Trials: 3 Testing, 4 Training')
+        print('Time Per Rep: 5s')
+        print('Subjects: 1')
+        print("Myo Armband: 8 Channels")
+
+class GRABMyo(Dataset):
+    def __init__(self, save_dir='.', redownload=False, subjects=list(range(1,44)), sessions=list(range(1,4)), dataset_name="GRABMyo"):
+        Dataset.__init__(self, save_dir, redownload)
+        self.url = "https://physionet.org/files/grabmyo/1.0.2/"
+        self.dataset_name = dataset_name
+        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.subjects = subjects
+        self.sessions = sessions
+
+        if (not self.check_exists(self.dataset_folder)):
+            self.download_data()
+        elif (self.redownload):
+            self.remove_dataset(self.dataset_folder)
+            self.download_data()
+        else:
+            print("Data Already Downloaded.")
+    
+    def download_data(self):
+        curl_command = "curl --create-dirs" + " -O --output-dir " + str(self.dataset_folder) + "/ "
+        # Download files
+        print("Starting download...")
+        files = ['readme.txt', 'subject-info.csv', 'MotionSequence.txt']
+        for f in files:
+            os.system(curl_command + self.url + f)
+        for session in self.sessions:
+            curl_command = "curl --create-dirs" + " -O --output-dir " + str(self.dataset_folder) + "/" + "Session" + str(session) + "/ "
+            for p in self.subjects:
+                for t in range(1,8):
+                    for g in range(1,18):
+                        endpoint = self.url + "Session" + str(session) + "/session" + str(session) + "_participant" + str(p) + "/session" + str(session) + "_participant" + str(p) + "_gesture" + str(g) + "_trial" + str(t)
+                        os.system(curl_command + endpoint + '.hea')
+                        os.system(curl_command + endpoint + '.dat')
+        print("Download complete.")
+        
+    # def _convert_data(self):
+    #     dat_files = [y for x in os.walk(self.dataset_folder) for y in glob(os.path.join(x[0], '*.dat'))]
+    #     valid_indexes = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20,21,22,23,26,27,28,29,30,31]
+    #     for f in dat_files:
+    #         test = wfdb.rdrecord(f.replace('.dat',''))
+    #         np.savetxt(f[:-4]+'.csv', test.p_signal[:,valid_indexes],delimiter=',')
+
+    def prepare_data(self, format=OfflineDataHandler, subjects=[str(i) for i in range(1,44)], sessions=["1","2","3"]):
+        if format == OfflineDataHandler:
+            sets_regex = make_regex(left_bound = "session", right_bound="_", values = sessions)
+            classes_values = ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17"]
+            classes_regex = make_regex(left_bound = "_gesture", right_bound="_", values = classes_values)
+            reps_values = ["1","2","3","4","5","6","7"]
+            reps_regex = make_regex(left_bound = "trial", right_bound=".hea", values = reps_values)
+            subjects_regex = make_regex(left_bound="participant", right_bound="_",values=subjects)
+            dic = {
+                "sessions": sessions,
+                "sessions_regex": sets_regex,
+                "reps": reps_values,
+                "reps_regex": reps_regex,
+                "classes": classes_values,
+                "classes_regex": classes_regex,
+                "subjects": subjects,
+                "subjects_regex": subjects_regex
+            }
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            return odh
+
+    def print_info(self):
+        print('Reference: https://www.physionet.org/content/grabmyo/1.0.2/') 
+        print('Name: ' + self.dataset_name)
+        print('Gestures: 17')
+        print('Trials: 7')
+        print('Time Per Rep: 5s')
+        print('Subjects: 43')
+        print("Forearm EMG (16): Columns 0-15\nWrist EMG (12): 18-23 and 26-31\nUnused (4): 16,23,24,31")
+
 
 # Commenting this out for now - may revisit in the future.
 # class NinaDB1(Dataset):

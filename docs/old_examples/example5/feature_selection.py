@@ -17,7 +17,7 @@ if __name__ == "__main__" :
     train_windows, train_metadata = train_data.parse_windows(50, 25)
 
     # we want to get all the features our library can extract
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
     feature_list = fe.get_feature_list()
     
     # extract every feature in the library on the training data

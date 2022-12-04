@@ -12,7 +12,7 @@ train_data = odh.isolate_data("sets",[0])
 train_windows, train_metadata = train_data.parse_windows(50, 25)
 
 # select the features for feature selection - in this case we select all of them
-fe = FeatureExtractor(num_channels=8)
+fe = FeatureExtractor()
 feature_list = fe.get_feature_list()
 
 # extract every feature in the toolbox on the training data

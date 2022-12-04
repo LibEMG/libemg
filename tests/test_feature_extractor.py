@@ -5,7 +5,7 @@ from libemg.utils import get_windows
 
 @pytest.fixture(scope='session') 
 def fe():
-    fe = featureextractor(num_channels=8)
+    fe = featureextractor()
     return fe
 
 def test_extract_features_valid(fe):

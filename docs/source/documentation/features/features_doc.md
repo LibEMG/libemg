@@ -5,7 +5,7 @@ import numpy as np
 from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import get_windows
 
-fe = FeatureExtractor(num_channels=8)
+fe = FeatureExtractor()
 
 # Load data from a csv file:
 data = np.loadtxt("emg_data.csv", delimiter=",")
@@ -462,7 +462,7 @@ if __name__ == "__main__":
     subject_list = np.unique(odh.subjects)
     
     # initialize our feature extractor
-    fe = FeatureExtractor(num_channels=10)
+    fe = FeatureExtractor()
     feature_list = fe.get_feature_list()
 
     # get the variable ready for where we save the results

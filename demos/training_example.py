@@ -33,7 +33,7 @@ def offline_analysis():
     test_odh = odh.isolate_data(key="reps", values=[2])
     test_windows, test_metadata = test_odh.parse_windows(200,50)
 
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
 
     data_set = {}
     data_set['training_windows'] = train_windows # used for velocity control
@@ -69,7 +69,7 @@ def online_analysis(online_data_handler):
     
     windows, metadata = odh.parse_windows(500,250)
 
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
 
     data_set = {}
     

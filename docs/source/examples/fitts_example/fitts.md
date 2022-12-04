@@ -82,7 +82,7 @@ The next step involves extracting features from the training data. To do this we
 
 ```Python
 # Step 2: Extract features from offline data
-fe = FeatureExtractor(num_channels=8)
+fe = FeatureExtractor()
 feature_list = fe.get_feature_groups()['HTD']
 training_features = fe.extract_features(feature_list, train_windows)
 ```

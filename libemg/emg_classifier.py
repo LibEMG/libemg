@@ -380,8 +380,6 @@ class OnlineEMGClassifier(EMGClassifier):
     data_set: dictionary
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels' and 'training_features'.
-    num_channels: int
-        The number of EMG channels.
     window_size: int
         The number of samples in a window. 
     window_increment: int
@@ -410,9 +408,8 @@ class OnlineEMGClassifier(EMGClassifier):
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     """
-    def __init__(self, model, data_set, num_channels, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
+    def __init__(self, model, data_set, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
         super().__init__(velocity=velocity)
-        self.num_channels = num_channels
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
@@ -451,7 +448,7 @@ class OnlineEMGClassifier(EMGClassifier):
         self.process.terminate()
 
     def _run_helper(self):
-        fe = FeatureExtractor(num_channels=self.num_channels)
+        fe = FeatureExtractor()
         self.raw_data.reset_emg()
         while True:
             data = np.array(self.raw_data.get_emg())
