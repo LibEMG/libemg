@@ -46,8 +46,6 @@ class EMGClassifier:
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
         self.velocity = velocity
-        self.predictions = []
-        self.probabilities = []
         self.continuous = continuous
 
         # For velocity control
@@ -85,11 +83,14 @@ class EMGClassifier:
         """
         # determine what sort of model we are fitting:
         if feature_dictionary is not None:
-            self._fit_statistical_model(model, feature_dictionary, parameters)
-        elif dataloader_dictionary is not None:
+            if "training_features" in feature_dictionary.keys():
+                self._fit_statistical_model(model, feature_dictionary, parameters)
+            if "training_windows" in feature_dictionary.keys() and "training_labels" in feature_dictionary.keys() and self.velocity == True:
+                self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(feature_dictionary["train_windows"], feature_dictionary["train_labels"])
+        if dataloader_dictionary is not None:
             self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
 
-    
+        
 
     @classmethod
     def from_file(self, filename):
@@ -117,35 +118,44 @@ class EMGClassifier:
         return classifier
 
  
-    def run(self):
+    def run(self, test_data, test_labels):
         """Runs the classifier on a pre-defined set of training data.
 
+        Parameters
+        ----------
+        test_data: array-like
+            A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
+        test_labels: array-like
+            A np.ndarray containing the class labels of the test data.
         Returns
         ----------
         list
             Returns a list of predictions, based on the passed in testing features.
+        list
+            Returns a list of the probabilities, based on the passed in testing features.
         """
         '''
         returns a list of typical offline evaluation metrics
         '''
-        testing_labels = self.data_set['testing_labels'].copy()
-        prob_predictions = self.classifier.predict_proba(self.data_set['testing_features'])
+        if type(test_data) == dict:
+            test_data = self._format_data(test_data)
+        prob_predictions = self.classifier.predict_proba(test_data)
         
         # Default
-        self.predictions, self.probabilities = self._prediction_helper(prob_predictions)
+        predictions, probabilities = self._prediction_helper(prob_predictions)
 
         # Rejection
         if self.rejection_type:
-            self.predictions = np.array([self._rejection_helper(self.predictions[i], self.probabilities[i]) for i in range(0,len(self.predictions))])
-            rejected = np.where(self.predictions == -1)[0]
-            testing_labels[rejected] = -1
+            predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
+            rejected = np.where(predictions == -1)[0]
+            predictions[rejected] = -1
 
         # Majority Vote
         if self.majority_vote:
-            self.predictions = self._majority_vote_helper(self.predictions)
+            predictions = self._majority_vote_helper(predictions, test_labels)
 
         # Accumulate Metrics
-        return self.predictions
+        return predictions, probabilities
 
     def save(self, filename):
         """Saves (pickles) the EMGClassifier object to a file.
@@ -170,14 +180,11 @@ class EMGClassifier:
         assert 'training_labels'   in feature_dictionary.keys()
         assert 'testing_labels'    in feature_dictionary.keys()
         # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
-        self.data_set = feature_dictionary
-        self._format_data('training_features')
+        feature_dictionary["training_features"] = self._format_data(feature_dictionary['training_features'])
         if 'testing_features' in feature_dictionary.keys():
-            self._format_data('testing_features')
-        self._set_up_classifier(model, parameters)
-        if self.velocity:
-            self.th_min_dic, self.th_max_dic = self._set_up_velocity_control()
-
+            feature_dictionary["testing_features"] = self._format_data(feature_dictionary['testing_features'])
+        self._set_up_classifier(model, feature_dictionary, parameters)
+        
     def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
         assert 'training_dataloader' in dataloader_dictionary.keys()
         assert 'validation_dataloader'  in dataloader_dictionary.keys()
@@ -185,16 +192,16 @@ class EMGClassifier:
         self.classifier.fit(dataloader_dictionary, **parameters)
         pass
 
-    def _format_data(self, i_key):
+    def _format_data(self, feature_dictionary):
         arr = None
-        for feat in self.data_set[i_key]:
+        for feat in feature_dictionary:
             if arr is None:
-                arr = self.data_set[i_key][feat]
+                arr = feature_dictionary[feat]
             else:
-                arr = np.hstack((arr, self.data_set[i_key][feat]))
-        self.data_set[i_key] = arr
+                arr = np.hstack((arr, feature_dictionary[feat]))
+        return arr
 
-    def _set_up_classifier(self, model, parameters):
+    def _set_up_classifier(self, model, dataset_dictionary, parameters):
         valid_models = ["LDA", "KNN", "SVM", "QDA", "RF", "NB", "GB", "MLP"]
         if isinstance(model, str):
             assert model in valid_models
@@ -221,7 +228,7 @@ class EMGClassifier:
             # Assume a custom classifier has been passed in
             self.classifier = model
         # Fit the model to the data set
-        self.classifier.fit(self.data_set['training_features'],self.data_set['training_labels'])
+        self.classifier.fit(dataset_dictionary['training_features'],dataset_dictionary['training_labels'])
 
     def _validate_parameters(self, model, parameters):
         default_parameters = {
@@ -276,15 +283,15 @@ class EMGClassifier:
                 return -1
         return prediction
     
-    def _majority_vote_helper(self, predictions):
+    def _majority_vote_helper(self, predictions, test_labels=None):
         updated_predictions = []
-        y_true = self.data_set['testing_labels']
         for i in range(0, len(predictions)):
             idxs = np.array(range(i-self.majority_vote+1, i+1))
             idxs = idxs[idxs >= 0]
             if not self.continuous:
-                correct_group = y_true[i]
-                idxs = idxs[np.where(y_true[idxs] == correct_group)]
+                if test_labels is not None:
+                    correct_group = test_labels[i]
+                    idxs = idxs[np.where(test_labels[idxs] == correct_group)]
             group = predictions[idxs]
             updated_predictions.append(np.argmax(np.bincount(group)))
         return np.array(updated_predictions)
@@ -293,15 +300,14 @@ class EMGClassifier:
         if self.th_max_dic and self.th_min_dic:
             return '{0:.2f}'.format((np.sum(np.mean(np.abs(window),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c]))
 
-    def _set_up_velocity_control(self):
+    def _set_up_velocity_control(self, train_windows, train_labels):
         # Extract classes 
         th_min_dic = {}
         th_max_dic = {}
-        classes = np.unique(self.data_set['training_labels'])
-        windows = self.data_set['training_windows']
+        classes = np.unique(train_labels)
         for c in classes:
-            indices = np.where(self.data_set['training_labels'] == c)[0]
-            c_windows = windows[indices]
+            indices = np.where(train_labels == c)[0]
+            c_windows = train_windows[indices]
             mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
             mav_tr_max = np.max(mav_tr)
             mav_tr_min = np.min(mav_tr)
@@ -313,13 +319,23 @@ class EMGClassifier:
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
 
-    def visualize(self):
+    def visualize(self, test_labels, predictions, probabilities):
         """Visualize the decision stream of the classifier on the testing data. 
 
         After running the .run method, you can call this visualize function to get a visual 
         output of what the decision stream of what the particular classifier looks like. 
+        
+        Parameters
+        ----------
+        test_labels: array-like
+            A np.ndarray containing the labels for the test data.
+        predictions: array-like
+            A np.ndarray containing the preditions for the test data.
+        probabilities: array-like
+            A np.ndarray containing the probabilities from the classifier for the test data. This should be
+            N samples x C classes.
         """
-        assert len(self.predictions) > 0
+        assert len(predictions) > 0
         
         plt.style.use('ggplot')
         colors = {}
@@ -328,10 +344,10 @@ class EMGClassifier:
         plt.gca().xaxis.grid(False)
 
         # Plot true class labels
-        changed_locations = [0] + list(np.where((self.data_set['testing_labels'][:-1] != self.data_set['testing_labels'][1:]) == True)[0]) + [len(self.data_set['testing_labels'])-1]
+        changed_locations = [0] + list(np.where((test_labels[:-1] != test_labels[1:]) == True)[0]) + [len(test_labels)-1]
 
         for i in range(1, len(changed_locations)):
-            class_label = self.data_set['testing_labels'][changed_locations[i]]
+            class_label = test_labels[changed_locations[i]]
             if class_label in colors.keys():
                 plt.fill_betweenx([0,1.02], changed_locations[i-1], changed_locations[i], color=colors[class_label])
             else:
@@ -342,12 +358,12 @@ class EMGClassifier:
         plt.title("Decision Stream")
         plt.xlabel("Class Output")
         plt.ylabel("Probability")
-        for g in np.unique(self.predictions):
-            i = np.where(self.predictions == g)
+        for g in np.unique(predictions):
+            i = np.where(predictions == g)[0]
             if g == -1:
-                plt.scatter(i, self.probabilities[i], label=g, alpha=1, color='black')
+                plt.scatter(i, probabilities[i], label=g, alpha=1, color='black')
             else:
-                plt.scatter(i, self.probabilities[i], label=g, alpha=1, color=colors[g])
+                plt.scatter(i, probabilities[i], label=g, alpha=1, color=colors[g])
         
         plt.legend(loc='lower right')
         plt.show()

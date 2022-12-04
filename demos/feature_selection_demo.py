@@ -28,7 +28,7 @@ if __name__ == "__main__" :
     odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
     
     # Let's grab the saved test set (it has multiple reps to perform cross-validation against)
-    train_odh = odh.isolate_data(key="sets", values=[1])
+    train_odh = odh.isolate_data(key="sets", values=[0])
     train_windows, train_metadata = train_odh.parse_windows(50,25)
 
 
