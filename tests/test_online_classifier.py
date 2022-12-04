@@ -36,7 +36,7 @@ def test_emg_classifier():
     test_data = np.loadtxt("tests/data/stream_data_tester.csv", delimiter=",")
     test_windows = get_windows(test_data, 50,25)
 
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
 
     data_set = {}
     

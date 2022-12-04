@@ -27,7 +27,7 @@ def visualize_offline_decision_stream():
     train_windows, train_metadata = train_data.parse_windows(50,25)
     test_windows, test_metadata = test_data.parse_windows(50,25)
 
-    fe = FeatureExtractor(num_channels=8, feature_group="HTD")
+    fe = FeatureExtractor()
 
     data_set = {}
     data_set['testing_features'] = fe.extract_feature_group('HTD', test_windows)
@@ -46,7 +46,7 @@ def visualize_features():
     windows = get_windows(data, 50, 25)
     
     # Create feature extractor and extract features
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
     feature_list = ['MAV', 'ZC', 'SSC', 'WFL', 'M0', 'RMS']
     extracted_features = fe.extract_features(feature_list, windows)
 

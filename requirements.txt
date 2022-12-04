@@ -8,6 +8,7 @@ matplotlib==3.5.0
 librosa==0.9.2
 pyomyo==0.0.5
 pyserial
+wfdb
 # For Docs
 sphinx==4.2.0
 sphinx_rtd_theme==1.0.0

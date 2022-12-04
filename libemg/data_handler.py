@@ -6,6 +6,8 @@ import csv
 import pickle
 import time
 import math
+import wfdb
+import copy
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
@@ -56,7 +58,7 @@ class OfflineDataHandler(DataHandler):
         super().__init__()
     
 
-    def get_data(self, folder_location="", filename_dic={}, delimiter=","):
+    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal'):
         """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
         specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
 
@@ -84,6 +86,7 @@ class OfflineDataHandler(DataHandler):
         # get all files in directory
         files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
         files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.txt'))])
+        files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.hea'))])
 
         # Convert all file paths to unix style
         files = [Path(f).as_posix() for f in files]
@@ -92,9 +95,12 @@ class OfflineDataHandler(DataHandler):
         regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
         self._check_file_regex(files, regex_keys)
 
-
         for f in files:
-            file_data = np.genfromtxt(f,delimiter=delimiter)
+            if '.hea' in f:
+                # The key is the emg key that is in the mrdf file
+                file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
+            else:
+                file_data = np.genfromtxt(f,delimiter=delimiter)
             # collect the data from the file
             if "data_column" in dictionary_keys:
                 self.data.append(file_data[:, filename_dic["data_column"]])
@@ -102,6 +108,7 @@ class OfflineDataHandler(DataHandler):
                 self.data.append(file_data)
             # also collect the metadata from the filename
             for k in keys:
+                #TODO: There is an issue here - talk to evan
                 if k + "_regex" in dictionary_keys:
                     k_val = re.findall(filename_dic[k+"_regex"],f)[0]
                     k_id  = filename_dic[k].index(k_val)
@@ -171,7 +178,30 @@ class OfflineDataHandler(DataHandler):
 
             
         return windows_, metadata_
+    
+    def isolate_channels(self, channels):
+        """Entry point for isolating a certain range of channels. 
 
+        Parameters
+        ----------
+        channels: array_like
+            A list of values that you want to isolate. (e.g. [0,1,2]). Indexing starts at 0.
+            
+        Returns
+        ----------
+        OfflineDataHandler
+            returns a new offline data handler with only the data that satisfies the requested slice.
+        """
+        # Validate channel list
+        for c in channels:
+            if c < 0 or c >= len(self.data[0][0]):
+                print("Invalid channel list - index: " + str(c))
+                return 
+        new_odh = copy.deepcopy(self)
+        # TODO: Optimize this
+        for i in range(0, len(new_odh.data)):
+            new_odh.data[i] = new_odh.data[i][:,channels]
+        return new_odh
     
     def isolate_data(self, key, values):
         """Entry point for isolating a single key of data within the offline data handler. First, error checking is performed within this method, then
@@ -182,7 +212,7 @@ class OfflineDataHandler(DataHandler):
         key: str
             The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like).
         values: array_like
-            A list of values that you want to isolate. (e.g. [1,2,3]).
+            A list of values that you want to isolate. (e.g. [0, 1,2,3]). Indexing starts at 0.
             
         Returns
         ----------

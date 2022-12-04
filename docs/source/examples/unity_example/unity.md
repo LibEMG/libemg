@@ -109,7 +109,7 @@ train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 The next step involves extracting features from the offline data. Lets experiment with the LS9 feature group.
 ```Python
 # Step 2: Extract features from offline data
-fe = FeatureExtractor(num_channels=8)
+fe = FeatureExtractor()
 feature_list = fe.get_feature_groups()['LS9']
 training_features = fe.extract_features(feature_list, train_windows)
 ```

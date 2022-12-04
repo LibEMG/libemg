@@ -312,7 +312,7 @@ class OfflineMetrics:
         plt.bar(x,y)
         plt.show()
     
-    def visualize_conf_matrix(self, mat):
+    def visualize_conf_matrix(self, mat, labels=None):
         """Visualize the 2D confusion matrix.
 
         Parameters
@@ -321,13 +321,22 @@ class OfflineMetrics:
             A NxN confusion matrix.
         """
         plt.style.use('ggplot')
-        _, ax = plt.subplots(figsize=(7.5, 7.5))
-        ax.matshow(mat, alpha=0.3)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(mat, alpha=0.3)
+        fig.colorbar(cax)
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
-                ax.text(x=j, y=i,s=int(mat[i, j]), va='center', ha='center', size='x-large')
+                ax.text(x=j, y=i,s=int(mat[i, j]), va='center', ha='center')
+        if labels:
+            xaxis = np.arange(len(labels))
+            ax.set_xticks(xaxis)
+            ax.set_yticks(xaxis)
+            ax.set_xticklabels(labels, rotation = -90)
+            ax.set_yticklabels(labels)
         plt.xlabel('Predicted')
         plt.ylabel('True')
         plt.title('Confusion Matrix')
         plt.show()
+
 

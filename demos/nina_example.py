@@ -27,7 +27,7 @@ if __name__ == "__main__" :
 
     
     # initialize our feature extractor
-    fe = FeatureExtractor(num_channels=10)
+    fe = FeatureExtractor()
     feature_list = fe.get_feature_list()
 
     # get the variable ready for where we save the results

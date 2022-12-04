@@ -320,6 +320,36 @@ odh = dataset.prepare_data(format=OfflineDataHandler)
 @article{cote2020interpreting, title={Interpreting deep learning features for myoelectric control: A comparison with handcrafted features}, author={C{^o}t{'e}-Allard, Ulysse and Campbell, Evan and Phinyomark, Angkoon and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit and Scheme, Erik}, journal={Frontiers in Bioengineering and Biotechnology}, volume={8}, pages={158}, year={2020}, publisher={Frontiers Media SA} }
 ```
 -------------
+
+## GRABMyo
+
+Forearm and wrist dataset consisting of 16 hand and finger gestures over 3 seperate days.
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Reps:**      |     |
+| **Time Per Rep:**      |      |
+| **Classes:**       |  |
+| **Device:**        |    |
+| **Sampling Rates:** |         |
+| **Continuous:**    | |
+| **Repo:**          | https://physionet.org/content/grabmyo/1.0.2/ |
+
+**Using the Dataset:**
+```Python
+# Add example
+```
+
+**References:**
+```
+Jiang, N., Pradhan, A., & He, J. (2022). Gesture Recognition and Biometrics ElectroMyogram (GRABMyo) (version 1.0.2). PhysioNet. https://doi.org/10.13026/dzhr-nj10.
+
+Pradhan, A., He, J. & Jiang, N. Multi-day dataset of forearm and wrist electromyogram for hand gesture recognition and biometrics. Sci Data 9, 733 (2022).
+
+Goldberger, A., Amaral, L., Glass, L., Hausdorff, J., Ivanov, P. C., Mark, R., ... & Stanley, H. E. (2000). PhysioBank, PhysioToolkit, and PhysioNet: Components of a new research resource for complex physiologic signals. Circulation [Online]. 101 (23), pp. e215–e220.
+```
+-------------
+
 </details>
 <br/>
 
@@ -346,7 +376,7 @@ odh = OfflineDataHandler()
 odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
 train_odh = odh.isolate_data(key="sets", values=[1])
 train_windows, train_metadata = train_odh.parse_windows(50,25)
-fe = FeatureExtractor(num_channels=8)
+fe = FeatureExtractor()
 feature_list = fe.get_feature_list()
 training_features = fe.extract_features(feature_list, train_windows)
 ```

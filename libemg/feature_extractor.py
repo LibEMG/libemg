@@ -9,19 +9,7 @@ from librosa import lpc
 class FeatureExtractor:
     """
     Feature extraction class including feature groups, feature list, and feature extraction code.
-    
-    Parameters
-    ----------
-    num_channels: int > 0
-        The number of EMG channels. 
-    feature_list: array_like (optional)
-        A list of features to remember within the object. Used for when this object is passed to an EMGClassifier.
-    feature_group: string (optional)
-         A feature group to remember. Used for when this object is passed to an EMGClassifier.
     """
-    def __init__(self, num_channels, feature_list=[], feature_group=None):
-        self.num_channels = num_channels
-
     def get_feature_groups(self):
         """Gets a list of all available feature groups.
         

@@ -158,7 +158,7 @@ train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 Step 2 involves extracting features from the train_windows, as the online classifier expects features as input. We have decided to extract Hudgin's Time Domain features. However, other features or feature groups could easily be explored.
 ```Python
 # Step 2: Extract features from offline data
-fe = FeatureExtractor(num_channels=8)
+fe = FeatureExtractor()
 feature_list = fe.get_feature_groups()['HTD']
 training_features = fe.extract_features(feature_list, train_windows)
 ```

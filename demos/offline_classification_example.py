@@ -26,7 +26,7 @@ if __name__ == "__main__" :
     test_odh = odh.isolate_data(key="sets", values=[1])
     test_windows, test_metadata = test_odh.parse_windows(50,25)
 
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
 
     data_set = {}
     data_set['training_windows'] = train_windows # used for velocity control
@@ -97,7 +97,7 @@ if __name__ == "__main__" :
     # test_odh = odh.isolate_data(key="reps", values=[1])
     # test_windows, test_metadata = test_odh.parse_windows(50,25)
 
-    # fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
 
     # data_set = {}
     # data_set['testing_features'] = fe.extract_feature_group('HTD', test_windows)

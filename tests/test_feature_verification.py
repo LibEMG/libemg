@@ -4,7 +4,7 @@ from libemg.feature_extractor import FeatureExtractor as featureextractor
 from libemg.utils import get_windows 
 
 def test_all_features_versus_matlab():
-    fe = featureextractor(num_channels=8)
+    fe = featureextractor()
     # same data and window parameters as was used in get_feature_values.m
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
     window_size = 200

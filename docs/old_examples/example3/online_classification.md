@@ -29,7 +29,7 @@ if __name__ == "__main__":
     test_windows, test_metadata = test_data.parse_windows(window_size,increment_size)
 
     # extract hudgin's time domain features 
-    fe = FeatureExtractor(num_channels=8)
+    fe = FeatureExtractor()
     train_features = fe.extract_feature_group('HTD', train_windows)
     test_features = fe.extract_feature_group('HTD', test_windows)
 
