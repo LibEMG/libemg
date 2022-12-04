@@ -65,10 +65,10 @@ def make_regex(left_bound, right_bound, values=[]):
     >>> make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = [0,1,2,3,4,5])
     """
     left_bound_str = "(?<="+ left_bound +")"
-    mid_str = "["
+    mid_str = "(?:"
     for i in values:
         mid_str += i + "|"
     mid_str = mid_str[:-1]
-    mid_str += "]+"
+    mid_str += ")"
     right_bound_str = "(?=" + right_bound +")"
     return left_bound_str + mid_str + right_bound_str

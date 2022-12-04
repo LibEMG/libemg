@@ -107,6 +107,10 @@ class OfflineMetrics:
         float
             Returns the classification accuracy.
         """
+        # ignore rejections
+        valid_samples = y_predictions != -1
+        y_predictions = y_predictions[valid_samples]
+        y_true        = y_true[valid_samples]
         return sum(y_predictions == y_true)/len(y_true)
 
     def get_AER(self, y_true, y_predictions, null_class):
