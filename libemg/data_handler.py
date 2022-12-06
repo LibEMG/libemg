@@ -289,28 +289,34 @@ class OfflineDataHandler(DataHandler):
             # for every file (list element)
             data = []
             for f in range(len(key_attr)):
+                # get the keep_mask
                 keep_mask = list([i in values for i in key_attr[f]])
-                data.append(self.data[f][keep_mask,:])
+                # append the valid data
+                if self.data[f][keep_mask,:].shape[0]> 0:
+                    data.append(self.data[f][keep_mask,:])
             setattr(new_odh, "data", data)
 
             for k in self.extra_attributes:
                 key_value = getattr(self, k)
-                if type(key_value[0]) != np.ndarray:
-                    # if the other metadata was not in the csv file (i.e. subject label in filename but classes in csv), then just keep it
-                    setattr(new_odh, k, key_value)
-                else:
+                if type(key_value[0]) == np.ndarray:
                     # the other metadata that is in the csv file should be sliced the same way as the ndarray
                     key = []
                     for f in range(len(key_attr)):
                         keep_mask = list([i in values for i in key_attr[f]])
-                        
-                        key.append(key_value[f][keep_mask,:])
+                        if key_value[f][keep_mask,:].shape[0]>0:
+                            key.append(key_value[f][keep_mask,:])
                     setattr(new_odh, k, key)
+                    
+                else:
+                    assert False # we should never get here
+                    # # if the other metadata was not in the csv file (i.e. subject label in filename but classes in csv), then just keep it
+                    # setattr(new_odh, k, key_value)
         else:
-            keep_mask = list([i in values for i in key_attr])
-            setattr(new_odh, "data", list(compress(self.data, keep_mask)))
-            for k in self.extra_attributes:
-                setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
+            assert False # we should never get here
+            # keep_mask = list([i in values for i in key_attr])
+            # setattr(new_odh, "data", list(compress(self.data, keep_mask)))
+            # for k in self.extra_attributes:
+            #     setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
     
     def _check_file_regex(self, files, regex_keys):
