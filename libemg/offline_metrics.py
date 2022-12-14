@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.metrics import *
-from sklearn.metrics import plot_confusion_matrix
 import matplotlib.pyplot as plt
 
 class OfflineMetrics:
