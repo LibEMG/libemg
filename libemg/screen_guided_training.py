@@ -132,11 +132,11 @@ class _SGTUI:
         self.window.mainloop()
 
     def _on_closing(self):
-        self.data_handler.stop_listening()
         self.window.destroy()
 
     def _accumulate_training_images(self):
         filenames = next(walk(self.rep_folder.get()), (None, None, []))[2]
+        filenames.sort()
         file_types = [".jpg",".jpeg",".png"]
         if self.gifs.get():
             file_types = [".gif"]

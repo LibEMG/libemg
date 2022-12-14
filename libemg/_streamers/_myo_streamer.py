@@ -404,28 +404,6 @@ class Myo(object):
 		# struct.pack('<5B', 1, 3, emg_mode, imu_mode, classifier_mode)
 		self.write_attr(0x19, b'\x01\x03\x02\x01\x01')
 
-		'''Sending this sequence for v1.0 firmware seems to enable both raw data and
-		pose notifications.
-		'''
-
-		'''By writting a 0x0100 command to handle 0x28, some kind of "hidden" EMG
-		notification characteristic is activated. This characteristic is not
-		listed on the Myo services of the offical BLE specification from Thalmic
-		Labs. Also, in the second line where we tell the Myo to enable EMG and
-		IMU data streams and classifier events, the 0x01 command wich corresponds
-		to the EMG mode is not listed on the myohw_emg_mode_t struct of the Myo
-		BLE specification.
-		These two lines, besides enabling the IMU and the classifier, enable the
-		transmission of a stream of low-pass filtered EMG signals from the eight
-		sensor pods of the Myo armband (the "hidden" mode I mentioned above).
-		Instead of getting the raw EMG signals, we get rectified and smoothed
-		signals, a measure of the amplitude of the EMG (which is useful to have
-		a measure of muscle strength, but are not as useful as a truly raw signal).
-		'''
-
-		# self.write_attr(0x28, b'\x01\x00')  # Not needed for raw signals
-		# self.write_attr(0x19, b'\x01\x03\x01\x01\x01')
-
 	def start_filtered(self):
 		'''
 		Sends 50hz filtered and rectified signal.
@@ -500,10 +478,8 @@ class Myo(object):
 		self.write_attr(0x24, b'\x02\x00')
 		self.write_attr(0x19, b'\x01\x03\x01\x01\x01')
 
-	def vibrate(self, length):
-		if length in range(1, 4):
-			# first byte tells it to vibrate; purpose of second byte is unknown (payload size?)
-			self.write_attr(0x19, pack('3B', 3, 1, length))
+	def vibrate(self, mode):
+		self.write_attr(0x19, pack('3B', 3, 1, mode))
 
 	def set_leds(self, logo, line):
 		self.write_attr(0x19, pack('8B', 6, 6, *(logo + line)))
@@ -534,7 +510,6 @@ class Myo(object):
 			h(battery_level)
 
 
-
 # Myostreamer begins here ------
 import socket
 import pickle
@@ -558,7 +533,10 @@ class MyoStreamer:
         m.add_emg_handler(write_emg)
 
         m.set_leds([128, 0, 0], [128, 0, 0])
-        m.vibrate(1)
+		# Vibrate to show that its connected
+        m.vibrate(3)
+		# Disable vibrations
+        m.vibrate(0)
 
         # def write_imu(quat, acc, gyro):
         #     imu_arr = [*quat, *acc, *gyro]
