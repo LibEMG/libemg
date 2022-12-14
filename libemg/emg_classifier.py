@@ -176,13 +176,9 @@ class EMGClassifier:
 
     def _fit_statistical_model(self, model, feature_dictionary, parameters):
         assert 'training_features' in feature_dictionary.keys()
-        assert 'testing_features'  in feature_dictionary.keys()
         assert 'training_labels'   in feature_dictionary.keys()
-        assert 'testing_labels'    in feature_dictionary.keys()
         # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
         feature_dictionary["training_features"] = self._format_data(feature_dictionary['training_features'])
-        if 'testing_features' in feature_dictionary.keys():
-            feature_dictionary["testing_features"] = self._format_data(feature_dictionary['testing_features'])
         self._set_up_classifier(model, feature_dictionary, parameters)
         
     def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
