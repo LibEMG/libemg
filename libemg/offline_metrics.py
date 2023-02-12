@@ -11,7 +11,7 @@ class OfflineMetrics:
 
         Returns
         ----------
-        array_like
+        list
             A list of common metrics (CA, AER, and INS).
         """
         return [
@@ -25,7 +25,7 @@ class OfflineMetrics:
 
         Returns
         ----------
-        array_like
+        list
             A list of all available metrics.
         """
         return [
@@ -38,18 +38,38 @@ class OfflineMetrics:
             'PREC',
             'F1'
         ]
+    
+    def extract_common_metrics(self, y_true, y_predictions, null_label=None):
+        """Extracts the common set of offline performance metrics (CA, AER, and INS).
+
+        Parameters
+        ----------
+        y_true: list 
+            A list of the true labels associated with each prediction.
+        y_predictions: list
+            A list of predicted outputs from a classifier.
+        null_label: int (optional)
+            A null label used for the AER metric - this should correspond to the label associated
+            with the No Movement or null class. 
+
+        Returns
+        ----------
+        dictionary
+            A dictionary containing the metrics, where each metric is a key in the dictionary.
+        self.extract_offline_metrics(self.get_common_metrics(), y_true, y_predictions, null_label)
+        """
         
     def extract_offline_metrics(self, metrics, y_true, y_predictions, null_label=None):
         """Extracts a set of offline performance metrics.
 
         Parameters
         ----------
-        metrics: array_like
+        metrics: list
             A list of the metrics to extract. A list of metrics can be found running the 
             get_available_metrics function.
-        y_true: array_like 
+        y_true: list 
             A list of the true labels associated with each prediction.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted outputs from a classifier.
         null_label: int (optional)
             A null label used for the AER metric - this should correspond to the label associated
@@ -96,9 +116,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
 
         Returns
@@ -115,13 +135,13 @@ class OfflineMetrics:
     def get_AER(self, y_true, y_predictions, null_class):
         """Active Error.
 
-        Classification accuracy without considering null_label (No Movement) predictions.
+        Classification accuracy on active classes (i.e., all classes but no movement/rest).
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
         null_class: int
             The null class that shouldn't be considered.
@@ -141,9 +161,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
 
         Returns
@@ -163,7 +183,7 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels. -1 in the list correspond to rejected predictions.
 
         Returns
@@ -181,14 +201,14 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
 
         Returns
         ----------
-        array_like
+        list
             Returns the confusion matrix.
         """
         classes = np.sort(np.unique(y_true))
@@ -207,14 +227,14 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
 
         Returns
         ----------
-        array_like
+        list
             Returns a list consisting of the recall for each class.
         """
         recall, weights = self._get_RECALL_helper(y_true, y_predictions)
@@ -240,14 +260,14 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
 
         Returns
         ----------
-        array_like
+        list
             Returns a list consisting of the precision for each class.
         """
         precision, weights = self._get_PREC_helper(y_true, y_predictions)
@@ -274,14 +294,14 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: array_like
+        y_true: list
             A list of ground truth labels.
-        y_predictions: array_like
+        y_predictions: list
             A list of predicted labels.
 
         Returns
         ----------
-        array_like
+        list
             Returns a list consisting of the f1 score for each class.
         """
         prec, weights = self._get_PREC_helper(y_true, y_predictions)
@@ -289,18 +309,18 @@ class OfflineMetrics:
         f1 = 2 * (prec * recall) / (prec + recall)
         return np.average(f1, weights=weights)  
     
-    def getRELIAB():
-        #TODO: Evan - I am going to leave this for you since I am 100% sure what you want.
-        pass
+    # def getRELIAB():
+    #     #TODO: Evan - I am going to leave this for you since I am 100% sure what you want.
+    #     pass
     
     def visualize(self, dic, y_axis=[0,1]):
         """Visualize the computed metrics in a bar chart.
 
         Parameters
         ----------
-        dic: dictionary
+        dic: dict
             The output from the extract_offline_metrics function.
-        y_axis: dictionary (optional), default=[0,1]
+        y_axis: dict (optional), default=[0,1]
             A dictionary for lower and upper bounds of y axis. 
         """
         plt.style.use('ggplot')
@@ -320,13 +340,14 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        mat: array_like (2D)
+        mat: list (2D)
             A NxN confusion matrix.
         """
         plt.style.use('ggplot')
         fig = plt.figure()
         ax = fig.add_subplot(111)
         cax = ax.matshow(mat, alpha=0.3)
+        ax.grid(False)
         fig.colorbar(cax)
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):

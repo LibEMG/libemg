@@ -24,7 +24,7 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
         The number of channels to stream. This should be <= to 
         the number of columns in the CSV.
     sampling_rate: int (optional), default=100
-        The desired sampling rate.
+        The desired sampling rate in Hz.
     port: int (optional), default=12345
         The desired port to stream over. 
     ip: string (option), default = '127.0.0.1'
@@ -114,9 +114,8 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
         The port that the Delsys is streaming over. Note this value reflects the EMG data port for the Delsys Avanti system. For the Trigno system (legacy), the port is 50041.
     delsys_ip: string (optional), default='localhost'
         The ip that the Delsys is streaming over.
-    channel_list: array-like, default=[0,1,2,3,4,5,6,7].
+    channel_list: list, default=[0,1,2,3,4,5,6,7].
         The channels that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
-    
 
     Examples
     ---------

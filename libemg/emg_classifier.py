@@ -18,13 +18,12 @@ import inspect
 from libemg.utils import get_windows
 
 class EMGClassifier:
-    """Base EMG Classification class. 
+    """The Offline EMG Classifier. 
 
-    This class is the base class for offline EMG classification. 
+    This is the base class for any offline EMG classification. 
 
     Parameters
     ----------
-    
     continuous: bool (optional), default = False
         Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
         majority vote is only applied to individual reps, not between them.
@@ -34,7 +33,7 @@ class EMGClassifier:
     rejection_threshold: int (optional), default=0.9
         Used to specify the threshold used for rejection.
     majority_vote: int (optional) 
-        Used to specify the number of predictions included in the majority vote.
+        Used to specify the number of decisions included in the majority vote.
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
@@ -70,14 +69,13 @@ class EMGClassifier:
             The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
             'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
             models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
-        feature_dictionary: dictionary
+        feature_dictionary: dict
             A dictionary including the associated features and labels associated with a set of data. 
-            Dictionary keys should include 'training_labels', 'training_features', 'testing_labels', and 
-            'testing_features'.
-        dataloader_dictionary: dictionary
+            Dictionary keys should include 'training_labels' and 'training_features'.
+        dataloader_dictionary: dict
             A dictionary including the associated dataloader objects for the dataset you'd like to train with. 
             Dictionary keys should include 'training_dataloader', and 'validation_dataloader'.
-        parameters: dictionary (optional)
+        parameters: dict (optional)
             A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
             in the sklearn docs for the given model.
         """
@@ -96,7 +94,7 @@ class EMGClassifier:
     def from_file(self, filename):
         """Loads a classifier - rather than creates a new one.
 
-        After saving a model, you can recreate it by running EMGClassifier.from_file(). By default 
+        After saving a statistical model, you can recreate it by running EMGClassifier.from_file(). By default 
         this function loads a previously saved and pickled classifier. 
 
         Parameters
@@ -123,20 +121,17 @@ class EMGClassifier:
 
         Parameters
         ----------
-        test_data: array-like
+        test_data: list
             A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
-        test_labels: array-like
+        test_labels: list
             A np.ndarray containing the class labels of the test data.
         Returns
         ----------
         list
-            Returns a list of predictions, based on the passed in testing features.
+            A list of predictions, based on the passed in testing features.
         list
-            Returns a list of the probabilities, based on the passed in testing features.
+            A list of the probabilities (for each prediction), based on the passed in testing features.
         """
-        '''
-        returns a list of typical offline evaluation metrics
-        '''
         if type(test_data) == dict:
             test_data = self._format_data(test_data)
         prob_predictions = self.classifier.predict_proba(test_data)
@@ -160,7 +155,8 @@ class EMGClassifier:
     def save(self, filename):
         """Saves (pickles) the EMGClassifier object to a file.
 
-        Use this save function to load the object later using the from_file function.
+        Use this save function if you want to load the object later using the from_file function. Note that 
+        this currently only support statistical models (i.e., not deep learning).
 
         Parameters
         ----------
@@ -318,16 +314,16 @@ class EMGClassifier:
     def visualize(self, test_labels, predictions, probabilities):
         """Visualize the decision stream of the classifier on the testing data. 
 
-        After running the .run method, you can call this visualize function to get a visual 
-        output of what the decision stream of what the particular classifier looks like. 
+        You can call this visualize function to get a visual output of what the decision stream of what 
+        the particular classifier looks like. 
         
         Parameters
         ----------
-        test_labels: array-like
+        test_labels: list
             A np.ndarray containing the labels for the test data.
-        predictions: array-like
+        predictions: list
             A np.ndarray containing the preditions for the test data.
-        probabilities: array-like
+        probabilities: list
             A np.ndarray containing the probabilities from the classifier for the test data. This should be
             N samples x C classes.
         """
@@ -364,16 +360,17 @@ class EMGClassifier:
         plt.legend(loc='lower right')
         plt.show()
     
+# TODO: This currently doesn't support deep learning models - come back
 class OnlineEMGClassifier(EMGClassifier):
     """OnlineEMGClassifier (inherits from EMGClassifier) used for real-time classification.
 
-    Given a set of training data and labels, this class will stream class predictions over UDP.
+    Given a set of training data and labels, this class will stream class predictions over UDP in real-time.
 
     Parameters
     ----------
     model: string
         The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
-    data_set: dictionary
+    data_set: dict
         A dictionary including the associated features and labels associated with a set of data. 
         Dictionary keys should include 'training_labels' and 'training_features'.
     window_size: int
@@ -382,10 +379,10 @@ class OnlineEMGClassifier(EMGClassifier):
         The number of samples that advances before next window.
     online_data_handler: OnlineDataHandler
         An online data handler object.
-    features: array_like
+    features: list
         A list of features that will be extracted during real-time classification. These should be the 
         same list used to train the model.
-    parameters: dictionary (optional)
+    parameters: dict (optional)
         A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
         in the sklearn docs for the given model.
     port: int (optional), default = 12346
