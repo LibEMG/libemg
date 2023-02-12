@@ -62,7 +62,7 @@ def test_get_windows(fe):
 
 def test_get_feature_groups(fe):
     assert fe.get_feature_groups() == {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
-                                    'TSFS': ['MAVFD','DASDV','WAMP','ZC','MFL','SAMPEN','M0','M2','M4','SPARSI','IRF','WLF'],
+                                    'TSTD': ['MAVFD','DASDV','WAMP','ZC','MFL','SAMPEN','M0','M2','M4','SPARSI','IRF','WLF'],
                                     'DFTR': ['DFTR'],
                                     'ITD': ['ISD','COR','MDIFF','MLK'],
                                     'HJORTH': ['ACT','MOB','COMP'],

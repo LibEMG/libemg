@@ -9,18 +9,69 @@
         width: 50%;
         height: 50%;
     }
+    .device_img_2 {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 35%;
+        height: 50%;
+    }
 </style>
 
-This module has three main pieces of data-related functionality: **(1) Datasets**, **(2) Offline Data Handling**, and **(3) Online Data Handling**. Together, they correspond to most of the data-related functionality one would ever need for leveraging validated datasets, parsing through file structures of offline data, and processing real-time EMG.
+This module has three data-related functions: **(1) Datasets**, **(2) Offline Data Handling**, and **(3) Online Data Handling**. Together, they correspond to most of the data-related functionality one would ever need for leveraging validated datasets, parsing through file structures of offline data, and processing real-time EMG.
 
 # Datasets
-To enable all interested parties the ability to leverage our library, we have included several validated datasets as part of this library. These datasets can be leveraged for exploring the library's capabilities and, additionally, for future research. We ask that for the latter, please correctly reference the dataset in your work. Note, these datasets are stored on github and will be cloned locally when downloaded. 
+To give all interested parties the ability to leverage our library, we have included several validated datasets as part of this library. These datasets can be leveraged for exploring the library's capabilities and, additionally, for future research. We ask that for the latter, please correctly reference the dataset in your work. Note, these datasets will be downloaded locally when used.
 
 <details>
-<summary>Show Datasets</summary>
-<br/>
+<summary><b>OneSubjectMyoDataset</b></summary>
 
-## Fougner
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Reps:**      | 3 Training, 3 Testing       |
+| **Time Per Rep:**      | 3s      |
+| **Classes:**       | <ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
+| **Device:**        | Myo        |
+| **Sampling Rates:** | EMG (200 Hz)        |
+| **Continuous:**    | False |
+
+**Using the Dataset:**
+```Python
+dataset = OneSubjectMyoDataset(redownload=False)
+odh = dataset.prepare_data()
+```
+-------------
+</details>
+
+<br>
+
+<details>
+<summary><b>3DCDatset</b></summary>
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Reps:**      | 4 Training, 4 Testing       |
+| **Time Per Rep:**      | 5s      |
+| **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
+| **Device:**        | Delsys        |
+| **Sampling Rates:** | EMG (1000 Hz)        |
+| **Continuous:**    | False |
+
+**Using the Dataset:**
+```Python
+dataset = _3DCDataset(redownload=False)
+odh = dataset.prepare_data()
+```
+
+**References:**
+```
+@article{cote2019deep, title={Deep learning for electromyographic hand gesture signal classification using transfer learning}, author={C{^o}t{'e}-Allard, Ulysse and Fall, Cheikh Latyr and Drouin, Alexandre and Campeau-Lecours, Alexandre and Gosselin, Cl{'e}ment and Glette, Kyrre and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit}, journal={IEEE transactions on neural systems and rehabilitation engineering}, volume={27}, number={4}, pages={760--771}, year={2019}, publisher={IEEE} }
+
+@article{cote2020interpreting, title={Interpreting deep learning features for myoelectric control: A comparison with handcrafted features}, author={C{^o}t{'e}-Allard, Ulysse and Campbell, Evan and Phinyomark, Angkoon and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit and Scheme, Erik}, journal={Frontiers in Bioengineering and Biotechnology}, volume={8}, pages={158}, year={2020}, publisher={Frontiers Media SA} }
+```
+-------------
+
+<!-- ## Fougner
 
 Short Description.
 
@@ -293,34 +344,6 @@ Continuous Transitions.
 Shriram Tallam Puranam Raghu, Dawn MacIsaac, Erik Scheme, Analyzing the impact of class transitions on the design of pattern recognition-based myoelectric control schemes, Biomedical Signal Processing and Control, Volume 71, Part A, 2022, 103134, ISSN 1746-8094, https://doi.org/10.1016/j.bspc.2021.103134.
 ```
 
-## 3DCDataset
-
-Short Description goes here. TODO: Evan
-
-| Attribute          | Description |
-| ------------------ | ----------- |
-| **Num Reps:**      | 4 Training, 4 Testing       |
-| **Time Per Rep:**      | 5s      |
-| **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
-| **Device:**        | Delsys        |
-| **Sampling Rates:** | EMG (1000 Hz)        |
-| **Continuous:**    | False |
-| **Repo:**          | https://github.com/ECEEvanCampbell/3DCDataset |
-
-**Using the Dataset:**
-```Python
-dataset = _3DCDataset(save_dir='3dc_data', redownload=False)
-odh = dataset.prepare_data(format=OfflineDataHandler)
-```
-
-**References:**
-```
-@article{cote2019deep, title={Deep learning for electromyographic hand gesture signal classification using transfer learning}, author={C{^o}t{'e}-Allard, Ulysse and Fall, Cheikh Latyr and Drouin, Alexandre and Campeau-Lecours, Alexandre and Gosselin, Cl{'e}ment and Glette, Kyrre and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit}, journal={IEEE transactions on neural systems and rehabilitation engineering}, volume={27}, number={4}, pages={760--771}, year={2019}, publisher={IEEE} }
-
-@article{cote2020interpreting, title={Interpreting deep learning features for myoelectric control: A comparison with handcrafted features}, author={C{^o}t{'e}-Allard, Ulysse and Campbell, Evan and Phinyomark, Angkoon and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit and Scheme, Erik}, journal={Frontiers in Bioengineering and Biotechnology}, volume={8}, pages={158}, year={2020}, publisher={Frontiers Media SA} }
-```
--------------
-
 ## GRABMyo
 
 Forearm and wrist dataset consisting of 16 hand and finger gestures over 3 seperate days.
@@ -348,13 +371,13 @@ Pradhan, A., He, J. & Jiang, N. Multi-day dataset of forearm and wrist electromy
 
 Goldberger, A., Amaral, L., Glass, L., Hausdorff, J., Ivanov, P. C., Mark, R., ... & Stanley, H. E. (2000). PhysioBank, PhysioToolkit, and PhysioNet: Components of a new research resource for complex physiologic signals. Circulation [Online]. 101 (23), pp. e215–e220.
 ```
--------------
+------------- -->
 
 </details>
 <br/>
 
 # Offline Data Handler 
-A large overhead in projects is simply interfacing with the dataset. We are providing a means to quickly get your in-house or public datasets interfaced with the library so you can get to improving performance as fast as possible. The offline data handler is incredibly flexible with the format of the data trying to be ingested. Simply specify the base directory and it will capture all .csv and .txt files in nested folders. There can be important metadata in the file addresses that are crucial for later analysis (i.e., extracting a training set flag, subject number, repetition number, and class number from a file named `C:\User\CoolProgrammer\Dataset\training\S1_C12_R3.txt`), and we provide a simple function for defining regular expressions for all the metadata you could desire. Using these regular expressions, you can create a dictionary that you pass into the offlinedatahandler that will collect the metadata, along with the emg contents of the within the files for all files that satisfy your regexp's. If the metadata is within the file, you can alternatively hand in a column id for the metadata. Once the data handler has collected all the information available, you can use it to slice the dataset however you'd like, then proceed to feature extraction!
+A significant overhead in projects is simply interfacing with a particular dataset. We provide a means to quickly interface your in-house or public datasets with the library so you can get to improving performance as fast as possible. The offline data handler is incredibly flexible with the format of the data. Simply specify the base directory and it will capture all .csv and .txt files in nested folders. There can be important metadata in the file addresses that are crucial for later analysis (i.e., extracting a training set flag, subject number, repetition number, and class number from a file named `C:\User\CoolProgrammer\Dataset\training\S1_C12_R3.txt`), and we provide a simple function for defining regular expressions for all the metadata you could desire. Using these regular expressions, you can create a dictionary that you pass into the OfflineDataHandler that will collect the metadata along with the EMG contents within the files for all files that satisfy your regex. If the metadata is within the file, you can alternatively hand in a column id for the metadata. Once the data handler has collected all the information available, you can use it to slice the dataset however you'd like, then proceed through the rest of the pipeline!
 
 ```Python
 dataset_folder = 'demos/data/myo_dataset'
@@ -383,16 +406,16 @@ training_features = fe.extract_features(feature_list, train_windows)
 
 # Online Data Handler 
 
-One of the major complications in interfacing with EMG devices is that they are all unique.  The thing that they all share in common, however, is that they sample EMG at a specific frequency. The goal of this library was to abstract these differences in hardware and be hardware agnostic (meaning that it works with any hardware). To handle these differences, we have decided to abstract the device out of the library, and create a middle layer level for processing data from any device instead. In this architecture - exemplified in Figure 1 - the online data handler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. This means that the `UDP streamer` and `OnlineDataHandler` are completely independent from eachother as they communicate over a specified UDP port. Both run in their own processes, and so the main thread is never blocked.
+One of the major complications in interfacing with EMG devices is that they are all unique. The goal of this library was to abstract these differences and enable a hardware-agnostic framework. To handle these differences, this module acts as a middle layer for processing data from any device streaming data. In this architecture - exemplified in Figure 1 - the OnlineDataHandler reads data from a UDP port. Once data is read, it is passed through the system and is processed equivalently for any hardware. This means that the `UDP streamer` and `OnlineDataHandler` are mutually independent of each other as they communicate over a specified UDP port. Both run in their own processes, so the main thread is never blocked.
 
 ![alt text](online_dh.png)
-<center> <p> Figure 1: Online Data Handler Architecture</p> </center>
+<center> <p> Figure 1: OnlineDataHandler Architecture</p> </center>
 
-The typial setup for any problem is exemplified in the code snippet below. The order in which the `OnlineDataHandler` and the `streamer` get created does not matter (as they are independent). The only important thing to note, is that both are in fact getting created before you can do anything with the data. 
+The typical setup for any problem is exemplified in the code snippet below. The order in which the `OnlineDataHandler` and the `streamer` get created does not matter (as they are independent). The only important thing to note is that both must be initialized before you can do anything with the data. 
 
 ```Python
 # Create Online Data Handler - This listens for data 
-odh = OnlineDataHandler(emg_arr=True)
+odh = OnlineDataHandler()
 odh.start_listening()
 # Create UDP Streamer - This streams data 
 [preferred]_streamer()
@@ -422,26 +445,25 @@ Repeating Values: 0
 ```
 
 - `sampling rate` is the number of samples read per second.
-- `num channels` is the number of channels that are being read.
+- `num channels` is the number of channels being read.
 - `min and max values` are the maximum values read from the data.
 - `resolution` is the predicted resolution in bits based on the data seen.
 - `time between_samples` is the average and standard deviation between sample reads. 
 - `repeating values` is the number of repeated values in the input data. Repeating values of > 0 indicate that there might be some issues.
 
 ## Using Prebuilt Streamers
-Additionally, we have added a streamer module that makes creating the `UDP Streamer` much easier. We have included streamers for a variety of common EMG devices shown in Table 2. Reference the <b>streamers API</b> for additional information on how to use each streamer.
+Additionally, we have added a streamer module that makes creating the `UDP Streamer` much easier. We have included streamers for a variety of common EMG devices shown in Table 2. Reference the <b>streamers API</b> for further information.
 
 | <center>Hardware</center> | <center>Function</center> | <center>Image</center> |
 | ------------- | ------------- | ------------- |
 | Myo Armband  | `myo_streamer()`  | <div class="device_img">![](devices/Myo.png) </div>|
-| Delsys  | `delsys_streamer()` | |
-| SIFI Cuff | `sifi_streamer()` | |
-| UNB Electrodes | `unb_streamer()` |  |
+| Delsys  | `delsys_streamer()` | <div class="device_img_2">![](devices/delsys.png) </div>|
+| SIFI Cuff | `sifi_streamer()` | <div class="device_img">![](devices/sifi.png) </div>|
 
 <center> <p>Table 2: The list of all implemented streamers.</p> </center>
 
 ## Creating Custom Streamers
-We understand that there will be times when developers are using non-standard hardware. Conveniently, our architecture is hardware agnostic, so developers can write their own UDP streamers. A UDP streamer simply reads a value from a device, pickles it, and sends it over UDP - the `OnlineDataHandler` takes care of the rest. An example of a streamer for the Myo Armband is exemplified below:
+We understand that there will be times when developers are using non-standard hardware. Conveniently, our architecture is hardware agnostic so that developers can write their own UDP streamers. A UDP streamer reads a value from a device, pickles it, and sends it over UDP - the `OnlineDataHandler` takes care of the rest. An example streamer for the Myo Armband is shown below:
 
 ```Python
 import socket

@@ -6,7 +6,7 @@ from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
 
 class Filter:
     """ A class that will perform filtering on: (1) OfflineDataHandler, (2) OnlineDataHandler, 
-    and (3) RawData in numpy.ndarrays.
+    and (3) data in numpy.ndarrays.
 
     Parameters
     ----------
@@ -21,13 +21,13 @@ class Filter:
         '''Install a particular filter.
 
         Installing filters is required prior to filtering being performed. Filters are created using the scipy.signal package.
-        The necessary parameters for these fitlers are included in a dictionary. When multiple filters are intending to be used
-        at a time, install them sequentially by calling this function for each filter. If there is an intended order for the filters
+        The necessary parameters for these fitlers are included in a dictionary. When multiple filters are intended to be used
+        at a time, install them sequentially by calling this function for each filter. If there is a specific order for the filters
         then install them in the intended processing order.
 
         Parameters
         ----------
-        filter_dictionary: dictionary
+        filter_dictionary: dict
             A dictionary containing the necessary parameters for defining a single filter.
         
         Examples
@@ -83,20 +83,17 @@ class Filter:
                             "bandwidth": 3 }
         self.install_filters(filter_dictionary=filter_dictionary)
 
-        
-
-
     def filter(self, data):
         ''' Run installed filters on data.
 
         Parameters
         ----------
-        data: array_like    
+        data: list    
             The data that will be passed through the filters.
 
         Returns
         ------- 
-        array_like
+        list
             Returns the filtered data.
         '''
         if not hasattr(self, "filters"):
@@ -115,7 +112,7 @@ class Filter:
             print("An unsupported data type was passed into the function")
 
     def _filter_offline_data_handler(self, data):
-        ''' Helper function that runs the installed filters across the various files contained in the offline data handler.
+        '''Helper function that runs the installed filters across the various files contained in the offline data handler.
         The data contained in the OfflineDataHandler is updated to reflect the filtered data.
 
         Parameters
@@ -253,8 +250,6 @@ class Filter:
         frequency_domain_pre, frequency_bins = self.get_frequency_domain(data)
         frequency_domain_post, _             = self.get_frequency_domain(filtered_data)
 
-
-
         for c in range(num_channels):
             # time series -- pre filter
             ax[c,0].grid(True)
@@ -290,7 +285,7 @@ class Filter:
         plt.show()
 
     def get_frequency_domain(self, data):
-        ''' Transform a time series np.ndarray into a frequency domain representation. Assumes that self.sampling_frequency is set.
+        '''Transform a time series np.ndarray into a frequency domain representation. Assumes that self.sampling_frequency is set.
 
         Parameters
         ----------
@@ -299,9 +294,9 @@ class Filter:
 
         Returns
         ------- 
-        power_spectrum: np.ndarray
+        np.ndarray
             The power spectrum of the signal in the frequency domain.
-        f:  np.ndarray
+        np.ndarray
             The frequencies that correspond the the bins of the power spectrum.
         '''
 

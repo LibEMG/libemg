@@ -16,10 +16,10 @@ class FeatureExtractor:
         Returns
         ----------
         dictionary
-            A dictionary with the all available feature groups.
+            A dictionary with the all available feature groups and their respective features.
         """
         feature_groups = {'HTD': ['MAV', 'ZC', 'SSC', 'WL'],
-                          'TSFS': ['MAVFD','DASDV','WAMP','ZC','MFL','SAMPEN','M0','M2','M4','SPARSI','IRF','WLF'],
+                          'TSTD': ['MAVFD','DASDV','WAMP','ZC','MFL','SAMPEN','M0','M2','M4','SPARSI','IRF','WLF'],
                           'DFTR': ['DFTR'],
                           'ITD': ['ISD','COR','MDIFF','MLK'],
                           'HJORTH': ['ACT','MOB','COMP'],
@@ -36,7 +36,7 @@ class FeatureExtractor:
         
         Returns
         ----------
-        array_like
+        list
             A list of all available features.
         """
         feature_list = ['MAV',
@@ -92,10 +92,10 @@ class FeatureExtractor:
         Parameters
         ----------
         feature_group: string
-            The group of features to extract. Valid options include: 'HTD', 'TD4', 'TD9' and 'TDPSD'.
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        feature_dic: dictionary
+            The group of features to extract. See the get_feature_list() function for valid options.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        feature_dic: dict
             A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
         Returns
         ----------
@@ -114,11 +114,11 @@ class FeatureExtractor:
         Parameters
         ----------
         feature_list: list
-            The group of features to extract. Run get_feature_list() or checkout the github documentation 
+            The group of features to extract. Run get_feature_list() or checkout the API documentation 
             to find an up-to-date feature list.  
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        feature_dic: dictionary
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        feature_dic: dict
             A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
         Returns
         ----------
@@ -137,7 +137,8 @@ class FeatureExtractor:
         return features
 
     def check_features(self, features):
-        """Assesses a features object for np.nan, np.inf, and -np.inf.
+        """Assesses a features object for np.nan, np.inf, and -np.inf. Can be used to check for clean data. 
+        
         Parameters
         ----------
         features: np.ndarray or dict
@@ -223,12 +224,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.mean(np.abs(windows),2)
@@ -240,12 +241,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         sgn_change = np.diff(np.sign(windows),axis=2)
@@ -261,14 +262,14 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         SSC_threshold: float
-            The threshold the derivative must exceed to be counted as a sign change
+            The threshold the derivative must exceed to be counted as a sign change.
 
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(SSC_threshold) == float 
@@ -283,12 +284,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.sum(np.abs(np.diff(windows,axis=2)),2)
@@ -299,12 +300,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.zeros((windows.shape[0],windows.shape[1]))
@@ -371,12 +372,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.log10(np.sum(np.abs(np.diff(windows, axis=2)),axis=2))
@@ -387,12 +388,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.abs(np.mean(np.sqrt(windows.astype('complex')),axis=2))
@@ -403,13 +404,13 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         WAMP_threshold: float
             The value that must be exceeded by the derivative to be counted as a high variability sample
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(WAMP_threshold) == float
@@ -421,12 +422,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.sqrt(np.mean(np.square(windows),2))
@@ -437,12 +438,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.sum(np.abs(windows),axis=2)
@@ -453,12 +454,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.sqrt(np.mean(np.diff(windows,axis=2)**2,axis=2))
@@ -469,12 +470,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         feat = np.var(windows,axis=2)
@@ -485,12 +486,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         
@@ -512,12 +513,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         def closure(w):
@@ -540,12 +541,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         def closure(w):
@@ -569,12 +570,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         def closure(w):
@@ -601,12 +602,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         def closure(w):
@@ -633,12 +634,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         def closure(w):
@@ -661,33 +662,33 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        AR_order: int
-            The order of the autoregressive model
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        AR_order: int, default=4
+            The order of the autoregressive model.
 
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(AR_order) == int
         feature = np.reshape(lpc(windows, order=AR_order,axis=2)[:,:,1:],(windows.shape[0],AR_order*windows.shape[1]),order="C")
         return feature
 
-    def getCCfeat(self, windows, CC_order =4):
+    def getCCfeat(self, windows, CC_order=4):
         """Extract Cepstral Coefficient (CC) feature.
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        CC_order: int
-            The order of the autoregressive and cepstral coefficient models
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        CC_order: int, default=4
+            The order of the autoregressive and cepstral coefficient models.
 
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(CC_order) == int
@@ -706,12 +707,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return np.exp(np.mean(np.log(np.abs(windows)+1), 2))
@@ -721,12 +722,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         mavfd = np.mean(np.abs(np.diff(windows,axis=2)),axis=2)
@@ -737,13 +738,13 @@ class FeatureExtractor:
        
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         MAVSLP_segment: int
             The number of segments to divide the window into
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(MAVSLP_segment) == int
@@ -761,14 +762,14 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         MDF_fs: int, float
             The sampling frequency of the signal
 
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(MDF_fs) == int or type(MDF_fs) == float 
@@ -791,13 +792,13 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         MNF_fs: int, float
             The sampling frequency of the signal
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(MNF_fs) == int or type(MNF_fs) == float 
@@ -818,12 +819,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         def closure(winsize):
@@ -839,12 +840,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return windows.max(axis=2)
@@ -854,12 +855,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return skew(windows, axis=2)
@@ -869,12 +870,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return kurtosis(windows, axis=2, fisher=False)
@@ -884,12 +885,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         n_channels = windows.shape[1]
@@ -919,12 +920,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         n_channels = windows.shape[1]
@@ -954,12 +955,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         d1 = np.diff(windows, axis=2)
@@ -975,12 +976,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         d1 = np.diff(windows, axis=2)
@@ -988,40 +989,40 @@ class FeatureExtractor:
         return phi
 
     def getTMfeat(self, windows, TM_order=3):
-        """Extract Temporal Moment (TM) feature. Order should be defined 3->
+        """Extract Temporal Moment (TM) feature. Order should be defined.
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        TM_order: int
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        TM_order: int, default=3
             The exponent the time series is raised to before the MAV is computed.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(TM_order)==int
         return np.mean(np.abs(windows**TM_order), axis=2)
 
     def getSMfeat(self, windows, SM_order=2, SM_fs=1000):
-        """Extract Spectral Moment (TM) feature. Order should be defined 2->, Sampling frequency should be accurate
+        """Extract Spectral Moment (TM) feature. Order should be defined. Sampling frequency should be accurate
         for getting accurate frequency moments (physiological meaning). For pure pattern recognition problems, the 
         sampling frequency parameter is not a large issue.
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        SM_order: int
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        SM_order: int, default=2
             The exponent that the frequency domain is raised to.
-        SM_fs: int, float
-            The sampling frequency.
+        SM_fs: float, default=1000
+            The sampling frequency (in Hz).
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(SM_order)==int
@@ -1038,23 +1039,23 @@ class FeatureExtractor:
         return np.sum( pow*(f**SM_order),axis=2)
 
     def getSAMPENfeat(self, windows, SAMPEN_dim=2, SAMPEN_tolerance=0.3):
-        """Extract Sample Entropy (SAMPEN) feature. SAMPEN_dim should be specified 1-> and is the number of samaples that 
+        """Extract Sample Entropy (SAMPEN) feature. SAMPEN_dim should be specified and is the number of samaples that 
         are used to define patterns. SAMPEN_tolerance depends on the dataset and is the minimum distance between patterns
         to be considered the same pattern; we recommend a value near 0.3.
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        SAMPEN_dim: int
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        SAMPEN_dim: int, default=2
             The number of samples patterns are defined under. Note: SAMPEN_dim and SAMPEN_dim+1 samples are used to get the two
             patterns of the final logarithmic ratio.
-        SAMPEN_tolerance: float
+        SAMPEN_tolerance: float, default=0.3
             The threshold for patterns to be considered similar
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(SAMPEN_dim) == int
@@ -1101,25 +1102,25 @@ class FeatureExtractor:
         return sampen
 
     def getFUZZYENfeat(self, windows, FUZZYEN_dim=2, FUZZYEN_tolerance=0.3, FUZZYEN_win=2):
-        """Extract Fuzzy Entropy (FUZZYEN) feature. SAMPEN_dim should be specified 1-> and is the number of samaples that 
+        """Extract Fuzzy Entropy (FUZZYEN) feature. SAMPEN_dim should be specified and is the number of samaples that 
         are used to define patterns. SAMPEN_tolerance depends on the dataset and is the minimum distance between patterns
         to be considered the same pattern; we recommend a value near 0.3.
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        FUZZYEN_dim: int
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        FUZZYEN_dim: int, default=2
             The number of samples patterns are defined under. Note: SAMPEN_dim and SAMPEN_dim+1 samples are used to get the two
             patterns of the final logarithmic ratio.
-        FUZZYEN_tolerance: float
+        FUZZYEN_tolerance: float, default=0.3
             The threshold for patterns to be considered similar
-        FUZZYEN_win: array-like
+        FUZZYEN_win: list, default=2
             the order the distance matrix is raised to prior to determining the similarity.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         # check arguments
@@ -1179,13 +1180,13 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
-        DFTR_fs: int, float
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        DFTR_fs: float, default=1000
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         assert type(DFTR_fs)==int or type(DFTR_fs) == float
@@ -1216,12 +1217,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return np.sum(windows**2, axis=2)
@@ -1233,12 +1234,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         ISD = np.sum(windows**2, axis=2)
@@ -1252,28 +1253,27 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
 
     def getMLKfeat(self, windows):
-        """Extract Mean Logarithm Kernel (MLK) feature. This implementation is different than the equation listed in the paper; however, I can only 
-        surmise this is what they meant for the feature to encode given the name.
+        """Extract Mean Logarithm Kernel (MLK) feature. 
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return np.log(np.sum(np.abs(windows),axis=2)+np.spacing(1))/windows.shape[2]
@@ -1284,12 +1284,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         return np.mean(windows**2,axis=2)
@@ -1301,12 +1301,12 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         m0 =  self.getACTfeat(windows)
@@ -1320,26 +1320,24 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        windows: array_like 
-            A list of windows - should be computed using the utils.get_windows() function.
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         
         Returns
         ----------
-        array_like
+        list
             The computed features associated with each window. 
         """
         m2 =  np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
         m4 =  np.sum(np.diff(np.diff(windows, axis=2),axis=2)**2)/windows.shape[2]
         return np.sqrt(m4/m2)
 
-   
-
     def visualize(self, feature_dic):
         """Visualize a set of features.
         
         Parameters
         ----------
-        feature_dic: dictionary
+        feature_dic: dict
             A dictionary consisting of the different features. This is the output from the 
             extract_features method.
         """
@@ -1370,11 +1368,11 @@ class FeatureExtractor:
         
         Parameters
         ----------
-        feature_dic: dictionary
+        feature_dic: dict
             A dictionary consisting of the different features. This is the output from the 
             extract_features method.
-        classes: array-like
-            The classes for each window. Easily obtained from the odh.parse_windows() method.
+        classes: list
+            The classes for each window.
         savedir: string
             The location the plot should be saved to. Specify the full filepath i.e., "figs/subject1.png".
         render: boolean
@@ -1409,19 +1407,16 @@ class FeatureExtractor:
             plt.savefig(savedir)
         if render:
             plt.show()
-                    
-        
-
 
     def visualize_single_distributions(self, feature_dic, classes=None, savedir=None, render=False):
         """Visualize the distribution of each feature using a histogram. This will render one histogram per feature.
         
         Parameters
         ----------
-        feature_dic: dictionary
+        feature_dic: dict
             A dictionary consisting of the different features. This is the output from the 
             extract_features method.
-        classes: array-like
+        classes: list
             The classes for each window. Easily obtained from the odh.parse_windows() method.
         savedir: string
             The location the plot should be saved to. Specify the prefix i.e., "figs/subject". Feature names and .png are appended to this prefix
@@ -1457,23 +1452,23 @@ class FeatureExtractor:
                 plt.show()
 
     def visualize_feature_space(self, feature_dic, projection, classes=None, savedir=None, render=True, test_feature_dic=None, t_classes=None, normalize=True):
-        """Visualize the the feature space
+        """Visualize the the feature space through a certain projection.
         
         Parameters
         ----------
-        feature_dic: dictionary
+        feature_dic: dict
             A dictionary consisting of the different features. This is the output from the 
             extract_features method.
-        classes: array-like
-            The classes for each window. Easily obtained from the odh.parse_windows() method.
+        classes: list
+            The classes for each window.
         savedir: string
             The location the plot should be saved to. Specify the prefix i.e., "figs/subject". Feature names and .png are appended to this prefix
         render: boolean
             Boolean to indicate whether the plot is shown or not. Defaults to False.
-        test_feature_dic: dictionary
+        test_feature_dic: dict
             A dictionary consisting of the different features. This is the output from the extract_features method.
         t_classes: boolean
-            The classes for each window. Easily obtained from the odh.parse_windows() method.
+            The classes for each window of testing data.
         normalize: boolean
             Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
         """

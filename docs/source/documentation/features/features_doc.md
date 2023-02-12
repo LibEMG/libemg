@@ -1,4 +1,4 @@
-The goal of this module is to simplify the feature extraction stage for developers. We have included approximately 30 popular features from the literature that we have robustly tested and validated. The following code snippet exemplifies how simple feature extraction from raw EMG is leveraging this module:
+The goal of this module is to simplify the feature extraction stage for developers. We have included approximately 50 popular features from the literature that we have robustly tested and validated. The following code snippet exemplifies how simple feature extraction from raw EMG is leveraging this module:
 
 ```Python
 import numpy as np
@@ -16,12 +16,12 @@ windows = get_windows(data, 50, 25)
 feature_list = ['MAV', 'SSC', 'ZC', 'WL']
 features_1 = fe.extract_features(feature_list, windows)
 
-# Extract a predfined feature group
+# Extract a predefined feature group
 features_2 = fe.extract_feature_group('HTD', windows)
 ```
 
 # Feature Performance
-We currently have 35 features installed in the library. These features were tested individually with a linear discriminant analysis classifier on the 3DC dataset and achieve a wide range of accuracies. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as a result don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for a real-world task. The code associate with Figure 1 is located <a href="#code">below</a>.
+We currently have ~50 features implemented in the library. These features were tested individually with a linear discriminant analysis (LDA) classifier on the 3DC dataset and achieved a wide range of accuracies. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for a real-world use. The code associated with Figure 1 is located <a href="#code">below</a>.
 
 ![alt text](feature_accuracies.png)
 <center> <p> Figure 1: Individual Feature Accuracy</p> </center>
@@ -316,6 +316,46 @@ $
 \text{SM} =  \sum_{i=1}^{F} pow_{i}*f_{i}^{order}
 $
 
+## **Sample Entropy (SAMPEN)**
+
+TODO: Evan 
+
+## **Fuzzy Entropy (FUZZYEN)**
+
+TODO: Evan 
+
+## **Discrete Time Fourier Transform Representation (DFTR)**
+
+TODO: Evan
+
+## **Integral Square Descriptor (ISD)**
+
+TODO: Evan
+
+## **Coefficient of Regularization (COR)**
+
+TODO: Evan 
+
+## **Mean Difference Derivative (MDIFF)**
+
+TODO: Evan 
+
+## **Mean Logarithm Kernel (MLK)**
+
+TODO: Evan 
+
+## **Activation (ACT)**
+
+TODO: Evan 
+
+## **Mobility (MOB)**
+
+TODO: Evan 
+
+## **Complexity (COMP)** 
+
+TODO: Evan
+
 # Feature Sets
 Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the library:
 
@@ -324,6 +364,13 @@ Feature sets are validated groups of features that have been shown empirically t
 2. Zero Crossings (ZC)
 3. Slope Sign Change (SSC)
 4. Waveform Length (WL)
+
+## **Time Domain Autoregressive (TDAR)** <sup>[10]</sup>
+1. Mean Absolute Value (MAV)
+2. Zero Crossings (ZC)
+3. Slope Sign Change (SSC)
+4. Waveform Length (WL)
+5. Autoregressive Coefficient 4 (AR4)
 
 ## **Low Sampling Frequency 4 (LS4)** <sup>[2]</sup>
 1. L-Score (LS)
@@ -339,6 +386,15 @@ Feature sets are validated groups of features that have been shown empirically t
 5. Absolute Square Average Difference Value (DASDV)
 6. Variance (VAR)
 
+## **Topologically Selected Time Domain (TSTD)** <sup>[14]</sup>
+1. Mean Absolute Value First Difference (MAVFD)
+2. Difference Absolute Standard Deviation Value  (DASDV)
+3. Willison Amplitude (WAMP)
+4. Zero Crossings (ZC)
+5. Maximum Fractal Length (MFL)
+6. Sample Entropy (SAMPEN)
+7. TDPSD Features
+
 ## **Time Domain Power Spectral Descriptors (TDPSD)** <sup>[6]</sup>
 1. First Temporal Moment (M0)
 2. Second Temporal Moment (M2)
@@ -347,18 +403,25 @@ Feature sets are validated groups of features that have been shown empirically t
 5. Irregularity Factor (IRF)
 6. Waveform Length Factor (WLF)
 
-## **Time Domain Autoregressive** <sup>[10]</sup>
-1. Mean Absolute Value (MAV)
-2. Zero Crossings (ZC)
-3. Slope Sign Change (SSC)
-4. Waveform Length (WL)
-5. Autoregressive Coefficient 4 (AR4)
-
 ## **Combined** <sup>[11]</sup>
 1. Waveform Length (WL)
 2. Slope Sign Change (SSC)
 3. Log Detector (LD)
 4. Autoregressive Coefficient 9 (AR9)
+
+## **Discrete Fourier Transform Representation (DFTR)**  <sup>[15]</sup>
+1. Discrete Fourier Transform Representation (DFTR)
+
+## **Inverse Time Domain (ITD)** <sup>[16]</sup>
+1. Integral Square Descriptor (ISD)
+2. Coefficient of Regularization (COR)
+4. Mean Difference Derivative (MDIFF)
+5. Mean Logarithm Kernel (MLK)
+
+## **Hjorth Parameters (HJORTH)** <sup>[17]</sup>
+1. Activation (ACT)
+2. Mobility (MOB)
+4. Complexity (COMP)
 
 # References
 <a id="1">[1]</a> 
@@ -428,6 +491,19 @@ Onay, F., Mert, A. Phasor represented EMG feature extraction against varying con
 <a id="13">[13]</a> 
 Pancholi, S., Jain, P., Varghese, A., Joshi, A. A Novel Time-Domain based Feature for EMG-PR Prosthetic and Rehabilitation Application. 2019 41st Annual International Conference of the IEEE Engineering in Medicine and Biology Society (EMBC) (2019). https://doi.org/10.1109/EMBC.2019.8857399
 
+<a id="14">[14]</a> 
+Phinyomark A, Khushaba RN, Ibáñez-Marcelo E, Patania A, Scheme E, Petri G. Navigating features: a topologically informed chart of electromyographic features space. J R Soc Interface. 2017 Dec;14(137):20170734. doi: 10.1098/rsif.2017.0734. PMID: 29212759; PMCID: PMC5746577.
+
+<a id="15">[15]</a> 
+He J, Zhang D, Sheng X, Li S, Zhu X. Invariant Surface EMG Feature Against Varying Contraction Level for Myoelectric Control Based on Muscle Coordination. IEEE J Biomed Health Inform. 2015 May;19(3):874-82. doi: 10.1109/JBHI.2014.2330356. Epub 2014 Jun 30. PMID: 25014975.
+
+<a id="16">[16]</a> 
+M. G. Asogbon Samuel et al., "Enhancing the Robustness of EMG-PR Based System against the Combined Influence of Force Variation and Subject Mobility," 2018 3rd Asia-Pacific Conference on Intelligent Robot Systems (ACIRS), Singapore, 2018, pp. 12-17, doi: 10.1109/ACIRS.2018.8467236.
+
+<a id="17">[17]</a> 
+Bo Hjorth, EEG analysis based on time domain properties, Electroencephalography and Clinica Neurophysiology, Volume 29, Issue 3, 1970, Pages 306-310, ISSN 0013-4694, https://doi.org/10.1016/0013-4694(70)90143-4.
+
+
 # Code
 ```Python
 import os
@@ -459,7 +535,7 @@ if __name__ == "__main__":
     metrics = ['CA']
 
     # get the subject list
-    subject_list = np.unique(odh.subjects)
+    subject_list = list(range(1,23))
     
     # initialize our feature extractor
     fe = FeatureExtractor()
@@ -494,18 +570,18 @@ if __name__ == "__main__":
 
             # get the dataset ready for the classifier
             data_set = {}
-            data_set['testing_features'] = test_features
             data_set['training_features'] = train_features
-            data_set['testing_labels'] = test_metadata["classes"]
             data_set['training_labels'] = train_metadata["classes"]
+
             # setup the classifier
             classifier = EMGClassifier(model, data_set.copy())
+            classifier.fit(model,feature_dictionary=data_set)
 
             # running the classifier analyzes the test data we already passed it
-            preds = classifier.run()
+            preds,probs = classifier.run(test_features, test_metadata['classes'])
             # get the CA: classification accuracy offline metric and add it to the results
-            results[i,s] = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds)[metrics[0]] * 100
-            # print(f"S{s} {f}: {results[i,s]}%")
+            results[i,s] = om.extract_offline_metrics(metrics, test_metadata['classes'], preds)[metrics[0]] * 100
+            print(f"S{s} {f}: {results[i,s]}%")
     # the feature accuracy is represented by the mean accuracy across the subjects
     mean_feature_accuracy = results.mean(axis=1)
     std_feature_accuracy  = results.std(axis=1)

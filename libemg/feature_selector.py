@@ -54,7 +54,6 @@ class FeatureSelector:
         # SI   | Separability Index
         pass
         
-    
 
     def run_selection(self, data={}, metric="accuracy", class_var = [], crossvalidation_var={}, verbose=False):
         """The main method for running feature selection on a dataset. Selection will choose features that result in the ranking 
@@ -69,8 +68,8 @@ class FeatureSelector:
             of size N samples x F features. N is consistent across all features in the dictionary, but F can vary (eg., AR can
             have 4 features for channel and MAV has 1 feature per channel). 
         metric: str
-            A string specifying what metric should be used as the basis of the selection
-        class_var: array-like
+            A string specifying what metric should be used as the basis of the selection.
+        class_var: list
             a np.ndarray containing the class labels associated with the features.
         crossvalidation_var: dict
             A dictionary containing the method by which crossvalidation is performed (most metrics support crossvalidation). Either specify the 
@@ -83,7 +82,7 @@ class FeatureSelector:
         filter_results/wrapper_results: np.ndarray
             filter_results is a 1D np.ndarray of metric values for each feature in the data dictionary
             wrapper_results is a 2D upper-triangle np.ndarray containing the metric values for the sequential selection processes.
-        feature_order:  array-like
+        feature_order:  list
             The optimal order of features according to the metric specified. This is a list of feature names.
         """
         metric_callback = getattr(self, "_get_" + metric)
@@ -99,8 +98,6 @@ class FeatureSelector:
             if verbose:
                 self._print_filter_results(filter_results)
             return filter_results, feature_order
-
-        
     
     def _get_sequential_selection_results(self, metric_callback, metric_objective, data, class_var, crossvalidation_var={"var": [],
                                                                                                                       "crossval_amount": 5}):
@@ -118,7 +115,7 @@ class FeatureSelector:
             Dictionary of features where every feature has its own key. The element associated with each key is a np.ndarray
             of size N samples x F features. N is consistent across all features in the dictionary, but F can vary (eg., AR can
             have 4 features for channel and MAV has 1 feature per channel). 
-        class_var: array-like
+        class_var: list
             a np.ndarray containing the class labels associated with the features.
         crossvalidation_var: dict
             A dictionary containing the method by which crossvalidation is performed (most metrics support crossvalidation). Either specify the 
@@ -129,7 +126,7 @@ class FeatureSelector:
         ------- 
         wrapper_results: np.ndarray
             wrapper_results is a 2D upper-triangle np.ndarray containing the metric values for the sequential selection processes.
-        feature_order:  array-like
+        feature_order:  list
             The optimal order of features according to the metric specified. This is a list of feature names.
         """
         features = list(data.keys())
@@ -195,7 +192,7 @@ class FeatureSelector:
             Dictionary of features where every feature has its own key. The element associated with each key is a np.ndarray
             of size N samples x F features. N is consistent across all features in the dictionary, but F can vary (eg., AR can
             have 4 features for channel and MAV has 1 feature per channel). 
-        class_var: array-like
+        class_var: list
             a np.ndarray containing the class labels associated with the features.
         crossvalidation_var: dict
             A dictionary containing the method by which crossvalidation is performed (most metrics support crossvalidation). Either specify the 
@@ -204,9 +201,9 @@ class FeatureSelector:
         
         Returns
         ------- 
-        filter_results: array-like
+        filter_results: list
             filter_results is a 1D np.ndarray of metric values for each feature in the data dictionary
-        feature_order:  array-like
+        feature_order:  list
             The optimal order of features according to the metric specified. This is a list of feature names.
         """
         features = list(data.keys())
@@ -248,9 +245,6 @@ class FeatureSelector:
         filter_results = filter_results[fs_order]
         fs_order = [features[i] for i in fs_order]
         return filter_results, fs_order
-
-        
-
 
     def _get_accuracy(self, dictionary={}):
         """The helper function metric callback to compute accuracy.
@@ -495,7 +489,7 @@ class FeatureSelector:
             The metric that was used in the selection
         results: np.ndarray
             The metric values returned (wrapper or filter) from the selection procedure
-        fs: array-like
+        fs: list
             The list containing the optimal feature order according to the metric used in the selection.
         """
         metric_type, _ = self._get_metric_type(metric)
@@ -511,7 +505,7 @@ class FeatureSelector:
         ----------
         results: np.ndarray
             The metric values returned (wrapper or filter) from the selection procedure
-        fs: array-like
+        fs: list
             The list containing the optimal feature order according to the metric used in the selection.
         """
         # longest feature name
@@ -542,7 +536,7 @@ class FeatureSelector:
         ----------
         results: np.ndarray
             The metric values returned (wrapper or filter) from the selection procedure
-        fs: array-like
+        fs: list
             The list containing the optimal feature order according to the metric used in the selection.
         """
         # longest feature name
@@ -569,7 +563,7 @@ class FeatureSelector:
             ----------
             metric: str
                 The metric to query.
-            fs: array-like
+            fs: list
                 The list containing the optimal feature order according to the metric used in the selection.
             
             Returns
@@ -600,17 +594,10 @@ class FeatureSelector:
 
     def get_metrics(self):
         """The function to get the list of all possible metrics that can be used in feature selection.
-
-            Parameters
-            ----------
-            metric: str
-                The metric to query.
-            fs: array-like
-                The list containing the optimal feature order according to the metric used in the selection.
-            
+        
             Returns
             ------- 
-            metric_list: array-like
+            metric_list: list
                 A list of strings that are the supported selection metrics
             """
         metric_list = [

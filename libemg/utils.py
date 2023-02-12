@@ -5,7 +5,7 @@ def get_windows(data, window_size, window_increment):
 
     Parameters
     ----------
-    data: array_like
+    data: list
         An NxM stream of data with N samples and M channels
     window_size: int
         The number of samples in a window. 
@@ -14,7 +14,7 @@ def get_windows(data, window_size, window_increment):
 
     Returns
     ----------
-    array_like
+    list
         The set of windows extracted from the data as a NxCxL where N is the number of windows, C is the number of channels 
         and L is the length of each window. 
 
@@ -43,7 +43,7 @@ def _get_mode_windows(data, window_size, window_increment):
 def make_regex(left_bound, right_bound, values=[]):
     """Regex creation helper for the data handler.
 
-    The Data Handler relies on regexes to parse the file/folder structures and extract data. 
+    The OfflineDataHandler relies on regexes to parse the file/folder structures and extract data. 
     This function makes the creation of regexes easier.
 
     Parameters
@@ -52,7 +52,7 @@ def make_regex(left_bound, right_bound, values=[]):
         The left bound of the regex.
     right_bound: string
         The right bound of the regex.
-    values: array_like
+    values: list
         The values between the two regexes.
 
     Returns

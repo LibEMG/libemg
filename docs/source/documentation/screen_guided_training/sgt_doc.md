@@ -13,12 +13,12 @@ While not directly part of the core pipeline itself, the `Screen Guided Training
 
 
 # Gesture Library
-One of the tedious aspects (and annoyances) of performing data collection is that we often need to accumulate photos (or videos) of each desired contractions. Often, this process is time-consuming and ultimately leads to inconsistencies among studies. To streamline this process, we have created a database of common gestures (both static and dynamic) that are interfaced directly with this project.
+One of the tedious aspects (and annoyances) of performing data collection is that we often need to accumulate photos (or videos) of each desired contractions. Often, this process is time-consuming and ultimately leads to inconsistencies among studies. To streamline this process, we have created a database of ~35 common gestures (both static and dynamic) that are interfaced directly with this project.
 
-The library can be found here: https://github.com/eeddy/LibEMGGestures
+The library can be found here: https://github.com/anon/anon
 
 ![](gesture_example.png)
-<center> <p> Figure 1: <a href="https://github.com/eeddy/LibEMGGestures">Gesture Library</a></p> </center>
+<center> <p> Figure 1: <a href="https://github.com/anon/anon">Gesture Library</a></p> </center>
 
 Each gesture in the library is associated with an ID and can be downloaded using those ids. A simple pipeline for setting up the SGT module is as follows: 
 

@@ -10,21 +10,22 @@ from os import walk
 import random
 random.seed(time.time())
 
+#TODO: Remove anon
 class ScreenGuidedTraining:
-    """ The Screen Guided Training module. 
+    """The Screen Guided Training module. 
 
     By default, this module has two purposes: 
     (1) Launching a Screen Guided Training window. 
     (2) Downloading gesture sets from our library of gestures located at:
-    https://github.com/eeddy/LibEMGGestures
+    https://github.com/<anon>/<anon>
     """
     def __init__(self):
         pass 
 
     def download_gestures(self, gesture_ids, folder, download_imgs=True, download_gifs=False, redownload=False):
         """
-        Downloads gesture images (either .png or .gif form) from: 
-        https://github.com/eeddy/LibEMGGestures.
+        Downloads gesture images (either .png or .gif) from: 
+        https://github.com/<anon>/<anon>.
         
         This function dowloads gestures using the "curl" command. 
 
@@ -32,13 +33,13 @@ class ScreenGuidedTraining:
         ----------
         gesture_ids: list
             A list of indexes corresponding to the gestures you want to download. A list of indexes and their respective 
-            gesture can be found at https://github.com/eeddy/LibEMGGestures.
+            gesture can be found at https://github.com/<anon>/<anon>.
         folder: string
             The output folder where the downloaded gestures will be saved.
         download_gif: bool (optional), default=False
             If True, the assocaited GIF will be downloaded.
         redownload: bool (optional), default=False
-            If True, all files will be redownloaded (regardless if they are already downloaed).
+            If True, all files will be re-downloaded (regardless if they are already downloaed).
         """
         git_url = "https://raw.githubusercontent.com/eeddy/LibEMGGestures/main/"
         gif_folder = "GIFs/"
@@ -75,7 +76,7 @@ class ScreenGuidedTraining:
         rep_time: int > 0
             The amount of time for each rep.
         time_between_reps: int > 0
-            The amount of time between subsequent classes.
+            The amount of time between subsequent class prompts.
         rep_folder: string 
             The folder path where the images associated with each rep are located. Each image should be <class_name>.<png,jpg>.
         output_folder: string
@@ -89,7 +90,7 @@ class ScreenGuidedTraining:
         gifs: bool, default=False
             If True looks and plays gifs (this option of for discrete training).
         exclude_files: list, default=None
-            A list of files to exclude. 
+            A list of files (i.e., classes) to exclude. 
         """
         _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, time_between_reps=time_between_reps, randomize=randomize, continuous=continuous, gifs=gifs, exclude_files=exclude_files)
 

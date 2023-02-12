@@ -52,10 +52,10 @@ class DataHandler:
 
 
 class OfflineDataHandler(DataHandler):
-    """OfflineDataHandler class - responsible for collecting all offline data in a directory.
+    """OfflineDataHandler class - responsible for collecting all offline data.
 
     The purpose of this class is to facilitate the process of accumulating offline training
-    and testing data. This class is extensible to a variety of file and folder structures. 
+    and testing data. This class is extensible to a wide range of file and folder structures. 
     """
     def __init__(self):
         super().__init__()
@@ -71,7 +71,7 @@ class OfflineDataHandler(DataHandler):
             Location of the dataset relative to current file path
         filename_dic: dict
             dictionary containing the values of the metadata and the regex or columns associated with that metadata.
-        delimiter: int
+        delimiter: char
             How the columns of the files are separated in the .txt or .csv files.
         """
         # you can insert custom member variables that will be collected from the filename using the dictionary
@@ -130,12 +130,12 @@ class OfflineDataHandler(DataHandler):
     
     def active_threshold(self, num_std=1.5, nm_label=0, class_attribute="class"):
         """Replaces class labels with the no motion label when amplitude is outside of the no motion range. This is
-        an in-place operation on the offline data handler.
+        an in-place operation on the offline data handler. This is especially useful for re-labeling ramp training data.
 
         Parameters
         ----------
         num_std: float
-            The number of standard deviations that must be exceeded to be considered an active class.
+            The number of standard deviations that must be exceeded (from no motion) to be considered an active class.
         nm_label: int
             The class label associated with the no motion class.
         class_attribute: string
@@ -176,32 +176,15 @@ class OfflineDataHandler(DataHandler):
         
         Returns
         ----------
-        windows_: array_like
-            A np.ndarray of size windows x channels x samples
-        metadata_: array_like
+        list
+            A np.ndarray of size windows x channels x samples.
+        list
             A dictionary containing np.ndarrays for each metadata tag of the dataset. Each window will
             have an associated value for each metadata. Therefore, the dimensions of the metadata should be Wx1 for each field.
         """
         return self._parse_windows_helper(window_size, window_increment)
 
     def _parse_windows_helper(self, window_size, window_increment):
-        """Function that actually performs windowing on the OfflineDataHandler after error checking has been performed.
-
-        Parameters
-        ----------
-        window_size: int
-            The number of samples in a window. 
-        window_increment: int
-            The number of samples that advances before next window.
-        
-        Returns
-        ----------
-        windows_: array_like
-            A np.ndarray of size windows x channels x samples
-        metadata_: array_like
-            A dictionary containing np.ndarrays for each metadata tag of the dataset. Each window will
-            have an associated value for each metadata. Therefore, the dimensions of the metadata should be Wx1 for each field.
-        """
         metadata_ = {}
         for i, file in enumerate(self.data):
             # emg data windowing
@@ -229,8 +212,8 @@ class OfflineDataHandler(DataHandler):
 
         Parameters
         ----------
-        channels: array_like
-            A list of values that you want to isolate. (e.g. [0,1,2]). Indexing starts at 0.
+        channels: list
+            A list of values (i.e., channels) that you want to isolate. (e.g., [0,1,2]). Indexing starts at 0.
             
         Returns
         ----------
@@ -256,8 +239,8 @@ class OfflineDataHandler(DataHandler):
         ----------
         key: str
             The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like).
-        values: array_like
-            A list of values that you want to isolate. (e.g. [0, 1,2,3]). Indexing starts at 0.
+        values: list
+            A list of values that you want to isolate. (e.g. [0,1,2,3]). Indexing starts at 0.
             
         Returns
         ----------
@@ -269,19 +252,6 @@ class OfflineDataHandler(DataHandler):
         return self._isolate_data_helper(key,values)
 
     def _isolate_data_helper(self, key, values):
-        """Function that actually performs the isolation of OfflineDataHandler.data according to the elements of metadata[key] being in the values list. 
-
-        Parameters
-        ----------
-        key: str
-            The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like)
-        values: list
-            
-        Returns
-        ----------
-        OfflineDataHandler
-            returns a new offline data handler with only the data that satisfies the requested slice.
-        """
         new_odh = OfflineDataHandler()
         setattr(new_odh, "extra_attributes", self.extra_attributes)
         key_attr = getattr(self, key)
@@ -330,9 +300,9 @@ class OfflineDataHandler(DataHandler):
 
         Parameters
         ----------
-        files: array_like
+        files: list
             A list containing the path (str) of all the files found in the dataset folder that end in .csv or .txt
-        regex_keys: array_like
+        regex_keys: list
             A list containing the dictionary keys passed during the dataset loading process that indicate metadata to be extracted
             from the path.
             
@@ -360,8 +330,7 @@ class OnlineDataHandler(DataHandler):
     """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
 
     This class is extensible to any device as long as the data is being streamed over UDP.
-    Note, you should change either file, std_out or emg_arr to True for anything meaningful
-    to happen.
+    By default this will start writing to an array of EMG data stored in memory.
 
     Parameters
     ----------
@@ -378,7 +347,7 @@ class OnlineDataHandler(DataHandler):
     emg_arr: bool (optional): default = True
         If True, all data acquired over the UDP port will be written to an array object that can be accessed.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=False):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True):
         self.port = port 
         self.ip = ip
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr}
@@ -412,7 +381,7 @@ class OnlineDataHandler(DataHandler):
         (3) min val
         (4) max val
         (5) time between samples
-        (6) reapeating values
+        (6) repeating values
         (7) number of channels
 
         Parameters
@@ -454,8 +423,8 @@ class OnlineDataHandler(DataHandler):
         ----------
         num_samples: int (optional), default=500
             The number of samples to show in the plot.
-        y_axes: array_like (optional)
-            A list of two elements consisting of the y-axes.
+        y_axes: list (optional)
+            A list of two elements consisting the bounds for the y-axis (e.g., [-1,1]).
         """
         pyplot.style.use('ggplot')
         if not self._check_streaming():
@@ -495,7 +464,7 @@ class OnlineDataHandler(DataHandler):
             A list of channels to graph indexing starts at 0.
         num_samples: int (optional), default=500
             The number of samples to show in the plot.
-        y_axes: array_like (optional)
+        y_axes: list (optional)
             A list of two elements consisting of the y-axes.
         """
         pyplot.style.use('ggplot')
@@ -526,12 +495,12 @@ class OnlineDataHandler(DataHandler):
         pyplot.show()
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
-        """Visualize live pca plot.
+        """Visualize a live pca plot. This is reliant on previously collected training data.
 
         Parameters
         ----------
-        feature_dic: dictionary
-            A dictionary consisting of the different features. This is the output from the 
+        feature_dic: dict
+            A dictionary consisting of the different features acquired through screen guided training. This is the output from the 
             extract_features method.
         window_size: int
             The number of samples in a window. 
@@ -542,7 +511,7 @@ class OnlineDataHandler(DataHandler):
         hold_samples: int (optional), default=20
             The number of live samples that are shown on the plot.
         projection: string (optional), default=PCA
-            The projection method. The only available option, is PCA.
+            The projection method. Currently, the only available option, is PCA.
         classes: list
             A list of classes that is associated with each feature index.
         normalize: boolean
@@ -592,7 +561,8 @@ class OnlineDataHandler(DataHandler):
                     for i, k in enumerate(features.keys()):
                         formatted_data = features[k] if i == 0 else np.hstack((formatted_data, features[k]))
                     
-                    formatted_data = (formatted_data-feature_means)/feature_stds
+                    if normalize:
+                        formatted_data = (formatted_data-feature_means)/feature_stds
 
                     data = pca.transform(formatted_data)
                     pc1.append(data[0,0])

@@ -9,9 +9,13 @@
 </style>
 ![alt](logo.png) -->
 
-The goal of this library is to provide an easy to use API for everything EMG-related. This is an open sourced library developed at the [University of New Brunswick](https://www.unb.ca/) by the [Institute of Biomedical Engineering Lab](https://www.unb.ca/ibme/).
+The goal of this library is to provide an easy to use API for developing real-time EMG interactions and performing robust offline analysis.
 
-**Authors**: Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme
+<!-- [University of New Brunswick](https://www.unb.ca/)
+[Institute of Biomedical Engineering Lab](https://www.unb.ca/ibme/) -->
+
+**Authors**: Anonymous
+<!-- Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme -->
 
 # Installing the Latest Release
 ```
