@@ -24,11 +24,17 @@ LibEMG
 
 .. toctree::
    :maxdepth: 1
-   :caption: Examples:
+   :caption: Online Examples:
 
    examples/snake_example/snake_example
    examples/fitts_example/fitts_example
    examples/unity_example/unity_example
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Offline Examples:
+
+   examples/features_and_group_example/features_and_group_example
    examples/deep_learning_example/deep_learning_example
 
 .. toctree::
