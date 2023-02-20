@@ -1,4 +1,4 @@
-Ex 2 - Fitts Test
-=================================
+Ex 2 - Comparing Classifiers
+==========================================
 .. include:: fitts.md
    :parser: myst_parser.sphinx_

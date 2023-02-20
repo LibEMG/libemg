@@ -14,7 +14,7 @@ The goal of this library is to provide an easy to use API for developing real-ti
 <!-- [University of New Brunswick](https://www.unb.ca/)
 [Institute of Biomedical Engineering Lab](https://www.unb.ca/ibme/) -->
 
-**Authors**: Anonymous
+**Authors**: Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme
 <!-- Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme -->
 
 # Installing the Latest Release
