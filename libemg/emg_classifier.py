@@ -360,19 +360,15 @@ class EMGClassifier:
         plt.legend(loc='lower right')
         plt.show()
     
-# TODO: This currently doesn't support deep learning models - come back
-class OnlineEMGClassifier(EMGClassifier):
-    """OnlineEMGClassifier (inherits from EMGClassifier) used for real-time classification.
+class OnlineEMGClassifier:
+    """OnlineEMGClassifier.
 
-    Given a set of training data and labels, this class will stream class predictions over UDP in real-time.
+    Given a EMGClassifier and additional information, this class will stream class predictions over UDP in real-time.
 
     Parameters
     ----------
-    model: string
-        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM' and 'KNN'. 
-    data_set: dict
-        A dictionary including the associated features and labels associated with a set of data. 
-        Dictionary keys should include 'training_labels' and 'training_features'.
+    offline_classifier: EMGClassifier
+        An EMGClassifier object. 
     window_size: int
         The number of samples in a window. 
     window_increment: int
@@ -401,8 +397,8 @@ class OnlineEMGClassifier(EMGClassifier):
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     """
-    def __init__(self, model, data_set, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
-        super().__init__(velocity=velocity)
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
+        # super().__init__(velocity=velocity)
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
@@ -412,8 +408,7 @@ class OnlineEMGClassifier(EMGClassifier):
         self.rejection_type = rejection_type
         self.rejection_threshold = rejection_threshold
         self.majority_vote = majority_vote
-
-        self.fit(model, feature_dictionary=data_set, parameters=parameters)
+        self.classifier = offline_classifier
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.process = Process(target=self._run_helper, daemon=True,)
@@ -451,14 +446,14 @@ class OnlineEMGClassifier(EMGClassifier):
                 features = fe.extract_features(self.features, window)
                 formatted_data = self._format_data_sample(features)
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                prediction, probability = self._prediction_helper(self.classifier.predict_proba(formatted_data))
+                prediction, probability = self.classifier._prediction_helper(self.classifier.classifier.predict_proba(formatted_data))
                 prediction = prediction[0]
                 probability = probability[0]
 
                 # Check for rejection
                 if self.rejection_type:
                     #TODO: Right now this will default to -1
-                    prediction = self._rejection_helper(prediction, probability)
+                    prediction = self.classifier._rejection_helper(prediction, probability)
                 self.previous_predictions.append(prediction)
                 
                 # Check for majority vote
@@ -468,11 +463,11 @@ class OnlineEMGClassifier(EMGClassifier):
                 
                 # Check for velocity based control
                 calculated_velocity = ""
-                if self.velocity:
+                if self.classifier.velocity:
                     calculated_velocity = " 0"
                     # Dont check if rejected 
                     if prediction >= 0:
-                        calculated_velocity = " " + str(self._get_velocity(window, prediction))
+                        calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
                 # Write classifier output:
                 self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
