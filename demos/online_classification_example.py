@@ -2,13 +2,12 @@ import os
 import sys
 import socket
 import multiprocessing
-from pyomyo import Myo, emg_mode
-
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
-from libemg.emg_classifier import OnlineEMGClassifier
+from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier
 from libemg.feature_extractor import FeatureExtractor
-from libemg.utils import make_regex, mock_emg_stream
+from libemg.utils import make_regex
+from libemg.streamers import mock_emg_stream
 
 # def worker():
 #     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,7 +27,7 @@ from libemg.utils import make_regex, mock_emg_stream
     
 if __name__ == "__main__" :
     # Online classification
-    dataset_folder = 'demos/data/myo_dataset/testing/'
+    dataset_folder = 'demos/data/myo_dataset/training/'
     classes_values = ["0","1","2","3","4"]
     classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG", values = classes_values)
     reps_values = ["0", "1", "2", "3"]
@@ -53,7 +52,9 @@ if __name__ == "__main__" :
     data_set = {}
     data_set['training_features'] = training_features
     data_set['training_labels'] = train_metadata['classes']
-    data_set['training_windows'] = train_windows
+
+    o_classifier = EMGClassifier()
+    o_classifier.fit('SVM', feature_dictionary=data_set)
 
     # Create Stream Bindings
     mock_emg_stream(file_path="demos/data/stream_data.csv", sampling_rate=200, num_channels=8)
@@ -61,6 +62,6 @@ if __name__ == "__main__" :
     online_data_handler.start_listening()
 
     # Create Classifier and Run
-    classifier = OnlineEMGClassifier(model="SVM", data_set=data_set, num_channels=8, window_size=50, window_increment=25, 
-            online_data_handler=online_data_handler, features=feature_list, std_out=True, velocity=True)
+    classifier = OnlineEMGClassifier(o_classifier, window_size=50, window_increment=25, 
+            online_data_handler=online_data_handler, features=feature_list, std_out=True)
     classifier.run(block=True)
