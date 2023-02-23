@@ -48,7 +48,7 @@ if __name__ == "__main__" :
     feature_list = fe.get_feature_groups()['HTD']
     training_features = fe.extract_features(feature_list, train_windows)
 
-    # # Create data set dictionary 
+    # Create data set dictionary 
     data_set = {}
     data_set['training_features'] = training_features
     data_set['training_labels'] = train_metadata['classes']
