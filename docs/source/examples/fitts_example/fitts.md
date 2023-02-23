@@ -13,7 +13,7 @@ For EMG-based control systems, it has been shown that the offline performance of
 
 # Methods 
 The steps of this 'mini experiment' are as follows:
-1. **Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).** These classes correspond to movement in the isofitts task (left, right, up, and down).
+1. **Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).** These classes correspond to movement in the isofitts task (do nothing, left, right, up, and down).
     <div>
         <img src="https://github.com/eeddy/Isofitts/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
         <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
@@ -24,7 +24,7 @@ The steps of this 'mini experiment' are as follows:
    
     <img src="https://github.com/eeddy/Isofitts/blob/main/docs/isofitts.PNG?raw=true" class="center"/>
 
-**Note:** We have made this example to work with the `Myo Armband`. However, it can easily be used for any hardware by simply switching the `num_channels`, `WINDOW_SIZE`, and `INCREMENT` variables.
+**Note:** We have made this example to work with the `Myo Armband`. However, it can easily be used for any hardware by simply switching the `streamer`, `WINDOW_SIZE`, and `INCREMENT`.
 
 # Menu
 ```Python

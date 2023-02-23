@@ -27,25 +27,17 @@ class EMGClassifier:
     continuous: bool (optional), default = False
         Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
         majority vote is only applied to individual reps, not between them.
-    rejection_type: string (optional)
-        Used to specify the type of rejection used by the classifier. The only currently supported option
-        is 'CONFIDENCE'.
-    rejection_threshold: int (optional), default=0.9
-        Used to specify the threshold used for rejection.
-    majority_vote: int (optional) 
-        Used to specify the number of decisions included in the majority vote.
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, continuous=False, rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, random_seed=0):
+    def __init__(self, continuous=False, random_seed=0):
         random.seed(random_seed)
         
         self.classifier = None
-        self.rejection_type = rejection_type
-        self.rejection_threshold = rejection_threshold
-        self.majority_vote = majority_vote
-        self.velocity = velocity
         self.continuous = continuous
+        self.velocity = False
+        self.majority_vote = None
+        self.rejection = False
 
         # For velocity control
         self.th_min_dic = None 
@@ -83,8 +75,6 @@ class EMGClassifier:
         if feature_dictionary is not None:
             if "training_features" in feature_dictionary.keys():
                 self._fit_statistical_model(model, feature_dictionary, parameters)
-            if "training_windows" in feature_dictionary.keys() and "training_labels" in feature_dictionary.keys() and self.velocity == True:
-                self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(feature_dictionary["train_windows"], feature_dictionary["train_labels"])
         if dataloader_dictionary is not None:
             self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
 
@@ -140,7 +130,7 @@ class EMGClassifier:
         predictions, probabilities = self._prediction_helper(prob_predictions)
 
         # Rejection
-        if self.rejection_type:
+        if self.rejection:
             predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
             rejected = np.where(predictions == -1)[0]
             predictions[rejected] = -1
@@ -166,6 +156,35 @@ class EMGClassifier:
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
+    def add_rejection(self, threshold=0.9):
+        """Adds the rejection postprocessing block onto a classifier.
+
+        Parameters
+        ----------
+        threshold: float (optional), default=0.9
+            The confidence threshold (0-1). All predictions with confidence under the threshold will be rejected.
+        """
+        self.rejection = True
+        self.rejection_threshold = threshold
+
+    def add_majority_vote(self, num_samples=5):
+        """Adds the majority voting postprocessing block onto a classifier.
+
+        Parameters
+        ----------
+        threshold: int (optional), default=5
+            The number of samples that will be included in the majority vote.
+        """
+        self.majority_vote = num_samples
+
+    def add_velocity(self, train_windows, train_labels):
+        """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity. 
+
+        Parameters:
+        -----------
+        """
+        self.velocity = True
+        self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
@@ -268,7 +287,7 @@ class EMGClassifier:
         return np.array(prediction_vals), np.array(probabilities)
         
     def _rejection_helper(self, prediction, prob):
-        if self.rejection_type == "CONFIDENCE":
+        if self.rejection:
             if prob > self.rejection_threshold:
                 return prediction
             else:
@@ -385,37 +404,25 @@ class OnlineEMGClassifier:
         The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
-    rejection_type: string (optional)
-        Used to specify the type of rejection used by the classifier. The only currently supported option
-        is 'CONFIDENCE'.
-    rejection_threshold: int (optional), default = 0.9
-        Used to specify the threshold used for rejection.
-    majority_vote: int (optional)
-        Used to specify the number of predictions included in the majority vote.
     velocity: bool (optional), default = False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     """
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, parameters=None, port=12346, ip='127.0.0.1', rejection_type=None, rejection_threshold=0.9, majority_vote=None, velocity=False, std_out=False):
-        # super().__init__(velocity=velocity)
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', velocity=False, std_out=False):
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
         self.features = features
         self.port = port
         self.ip = ip
-        self.rejection_type = rejection_type
-        self.rejection_threshold = rejection_threshold
-        self.majority_vote = majority_vote
         self.classifier = offline_classifier
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.process = Process(target=self._run_helper, daemon=True,)
         self.std_out = std_out
-        self.previous_predictions = deque(maxlen=self.majority_vote)
+        self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         
-
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
 
@@ -451,13 +458,13 @@ class OnlineEMGClassifier:
                 probability = probability[0]
 
                 # Check for rejection
-                if self.rejection_type:
+                if self.classifier.rejection:
                     #TODO: Right now this will default to -1
                     prediction = self.classifier._rejection_helper(prediction, probability)
                 self.previous_predictions.append(prediction)
                 
                 # Check for majority vote
-                if self.majority_vote:
+                if self.classifier.majority_vote:
                     values, counts = np.unique(list(self.previous_predictions), return_counts=True)
                     prediction = values[np.argmax(counts)]
                 
