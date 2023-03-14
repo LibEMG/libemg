@@ -47,15 +47,11 @@ class _3DCDataset(Dataset):
             self.download(self.url, self.dataset_folder)
 
 
-    def prepare_data(self, format=OfflineDataHandler):
+    def prepare_data(self, format=OfflineDataHandler, subjects_values=[str(i) for i in range(1,23)], sets_values=["train","test"], classes_values=[str(i) for i in range(0,11)], reps_values=["0","1","2","3"]):
         if format == OfflineDataHandler:
-            sets_values = ["train", "test"]
             sets_regex = make_regex(left_bound = "/", right_bound="/EMG", values = sets_values)
-            classes_values = ["0","1","2","3","4","5","6","7","8","9","10"]
             classes_regex = make_regex(left_bound = "_", right_bound=".txt", values = classes_values)
-            reps_values = ["0","1","2","3"]
             reps_regex = make_regex(left_bound = "EMG_gesture_", right_bound="_", values = reps_values)
-            subjects_values = ["1","2","3","4","5","6","7","8","9","10","11", "12","13","14","15","16","17","18","19","20","21","22"]
             subjects_regex = make_regex(left_bound="Participant", right_bound="/",values=subjects_values)
             dic = {
                 "sets": sets_values,

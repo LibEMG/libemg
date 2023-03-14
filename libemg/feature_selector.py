@@ -55,7 +55,7 @@ class FeatureSelector:
         pass
         
 
-    def run_selection(self, data={}, metric="accuracy", class_var = [], crossvalidation_var={}, verbose=False):
+    def run_selection(self, data={}, metric="accuracy", class_var = [], crossvalidation_var={}, verbose=False, early_stop=None):
         """The main method for running feature selection on a dataset. Selection will choose features that result in the ranking 
         of features according to the specified metric and the metric values found through the selection process. This is an entry
         point function that calls the _get_sequential_selection_results and _get_metric_selection_results methods, after finding the
@@ -77,6 +77,9 @@ class FeatureSelector:
             the "var" key to run leave-one-key-out cross validation with the np.ndarray you pass in.
         verbose: bool (optional), default = False
             If True, automatically calls the print method after getting the results.
+        early_stop: int (optional), default = None
+            The number of features to return from the selection -- if None is passed, all features are returned. This only influences the computation
+            time of wrapper-based selection.
         Returns
         ------- 
         filter_results/wrapper_results: np.ndarray
@@ -89,7 +92,7 @@ class FeatureSelector:
         metric_type, metric_objective = self._get_metric_type(metric)
         
         if metric_type == "sequential":
-            wrapper_results, feature_order = self._get_sequential_selection_results(metric_callback, metric_objective, data, class_var, crossvalidation_var)
+            wrapper_results, feature_order = self._get_sequential_selection_results(metric_callback, metric_objective, data, class_var, crossvalidation_var, early_stop)
             if verbose:
                 self._print_wrapper_results(wrapper_results, feature_order)
             return wrapper_results, feature_order
@@ -100,7 +103,8 @@ class FeatureSelector:
             return filter_results, feature_order
     
     def _get_sequential_selection_results(self, metric_callback, metric_objective, data, class_var, crossvalidation_var={"var": [],
-                                                                                                                      "crossval_amount": 5}):
+                                                                                                                      "crossval_amount": 5},
+                                                                                                                      early_stop=None):
         """The selection procedure carried out for metrics where the selection is sequential (F)(F-1)/2 metric calls to form an upper-triangle
         matrix of metric values. These metric values are sorted according to their optimality criterion and used for sorting the features in
         the "best" order.
@@ -121,7 +125,8 @@ class FeatureSelector:
             A dictionary containing the method by which crossvalidation is performed (most metrics support crossvalidation). Either specify the 
             "crossval_amount" key <int> to perform k-fold cross validation with k random folds of size (1-1/k) training (1/k) testing, or provide 
             the "var" key to run leave-one-key-out cross validation with the np.ndarray you pass in.
-        
+        early_stop: int (optional), default = None
+            The number of features to stop at early in the selection process. If None is passed, all features are returned.
         Returns
         ------- 
         wrapper_results: np.ndarray
@@ -172,6 +177,8 @@ class FeatureSelector:
             features_included.append(features[best_feature])
             features_remaining.remove(features[best_feature])
             prior_features = np.hstack((prior_features, data[features[best_feature]])) if prior_features.size else data[features[best_feature]]
+            if early_stop is not None and i == early_stop-1:
+                break
         # resort columns
         wrapper_results = wrapper_results[:,best_features]
         return wrapper_results, features_included

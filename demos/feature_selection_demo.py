@@ -5,36 +5,24 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import make_regex
 from libemg.data_handler import OfflineDataHandler
 from libemg.feature_selector import FeatureSelector
-
+from libemg.datasets import _3DCDataset
 
 if __name__ == "__main__" :
     # import a dataset to work with (as was done in the past demos)
-    dataset_folder = 'demos/data/myo_dataset'
-    sets_values = ["training", "testing"]
-    sets_regex = make_regex(left_bound = "dataset/", right_bound="/", values = sets_values)
-    classes_values = ["0","1","2","3","4"]
-    classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
-    reps_values = ["0","1","2","3"]
-    reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-    dic = {
-        "sets": sets_values,
-        "sets_regex": sets_regex,
-        "reps": reps_values,
-        "reps_regex": reps_regex,
-        "classes": classes_values,
-        "classes_regex": classes_regex
-    }
-    odh = OfflineDataHandler()
-    odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
+    dataset = _3DCDataset()
+    train_odh = dataset.prepare_data(subjects_values=["1"], sets_values=["train"])
+    
     
     # Let's grab the saved test set (it has multiple reps to perform cross-validation against)
-    train_odh = odh.isolate_data(key="sets", values=[0])
-    train_windows, train_metadata = train_odh.parse_windows(50,25)
+    #train_odh = odh.isolate_data(key="sets", values=[0])
+    train_windows, train_metadata = train_odh.parse_windows(200,50)
 
 
     # we want to get all the features our toolbox can extract, so call the get feature list method to return a list of all computable features
     fe = FeatureExtractor()
     feature_list = fe.get_feature_list()
+    feature_list.remove("SAMPEN")
+    feature_list.remove("FUZZYEN")
     # and extract those features. this returns a dictionary
     training_features = fe.extract_features(feature_list, train_windows)
 
@@ -52,7 +40,7 @@ if __name__ == "__main__" :
     metric="accuracy"
     class_var = train_metadata["classes"].astype(int)
     crossvalidation_var = {"var": train_metadata["reps"].astype(int)}
-    accuracy_results, accuracy_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
+    accuracy_results, accuracy_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var, num_features=6)
     fs.print(metric, accuracy_results, accuracy_fs)
     
     # demo for active error!
