@@ -15,7 +15,7 @@ if __name__ == "__main__" :
     metrics = om.get_available_metrics()
     offline_metrics = om.extract_offline_metrics(metrics=metrics, y_true=y_true, y_predictions=y_preds, null_label=2)
     print(offline_metrics)
-    om.visualize(offline_metrics)
+    om.visualize_conf_matrix(offline_metrics['CONF_MAT'], labels=["open","close","rest","test"])
 
     # Get and extract a subset of metrics:
     metrics = ['AER', 'CA', 'INS']

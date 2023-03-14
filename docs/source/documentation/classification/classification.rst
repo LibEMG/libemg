@@ -1,4 +1,4 @@
-6 - Classification
+Classification
 ------------------------------
 .. include:: classification_doc.md
    :parser: myst_parser.sphinx_

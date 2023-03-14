@@ -9,13 +9,9 @@
 </style>
 ![alt](logo.png) -->
 
-The goal of this library is to provide an easy to use API for developing real-time EMG interactions and performing robust offline analysis.
+The goal of this library is to provide an easy to use and feature-rich API for developing robust real-time EMG-based interactions, and performing thorough offline analysis.
 
-<!-- [University of New Brunswick](https://www.unb.ca/)
-[Institute of Biomedical Engineering Lab](https://www.unb.ca/ibme/) -->
-
-**Authors**: Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme
-<!-- Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme -->
+**Authors**: Anonymous
 
 # Installing the Latest Release
 ```
@@ -28,3 +24,4 @@ We ask that if you leverage this library for any research related purposes pleas
 Citation
 ```
 
+This API documentation is split into the following six sections:

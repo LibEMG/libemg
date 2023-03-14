@@ -111,7 +111,6 @@ class OfflineDataHandler(DataHandler):
                 self.data.append(file_data)
             # also collect the metadata from the filename
             for k in keys:
-                #TODO: There is an issue here - talk to evan
                 if k + "_regex" in dictionary_keys:
                     k_val = re.findall(filename_dic[k+"_regex"],f)[0]
                     k_id  = filename_dic[k].index(k_val)
@@ -238,7 +237,7 @@ class OfflineDataHandler(DataHandler):
         Parameters
         ----------
         key: str
-            The metadata key that will be used to filter (i.e., "subject", "rep", "class", "set", whatever you'd like).
+            The metadata key that will be used to filter (e.g., "subject", "rep", "class", "set", whatever you'd like).
         values: list
             A list of values that you want to isolate. (e.g. [0,1,2,3]). Indexing starts at 0.
             

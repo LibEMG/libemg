@@ -1,16 +1,31 @@
 # Post Processing
 
 ## Rejection
-Classifier outputs are overridden to a default or inactive state when the output decision is unsure.  This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.  
+Classifier outputs are overridden to a default or inactive state when the output decision is uncertain. This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.  
 - **Confidence <sup>[1]</sup>:** Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected. Figure 1 exemplifies rejection using an SVM classifier with a threshold of 0.8.
+
+```Python
+# Add rejection with 90% confidence threshold
+classifier.add_rejection(threshold=0.9)
+```
 
 ## Majority Voting <sup>[2,3]</sup>
 Overrides the current output with the label corresponding to the class that occurred most frequently over the past $N$ decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations. Figure 1 exemplifies applying a majority vote of 5 samples to a decision stream.
 
-## Velocity Control <sup>[4]</sup>
-Outputs an associated *velocity* with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. 
+```Python
+# Add majority vote on 10 samples
+classifier.add_majority_vote(num_samples=10)
+```
 
-**Note: This library leverages method 3 from the cited work.**
+## Velocity Control <sup>[4]</sup>
+Outputs an associated *velocity* with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. Note that ramp contractions should be accumulated during the training phase.
+
+```Python
+# Add velocity control
+classifier.add_velocity(train_windows, train_labels)
+```
+
+Figure 1 shows the decision stream (i.e., the predictions over time) of a classifier with no postprocessing, rejection, and majority voting. In this example, the shaded regions show the ground truth label, whereas the colour of each point represents its predicted label. All black points indicate predictions that have been rejected.
 
 ![alt text](decision_stream.png)
 <center> <p> Figure 1: Decision Stream of No Post Processing, Rejection, and Majority Voting. This can be created using the <b>.visualize()</b> method call. </p> </center>

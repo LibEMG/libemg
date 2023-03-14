@@ -1,7 +1,10 @@
-Evaluation techniques for myoelectric control can primarily be divided into two categories: **online** and **offline** evaluation. In this section, we present the two different techniques, explore when each should be used, and provide suggestions on the best evaluation standards for a given project. 
+Evaluation techniques for myoelectric control can be divided into two categories: **online** and **offline** evaluation. This section presents each type of evaluation, explores their use cases, and provides suggestions on the best evaluation standards for a given project. 
 
 ## Offline Evaluation 
-Offline evaluation involves testing a model using pre-recorded data by leveraging several offline metrics. While these metrics do not necessarily correlate to online usability, they provide insight into the potential performance of a control system. Additionally, they are valuable for evaluating hyperparameters and exploring different algorithms. The following code snippet shows how easy it is to extract offline metrics from a set of predictions and ground truth labels.
+Offline evaluation involves testing a model using pre-recorded data by leveraging offline metrics. While these metrics do not necessarily correlate to online usability, they provide insight into the potential performance of a control system. Additionally, they are valuable for evaluating hyperparameters (i.e., different control system parameters) and exploring different algorithms. An example of extracting offline metrics from predictions and labels can be found in the following code snippet. Stars beside the metrics indicate their popularity for evaluating EMG-based control systems. 
+
+<details>
+<summary><b>Example Code and Output</b></summary>
 
 ```Python
 import numpy as np
@@ -27,8 +30,11 @@ if __name__ == "__main__" :
 
 ![](visualize.png)
 
+</details>
+<br/>
 
-### **Classification Accuracy (CA)** 
+
+### **Classification Accuracy (CA)** *
 The percentage of correctly predicted samples. While this is a common evaluation metric, it does not necessarily correlate to online usability.
 
 $
@@ -37,7 +43,7 @@ $
 
 where $N$ is the total number of data frames/predictions, $\hat{y}_{i}$ is the predicted class label for frame $i$, and $y_{i}$ is the true class label for frame i.
 
-### **Active Error (AER)** 
+### **Active Error (AER)** *
 The percentage of incorrect predictions,  ignoring No Movement predictions. This metric evaluates the performance of a classifier on active class decisions. This is valuable as the No Movement class typically correlates to "do nothing" functionality. 
 
 $
@@ -46,7 +52,7 @@ $
 
 where $N$ is the total number of data frames/predictions, $\hat{y}_{i}$ is the predicted class label for frame $i$, $y_{i}$ is the true class label for frame i, and $y_{NM}$ is the no movement/null class.
 
-### **Instability (INS)**
+### **Instability (INS)** *
 The number of times that subsequent predictions differ, normalized by the total number of predictions. This metric provides insight into the stability of a classifier (i.e., lack of fluctuating predictions). 
 
 $
@@ -80,9 +86,6 @@ $
 \text{F1} = 2 \times \frac{(Precision \times Recall)}{Precision + Recall}
 $
 
-### **Reliability (RELIAB)** 
-TODO: Evan
-
 ### **Rejection Rate (REJ_RATE)**
 For control systems leveraging rejection, this metric corresponds to the percentage of rejected decisions. This gives insight into whether the system is over or under-rejecting. 
 
@@ -92,7 +95,7 @@ $
 
 where $N$ is the total number of data frames/predictions, $\hat{y}_{i}$ is the predicted class label for frame $i$, and $y_{rej}$ is the rejection label (default = -1).
 
-### **Confusion Matrix (CONF_MAT)**
+### **Confusion Matrix (CONF_MAT)** *
 A confusion Matrix is a $C$ x $C$ matrix, where $C$ is the number of classes. Each row of the matrix represents the true label, and each column represents the predicted label. This matrix provides valuable insight into what classes get confused with others.
 
 <style>
@@ -106,7 +109,7 @@ A confusion Matrix is a $C$ x $C$ matrix, where $C$ is the number of classes. Ea
 ![alt text](conf_mat.png)
 
 ## Online Evaluation 
-Online evaluation involves user-in-the-loop interaction, meaning that users get real-time feedback as they interact with the control system. One common form of online evaluation in the prosthetics community involves leveraging Fitts law tests <sup>1</sup>. Check out our [second example](../../examples/fitts_example/fitts.md) if you are interested. This is common as prosthetic devices are expensive, and fittings are complicated. However, for more generic use cases, online evaluation should involve interaction between the users and the designed application. For control system evaluation in an online setting, the **OnlineEMGClassifier** module should be leveraged. 
+Online evaluation involves user-in-the-loop interaction, meaning that users get real-time feedback as they interact with the control system. One online evaluation technique popular within the prosthetics community involves leveraging Fitts law tests <sup>[1]</sup>. This is common in the prosthetics community as prostheses are expensive, and fittings are complicated. For more generic use cases, online evaluation should involve user-in-the-loop feedback. Ultimately, to properly evaluate the online performance of a control system, the OnlineEMGClassifier module should be leveraged.
 
 # References
 <a id="1">[1]</a> 

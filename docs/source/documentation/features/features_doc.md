@@ -1,4 +1,9 @@
-The goal of this module is to simplify the feature extraction stage for developers. We have included approximately 50 popular features from the literature that we have robustly tested and validated. The following code snippet exemplifies how simple feature extraction from raw EMG is leveraging this module:
+Due to the stochastic and transient nature of the EMG signal, the raw EMG signal provides little information. As such, hand-crafted features are extracted from the underlying signal to increase its information density before being passed to the machine learning model. These features are extracted from windows (i.e., a predefined number of samples) of EMG. The selection of features (or feature sets) is essential for robust control systems.
+
+This module aims to simplify the feature extraction stage for developers. We have included a number of features from the literature that we have robustly tested and validated. The following code snippet exemplifies how simple feature extraction from raw EMG is leveraging this module:
+
+<details>
+<summary><b>Example Code</b></summary>
 
 ```Python
 import numpy as np
@@ -19,14 +24,114 @@ features_1 = fe.extract_features(feature_list, windows)
 # Extract a predefined feature group
 features_2 = fe.extract_feature_group('HTD', windows)
 ```
+</details>
+<br/>
+
+**Note that some features have parameters that must be tuned for a particular problem and hardware implementation.**
 
 # Feature Performance
-We currently have ~50 features implemented in the library. These features were tested individually with a linear discriminant analysis (LDA) classifier on the 3DC dataset and achieved a wide range of accuracies. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for a real-world use. The code associated with Figure 1 is located <a href="#code">below</a>.
+Each of the ~50 features that were implemented was tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.
 
+TODO: Update Figure
 ![alt text](feature_accuracies.png)
-<center> <p> Figure 1: Individual Feature Accuracy</p> </center>
+<center> <p> Figure 1: Individual Accuracy of Each Feature on the 3DCDataset</p> </center>
 
-# Implemented Features
+<details>
+<summary><b>Example Code</b></summary>
+
+```Python
+import os
+import sys
+import numpy as np
+import pickle
+import matplotlib.pyplot as plt
+from libemg.datasets import _3DCDataset
+from libemg.emg_classifier import EMGClassifier
+from libemg.feature_extractor import FeatureExtractor
+from libemg.utils import make_regex
+from libemg.data_handler import OfflineDataHandler
+from libemg.offline_metrics import OfflineMetrics
+from libemg.filtering import Filter
+
+if __name__ == "__main__":
+    # get the 3DC Dataset using library handle - this downloads the dataset
+    dataset = _3DCDataset(save_dir='example_data',
+                          redownload=False)
+    # take the downloaded dataset and load it as an offlinedatahandler
+    odh = dataset.prepare_data(format=OfflineDataHandler)
+
+    # Perform an analysis where we test all the features available of the library individually for within-subject
+    # classification accuracy.
+
+    # setup out model type and output metrics
+    model = "LDA"
+    om = OfflineMetrics()
+    metrics = ['CA']
+
+    # get the subject list
+    subject_list = list(range(1,23))
+    
+    # initialize our feature extractor
+    fe = FeatureExtractor()
+    feature_list = fe.get_feature_list()
+
+    # get the variable ready for where we save the results
+    results = np.zeros((len(feature_list), len(subject_list)))
+
+    for s in subject_list:
+        subject_data = odh.isolate_data("subjects",[s])
+        subject_train = subject_data.isolate_data("sets",[0])
+        subject_test  = subject_data.isolate_data("sets",[1])
+
+        # apply a standardization on the raw data (x - mean)/std
+        filter = Filter(sampling_frequency=1000)
+        filter_dic = {
+            "name": "standardize",
+            "data": subject_train
+        }
+        filter.install_filters(filter_dic)
+        filter.filter(subject_train)
+        filter.filter(subject_test)
+
+        # from the standardized data, perform windowing
+        train_windows, train_metadata = subject_train.parse_windows(200,100)
+        test_windows, test_metadata = subject_test.parse_windows(200,100)
+
+        # for each feature in the feature list
+        for i, f in enumerate(feature_list):
+            train_features = fe.extract_features([f], train_windows)
+            test_features  = fe.extract_features([f], test_windows)
+
+            # get the dataset ready for the classifier
+            data_set = {}
+            data_set['training_features'] = train_features
+            data_set['training_labels'] = train_metadata["classes"]
+
+            # setup the classifier
+            classifier = EMGClassifier()
+            classifier.fit(model,feature_dictionary=data_set.copy())
+
+            # running the classifier analyzes the test data we already passed it
+            preds,probs = classifier.run(test_features, test_metadata['classes'])
+            # get the CA: classification accuracy offline metric and add it to the results
+            results[i,s] = om.extract_offline_metrics(metrics, test_metadata['classes'], preds)[metrics[0]] * 100
+            print(f"S{s} {f}: {results[i,s]}%")
+    # the feature accuracy is represented by the mean accuracy across the subjects
+    mean_feature_accuracy = results.mean(axis=1)
+    std_feature_accuracy  = results.std(axis=1)
+
+
+    plt.bar(feature_list, mean_feature_accuracy, yerr=std_feature_accuracy)
+    plt.grid()
+    plt.xlabel("Features")
+    plt.ylabel("Accuracy")
+    plt.show()
+```
+
+</details>
+<br/>
+
+# Features
 Let $x_{i}$ represents the signal in segment i and $N$ denotes the number of samples in the timeseries.
 
 Let $fj$ be the frequency of the spectrum at frequency bin $j$, $P_{j}$ is the
@@ -200,7 +305,6 @@ $
 $
 \text{CC}_{r}= \sum_{i=1}^{r} \frac{r-i}{r} \text{AR}_{r} *\text{CC}_{r-2} 
 $
-
 
 
 ## **Log Detector (LD)** <sup>[1]</sup>
@@ -502,94 +606,3 @@ M. G. Asogbon Samuel et al., "Enhancing the Robustness of EMG-PR Based System ag
 
 <a id="17">[17]</a> 
 Bo Hjorth, EEG analysis based on time domain properties, Electroencephalography and Clinica Neurophysiology, Volume 29, Issue 3, 1970, Pages 306-310, ISSN 0013-4694, https://doi.org/10.1016/0013-4694(70)90143-4.
-
-
-# Code
-```Python
-import os
-import sys
-import numpy as np
-import pickle
-import matplotlib.pyplot as plt
-from libemg.datasets import _3DCDataset
-from libemg.emg_classifier import EMGClassifier
-from libemg.feature_extractor import FeatureExtractor
-from libemg.utils import make_regex
-from libemg.data_handler import OfflineDataHandler
-from libemg.offline_metrics import OfflineMetrics
-from libemg.filtering import Filter
-
-if __name__ == "__main__":
-    # get the 3DC Dataset using library handle - this downloads the dataset
-    dataset = _3DCDataset(save_dir='example_data',
-                          redownload=False)
-    # take the downloaded dataset and load it as an offlinedatahandler
-    odh = dataset.prepare_data(format=OfflineDataHandler)
-
-    # Perform an analysis where we test all the features available of the library individually for within-subject
-    # classification accuracy.
-
-    # setup out model type and output metrics
-    model = "LDA"
-    om = OfflineMetrics()
-    metrics = ['CA']
-
-    # get the subject list
-    subject_list = list(range(1,23))
-    
-    # initialize our feature extractor
-    fe = FeatureExtractor()
-    feature_list = fe.get_feature_list()
-
-    # get the variable ready for where we save the results
-    results = np.zeros((len(feature_list), len(subject_list)))
-
-    for s in subject_list:
-        subject_data = odh.isolate_data("subjects",[s])
-        subject_train = subject_data.isolate_data("sets",[0])
-        subject_test  = subject_data.isolate_data("sets",[1])
-
-        # apply a standardization on the raw data (x - mean)/std
-        filter = Filter(sampling_frequency=1000)
-        filter_dic = {
-            "name": "standardize",
-            "data": subject_train
-        }
-        filter.install_filters(filter_dic)
-        filter.filter(subject_train)
-        filter.filter(subject_test)
-
-        # from the standardized data, perform windowing
-        train_windows, train_metadata = subject_train.parse_windows(200,100)
-        test_windows, test_metadata = subject_test.parse_windows(200,100)
-
-        # for each feature in the feature list
-        for i, f in enumerate(feature_list):
-            train_features = fe.extract_features([f], train_windows)
-            test_features  = fe.extract_features([f], test_windows)
-
-            # get the dataset ready for the classifier
-            data_set = {}
-            data_set['training_features'] = train_features
-            data_set['training_labels'] = train_metadata["classes"]
-
-            # setup the classifier
-            classifier = EMGClassifier(model, data_set.copy())
-            classifier.fit(model,feature_dictionary=data_set)
-
-            # running the classifier analyzes the test data we already passed it
-            preds,probs = classifier.run(test_features, test_metadata['classes'])
-            # get the CA: classification accuracy offline metric and add it to the results
-            results[i,s] = om.extract_offline_metrics(metrics, test_metadata['classes'], preds)[metrics[0]] * 100
-            print(f"S{s} {f}: {results[i,s]}%")
-    # the feature accuracy is represented by the mean accuracy across the subjects
-    mean_feature_accuracy = results.mean(axis=1)
-    std_feature_accuracy  = results.std(axis=1)
-
-
-    plt.bar(feature_list, mean_feature_accuracy, yerr=std_feature_accuracy)
-    plt.grid()
-    plt.xlabel("Features")
-    plt.ylabel("Accuracy")
-    plt.show()
-```
