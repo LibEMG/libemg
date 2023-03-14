@@ -9,18 +9,20 @@
     }
 </style>
 
-For EMG-based control systems, it has been shown that the offline performance of a system does not necessarily correlate to online usability. This example tests this idea through a simple experiment that you can try out on yourself or a friend. To do this we evaluate and compare the offline and online performance of four popular classifiers (**LDA, SVM, NB,** and **KNN (k=5**)). 
+For EMG-based control systems, it has been shown that the offline performance of a system (i.e., classification accuracy) does not necessarily correlate to online usability. In this example, we introduce an Iso Fitts test for assessing the online performance of continuous EMG-based control systems. While this test evaluates systems with 2DOFs that leverage continuous constant control, it could be extended to more complicated systems such as proportional control with discrete inputs.
 
 # Methods 
+This example acts as a mini experiment that you can try out on yourself or a friend where the offline and online performance of four popular classifiers (**LDA, SVM, RF,** and **KNN (k=5**)) are compared. 
+
 The steps of this 'mini experiment' are as follows:
-1. **Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).** These classes correspond to movement in the isofitts task (do nothing, left, right, up, and down).
+1. **Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).** These classes correspond to movement in the isofitts task (do nothing,  and move left, right, up, and down).
     <div>
         <img src="https://github.com/eeddy/Isofitts/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
         <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
         <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
     </div>
-2. **Train and evaluate four classifiers in an offline setting (LDA, SVM, KNN (k=5), and NB).** For this step, the first three reps are used for training and the last two for testing. 
-3. **Perform an isofitts test to evaluate the online usability of each classifier trained in step 2.** These fitts law tests are useful for computing throughput, overshoots, and efficiency. Ultimately, these metrics provide an indication of the online usability of a model. 
+2. **Train and evaluate four classifiers in an offline setting (LDA, SVM, KNN (k=5), and RF).** For this step, the first three reps are used for training and the last two for testing. 
+3. **Perform an Iso Fitts test to evaluate the online usability of each classifier trained in step 2.** These fitts law tests are useful for computing throughput, overshoots, and efficiency. Ultimately, these metrics provide an indication of the online usability of a model. The Iso Fitts test is useful for myoelectric control systems as it requires changes in degrees of freedom to complete sucessfully.
    
     <img src="https://github.com/eeddy/Isofitts/blob/main/docs/isofitts.PNG?raw=true" class="center"/>
 
@@ -28,29 +30,30 @@ The steps of this 'mini experiment' are as follows:
 
 # Menu
 ```Python
-from libemg.training_ui import TrainingUI
+from libemg.streamers import myo_streamer
+from libemg.screen_guided_training import ScreenGuidedTraining
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier
+from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier
 ```
 Similarly to previous examples, we decided to create a simple menu to (1) leverage the training module and (2) enable the use of different classifiers. To do this, we have included two buttons in `menu.py`. When the "accumulate training data button" is clicked, we leverage the training UI module. For this example, we want five reps (3 training - 2 testing), and we point it to the "classes" folder as it contains images for each class.
 
 ```Python
 def launch_training(self):
     self.window.destroy()
-    # Launch training ui
-    TrainingUI(num_reps=5, rep_time=5, rep_folder="classes/", output_folder="data/", data_handler=self.odh)
-    self.initialize_ui()
+    training_ui = ScreenGuidedTraining()
+    training_ui.download_gestures([1,2,3,4,5], "classes/")
+    training_ui.launch_training(self.odh, 5, 3, "classes/", "data/", 1)
 ```
 
-The next button option involves starting the Isofitts task. This occurs after the training data has been recorded. Note that in this step we create the online classifier and start the Fitts law test. 
+The next button option involves starting the Iso Fitts task. This occurs after the training data has been recorded. Note that in this step we create the online classifier and start the Fitts law test. We opted for 8 circles, but this can be varied easily with the constructor.
 
 ```Python
 def start_test(self):
     self.window.destroy()
     self.set_up_classifier()
-    FittsLawTest(num_trials=5, savefile=self.model_str.get() + ".pkl").run()
+    FittsLawTest(num_trials=8, num_circles=8, savefile=self.model_str.get() + ".pkl").run()
     # Its important to stop the classifier after the game has ended
     # Otherwise it will continuously run in a seperate process
     self.classifier.stop_running()
@@ -78,12 +81,12 @@ odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
 train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
-The next step involves extracting features from the training data. To do this we leverage the   `FeatureExtractor` module. In this example, we use the `Hudgin's Time Domain (HTD)` feature set as they are quite popular. 
+The next step involves extracting features from the training data. To do this we leverage the   `FeatureExtractor` module. In this example, we use the `Low Sampling 4 (LS4)` feature set as it is a robust group for low sampling rate devices such as the Myo. 
 
 ```Python
 # Step 2: Extract features from offline data
 fe = FeatureExtractor()
-feature_list = fe.get_feature_groups()['HTD']
+feature_list = fe.get_feature_groups()['LS4']
 training_features = fe.extract_features(feature_list, train_windows)
 ```
 
@@ -96,12 +99,15 @@ data_set['training_features'] = training_features
 data_set['training_labels'] = train_metadata['classes']
 ```
 
-Finally, we create the `OnlineEMGClassifier` using the default options. Notice that when creating the classifier, we pass in the text from the menu text field. This enables the user to pass in `LDA`, `SVM`, etc. with ease. Once the classifier is created, the `.run()` function is called and predictions begin.
+Finally, we create the `EMGClassifier` and the `OnlineEMGClassifier` using the default options. Notice that when creating the classifier, we pass in the text from the menu text field. This enables the user to pass in `LDA`, `SVM`, etc. with ease. Once the classifier is created, the `.run()` function is called and predictions begin.
 
 ```Python
- # Step 4: Create online EMG classifier and start classifying.
-self.classifier = OnlineEMGClassifier(model=self.model_str.get(), data_set=data_set, num_channels=8, window_size=WINDOW_SIZE, window_increment=WINDOW_INCREMENT, 
-        online_data_handler=self.odh, features=feature_list)
+# Step 4: Create the EMG Classifier
+o_classifier = EMGClassifier()
+o_classifier.fit(model=self.model_str.get(), feature_dictionary=data_set)
+
+# Step 5: Create online EMG classifier and start classifying.
+self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
 self.classifier.run(block=False) # block set to false so it will run in a seperate process.
 ```
 
@@ -127,6 +133,8 @@ if data:
     elif input_class == 4:
         self.current_direction[0] -= self.VEL
 ```
+
+To increase the speed of the cursor we could do one of two things: (1) increase the velocity of the cursor (i.e., how many pixels it moves for each prediction), or (2) decrease the increment so that more predictions are made in the same amount of time.
 
 # Data Analysis
 After accumulating data from the experiment, we need a way to analyze the data. In  `analyze_data.py`, we added the capability to evaluate each model's offline and online performance. 
@@ -168,28 +176,20 @@ data_set['training_labels'] = train_metadata['classes']
 Finally, to extract the offline performance of each model, we leverage the `OfflineMetrics` module. We do this in a loop to easily evaluate a number of classifiers. We append the metrics to a dictionary for future use.
 ```Python
 om = OfflineMetrics()
-metrics = ['CA', 'AER', 'INS', 'RECALL', 'PREC', 'F1']
+metrics = ['CA', 'AER', 'INS', 'CONF_MAT']
 # Normal Case - Test all different classifiers
-for model in ['LDA', 'SVM', 'KNN', 'NB']:
-    classifier = EMGClassifier(model, data_set.copy())
-    preds = classifier.run()
+for model in ['LDA', 'SVM', 'KNN', 'RF']:
+    classifier = EMGClassifier()
+    classifier.fit(model, data_set.copy())
+    preds, probs = classifier.run(data_set['testing_features'], data_set['testing_labels'])
     out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     offline_metrics['classifier'].append(model)
     offline_metrics['metrics'].append(out_metrics)
-return offline_metrics
+return offline_metric
 ```
 
-
 # Results
-Looking at the results, there are clear discrepancies between offline and online metrics. For example, the LDA classifier is the most performant during offline analysis, however, this does not necessarily translate in this specific case to online usability. 
+There are clear discrepancies between offline and online metrics. For example, RF outperforms LDA in the offline analysis, but it is clear in the online test that it is much worse. This highlights the need to evaluate EMG-based control systems in online settings with user-in-the-loop feedback.
 
 **Visual Output:**
 <img src="https://github.com/eeddy/Isofitts/blob/main/docs/perf_metrics.PNG?raw=true"/>
-
-**Standard Output:**
-```Python
-{'classifier': ['LDA', 'SVM', 'KNN', 'NB'], 'metrics': [{'CA': 0.9848024316109423, 'AER': 0.01883239171374762, 'INS': 0.016210739614994935, 'RECALL': 0.9848024316109422, 'PREC': 0.9852176594066209, 'F1': 0.9848684130766312}, {'CA': 0.975177304964539, 'AER': 0.03099304237824163, 'INS': 0.021783181357649443, 'RECALL': 0.9751773049645389, 'PREC': 0.9760464804555915, 'F1': 0.9751171560838843}, {'CA': 0.958966565349544, 'AER': 0.05100755667506296, 'INS': 0.03090172239108409, 'RECALL': 0.958966565349544, 'PREC': 0.963626568657454, 'F1': 0.9586036066370233}, {'CA': 0.9670719351570415, 'AER': 0.04082914572864327, 'INS': 0.025835866261398176, 'RECALL':
-0.9670719351570415, 'PREC': 0.9691383140798603, 'F1': 0.9670068537549226}]}
-
-{'classifier': ['LDA.pkl', 'SVM.pkl', 'KNN.pkl', 'NB.pkl'], 'metrics': [{'overshoots': 17, 'throughput': 0.2875643578931376, 'efficiency': 0.5088560433826349}, {'overshoots': 24, 'throughput': 0.3001490731763605, 'efficiency': 0.592053447600828}, {'overshoots': 13, 'throughput': 0.2979748441587429, 'efficiency': 0.5634924034816269}, {'overshoots': 16, 'throughput': 0.2526577634230205, 'efficiency': 0.4344741794266368}]}
-```

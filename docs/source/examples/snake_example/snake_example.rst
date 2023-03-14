@@ -1,4 +1,4 @@
-Ex 1 - Snake Game
-=================================
+Ex 1 - Continuous Control (Snake)
+========================================
 .. include:: snake.md
    :parser: myst_parser.sphinx_

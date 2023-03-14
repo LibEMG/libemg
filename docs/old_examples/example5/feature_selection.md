@@ -39,11 +39,11 @@ if __name__ == "__main__" :
     ss_accuracy_results, ss_accuracy_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
     fs.print(metric, ss_accuracy_results, ss_accuracy_fs)
 
-    # these results are easy to use with the rest of the library!
+    # these results are easy to use with the rest of the library
     # if you want the best 5 features from one of these selections
     top_feature_set = accuracy_fs[:5]
     top_training_features = fe.extract_features(top_feature_set, train_windows)
-    # and continue the pipeline normally from here!
+    # and continue the pipeline normally from here
 ```
 
 # Output

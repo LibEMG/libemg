@@ -14,7 +14,7 @@ LONG_DESCRIPTION = 'A package that lets you extract features from time series da
 setup(
     name="libemg",
     version=VERSION,
-    author="Ethan & Evan",
+    author="Anonymous",
     description=DESCRIPTION,
     #long_description_content_type="text/markdown",
     #long_description=long_description,

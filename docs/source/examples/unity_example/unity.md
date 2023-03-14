@@ -1,11 +1,12 @@
-[View Source Code](https://github.com/eeddy/Momo-Demo)
+[View Source Code](https://github.com/<anon>/Momo-Demo)
 
-In [Example 1](https://github.com/eeddy/Snake-Demo/blob/main/README.md), we showed how to leverage the [LibEMG](https://eeddy.github.io/libEMG/) to interface with a simple pygame. Often, however, it may be desirable to use a different game engine or tech stack. For example, Unity is a common game development environment that enables high-quality games and VR/AR development. As such, developers may want to use it for their EMG-related applications. The good news is that these tools can still leverage the library very easily! This example shows how to leverage the library using a simple Unity game. It is important to note that although this is a simple game, the concept is applicable to more complex applications (e.g., AR/VR). 
+Often, it is desirable to use tech stacks other than Python to develop applications that leverage EMG-based control. For example, Unity is a game development environment that enables high-quality games and VR/AR development, making it an intriguing tool for developing immersive environments. LibEMG was designed with this in mind and can easily interface with these differing tools. As long as the programming interface has socket functionality (C# does), it can leverage LibEMG. This example shows how to leverage the library in a simple Unity game for myoelectric training. This same concept applies to more complex applications (e.g., AR/VR) and programming languages. 
+
+# The Falling of Momo
 
 <img src="https://github.com/eeddy/Momo-Demo/blob/main/Docs/Momo_Myo.gif?raw=True">
 
-# The Fall of Momo
-The Fall of Momo is a simple platformer game that was designed for myoeletric training purposes <sup>[1,2]</sup>. The goal of the game is to control the character "Momo" down the screen and avoid the spikes. Originally, this game was built in processing and the original version can be found [here](https://github.com/hcilab/Momo). We have recreated a simplified version in Unity for this demo. In this version, the 3 inputs and their respective controls are:
+The Falling of Momo is a simple platformer game that was designed for myoelectric training purposes <sup>[1,2]</sup>. The game's goal is to control the character "Momo" down the screen and avoid the spikes for as long as possible. This game was originally developed in [processing](https://github.com/hcilab/Momo), but a simplified version in Unity was created for this demo. In this version, the three inputs and their respective controls are:
 
 | Game Movement | Keyboard | EMG |
 | --- | ----------- | --- |
@@ -16,14 +17,14 @@ The Fall of Momo is a simple platformer game that was designed for myoeletric tr
 \*Note: These controls are set up for playing with the right arm.
 
 # Momo Unity Development
-The first thing that we did was create the Momo-Unity game. There are many great online Unity tutorials, so we won't get into the intricate details of the game design. 
+The first task was to create the Momo-Unity game. There are many great online Unity tutorials, so we won't get into the intricate details of the game design. 
 
 <div>
     <img src="https://github.com/eeddy/Momo-Demo/blob/main/Docs/main_menu.PNG?raw=True" width="47%"display="inline-block" float="left"/>
     <img src="https://github.com/eeddy/Momo-Demo/blob/main/Docs/game.PNG?raw=True" width="47%"  isplay="inline-block" float="left"/>
 </div>
 
-In the initial game design, we controlled the character using the keyboard. Similarly to other game engines, Unity updates in a loop at a default of 60Hz. This occurs in an update method that gets added to a C# file. As displayed bellow in `MovementController.cs` we have created a script that listens for key events in the update method (i.e., 60 times a second) and reacts accordingly. The `Rigidbody2D` is simply just a link to the "Momo" character rigidbody.
+In the initial game design, we controlled the character using the keyboard. Unity updates in a loop at a default of 60Hz in its `update` method. As displayed below in `MovementController.cs` we have created a script that listens for key events in the update method (i.e., 60 times a second) and reacts accordingly. 
 
 ```C#
 using System.Collections;
@@ -60,14 +61,15 @@ public class MovementController : MonoBehaviour
 ```
 
 # Momo EMG Control
-Once we developed the initial game to work with simple keyboard controls, we then implemented the EMG-based input. Unfortunately, since the library is written in Python, we had to include the machine learning/training portion as a Python application. While there may be ways to call Python from within C#, this was outside the scope of this example. Instead, we created a simple UI with two buttons: `Get Training Data` and `Start Classifying`. All python code is located in `myo_control.py`. The library imports required for this example are as follows:
+Once the initial game worked with simple keyboard controls, we implemented the EMG-based input. Since LibEMG is developed in Python, we had to include the machine learning/training portion as a Python application. While there may be ways to call Python from within C#, this was outside the scope of this example. Instead, we created a simple UI with two buttons: `Get Training Data` and `Start Classifying`. All python code can be found in `myo_control.py`. The library imports required for this example are as follows:
 
 ```Python
-from libemg.training_ui import TrainingUI
+from libemg.screen_guided_training import ScreenGuidedTraining
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier
+from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier 
+from libemg.streamers import myo_streamer
 ```
 
 <div>
@@ -76,19 +78,20 @@ from libemg.emg_classifier import OnlineEMGClassifier
     <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=True" width="31%" float="left"/>
 </div>
 
-When the `Get Training Data` button is clicked we leverage the library's Training UI module. To do this, we simply create the class and it handles the rest. Note that we also have a folder `Class_Images` with images associated with each class (No Movement, Flexion, Extension, and Hand Closed). All recorded EMG files will be written to the `data/` folder. 
+When the `Get Training Data` button is clicked, we leverage the library's Training UI module to automatically download the desired gestures and start the training procedure.
 
 ```Python
 def launch_training(self):
     self.window.destroy()
-    # Launch training ui
-    TrainingUI(num_reps=3, rep_time=3, rep_folder="Class_Images/", output_folder="data/", data_handler=self.odh)
+    training_ui = ScreenGuidedTraining()
+    training_ui.download_gestures([1,2,4,5], "images/")
+    training_ui.launch_training(self.odh, 2, 3, "images/", "data/", 1)
     self.initialize_ui()
 ```
 
-After training data is accumulated, you can start classifying predictions over a TCP socket so that they can be leveraged in unity. To do this we must create an `OnlineEMGClassifier` object.
+After accumulating the training data, predictions can be streamed over a UDP socket for Unity to leverage. To do this an `OnlineEMGClassifier` object is created.
 
-The first step involes passing in the accumulated data into an `OfflineDataHandler`. Note that there are 4 classes [0,1,2,3] and 3 reps [0,1,2] - this aligns with the training data that we recorded.
+The first step involves processing the accumulated training data into an `OfflineDataHandler`. Note that there are four classes [0,1,2,3] and three reps [0,1,2], aligning with the recorded training data.
 ```Python
 # Step 1: Parse offline training data
 dataset_folder = 'data/'
@@ -108,7 +111,7 @@ odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
 train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
-The next step involves extracting features from the offline data. Lets experiment with the LS9 feature group.
+The next step involves extracting features from the offline data. Let's experiment with the LS9 feature group - a robust set of features for devices with low-sampling rates.
 ```Python
 # Step 2: Extract features from offline data
 fe = FeatureExtractor()
@@ -116,20 +119,29 @@ feature_list = fe.get_feature_groups()['LS9']
 training_features = fe.extract_features(feature_list, train_windows)
 ```
 
-After extracting the features from the training data, we have to create a dataset dictionary to pass to the online classifier. Note that we have also included the training_windows. This is done so that we can leverage velocity based control. 
+After extracting the features from the training data, we have to create a dataset dictionary to pass to the online classifier. 
 ```Python
 data_set = {}
 data_set['training_features'] = training_features
 data_set['training_labels'] = train_metadata['classes']
-data_set['training_windows'] = train_windows
+```
+
+Next, we have to create an offline EMG classifier. We have opted for an SVM model with velocity control (meaning that each prediction is associated with a contraction intensity) and two post-processing techniques: majority voting and rejection. These postprocessing techniques were added to improve the robustness of the control scheme.
+
+```Python
+# Step 4: Create the EMG classifier
+o_classifier = EMGClassifier()
+o_classifier.fit(model="SVM", feature_dictionary=data_set)
+o_classifier.add_velocity(train_windows, train_metadata['classes'])
+o_classifier.add_majority_vote(5)
+o_classifier.add_rejection(0.9)
 ```
 
 Finally, lets create the `OnlineEMGClassifier` and begin streaming predictions. Note that we set block to false so that we don't block the UI thread. 
 
 ```Python
- # Step 4: Create online EMG classifier and start classifying.
-self.classifier = OnlineEMGClassifier(model="SVM", data_set=data_set, num_channels=8, window_size=WINDOW_SIZE, window_increment=WINDOW_INCREMENT, 
-                online_data_handler=self.odh, features=feature_list, rejection_type="CONFIDENCE", rejection_threshold=0.75, majority_vote=10, velocity=True, std_out=True)
+# Step 5: Create online EMG classifier and start classifying.
+self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
 self.classifier.run(block=False) # block set to false so it will run in a seperate process.
 ```
 
@@ -138,9 +150,10 @@ There is a lot to unpack in this online classifier, so let's go through it:
 - **rejection_type:** Since rejection is known to improve usability, we have decided to include it. 
 - **rejection_threshold:** Since SVM is known to have a greater range of probability outputs (compared to LDA, for example), we have a much lower rejection threshold. If we set this too high, the majority of decisions will inevitably be rejected.
 - **majority_vote:** To reduce spurious false activations (especially of the hand-closed class), we have decided to introduce a majority vote.
-- **velocity:** Finally, we decided to leverage velocity-based control to augment the experience. This means that when users contract harder, their character will move faster. 
+- **velocity:** Finally, we decided to leverage velocity-based control to augment the experience. This means that when users contract harder, their character will move faster. Note, that since we are leveraging velocity, ramp contractions should be acquired during the training phase.
 
-Now that we have the Python side set up, we had to create a way to listen for these TCP events in C#. To do this, we created `MyoEMGRawReader.cs`. It spins up a thread to continuously listen on a specific port (in this case 12346). Note that the IP and port are the default values that the OnlineEMGClassifier streams over. Every time it receives a value, it updates a global control and speed variable that can be used by the `MovementControllerEMG`.
+# Python-Unity Connection
+Now that we have the Python side set up, we had to create a way to listen for these UDP events in C#. To do this, the `MyoEMGRawReader.cs` was created to listen on a specific port (e.g., 12346). Note that the IP and port are the default values of the OnlineEMGClassifier. Every time it receives a value, the global control and speed variable used by the `MovementControllerEMG.cs` class are updated. This receive data function runs in a separate thread to constantly listen for EMG predictions. Note that this architecture relies on `using System.Net.Sockets` (the C# socket implementation). 
 
 ```C#
 String control = "";
@@ -168,6 +181,10 @@ private void ReceiveData()
 }
 ```
 
+In the `update` function in the `MovementControllerEMG.cs` the speed and control decisions are constantly read and converted to game input. There are a couple of interesting things to note here:
+- We are adding a force to the object to move it left and right. This force is multiplied by the speed multiplier (i.e., the contraction intensity). 
+- The jumping movement is technically a "discrete" input. We will discuss this further in the next example, however, note that we added a 0.5-second debounce. This is similar to adding debouncing to mechanical bounces to reduce activations after the fact.
+
 ```C#
 using System.Collections;
 using System.Collections.Generic;
@@ -175,6 +192,7 @@ using UnityEngine;
 
 public class MovementControllerEMG : MonoBehaviour
 {
+    private float speed = 25;
     private float upwardsForce = 300;
     public Rigidbody2D rb;
     private Vector2 velocity;
@@ -189,26 +207,24 @@ public class MovementControllerEMG : MonoBehaviour
         emgReader.StartReadingData();
     }
 
-    void Update()
+    void FixedUpdate()
     {
         string control = emgReader.ReadControlFromArmband();
-        float movSpeed = emgReader.ReadSpeedFromArmband();
-        if(movSpeed > 5) {
-            movSpeed = 5;
-        }
+        float movSpeed = speed * emgReader.ReadSpeedFromArmband();
         Vector3 pos = rb.transform.position;
         if (control == "0") {
-            if (Time.time - jumpTime > 1.0f) {
+            // Debounce the jump
+            if (Time.time - jumpTime > 0.5f) {
                 rb.AddForce(new Vector2(0,1) * 300);
                 soundManager.PlayJumpSound();
                 jumpTime = Time.time;
             }
         } else if (control == "2") {
             //Extension:
-            pos.x += (movSpeed) * Time.deltaTime;
+            rb.AddForce(new Vector2(1,0) * movSpeed);
         } else if (control == "3") {
             //Flexion:
-            pos.x -= (movSpeed) * Time.deltaTime;
+            rb.AddForce(new Vector2(-1,0) * movSpeed);
         }
         rb.transform.position = pos;
     }

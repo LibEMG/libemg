@@ -343,24 +343,6 @@ class OfflineMetrics:
         mat: list (2D)
             A NxN confusion matrix.
         """
-        plt.style.use('ggplot')
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        cax = ax.matshow(mat, alpha=0.3)
-        ax.grid(False)
-        fig.colorbar(cax)
-        for i in range(mat.shape[0]):
-            for j in range(mat.shape[1]):
-                ax.text(x=j, y=i,s=int(mat[i, j]), va='center', ha='center')
-        if labels:
-            xaxis = np.arange(len(labels))
-            ax.set_xticks(xaxis)
-            ax.set_yticks(xaxis)
-            ax.set_xticklabels(labels, rotation = -90)
-            ax.set_yticklabels(labels)
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
-        plt.title('Confusion Matrix')
+        disp = ConfusionMatrixDisplay(confusion_matrix = mat, display_labels = labels)
+        disp.plot()
         plt.show()
-
-

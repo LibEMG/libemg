@@ -178,7 +178,9 @@ class EMGClassifier:
         self.majority_vote = num_samples
 
     def add_velocity(self, train_windows, train_labels):
-        """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity. 
+        """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
+
+        Note, that when using this optional, ramp contractions should be captured for training. 
 
         Parameters:
         -----------

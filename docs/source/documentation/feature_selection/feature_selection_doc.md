@@ -1,3 +1,5 @@
+TODO: Update this section
+
 # Selection Strategies
 Since EMG patterns during real-time use are often drastically different than those used to train the system, classification accuracy does not necessarily correlate to online usability. As such, there are numerous feature selection strategies for EMG-based control systems. For a robust summary of the following feature selection techniques and suggestions, please see *A Multivariate Approach for Predicting Myoelectric Control Usability* <sup>[1]</sup>.
 

@@ -1,4 +1,4 @@
-Ex 5 - Deep Learning
+Ex 6 - Deep Learning
 -----------------------
 .. include:: deep_learning.md
    :parser: myst_parser.sphinx_

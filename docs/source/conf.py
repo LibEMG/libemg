@@ -18,8 +18,8 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'libemg'
-copyright = '2022, Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme'
-author = 'Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme'
+copyright = '2022, Anonymous'
+author = 'Anonymous'
 
 # The full version, including alpha/beta/rc tags
 release = '0.0.1'
@@ -35,7 +35,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx_rtd_theme',
-    "myst_parser"
+    "myst_parser",
 ]
 
 myst_enable_extensions = [

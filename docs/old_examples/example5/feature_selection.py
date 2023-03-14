@@ -42,8 +42,9 @@ if __name__ == "__main__" :
     print("Accuracy on Subset: \n")
     fs.print(metric, ss_accuracy_results, ss_accuracy_fs)
 
-    # these results are easy to use with the rest of the library! if you wanted to extract the feature set you just got:
+    # these results are easy to use with the rest of the library
+    # if you wanted to extract the feature set you just got:
     # if you want the best 5 features from one of these selections
     top_feature_set = accuracy_fs[:5]
     top_training_features = fe.extract_features(top_feature_set, train_windows)
-    # and continue the pipeline normally from here!
+    # and continue the pipeline normally from here
