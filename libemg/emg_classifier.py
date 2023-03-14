@@ -408,8 +408,10 @@ class OnlineEMGClassifier:
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
+    tcp: bool (optional), default = False
+        If True, will stream predictions over TCP instead of UDP.
     """
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', velocity=False, std_out=False):
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False):
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
@@ -418,7 +420,18 @@ class OnlineEMGClassifier:
         self.ip = ip
         self.classifier = offline_classifier
 
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.tcp = tcp
+        if not tcp:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        else:
+            print("Waiting for TCP connection...")
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.sock.bind((ip, port))
+            self.sock.listen()
+            self.conn, addr = self.sock.accept()
+            print(f"Connected by {addr}")
+
         self.process = Process(target=self._run_helper, daemon=True,)
         self.std_out = std_out
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
@@ -477,7 +490,10 @@ class OnlineEMGClassifier:
                         calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
                 # Write classifier output:
-                self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
+                if not self.tcp:
+                    self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
+                else:
+                    self.conn.sendall(str.encode(str(prediction) + calculated_velocity + '\n'))
                 if self.std_out:
                     print(f"{int(prediction)} {calculated_velocity} {time.time()}")
     
