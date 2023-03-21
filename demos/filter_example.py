@@ -25,18 +25,22 @@ from libemg.filtering import Filter
 from libemg.offline_metrics import OfflineMetrics
 
 if __name__ == "__main__" :
-    y_true = np.array([0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3])
-    y_preds = np.array([1,0,0,0,0,2,1,1,1,1,1,1,1,2,3,3,3,3,1,1,2,3,3,3])
+    dataset = _3DCDataset()
 
-    om = OfflineMetrics()
+    odh = dataset.prepare_data(OfflineDataHandler, subjects_values=["1"])
 
-    # Get and extract all available metrics:
-    metrics = om.get_available_metrics()
-    offline_metrics = om.extract_offline_metrics(metrics=metrics, y_true=y_true, y_predictions=y_preds, null_label=2)
-    om.visualize(offline_metrics)
+    fi = Filter(sampling_frequency=1000)
+    fi.install_common_filters()
+    fi.install_filters({"name":"notch",
+                            "cutoff": 60,
+                            "bandwidth": 3})
+    #odh = fi.filter(odh)
 
-    # Get and extract a subset of metrics:
-    metrics = ['AER', 'CA', 'INS', 'CONF_MAT']
-    offline_metrics = om.extract_offline_metrics(metrics=metrics, y_true=y_true, y_predictions=y_preds, null_label=2)
-    om.visualize_conf_matrix(offline_metrics['CONF_MAT'])
-    print(offline_metrics)
+
+    # get a bit of data -- just for making a figure
+
+    data = odh.data[31][:,1].reshape(-1,1)
+    fi.visualize_affect(data)
+    fi.visualize_filters()
+
+    A = 1

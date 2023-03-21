@@ -218,14 +218,15 @@ class Filter:
             ax[fl,0].plot(freq, 20*np.log10(abs(h)), color='blue')
             ax[fl,0].set_title(f"F#{fl}: { filter_name} Magnitude Response")
             ax[fl,0].set_ylabel("Amplitude (dB)", color='blue')
-            ax[fl,0].set_xlim([0, 100])
+            ax[fl,0].set_xlabel("Frequency (Hz)")
+            ax[fl,0].set_xlim([0, self.sampling_frequency//2])
             ax[fl,0].set_ylim([-25, 10])
             ax[fl,0].grid(True)
             ax[fl,1].plot(freq, np.unwrap(np.angle(h))*180/np.pi, color='green')
             ax[fl,1].set_title(f"F#{fl}: {filter_name} Phase Response")
             ax[fl,1].set_ylabel("Angle (degrees)", color='green')
             ax[fl,1].set_xlabel("Frequency (Hz)")
-            ax[fl,1].set_xlim([0, 100])
+            ax[fl,0].set_xlim([0, self.sampling_frequency//2])
             ax[fl,1].set_yticks([-90, -60, -30, 0, 30, 60, 90])
             ax[fl,1].set_ylim([-90, 90])
             ax[fl,1].grid(True)
@@ -242,7 +243,7 @@ class Filter:
         assert len(self.filters) > 0
         assert type(data) == np.ndarray
         num_channels = data.shape[1]
-        fix, ax = plt.subplots(num_channels,4,figsize=(5*num_channels,15))
+        fix, ax = plt.subplots(num_channels,4,figsize=(5*num_channels,15), squeeze=False)
 
         time_domain   = np.arange(data.shape[0])/self.sampling_frequency
         filtered_data = self.filter(data)
