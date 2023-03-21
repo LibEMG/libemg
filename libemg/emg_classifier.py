@@ -43,6 +43,9 @@ class EMGClassifier:
         self.th_min_dic = None 
         self.th_max_dic = None 
 
+        # default for feature parameters
+        self.feature_params = {}
+
         
 
     def fit(self, model, feature_dictionary=None, dataloader_dictionary=None, parameters=None):
@@ -69,7 +72,8 @@ class EMGClassifier:
             Dictionary keys should include 'training_dataloader', and 'validation_dataloader'.
         parameters: dict (optional)
             A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-            in the sklearn docs for the given model.
+            in the sklearn docs for the given model. Alternatively, these can be custom parameters in the case of custom 
+            statistical models or deep learning models.
         """
         # determine what sort of model we are fitting:
         if feature_dictionary is not None:
@@ -77,8 +81,6 @@ class EMGClassifier:
                 self._fit_statistical_model(model, feature_dictionary, parameters)
         if dataloader_dictionary is not None:
             self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
-
-        
 
     @classmethod
     def from_file(self, filename):
@@ -187,6 +189,21 @@ class EMGClassifier:
         """
         self.velocity = True
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
+
+
+    def install_feature_parameters(self, feature_params):
+        """Installs the feature parameters for the classifier.
+
+        This function is used to install the feature parameters for the classifier. This is necessary for the classifier
+        to know how to extract features from the raw data. This is used primarily by the OnlineEMGClassifier class.
+
+        Parameters
+        ----------
+        feature_params: dict
+            A dictionary containing the feature parameters. 
+        """
+        self.feature_params = feature_params
+    
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
@@ -459,6 +476,7 @@ class OnlineEMGClassifier:
         self.process.terminate()
 
     def _run_helper(self):
+        # TODO: enable deep learning classifiers that don't operate on features
         fe = FeatureExtractor()
         self.raw_data.reset_emg()
         while True:
@@ -466,7 +484,7 @@ class OnlineEMGClassifier:
             if len(data) >= self.window_size:
                 # Extract window and predict sample
                 window = get_windows(data, self.window_size, self.window_size)
-                features = fe.extract_features(self.features, window)
+                features = fe.extract_features(self.features, window, self.classifier.feature_params)
                 formatted_data = self._format_data_sample(features)
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
                 prediction, probability = self.classifier._prediction_helper(self.classifier.classifier.predict_proba(formatted_data))

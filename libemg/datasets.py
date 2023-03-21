@@ -47,7 +47,11 @@ class _3DCDataset(Dataset):
             self.download(self.url, self.dataset_folder)
 
 
-    def prepare_data(self, format=OfflineDataHandler, subjects_values=[str(i) for i in range(1,23)], sets_values=["train","test"], classes_values=[str(i) for i in range(0,11)], reps_values=["0","1","2","3"]):
+
+    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,23)],
+                                                      sets_values = ["train", "test"],
+                                                      reps_values = ["0","1","2","3"],
+                                                      classes_values = [str(i) for i in range(11)]):
         if format == OfflineDataHandler:
             sets_regex = make_regex(left_bound = "/", right_bound="/EMG", values = sets_values)
             classes_regex = make_regex(left_bound = "_", right_bound=".txt", values = classes_values)
@@ -67,6 +71,118 @@ class _3DCDataset(Dataset):
             odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
             return odh
         
+class NinaproDB8(Dataset):
+    def __init__(self, save_dir='.', dataset_name="NinaproDB8"):
+        # downloading the Ninapro dataset is not supported (no permission given from the authors)'
+        # however, you can download it from http://ninapro.hevs.ch/DB8
+        # the subject zip files should be placed at: <save_dir>/NinaproDB8/DB8_s#.zip
+        Dataset.__init__(self, save_dir)
+        self.dataset_name = dataset_name
+        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, "")
+        self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
+         "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
+
+    def convert_to_compatible(self):
+        # get the zip files (original format they're downloaded in)
+        zip_files = find_all_files_of_type_recursively(self.dataset_folder,".zip")
+        # unzip the files -- if any are there (successive runs skip this)
+        for zip_file in zip_files:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                zip_ref.extractall(zip_file[:-4]+'/')
+            os.remove(zip_file)
+        # get the mat files (the files we want to convert to csv)
+        mat_files = find_all_files_of_type_recursively(self.dataset_folder,".mat")
+        for mat_file in mat_files:
+            self.convert_to_csv(mat_file)
+
+    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
+                                                      reps_values = [str(i) for i in range(22)],
+                                                      classes_values = [str(i) for i in range(9)]):
+        
+        if format == OfflineDataHandler:
+            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
+            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
+            subjects_regex = make_regex(left_bound="DB8_s", right_bound="/",values=subjects_values)
+            dic = {
+                "reps": reps_values,
+                "reps_regex": reps_regex,
+                "classes": classes_values,
+                "classes_regex": classes_regex,
+                "subjects": subjects_values,
+                "subjects_regex": subjects_regex
+            }
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            return odh
+        
+    def convert_to_csv(self, mat_file):
+        # read the mat file
+        mat_file = mat_file.replace("\\", "/")
+        mat_dir = mat_file.split('/')
+        mat_dir = os.path.join(*mat_dir[:-1],"")
+        mat = sio.loadmat(mat_file)
+        # get the data
+        exercise = int(mat_file.split('_')[3][1])
+        if exercise == 1:
+            exercise_offset = 0 # 0 reps already included
+        elif exercise == 2:
+            exercise_offset = 10 # 10 reps already included
+        elif exercise == 3:
+            exercise_offset = 20 # 18 reps already included
+        data = mat['emg']
+        restimulus = mat['restimulus']
+        rerepetition = mat['rerepetition']
+        # remove 0 repetition - collection buffer
+        remove_mask = (rerepetition != 0).squeeze()
+        data = data[remove_mask,:]
+        restimulus = restimulus[remove_mask]
+        rerepetition = rerepetition[remove_mask]
+        # important little not here: 
+        # the "rest" really is only the rest between motions, not a dedicated rest class.
+        # there will be many more rest repetitions (as it is between every class)
+        # so usually we really care about classifying rest as its important (most of the time we do nothing)
+        # but for this dataset it doesn't make sense to include (and not its just an offline showcase of the library)
+        # I encourage you to plot the restimulus to see what I mean. -> plt.plot(restimulus)
+        # so we remove the rest class too
+        remove_mask = (restimulus != 0).squeeze()
+        data = data[remove_mask,:]
+        restimulus = restimulus[remove_mask]
+        rerepetition = rerepetition[remove_mask]
+        tail = 0
+        while tail < data.shape[0]-1:
+            rep = rerepetition[tail][0] # remove the 1 offset (0 was the collection buffer)
+            motion = restimulus[tail][0] # remove the 1 offset (0 was between motions "rest")
+            # find head
+            head = np.where(rerepetition[tail:] != rep)[0]
+            if head.shape == (0,): # last segment of data
+                head = data.shape[0] -1
+            else:
+                head = head[0] + tail
+            # downsample to 1kHz from 2kHz using decimation
+            data_for_file = data[tail:head,:]
+            data_for_file = data_for_file[::2, :]
+            # write to csv
+            csv_file = mat_dir + 'C' + str(motion-1) + 'R' + str(rep-1 + exercise_offset) + '.csv'
+            np.savetxt(csv_file, data_for_file, delimiter=',')
+            tail = head
+        os.remove(mat_file)
+
+
+
+# given a directory, return a list of files in that directory matching a format
+# can be nested
+# this is just a handly utility
+def find_all_files_of_type_recursively(dir, terminator):
+    files = os.listdir(dir)
+    file_list = []
+    for file in files:
+        if file.endswith(terminator):
+            file_list.append(dir+file)
+        else:
+            if os.path.isdir(dir+file):
+                file_list += find_all_files_of_type_recursively(dir+file+'/',terminator)
+    return file_list
+
 class OneSubjectMyoDataset(Dataset):
     def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
         Dataset.__init__(self, save_dir, redownload)
