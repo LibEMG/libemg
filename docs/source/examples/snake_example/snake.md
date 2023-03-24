@@ -10,20 +10,21 @@
     }
 </style>
 
-Continuous control (i.e., always-available control) is the type of myoelectric control used by amputees to control a prosthesis. In these control schemes, decisions are generated $N$ times per second and used to micro-adjust a device. This example leverages this type of control for a common HCI application - gaming.
+[View Source Code](https://github.com/AnonSubmissions123/Snake-Demo)
 
 # Snake Game 
-[View Source Code](https://github.com/<anon>/Snake-Demo)
+
+Continuous control is the type of myoelectric control used by amputees to control a prosthesis. In these control schemes, decisions are generated $N$ times per second and used to micro-adjust a device. This example leverages this type of control for a common HCI application - gaming.
 
 We created an adapted version of the traditional snake game to explore a simple continuous control scheme. This game was implemented using pygame, a simple python game engine. The idea of the game is that the player will collect "food" to grow the snake as big as possible. Each prediction (occurring at $N$ times per second) moves the snake one unit in that direction. 
 <div class="float-container">
     <div class="container"> 
         <center><p> <b> <u> Myo </u> </b> </p></center>
-        <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/myo_game.gif?raw=true"/>
+        <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/myo_game.gif?raw=true"/>
     </div>
     <div class="container"> 
     <center><p> <b> <u> Delsys </u> </b> </p></center>
-        <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/delsys.gif?raw=true"/>
+        <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/delsys.gif?raw=true"/>
     </div>
 </div>
 <p> ________ </p>
@@ -109,9 +110,9 @@ def handle_emg(self):
 Now that we have shown how to leverage EMG predictions to replace traditional key presses for snake control, we need to explore the design of the continuous control system. The first step in any EMG-based control scheme is accumulating training data to train the machine learning model. The accumulation of screen-guided training data is built directly into the game using the Screen Guided Training tool. All code can be found in `game_menu.py`.
 
 <div>
-    <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
-    <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
-    <img src="https://github.com/eeddy/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
 </div>
 
 First, the required imports from libemg:
@@ -130,7 +131,7 @@ self.odh = OnlineDataHandler()
 self.odh.start_listening()
 ```
 
-When the data accumulation button is pressed the training UI menu is presented to the user. Note that using the [LibEMGGesture library](https://github.com/<anon>/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
+When the data accumulation button is pressed the training UI menu is presented to the user. Note that using the [LibEMGGesture library](https://github.com/AnonSubmissions123/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
 ```Python
 def launch_training(self):
     # Destroy the menu 

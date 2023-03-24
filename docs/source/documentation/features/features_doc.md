@@ -32,7 +32,7 @@ features_2 = fe.extract_feature_group('HTD', windows)
 # Feature Performance
 Each of the ~50 features that were implemented was tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.
 
-TODO: Update Figure
+
 ![alt text](feature_accuracies.png)
 <center> <p> Figure 1: Individual Accuracy of Each Feature on the 3DCDataset</p> </center>
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     metrics = ['CA']
 
     # get the subject list
-    subject_list = list(range(1,23))
+    subject_list = list(range(0,22))
     
     # initialize our feature extractor
     fe = FeatureExtractor()
@@ -422,43 +422,43 @@ $
 
 ## **Sample Entropy (SAMPEN)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Fuzzy Entropy (FUZZYEN)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Discrete Time Fourier Transform Representation (DFTR)**
 
-TODO: Evan
+TODO: Here
 
 ## **Integral Square Descriptor (ISD)**
 
-TODO: Evan
+TODO: Here
 
 ## **Coefficient of Regularization (COR)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Mean Difference Derivative (MDIFF)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Mean Logarithm Kernel (MLK)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Activation (ACT)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Mobility (MOB)**
 
-TODO: Evan 
+TODO: Here 
 
 ## **Complexity (COMP)** 
 
-TODO: Evan
+TODO: Here
 
 # Feature Sets
 Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the library:

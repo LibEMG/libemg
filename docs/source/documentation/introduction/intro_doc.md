@@ -37,7 +37,7 @@ System evaluation is required when analyzing the performance of any EMG control 
 feedback from the control scheme under test.  **This module provides a means to extract offline evaluation metrics.** As online evaluation is application dependent (and should be tested using the implemented system), it is not directly addressed by this library. 
 
 # Contributing
-The repo is open-sourced and can be found [here](https://github.com/<anon>/libemg). For any bugs, improvements, or suggestions please create an issue and we will review it as soon as possible.
+The repo is open-sourced and can be found [here](https://github.com/AnonSubmissions123/libemg). For any bugs, improvements, or suggestions please create an issue and we will review it as soon as possible.
 
 # Citing
 We ask that if you leverage this library for any research related purposes please cite the following publication:

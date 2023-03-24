@@ -62,7 +62,7 @@ $
 where $N$ is the total number of data frames/predictions, and $\hat{y}_{i}$ is the predicted class label for frame $i$.
 
 ### **Recall (RECALL)**
-TODO: Evan
+TODO: Here
 
 $
 \text{RECALL} = \frac{TP}{(FN + TP)}
@@ -71,7 +71,7 @@ $
 where $TP$ is the number of true positives, and $FN$ is the number of false negatives.
 
 ### **Precision (PREC)**
-TODO: Evan
+TODO: Here
 
 $
 \text{PREC} = \frac{TP}{(FP + TP)}
@@ -80,7 +80,7 @@ $
 where $TP$ is the number of true positives, and $FP$ is the number of false positives.
 
 ### **F1 Score (F1)**
-TODO: Evan
+TODO: Here
 
 $
 \text{F1} = 2 \times \frac{(Precision \times Recall)}{Precision + Recall}

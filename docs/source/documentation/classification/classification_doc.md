@@ -89,13 +89,12 @@ classifier.fit('NB', data_set)
 ```
 Check out the NB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.GaussianNB.html)
 
-### Gradient Boosting (GB)
-TODO: Evan
+<!-- ### Gradient Boosting (GB)
 ```Python
 classifier = EMGClassifier('GB', data_set)
 classifier.fit('GB', data_set)
 ```
-Check out the GB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingClassifier.html)
+Check out the GB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingClassifier.html) -->
 
 
 ## Deep Learning (Pytorch)

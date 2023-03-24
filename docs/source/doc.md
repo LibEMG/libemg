@@ -17,6 +17,7 @@ The goal of this library is to provide an easy to use and feature-rich API for d
 ```
 $ pip install libemg
 ```
+Note: Not yet published as part of this submission. 
 
 # Citing
 We ask that if you leverage this library for any research related purposes please cite the following publication:

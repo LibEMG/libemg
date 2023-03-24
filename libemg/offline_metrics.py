@@ -58,6 +58,7 @@ class OfflineMetrics:
             A dictionary containing the metrics, where each metric is a key in the dictionary.
         self.extract_offline_metrics(self.get_common_metrics(), y_true, y_predictions, null_label)
         """
+        return self.extract_offline_metrics(self.get_common_metrics(), y_true, y_predictions, null_label)
         
     def extract_offline_metrics(self, metrics, y_true, y_predictions, null_label=None):
         """Extracts a set of offline performance metrics.
@@ -309,9 +310,6 @@ class OfflineMetrics:
         f1 = 2 * (prec * recall) / (prec + recall)
         return np.average(f1, weights=weights)  
     
-    # def getRELIAB():
-    #     #TODO: Evan - I am going to leave this for you since I am 100% sure what you want.
-    #     pass
     
     def visualize(self, dic, y_axis=[0,1]):
         """Visualize the computed metrics in a bar chart.

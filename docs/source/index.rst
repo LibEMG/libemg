@@ -34,6 +34,15 @@ LibEMG
 
    emg_toolbox
 
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Offline Examples:
+
+   examples/simple_offline_example/simple_offline_example
+   examples/features_and_group_example/features_and_group_example
+   examples/deep_learning_example/deep_learning_example
+   
 .. toctree::
    :maxdepth: 1
    :caption: Online Examples:
@@ -43,11 +52,3 @@ LibEMG
    examples/mouse_example/mouse_example
    examples/mixed_reality_example/mixed_reality_example
    examples/fitts_example/fitts_example
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Offline Examples:
-
-   examples/features_and_group_example/features_and_group_example
-   examples/deep_learning_example/deep_learning_example
-   examples/transfer_learning_example/transfer_learning_example
