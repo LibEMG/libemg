@@ -28,12 +28,12 @@ Several validated datasets consisting of different gestures and recording techno
 
 | Attribute          | Description |
 | ------------------ | ----------- |
+| **Num Subjects:**      | 1       |
 | **Num Reps:**      | 3 Training, 3 Testing       |
 | **Time Per Rep:**      | 3s      |
 | **Classes:**       | <ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
 | **Device:**        | Myo        |
 | **Sampling Rates:** | EMG (200 Hz)        |
-| **Continuous:**    | False |
 
 **Using the Dataset:**
 ```Python
@@ -56,12 +56,12 @@ Work to be published...
 
 | Attribute          | Description |
 | ------------------ | ----------- |
+| **Num Subjects:**      | 22       |
 | **Num Reps:**      | 4 Training, 4 Testing       |
 | **Time Per Rep:**      | 5s      |
 | **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | EMG (1000 Hz)        |
-| **Continuous:**    | False |
 
 **Using the Dataset:**
 ```Python
@@ -79,12 +79,42 @@ odh = dataset.prepare_data()
 -------------
 </details>
 
-<br>
+<br/>
 
+TODO: Here
 <details>
-<summary><b>Nina Pro</b></summary>
+<summary><b>Nina Pro DB2</b></summary>
 
-TODO: Ethan
+<br/>
+
+Note, to download this dataset, please see [Nina DB2](http://ninapro.hevs.ch/node/17). All credit for this dataset should be given to the original authors.
+
+<br/>
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Subjects:**      | 40       |
+| **Num Reps:**      | 6 |
+| **Time Per Rep:**      | 5s      |
+| **Classes:**       | 18 [Nina Pro DB2](http://ninapro.hevs.ch/node/123)    |
+| **Device:**        | Delsys        |
+| **Sampling Rates:** | EMG (2000 Hz)        |
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import OneSubjectMyoDataset
+dataset = NinaDB2("data/NinaDB2") #The loacation of Nina DB2 is downloaded
+odh = dataset.prepare_data()
+```
+
+**References:**
+```
+Atzori, M., Gijsberts, A., Castellini, C. et al. 
+Electromyography data for non-invasive naturally-controlled robotic hand prostheses. 
+Sci Data 1, 140053 (2014). 
+https://doi.org/10.1038/sdata.2014.53
+```
+-------------
 
 </details>
 </br>

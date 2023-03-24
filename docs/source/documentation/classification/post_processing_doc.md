@@ -25,7 +25,7 @@ Outputs an associated *velocity* with each prediction that estimates the level o
 classifier.add_velocity(train_windows, train_labels)
 ```
 
-Figure 1 shows the decision stream (i.e., the predictions over time) of a classifier with no postprocessing, rejection, and majority voting. In this example, the shaded regions show the ground truth label, whereas the colour of each point represents its predicted label. All black points indicate predictions that have been rejected.
+Figure 1 shows the decision stream (i.e., the predictions over time) of a classifier with no postprocessing, rejection, and majority voting. In this example, the shaded regions show the ground truth label, whereas the colour of each point represents the predicted label. All black points indicate predictions that have been rejected.
 
 ![alt text](decision_stream.png)
 <center> <p> Figure 1: Decision Stream of No Post Processing, Rejection, and Majority Voting. This can be created using the <b>.visualize()</b> method call. </p> </center>
