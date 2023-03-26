@@ -1,5 +1,5 @@
 
-TODO: Evan - can you build this section out. Maybe explain why feature selection, when we'd use it, etc.
+TODO: Here - can you build this section out. Maybe explain why feature selection, when we'd use it, etc.
 
 # Selection Strategies
 Since EMG patterns during real-time use are often drastically different than those used to train the system, classification accuracy does not necessarily correlate to online usability. As such, there are numerous feature selection strategies for EMG-based control systems for optimizing the features selected for a particular problem. For a summary of the following feature selection techniques and suggestions, please see *A Multivariate Approach for Predicting Myoelectric Control Usability* <sup>[1]</sup>.

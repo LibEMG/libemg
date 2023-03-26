@@ -1,10 +1,10 @@
-[View Source Code](https://github.com/AnonSubmissions123/Momo-Demo)
+[View Source Code](https://github.com/AnonSubmissions123/LibEMG_Unity_Showcase)
 
 Often, it is desirable to use tech stacks other than Python to develop applications that leverage EMG-based control. For example, Unity is a game development environment that enables high-quality games and VR/AR development, making it an intriguing tool for developing immersive environments. LibEMG was designed with this in mind and can easily interface with these differing tools. As long as the programming interface has socket functionality (C# does), it can leverage LibEMG. This example shows how to leverage the library in a simple Unity game for myoelectric training. This same concept applies to more complex applications (e.g., AR/VR) and programming languages. 
 
 # The Falling of Momo
 
-<img src="https://github.com/AnonSubmissions123/Momo-Demo/blob/main/Docs/Momo_Myo.gif?raw=True">
+<img src="https://github.com/AnonSubmissions123/LibEMG_Unity_Showcase/blob/main/Docs/Momo_Myo.gif?raw=True">
 
 The Falling of Momo is a simple platformer game that was designed for myoelectric training purposes <sup>[1,2]</sup>. The game's goal is to control the character "Momo" down the screen and avoid the spikes for as long as possible. This game was originally developed in [processing](https://github.com/hcilab/Momo), but a simplified version in Unity was created for this demo. In this version, the three inputs and their respective controls are:
 
@@ -20,8 +20,8 @@ The Falling of Momo is a simple platformer game that was designed for myoelectri
 The first task was to create the Momo-Unity game. There are many great online Unity tutorials, so we won't get into the intricate details of the game design. 
 
 <div>
-    <img src="https://github.com/AnonSubmissions123/Momo-Demo/blob/main/Docs/main_menu.PNG?raw=True" width="47%"display="inline-block" float="left"/>
-    <img src="https://github.com/AnonSubmissions123/Momo-Demo/blob/main/Docs/game.PNG?raw=True" width="47%"  isplay="inline-block" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/LibEMG_Unity_Showcase/blob/main/Docs/main_menu.PNG?raw=True" width="47%"display="inline-block" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/LibEMG_Unity_Showcase/blob/main/Docs/game.PNG?raw=True" width="47%"  isplay="inline-block" float="left"/>
 </div>
 
 In the initial game design, we controlled the character using the keyboard. Unity updates in a loop at a default of 60Hz in its `update` method. As displayed below in `MovementController.cs` we have created a script that listens for key events in the update method (i.e., 60 times a second) and reacts accordingly. 
@@ -73,9 +73,9 @@ from libemg.streamers import myo_streamer
 ```
 
 <div>
-    <img src="https://github.com/AnonSubmissions123/Momo-Demo/blob/main/Docs/menu.PNG?raw=True" width="31%" float="left"/>
-    <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=True" width="31%" float="left"/>
-    <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=True" width="31%" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/LibEMG_Unity_Showcase/blob/main/Docs/menu.PNG?raw=True" width="31%" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=True" width="31%" float="left"/>
+    <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=True" width="31%" float="left"/>
 </div>
 
 When the `Get Training Data` button is clicked, we leverage the library's Training UI module to automatically download the desired gestures and start the training procedure.
