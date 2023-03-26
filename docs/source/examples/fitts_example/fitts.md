@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/AnonSubmissions123/Isofitts)
+[View Source Code](https://github.com/AnonSubmissions123/LibEMG_Isofitts_Showcase)
 
 <style>
     .center {
@@ -18,8 +18,8 @@ The steps of this 'mini experiment' are as follows:
 1. **Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).** These classes correspond to movement in the isofitts task (do nothing,  and move left, right, up, and down).
     <div>
         <img src="https://github.com/AnonSubmissions123/Isofitts/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
-        <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
-        <img src="https://github.com/AnonSubmissions123/Snake-Demo/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
+        <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+        <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
     </div>
 2. **Train and evaluate four classifiers in an offline setting (LDA, SVM, KNN (k=5), and RF).** For this step, the first three reps are used for training and the last two for testing. 
 3. **Perform an Iso Fitts test to evaluate the online usability of each classifier trained in step 2.** These fitts law tests are useful for computing throughput, overshoots, and efficiency. Ultimately, these metrics provide an indication of the online usability of a model. The Iso Fitts test is useful for myoelectric control systems as it requires changes in degrees of freedom to complete sucessfully.
