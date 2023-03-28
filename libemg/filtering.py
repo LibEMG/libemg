@@ -88,7 +88,7 @@ class Filter:
 
         Parameters
         ----------
-        data: list    
+        data: list or OfflineDataHandler  
             The data that will be passed through the filters.
 
         Returns
