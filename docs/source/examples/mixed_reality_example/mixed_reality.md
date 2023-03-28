@@ -61,7 +61,7 @@ void Update() {
 }
 ```
 ## Myo Client 
-To connect LibEMG to the Hololens, we stream predictions over TCP. When testing the application in the Unity editor, this entails one protocol (localhost), and for streaming to the Hololens it is another. Therefore, we set up the Myo Client script to work in both cases. This script should remain relatively consistent if leveraged for a different use-case.
+To connect LibEMG to the Hololens, we stream predictions over TCP. When testing the application in the Unity editor, this entails one protocol (localhost), and for streaming to the Hololens it is another. This logic, which is split into the `#if UNITY_EDITOR` blocks, means the Myo Client script works in both cases. This script should remain relatively consistent if leveraged for a different use-case.
 
 ```C#
 using System.Collections;

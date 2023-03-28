@@ -34,7 +34,7 @@ If selecting EMG hardware for real-time use, wireless armbands that sample above
 <center> <p>Table 1: The list of all implemented streamers.</p> </center>
 
 ## Inspecting Hardware
-LibEMG includes an `analyze_hardware` function to run a simple analysis on the hardware device being used. This is a good way to sanity check that your device is working as expected. Example output from this function for the Myo Armband is:
+LibEMG includes an `analyze_hardware` function to run an analysis on the hardware device being used. This is a good way to  check that your device is working as expected. Example output from this function for the Myo Armband is:
 
 ```
 Starting analysis (10s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.
@@ -43,7 +43,6 @@ Num Channels: 8
 Max Value: 127
 Min Value: -128
 Resolution: 8 bits
-Time Between Samples - Mean: 0.005005508407569851s STD: 0.007183463266367916s
 Repeating Values: 0
 ```
 
@@ -51,7 +50,6 @@ Repeating Values: 0
 - `num channels` is the number of channels being read.
 - `min and max values` are the maximum values read from the data.
 - `resolution` is the predicted resolution in bits based on the data seen.
-- `time between_samples` is the average and standard deviation between sample reads. 
 - `repeating values` is the number of repeated values in the input data. Repeating values that are > 0 indicate that there might be some issues (e.g., the hardware sensor is malfunctioning).
 
 ## Creating Custom Streamers
