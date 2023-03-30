@@ -14,6 +14,7 @@ import random
 import matplotlib.pyplot as plt
 import time
 import inspect
+from scipy import stats
 
 from libemg.utils import get_windows
 
@@ -24,17 +25,13 @@ class EMGClassifier:
 
     Parameters
     ----------
-    continuous: bool (optional), default = False
-        Specifies whether the testing data is continuous (no rest between contractions) or non-continuous. If False,
-        majority vote is only applied to individual reps, not between them.
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, continuous=False, random_seed=0):
+    def __init__(self, random_seed=0):
         random.seed(random_seed)
         
         self.classifier = None
-        self.continuous = continuous
         self.velocity = False
         self.majority_vote = None
         self.rejection = False
@@ -108,15 +105,13 @@ class EMGClassifier:
         return classifier
 
  
-    def run(self, test_data, test_labels):
+    def run(self, test_data):
         """Runs the classifier on a pre-defined set of training data.
 
         Parameters
         ----------
         test_data: list
             A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
-        test_labels: list
-            A np.ndarray containing the class labels of the test data.
         Returns
         ----------
         list
@@ -139,7 +134,7 @@ class EMGClassifier:
 
         # Majority Vote
         if self.majority_vote:
-            predictions = self._majority_vote_helper(predictions, test_labels)
+            predictions = self._majority_vote_helper(predictions)
 
         # Accumulate Metrics
         return predictions, probabilities
@@ -313,17 +308,13 @@ class EMGClassifier:
                 return -1
         return prediction
     
-    def _majority_vote_helper(self, predictions, test_labels=None):
+    def _majority_vote_helper(self, predictions):
         updated_predictions = []
         for i in range(0, len(predictions)):
             idxs = np.array(range(i-self.majority_vote+1, i+1))
             idxs = idxs[idxs >= 0]
-            if not self.continuous:
-                if test_labels is not None:
-                    correct_group = test_labels[i]
-                    idxs = idxs[np.where(test_labels[idxs] == correct_group)]
             group = predictions[idxs]
-            updated_predictions.append(np.argmax(np.bincount(group)))
+            updated_predictions.append(stats.mode(group, keepdims=False)[0])
         return np.array(updated_predictions)
     
     def _get_velocity(self, window, c):
@@ -435,6 +426,7 @@ class OnlineEMGClassifier:
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
+        self.filters = online_data_handler.fi
         self.features = features
         self.port = port
         self.ip = ip
@@ -480,7 +472,7 @@ class OnlineEMGClassifier:
         fe = FeatureExtractor()
         self.raw_data.reset_emg()
         while True:
-            data = np.array(self.raw_data.get_emg())
+            data = self._get_data_helper()
             if len(data) >= self.window_size:
                 # Extract window and predict sample
                 window = get_windows(data, self.window_size, self.window_size)
@@ -526,3 +518,13 @@ class OnlineEMGClassifier:
             else:
                 arr = np.hstack((arr, data[feat]))
         return arr
+
+    def _get_data_helper(self):
+        data = np.array(self.raw_data.get_emg())
+        if self.filters is not None:
+            try:
+                data = self.filters.filter(data)
+            except:
+                pass
+        return data
+        

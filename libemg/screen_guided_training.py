@@ -261,7 +261,7 @@ class _SGTUI:
                         self.data_handler.raw_data.reset_emg()
                     self._bar_count_down(cd_time)
                     if val != 0:
-                        data[self.og_inputs.index(file)] = self.data_handler.raw_data.get_emg()
+                        data[self.og_inputs.index(file)] = self.data_handler.get_data()
             self._write_data(data)
             self.rep_number += 1
             self.next_rep_button = Button(self.window, text = 'Next Rep', font = ("Arial", 12), command=self._next_rep)

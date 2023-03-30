@@ -70,6 +70,7 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
     myo = MyoStreamer(filtered, ip, port)
     p = Process(target=myo.start_stream, daemon=True)
     p.start()
+    return p
 
 def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi_ip='127.0.0.1'):
     """The UDP streamer for the sifi cuff. 
@@ -95,6 +96,7 @@ def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi
     sifi = SiFiLabServer(stream_port=stream_port, stream_ip=stream_ip, sifi_port=sifi_port, sifi_ip=sifi_ip)
     p = Process(target=sifi.start_stream, daemon=True)
     p.start()
+    return p
 
 def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localhost',cmd_port=50040, emg_port=50043, channel_list=list(range(8))):
     """The UDP streamer for the Delsys device (Avanti/Trigno). 
@@ -130,3 +132,4 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
                             timeout=10)
     p = Process(target=delsys.start_stream, daemon=True)
     p.start()
+    return p
