@@ -755,7 +755,8 @@ class FeatureExtractor:
             mav.append(np.mean(np.abs(windows[:,:,i*m:(i+1)*m]), axis=2))
         for i in range (0, MAVSLP_segment-1):
             mavslp.append(mav[i+1]- mav[i])
-        return np.asarray(mavslp).squeeze()
+        mavslp = np.array(mavslp)
+        return mavslp.reshape(mavslp.shape[1], -1)
 
     def getMDFfeat(self, windows,MDF_fs=1000):
         """Extract Median Frequency (MDF) feature.

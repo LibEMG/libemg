@@ -30,7 +30,7 @@ class DataHandler:
     def _get_repeating_values(self, data):
         repeats = 0
         for i in range(1, len(data)):
-            if data[i] == data[i-1]:
+            if (data[i] == data[i-1]).all():
                 repeats += 1
         return repeats
 
@@ -345,12 +345,15 @@ class OnlineDataHandler(DataHandler):
         If True, all data acquired over the UDP port will be written to std_out.
     emg_arr: bool (optional): default = True
         If True, all data acquired over the UDP port will be written to an array object that can be accessed.
+    max_buffer: int (optional): default = None
+        The buffer for the raw data array. This should be set for visualizatons to reduce latency. 
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, max_buffer=None):
         self.port = port 
         self.ip = ip
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr}
-        
+        self.fi = None
+        self.max_buffer = max_buffer
         if not file and not std_out and not emg_arr:
             raise Exception("Set either file, std_out, or emg_arr parameters or this class will have no functionality.")
 
@@ -372,6 +375,28 @@ class OnlineDataHandler(DataHandler):
         """Terminates the process listening for data.
         """
         self.listener.terminate()
+        
+    def install_filter(self, fi):
+        """Install a filter to be used on the online stream of data
+        Parameters
+        ----------
+        fi: libemg.filter object
+            The filter object that you'd like to run on the online data.
+        """
+        self.fi = fi
+
+    def get_data(self):
+        data = np.array(self.raw_data.get_emg())
+        if self.fi is not None:
+            try:
+                data = self.fi.filter(data)
+            except:
+                pass
+        if self.max_buffer:
+            if len(data) > self.max_buffer:
+                self.raw_data.data = self.raw_data.adjust_increment(self.max_buffer, 0)
+        return data
+
 
     def analyze_hardware(self, analyze_time=10):
         """Analyzes several metrics from the hardware:
@@ -394,22 +419,15 @@ class OnlineDataHandler(DataHandler):
         btwn_sample_time = []
         self.raw_data.reset_emg()
         st = time.time()
-        current_size = 0
         print("Starting analysis " + "(" + str(analyze_time) + "s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.")
         while(time.time() - st < analyze_time):
-            if len(self.raw_data.get_emg()) > current_size:
-                current_size += 1
-                btwn_sample_time.append(time.time())
+            pass
         emg_data = self.raw_data.get_emg().copy()
         print("Sampling Rate: " + str(self._get_sampling_rate(emg_data,analyze_time)))
         print("Num Channels: " + str(self._get_num_channels(emg_data)))
         print("Max Value: " + str(self._get_max_value(emg_data)))
         print("Min Value: " + str(self._get_min_value(emg_data)))
         print("Resolution: " + str(self._get_resolution(emg_data)) + " bits")
-        for i in range(1,len(btwn_sample_time)):
-            btwn_sample_time[i-1] = btwn_sample_time[i] - btwn_sample_time[i-1]
-        btwn_sample_time.pop()
-        print("Time Between Samples - Mean: " + str(np.mean(btwn_sample_time)) + "s STD: " + str(np.std(btwn_sample_time)) + "s")
         print("Repeating Values: " + str(self._get_repeating_values(emg_data)))
         
         self.stop_listening()
@@ -428,7 +446,7 @@ class OnlineDataHandler(DataHandler):
         pyplot.style.use('ggplot')
         if not self._check_streaming():
             return
-        num_channels = len(self.raw_data.get_emg()[0])
+        num_channels = len(self.get_data()[0])
         emg_plots = []
         figure, ax = pyplot.subplots()
         figure.suptitle('Raw Data', fontsize=16)
@@ -437,7 +455,7 @@ class OnlineDataHandler(DataHandler):
         figure.legend()
         
         def update(frame):
-            data = np.array(self.raw_data.get_emg())
+            data = self.get_data()
             if len(data) > num_samples:
                 data = data[-num_samples:]
             if len(data) > 0:
@@ -475,7 +493,7 @@ class OnlineDataHandler(DataHandler):
             emg_plots.append(axs[i].plot([],[]))
 
         def update(frame):
-            data = np.array(self.raw_data.get_emg())
+            data = self.get_data()
             if len(data) > num_samples:
                 data = data[-num_samples:]
             if len(data) > 0:
@@ -553,7 +571,7 @@ class OnlineDataHandler(DataHandler):
             pc2 = []      
 
             def update(frame):
-                data = np.array(self.raw_data.get_emg())
+                data = self.get_data()
                 if len(data) >= window_size:
                     window = get_windows(data, window_size, window_size)
                     features = fe.extract_features(feature_list, window)

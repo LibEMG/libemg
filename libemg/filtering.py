@@ -72,11 +72,14 @@ class Filter:
         '''
         if self.sampling_frequency < 1000:
             print("sampling frequency is inadaquate for the set of common filters.")
-            return
-        filter_dictionary={"name":"bandpass",
-                        "cutoff": [20, 450],
-                        "order": 4 }
-    
+            filter_dictionary={"name":"highpass",
+                               "cutoff": 20,
+                               "order": 2}
+        else:
+            filter_dictionary={"name":"bandpass",
+                            "cutoff": [20, 450],
+                            "order": 4 }
+        
         self.install_filters(filter_dictionary=filter_dictionary)
         filter_dictionary={"name":"notch",
                             "cutoff": 60,
