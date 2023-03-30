@@ -198,7 +198,7 @@ class OneSubjectMyoDataset(Dataset):
             sets_regex = make_regex(left_bound = "/trial_", right_bound="/", values = sets_values)
             classes_values = ["0","1","2","3","4"]
             classes_regex = make_regex(left_bound = "C_", right_bound=".csv", values = classes_values)
-            reps_values = ["0","1","2","3","4"]
+            reps_values = ["0","1"]
             reps_regex = make_regex(left_bound = "R_", right_bound="_", values = reps_values)
             dic = {
                 "sets": sets_values,
