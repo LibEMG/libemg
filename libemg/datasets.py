@@ -68,18 +68,17 @@ class _3DCDataset(Dataset):
             odh = OfflineDataHandler()
             odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
             return odh
-        
-class NinaproDB8(Dataset):
-    def __init__(self, save_dir='.', dataset_name="NinaproDB8"):
+
+class Ninapro(Dataset):
+    def __init__(self, save_dir='.', dataset_name="Ninapro"):
         # downloading the Ninapro dataset is not supported (no permission given from the authors)'
         # however, you can download it from http://ninapro.hevs.ch/DB8
         # the subject zip files should be placed at: <save_dir>/NinaproDB8/DB8_s#.zip
         Dataset.__init__(self, save_dir)
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, "")
-        self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
-         "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
-
+        self.exercise_step = []
+    
     def convert_to_compatible(self):
         # get the zip files (original format they're downloaded in)
         zip_files = find_all_files_of_type_recursively(self.dataset_folder,".zip")
@@ -92,27 +91,7 @@ class NinaproDB8(Dataset):
         mat_files = find_all_files_of_type_recursively(self.dataset_folder,".mat")
         for mat_file in mat_files:
             self.convert_to_csv(mat_file)
-
-    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
-                                                      reps_values = [str(i) for i in range(22)],
-                                                      classes_values = [str(i) for i in range(9)]):
-        
-        if format == OfflineDataHandler:
-            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
-            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
-            subjects_regex = make_regex(left_bound="DB8_s", right_bound="/",values=subjects_values)
-            dic = {
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
-            return odh
-        
+    
     def convert_to_csv(self, mat_file):
         # read the mat file
         mat_file = mat_file.replace("\\", "/")
@@ -121,15 +100,15 @@ class NinaproDB8(Dataset):
         mat = sio.loadmat(mat_file)
         # get the data
         exercise = int(mat_file.split('_')[3][1])
-        if exercise == 1:
-            exercise_offset = 0 # 0 reps already included
-        elif exercise == 2:
-            exercise_offset = 10 # 10 reps already included
-        elif exercise == 3:
-            exercise_offset = 20 # 18 reps already included
+        exercise_offset = self.exercise_step[exercise-1] # 0 reps already included
         data = mat['emg']
         restimulus = mat['restimulus']
         rerepetition = mat['rerepetition']
+        if data.shape[0] != restimulus.shape[0]: # this happens in some cases
+            min_shape = min([data.shape[0], restimulus.shape[0]])
+            data = data[:min_shape,:]
+            restimulus = restimulus[:min_shape,]
+            rerepetition = rerepetition[:min_shape,]
         # remove 0 repetition - collection buffer
         remove_mask = (rerepetition != 0).squeeze()
         data = data[remove_mask,:]
@@ -164,6 +143,59 @@ class NinaproDB8(Dataset):
             np.savetxt(csv_file, data_for_file, delimiter=',')
             tail = head
         os.remove(mat_file)
+
+class NinaproDB8(Ninapro):
+    def __init__(self, save_dir='.', dataset_name="NinaproDB8"):
+        Ninapro.__init__(self, save_dir)
+        self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
+         "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
+        self.exercise_step = [0,10,20]
+
+    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
+                                                      reps_values = [str(i) for i in range(22)],
+                                                      classes_values = [str(i) for i in range(9)]):
+        
+        if format == OfflineDataHandler:
+            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
+            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
+            subjects_regex = make_regex(left_bound="DB8_s", right_bound="/",values=subjects_values)
+            dic = {
+                "reps": reps_values,
+                "reps_regex": reps_regex,
+                "classes": classes_values,
+                "classes_regex": classes_regex,
+                "subjects": subjects_values,
+                "subjects_regex": subjects_regex
+            }
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            return odh
+
+class NinaproDB2(Ninapro):
+    def __init__(self, save_dir='.', dataset_name="NinaproDB2"):
+        Ninapro.__init__(self, save_dir, dataset_name)
+        self.class_list = ["TODO"]
+        self.exercise_step = [0,0,0]
+
+    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,41)],
+                                                      reps_values = [str(i) for i in range(6)],
+                                                      classes_values = [str(i) for i in range(50)]):
+        
+        if format == OfflineDataHandler:
+            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
+            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
+            subjects_regex = make_regex(left_bound="DB2_s", right_bound="/",values=subjects_values)
+            dic = {
+                "reps": reps_values,
+                "reps_regex": reps_regex,
+                "classes": classes_values,
+                "classes_regex": classes_regex,
+                "subjects": subjects_values,
+                "subjects_regex": subjects_regex
+            }
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            return odh
 
 # given a directory, return a list of files in that directory matching a format
 # can be nested
