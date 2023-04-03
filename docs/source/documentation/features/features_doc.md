@@ -421,44 +421,83 @@ $
 $
 
 ## **Sample Entropy (SAMPEN)**
+Sample entropy is a measure of the self-similarity within the signal. It captures nonlinear complexity information and is particularly useful for assessing contraction intensity, fatigue, or muscle tone. SAMPEN is computed using the log ratio of two "count" variables determined within the window, A and B. A represents the sum of all occurrances of each N-1 sample pattern that have distance less than r from all N-1 sample patterns. B is similar, however, it is the sum of all occurrences of each N sample patterns having a distances less than r. r is typically 0.2 * std, however, it can be changed as an argument of the library.
 
-TODO: Here 
+$ 
+\text{SAMPEN} = -log \frac{A}{B}
+$
 
 ## **Fuzzy Entropy (FUZZYEN)**
+Fuzzy entropy similarly is a measure of self-similarity within the signal; however, it uses a similarity measure (continuous A from SAMPEN) between the N samples patterns instead of counting the occurences that strictly are less than the threshold (discrete A and B from SAMPEN). The similarity is computed by:
 
-TODO: Here 
+$
+\text{FUZZYEN}=e^{\frac{-A^{d}}{r}}
+$
+
+where d and r are arguments to the function that correspond to the distance order and similarity threshold, respectively.
 
 ## **Discrete Time Fourier Transform Representation (DFTR)**
 
-TODO: Here
+DFTR is a feature that computes the energy within 6 frequency bins of the EMG power spectrum (20-92, 92-163, 163-235, 235-307, 307-378, 378-450) Hz. If the frequency of the signal is less than these bins, then the bin is omitted (determined via a function argument).
+
+$
+\text{DFTR_{bin}} = \sum_{i \in bin} M_i
+$
+
 
 ## **Integral Square Descriptor (ISD)**
+Integral square descriptor captures the sum of the energy of the signal.
 
-TODO: Here
+$
+\text{ISD} = \sum x_i^2
+$
 
 ## **Coefficient of Regularization (COR)**
+The coefficient of regularization captures first and second order variability of the signal is inverse proportional to the energy in the signal.
 
-TODO: Here 
+$
+\text{COR} = \frac{\sum \nabla x^2}{\sum \nabla^2 x^2 * \sum x^2}
+$
 
 ## **Mean Difference Derivative (MDIFF)**
+Mean difference derivative is computed by taking the sum of the first order variability of the signal.
 
-TODO: Here 
+$
+\text{MDIFF} = \frac{\sum \nabla x^2}{N}
+$
 
 ## **Mean Logarithm Kernel (MLK)**
+Mean logarithm kernel is the log representation of the average absolute value of the signal.
 
-TODO: Here 
+$
+\text{MLK} = \fraC{log \sum |x|}{N}
+$
+
 
 ## **Activation (ACT)**
+The activation of the signal is the ISD feature normalized by the window size.
 
-TODO: Here 
+$
+\text{ACT} = \frac{ISD}{N}
+$
 
 ## **Mobility (MOB)**
+Extract Mobility (MOB) feature. This feature is sqrt(m2/m0), where m0 and m2 are the first and second order moments found via
+Parseval's theorem. Interestingly, the Gabor frequency tells us that the number of zero crossings per unit time can be described 
+using 1/pi * mobility.
 
-TODO: Here 
+$
+\text{MOB} = \sqrt{\frac{m2,m0}}
+$
 
 ## **Complexity (COMP)** 
+This feature is sqrt(m4/m2), where m2 and m4 are the second and fourth order moments found via
+Parseval's theorem. It is a measure of the the similarity of the shape of a signal compared to a pure sine waveform. Because the Gabor frequency 
+tells us the number of zero crossings per unit time, the derivative of this metric gives us the number of extrema per unit time.
 
-TODO: Here
+$
+\text{COMP} = \sqrt{\frac{m4/m2}}
+$
 
 # Feature Sets
 Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the library:
