@@ -81,7 +81,7 @@ odh = dataset.prepare_data()
 
 <br/>
 
-TODO: Here
+The Ninapro DB2 is a dataset that can be used to test how algorithms perform for large gesture sets. The dataset contains 6 repetitions of 50 motion classes (plus optional rest) that were recorded using 12 Delsys Trigno electrodes around the forearm.
 <details>
 <summary><b>Nina Pro DB2</b></summary>
 
@@ -96,7 +96,7 @@ Note, to download this dataset, please see [Nina DB2](http://ninapro.hevs.ch/nod
 | **Num Subjects:**      | 40       |
 | **Num Reps:**      | 6 |
 | **Time Per Rep:**      | 5s      |
-| **Classes:**       | 18 [Nina Pro DB2](http://ninapro.hevs.ch/node/123)    |
+| **Classes:**       | 50 [Nina Pro DB2](http://ninapro.hevs.ch/node/123)    |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | EMG (2000 Hz)        |
 

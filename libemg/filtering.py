@@ -235,7 +235,7 @@ class Filter:
             ax[fl,1].grid(True)
         plt.show()
     
-    def visualize_affect(self, data):
+    def visualize_effect(self, data):
         '''Visualizes the time and frequency domain before and after features are applied.
 
         Parameters

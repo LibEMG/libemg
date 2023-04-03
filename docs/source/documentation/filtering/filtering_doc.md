@@ -8,7 +8,7 @@ It is also important to note that many hardware devices (such as the Myo and Del
 By creating a dictionary with the filter parameters including:
 - **name:** The name of the filter.
 - **cutoff:** The cutoff frequency. 
-- **order/bandwidth:** TODO
+- **order/bandwidth:** How much energy is removed from the signal, or the width of the filter.
 
 ```Python
  # create a notch filter for removing power line interference
@@ -24,7 +24,18 @@ These filters can be applied on the Offline or Online Data Handler.
 # Offline Data (Filtering)
 It is often desirable to filter offline data to clean them up or for better recognition performance. The filtering module can be used directly on the OfflineDataHandler or a list of EMG data through the `.filter()` function. After installing the filters on the Filter class, simply just pass in the data and the filtering will be applied. 
 
-TODO: Can you show some code for filtering offline 
+```Python
+    dataset = libemg.datasets._3DCDataset()
+    odh = dataset.prepare_data(subjects_values=["1"])
+    # instantiate the filter object with the sampling frequency
+    fi = libemg.filtering.Filter(1000)
+    # install filters to the filter object
+    fi.install_common_filters()
+    # run the entire first subject dataset through the common filters
+    odh = fi.filter(odh)
+```
+
+
 
 
 ![](filter1.png)
