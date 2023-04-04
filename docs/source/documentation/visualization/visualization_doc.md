@@ -1,5 +1,5 @@
 # Online Data Handler
-We have added some convenient functionality to the `OnlineDataHandler` to help developers. Firstly, we have added two visualize functions: `visualize` and `visualize_channels`, exemplified in Table 1.
+There is different convenient functionality in the `OnlineDataHandler` to help developers. Firstly, two visualize functions: `visualize` and `visualize_channels`, exemplified in Table 1 are included.
 
 | <center>Combined</center>  | <center>All Channels</center> |
 | ------------- | ------------- |
@@ -13,7 +13,7 @@ The EMG classifier contains a visualization tool for viewing the decisions strea
 <center> <p> Figure 2: The decision stream of a classifier.</b></p> </center>
 
 # Feature Extractor 
-The Feature Extrator and Online Data Handler contain a visualization tool for viewing the PCA feature space. This can be done using the `visualize_feature_space` function. If this function is run on an online data handler, a live PCA feature space will be shown. 
+The Feature Extrator and Online Data Handler contain a visualization tool for viewing the PCA feature space. This can be done using the `visualize_feature_space` function. If this function is run on an online data handler, a live PCA feature space will be shown (see Figure 3). 
 
 | <center>Offline</center>  | <center>Online (Live)</center> |
 | ------------- | ------------- |
@@ -21,7 +21,7 @@ The Feature Extrator and Online Data Handler contain a visualization tool for vi
 <center> <p> Figure 3: The PCA feature space of a set of data.</p> </center>
 
 # Filtering 
-The filtering module has a `visualize_affect` function that demonstrates the effect of a filter on a set of data in the time and frequency domain. 
+The filtering module has a `visualize_effect` function that demonstrates the effect of a filter on a set of data in the time and frequency domain. 
 
 ![](filtering_1.png)
 <center> <p> Figure 4: Data before and after filtering in the time and frequency domain.</p> </center>

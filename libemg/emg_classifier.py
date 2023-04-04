@@ -49,7 +49,7 @@ class EMGClassifier:
         """The fit function for the EMG Classification class. 
 
         This is the method called that actually optimizes model weights for the dataset. This method presents a fork for two 
-        different kind of models being trained. The first we call "statistical" models (i.e., LDA, QDA, XGBoost etc.)
+        different kind of models being trained. The first we call "statistical" models (i.e., LDA, QDA, SVM, etc.)
         and these are interfaced with sklearn. The second we call "deep learning" models and these are designed to fit around
         the conventional programming style of pytorch. We distinguish which of these models are being trained by passing in a
         feature_dictionary for "statistical" models and a "dataloader_dictionary" for deep learning models.
@@ -154,7 +154,7 @@ class EMGClassifier:
             pickle.dump(self, f)
 
     def add_rejection(self, threshold=0.9):
-        """Adds the rejection postprocessing block onto a classifier.
+        """Adds the rejection post-processing block onto a classifier.
 
         Parameters
         ----------
@@ -165,7 +165,7 @@ class EMGClassifier:
         self.rejection_threshold = threshold
 
     def add_majority_vote(self, num_samples=5):
-        """Adds the majority voting postprocessing block onto a classifier.
+        """Adds the majority voting post-processing block onto a classifier.
 
         Parameters
         ----------

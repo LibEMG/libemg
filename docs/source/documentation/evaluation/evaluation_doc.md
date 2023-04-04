@@ -1,7 +1,7 @@
 Evaluation techniques for myoelectric control can be divided into two categories: **online** and **offline** evaluation. This section presents each type of evaluation, explores their use cases, and provides suggestions on the best evaluation standards for a given project. 
 
 ## Offline Evaluation 
-Offline evaluation involves testing a model using pre-recorded data by leveraging offline metrics. While these metrics do not necessarily correlate to online usability, they provide insight into the potential performance of a control system. Additionally, they are valuable for evaluating hyperparameters (i.e., different control system parameters) and exploring different algorithms. An example of extracting offline metrics from predictions and labels can be found in the following code snippet. Stars beside the metrics indicate their popularity for evaluating EMG-based control systems. 
+Offline evaluation involves testing a model using pre-recorded data by leveraging offline metrics. While these metrics do not necessarily correlate to online usability, they provide insight into the potential performance of a control system. Additionally, they are valuable for evaluating different control system parameters and exploring different algorithms before system deployment. An example of extracting offline metrics from predictions and labels can be found in the following code snippet. Stars beside the metrics indicate their popularity for evaluating EMG-based control systems. 
 
 <details>
 <summary><b>Example Code and Output</b></summary>
@@ -61,6 +61,28 @@ $
 
 where $N$ is the total number of data frames/predictions, and $\hat{y}_{i}$ is the predicted class label for frame $i$.
 
+### **Rejection Rate (REJ_RATE)**
+For control systems leveraging rejection, this metric corresponds to the percentage of rejected decisions. This gives insight into whether the system is over or under-rejecting. 
+
+$
+\text{REJ_RATE} = \frac{1}{N}\sum_{i=1}^{N}\hat{y}_{i} == y_{rej}
+$
+
+where $N$ is the total number of data frames/predictions, $\hat{y}_{i}$ is the predicted class label for frame $i$, and $y_{rej}$ is the rejection label (default = -1).
+
+### **Confusion Matrix (CONF_MAT)** *
+A confusion Matrix is a $C$ x $C$ matrix, where $C$ is the number of classes. Each row of the matrix represents the true label, and each column represents the predicted label. This matrix provides valuable insight into what classes get confused with others.
+
+<style>
+    img {
+        width: 50%;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+![alt text](conf_mat.png)
+
 ### **Recall (RECALL)**
 The measure that relates the times you predicted the active class correctly over the total number of active class occurences.
 
@@ -85,28 +107,6 @@ A measure of accuracy that has been normalized by the number of samples within t
 $
 \text{F1} = 2 \times \frac{(Precision \times Recall)}{Precision + Recall}
 $
-
-### **Rejection Rate (REJ_RATE)**
-For control systems leveraging rejection, this metric corresponds to the percentage of rejected decisions. This gives insight into whether the system is over or under-rejecting. 
-
-$
-\text{REJ_RATE} = \frac{1}{N}\sum_{i=1}^{N}\hat{y}_{i} == y_{rej}
-$
-
-where $N$ is the total number of data frames/predictions, $\hat{y}_{i}$ is the predicted class label for frame $i$, and $y_{rej}$ is the rejection label (default = -1).
-
-### **Confusion Matrix (CONF_MAT)** *
-A confusion Matrix is a $C$ x $C$ matrix, where $C$ is the number of classes. Each row of the matrix represents the true label, and each column represents the predicted label. This matrix provides valuable insight into what classes get confused with others.
-
-<style>
-    img {
-        width: 50%;
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-</style>
-![alt text](conf_mat.png)
 
 ## Online Evaluation 
 Online evaluation involves user-in-the-loop interaction, meaning that users get real-time feedback as they interact with the control system. One online evaluation technique popular within the prosthetics community involves leveraging Fitts law tests <sup>[1]</sup>. This is common in the prosthetics community as prostheses are expensive, and fittings are complicated. For more generic use cases, online evaluation should involve user-in-the-loop feedback. Ultimately, to properly evaluate the online performance of a control system, the OnlineEMGClassifier module should be leveraged.

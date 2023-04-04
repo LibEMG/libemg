@@ -126,7 +126,7 @@ data_set['training_features'] = training_features
 data_set['training_labels'] = train_metadata['classes']
 ```
 
-Next, we have to create an offline EMG classifier. We have opted for an SVM model with velocity control (meaning that each prediction is associated with a contraction intensity) and two post-processing techniques: majority voting and rejection. These postprocessing techniques were added to improve the robustness of the control scheme.
+Next, we have to create an offline EMG classifier. We have opted for an SVM model with velocity control (meaning that each prediction is associated with a contraction intensity) and two post-processing techniques: majority voting and rejection. These post-processing techniques were added to improve the robustness of the control scheme.
 
 ```Python
 # Step 4: Create the EMG classifier
@@ -233,7 +233,7 @@ public class MovementControllerEMG : MonoBehaviour
 
 # References
 <a id="1">[1]</a> 
-Aaron Tabor, Scott Bateman, Erik Scheme, David R. Flatla, and Kathrin Gerling. 2017. Designing Game-Based Myoelectric Prosthesis Training. In Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems (CHI '17). Association for Computing Machinery, New York, NY, USA, 1352–1363. https://doi-org.proxy.hil.unb.ca/10.1145/3025453.3025676
+Aaron Tabor, Scott Bateman, Erik Scheme, David R. Flatla, and Kathrin Gerling. 2017. Designing Game-Based Myoelectric Prosthesis Training. In Proceedings of the 2017 CHI Conference on Human Factors in Computing Systems (CHI '17). Association for Computing Machinery, New York, NY, USA, 1352–1363. https://dl.acm.org/doi/10.1145/3025453.3025676
 
 <a id="2">[2]</a>
 A. Tabor, S. Bateman and E. Scheme, "Evaluation of Myoelectric Control Learning Using Multi-Session Game-Based Training," in IEEE Transactions on Neural Systems and Rehabilitation Engineering, vol. 26, no. 9, pp. 1680-1689, Sept. 2018, doi: 10.1109/TNSRE.2018.2855561.

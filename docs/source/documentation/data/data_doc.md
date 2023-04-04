@@ -29,7 +29,7 @@ Several validated datasets consisting of different gestures and recording techno
 | Attribute          | Description |
 | ------------------ | ----------- |
 | **Num Subjects:**      | 1       |
-| **Num Reps:**      | 3 Training, 3 Testing       |
+| **Num Reps:**      | 12 Reps (i.e., 6 Trials x 2 Reps)|
 | **Time Per Rep:**      | 3s      |
 | **Classes:**       | <ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
 | **Device:**        | Myo        |
@@ -81,13 +81,16 @@ odh = dataset.prepare_data()
 
 <br/>
 
-The Ninapro DB2 is a dataset that can be used to test how algorithms perform for large gesture sets. The dataset contains 6 repetitions of 50 motion classes (plus optional rest) that were recorded using 12 Delsys Trigno electrodes around the forearm.
 <details>
 <summary><b>Nina Pro DB2</b></summary>
 
 <br/>
+The Ninapro DB2 is a dataset that can be used to test how algorithms perform for large gesture sets. The dataset contains 6 repetitions of 50 motion classes (plus optional rest) that were recorded using 12 Delsys Trigno electrodes around the forearm.
 
-Note, to download this dataset, please see [Nina DB2](http://ninapro.hevs.ch/node/17). All credit for this dataset should be given to the original authors.
+<br/>
+<br/>
+
+Note, this dataset will not be automatically downloaded. To download this dataset, please see [Nina DB2](http://ninapro.hevs.ch/node/17). Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors. 
 
 <br/>
 
@@ -102,8 +105,8 @@ Note, to download this dataset, please see [Nina DB2](http://ninapro.hevs.ch/nod
 
 **Using the Dataset:**
 ```Python
-from libemg.datasets import OneSubjectMyoDataset
-dataset = NinaDB2("data/NinaDB2") #The loacation of Nina DB2 is downloaded
+from libemg.datasets import NinaproDB2
+dataset = NinaproDB2("data/NinaDB2") #The loacation of Nina DB2 is downloaded
 odh = dataset.prepare_data()
 ```
 
@@ -119,8 +122,49 @@ https://doi.org/10.1038/sdata.2014.53
 </details>
 </br>
 
+<details>
+<summary><b>Nina Pro DB8</b></summary>
+
+<br/>
+
+Note, this dataset will not be automatically downloaded. To download this dataset, please see [Nina DB8](http://ninapro.hevs.ch/DB8). Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors. 
+
+<br/>
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Subjects:**      | 12       |
+| **Num Reps:**      | 20 Training, 2 Testing |
+| **Time Per Rep:**      | 6-9s      |
+| **Classes:**       | 9 [Nina Pro DB8](http://ninapro.hevs.ch/DB8)    |
+| **Device:**        | Delsys        |
+| **Sampling Rates:** | EMG (1111 Hz)        |
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import NinaproDB8
+dataset = NinaproDB8("data/NinaDB8") #The loacation of Nina DB8 is downloaded
+odh = dataset.prepare_data()
+```
+
+**References:**
+```
+AUTHOR=Krasoulis Agamemnon, Vijayakumar Sethu, Nazarpour Kianoush
+TITLE=Effect of User Practice on Prosthetic Finger Control With an Intuitive Myoelectric Decoder  
+JOURNAL=Frontiers in Neuroscience     
+VOLUME=13      
+YEAR=2019   
+URL=https://www.frontiersin.org/articles/10.3389/fnins.2019.00891     
+DOI=10.3389/fnins.2019.00891    	
+ISSN=1662-453X   
+```
+-------------
+
+</details>
+</br>
+
 # Offline Data Handler 
-One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are either .csv or .txt, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset's file and folder structure. These expressions can be used to create a dictionary that is passed to the OfflineDataHandler. Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: `dataset/train/R_1_C_1_EMG.csv` where R is the rep and C is the class.
+One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are either .csv or .txt files, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset's file and folder structure. These expressions can be used to create a dictionary that is passed to the OfflineDataHandler. Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: `dataset/train/R_1_C_1_EMG.csv` where R is the rep and C is the class.
 
 <details>
 <summary><b>Example Code</b></summary>
@@ -175,4 +219,4 @@ odh.start_listening()
 # Proceed with the rest of the pipeline... 
 ```
 
-** For more information on the default streamers and creating your own, please reference the Supported Hardware section. ** 
+**For more information on the default streamers and creating your own, please reference the Supported Hardware section.** 

@@ -28,7 +28,7 @@ If selecting EMG hardware for real-time use, wireless armbands that sample above
 | <center>Hardware</center> | <center>Function</center> | <center>Image</center> |
 | ------------- | ------------- | ------------- |
 | Myo Armband  | `myo_streamer()`  | <div class="device_img">![](devices/Myo.png) </div>|
-| Delsys  | `delsys_streamer()` | <div class="device_img_2">![](devices/delsys.png) </div>|
+| Delsys  | `delsys_streamer()` | <div class="device_img_2">![](devices/delsys_trigno.png) </div>|
 | SIFI Cuff | `sifi_streamer()` | <div class="device_img">![](devices/sifi.png) </div>|
 
 <center> <p>Table 1: The list of all implemented streamers.</p> </center>

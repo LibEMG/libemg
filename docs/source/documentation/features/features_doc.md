@@ -1,6 +1,6 @@
-Due to the stochastic and transient nature of the EMG signal, the raw EMG signal provides little information. As such, hand-crafted features are extracted from the underlying signal to increase its information density before being passed to the machine learning model. These features are extracted from windows (i.e., a predefined number of samples) of EMG. The selection of features (or feature sets) is essential for robust control systems.
+Due to the stochastic and transient nature of the EMG signal, the raw signal provides little information. As such, hand-crafted features are extracted from the underlying signal to increase its information density before being passed to the machine learning model. These features are extracted from windows (i.e., a predefined number of samples) of EMG. The selection of features (or feature sets) is essential for robust control systems.
 
-This module aims to simplify the feature extraction stage for developers. We have included a number of features from the literature that we have robustly tested and validated. The following code snippet exemplifies how simple feature extraction from raw EMG is leveraging this module:
+This module aims to simplify the feature extraction stage for developers. We have included a number of features from the literature that we have robustly tested and validated. The following code snippet exemplifies how to extract features from raw EMG:
 
 <details>
 <summary><b>Example Code</b></summary>
@@ -30,7 +30,7 @@ features_2 = fe.extract_feature_group('HTD', windows)
 **Note that some features have parameters that must be tuned for a particular problem and hardware implementation.**
 
 # Feature Performance
-Each of the ~50 features that were implemented was tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Do not discount their value when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.
+Each of the ~50 features that were implemented were tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Their value shouldn't be discounted when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.
 
 
 ![alt text](feature_accuracies.png)
@@ -470,7 +470,7 @@ $
 Mean logarithm kernel is the log representation of the average absolute value of the signal.
 
 $
-\text{MLK} = \fraC{log \sum |x|}{N}
+\text{MLK} = \frac{log \sum |x|}{N}
 $
 
 
@@ -487,7 +487,7 @@ Parseval's theorem. Interestingly, the Gabor frequency tells us that the number 
 using 1/pi * mobility.
 
 $
-\text{MOB} = \sqrt{\frac{m2,m0}}
+\text{MOB} = \sqrt{\frac{m2}{m0}}
 $
 
 ## **Complexity (COMP)** 
@@ -496,7 +496,7 @@ Parseval's theorem. It is a measure of the the similarity of the shape of a sign
 tells us the number of zero crossings per unit time, the derivative of this metric gives us the number of extrema per unit time.
 
 $
-\text{COMP} = \sqrt{\frac{m4/m2}}
+\text{COMP} = \sqrt{\frac{m4}{m2}}
 $
 
 # Feature Sets
