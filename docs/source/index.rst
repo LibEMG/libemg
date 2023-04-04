@@ -41,6 +41,7 @@ LibEMG
 
    examples/simple_offline_example/simple_offline_example
    examples/features_and_group_example/features_and_group_example
+   examples/feature_optimization_example/feature_optimization_example
    examples/deep_learning_example/deep_learning_example
    
 .. toctree::
