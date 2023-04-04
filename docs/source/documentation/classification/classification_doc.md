@@ -1,5 +1,5 @@
 # Classifiers
-After recording, processing, and extracting features from a window of EMG data, it is passed to a machine learning algorithm for classification. These control systems have evolved in the prosthetics community for continuously classifying muscular contractions for enabling prosthesis control. Therefore,they are primarily limited to recognizing static contractions (i.e., hand close) as they have no temporal awareness. Currently, this is the form of recognition supported by LibEMG and is an initial step to explore EMG as an interaction opportunity for general-purpose use. This section highlights the machine-learning strategies that are part of LibEMG's pipeline. Additionally, a number of post-processing methods (i.e., techniques to improve performance after classification) are explored.
+After recording, processing, and extracting features from a window of EMG data, it is passed to a machine learning algorithm for classification. These control systems have evolved in the prosthetics community for continuously classifying muscular contractions for enabling prosthesis control. Therefore, they are primarily limited to recognizing static contractions (e.g., hand open/close and wrist flexion/extension) as they have no temporal awareness. Currently, this is the form of recognition supported by LibEMG and is an initial step to explore EMG as an interaction opportunity for general-purpose use. This section highlights the machine-learning strategies that are part of LibEMG's pipeline. Additionally, a number of post-processing methods (i.e., techniques to improve performance after classification) are explored.
 
 ## Statistical Models
 
@@ -32,7 +32,7 @@ classifier.fit(rf_custom_classifier, data_set)
 ```
 
 ### Linear Discriminant Analysis (LDA)
-A statistical linear boundary is used to discriminate between inputs. A commonly used classifier for EMG-based recognition.
+A linear classifier that uses common covariances for all classes and assumes a normal distribution.
 ```Python
 classifier = EMGClassifier()
 classifier.fit('LDA', data_set)
@@ -74,7 +74,7 @@ classifier.fit('RF', data_set)
 Check out the RF docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html)
 
 ### Quadratic Discriminant Analysis (QDA)
-A statistical quadratic boundary is used to discriminate between inputs.
+A quadratic classifier that uses class-specific covariances and assumes normally distributed classes.
 ```Python
 classifier = EMGClassifier()
 classifier.fit('QDA', data_set)
@@ -82,7 +82,7 @@ classifier.fit('QDA', data_set)
 Check out the QDA docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html)
 
 ### Gaussian Naive Bayes (NB)
-Similar to LDA, but has a more simplistic model of class covariances. 
+Assumes independence of all input features and normally distributed classes.
 ```Python
 classifier = EMGClassifier()
 classifier.fit('NB', data_set)

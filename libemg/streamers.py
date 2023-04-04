@@ -117,7 +117,7 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
     delsys_ip: string (optional), default='localhost'
         The ip that the Delsys is streaming over.
     channel_list: list, default=[0,1,2,3,4,5,6,7].
-        The channels that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
+        The channels (i.e., electrodes) that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
 
     Examples
     ---------

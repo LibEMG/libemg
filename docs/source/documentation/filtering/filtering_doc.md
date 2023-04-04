@@ -3,7 +3,7 @@ The EMG signal is inherently noisy, meaning it must be filtered before it is pas
 - **Powerline Interference:** 50/60 Hz noise, caused by proximity to wired electronic devices.
 - **Motion Artifact:** <20 Hz noise, caused by the movement of the limb and, correspondingly, measurement equipment, changing the contact characteristics between the electrodes and the skin.
 
-It is also important to note that many hardware devices (such as the Myo and Delsys) have the option for built-in filtering.
+**Note that many hardware devices (such as the Myo and Delsys) have the option for built-in filtering.**
 
 By creating a dictionary with the filter parameters including:
 - **name:** The name of the filter.
@@ -21,7 +21,7 @@ filter_dictionary={ "name": "highpass", "cutoff": 20, "order":2}
 
 These filters can be applied on the Offline or Online Data Handler.
 
-# Offline Data (Filtering)
+# Filtering Offline Data
 It is often desirable to filter offline data to clean them up or for better recognition performance. The filtering module can be used directly on the OfflineDataHandler or a list of EMG data through the `.filter()` function. After installing the filters on the Filter class, simply just pass in the data and the filtering will be applied. 
 
 ```Python
@@ -45,7 +45,7 @@ It is often desirable to filter offline data to clean them up or for better reco
 <center> <p> Figure 2: TODO </p> </center> -->
 <!-- I couldn't style this well, feel free to give it a shot. -->
 
-# Online Data (Filtering)
+# Filtering Online Data
 Filters can be installed on the OnlineDataHandler, before starting the process to filter real-time (i.e., live) data. These filters are then passed through the rest of the pipeline, for example, to the Training UI or the OnlineEMGClassifier.
 
 ```Python

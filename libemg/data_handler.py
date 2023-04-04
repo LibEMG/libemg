@@ -346,7 +346,7 @@ class OnlineDataHandler(DataHandler):
     emg_arr: bool (optional): default = True
         If True, all data acquired over the UDP port will be written to an array object that can be accessed.
     max_buffer: int (optional): default = None
-        The buffer for the raw data array. This should be set for visualizatons to reduce latency. 
+        The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
     """
     def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, max_buffer=None):
         self.port = port 
@@ -377,7 +377,8 @@ class OnlineDataHandler(DataHandler):
         self.listener.terminate()
         
     def install_filter(self, fi):
-        """Install a filter to be used on the online stream of data
+        """Install a filter to be used on the online stream of data.
+        
         Parameters
         ----------
         fi: libemg.filter object
@@ -404,9 +405,8 @@ class OnlineDataHandler(DataHandler):
         (2) resolution
         (3) min val
         (4) max val
-        (5) time between samples
-        (6) repeating values
-        (7) number of channels
+        (5) repeating values
+        (6) number of channels
 
         Parameters
         ----------
