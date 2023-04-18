@@ -405,9 +405,9 @@ class OnlineEMGClassifier:
         The number of samples that advances before next window.
     online_data_handler: OnlineDataHandler
         An online data handler object.
-    features: list
+    features: list or None
         A list of features that will be extracted during real-time classification. These should be the 
-        same list used to train the model.
+        same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
     parameters: dict (optional)
         A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
         in the sklearn docs for the given model.
@@ -476,10 +476,14 @@ class OnlineEMGClassifier:
             if len(data) >= self.window_size:
                 # Extract window and predict sample
                 window = get_windows(data, self.window_size, self.window_size)
-                features = fe.extract_features(self.features, window, self.classifier.feature_params)
-                formatted_data = self._format_data_sample(features)
+                # Dealing with the case for CNNs when no features are used
+                if self.features:
+                    features = fe.extract_features(self.features, window, self.classifier.feature_params)
+                    classifier_input = self._format_data_sample(features)
+                else:
+                    classifier_input = window
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                prediction, probability = self.classifier._prediction_helper(self.classifier.classifier.predict_proba(formatted_data))
+                prediction, probability = self.classifier._prediction_helper(self.classifier.classifier.predict_proba(classifier_input))
                 prediction = prediction[0]
                 probability = probability[0]
 
