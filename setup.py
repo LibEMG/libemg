@@ -20,7 +20,7 @@ setup(
     #long_description=long_description,
     packages=find_packages(),
     install_requires=["numpy", "scipy", "scikit-learn", "pillow", "matplotlib",
-    "librosa", "wfdb"],
+    "librosa", "wfdb","pyserial"],
     keywords=['emg','feature_extraction','pattern_recognition'],
     classifiers=[
         "Development Status :: 1 - Planning",
