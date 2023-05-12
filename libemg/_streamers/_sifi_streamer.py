@@ -18,7 +18,7 @@ class SiFiLabServer:
         transpose = np.transpose(p_samples)
         for row in transpose:
             emg_arr = pickle.dumps(list(row))
-            self.stream_sock.sendto(emg_arr, ('127.0.0.1', 12345))
+            self.stream_sock.sendto(emg_arr, (self.stream_ip, self.stream_port))
 
     # 0 - Quat W; 1 - Quat X; 2 - Quat Y; 3 - Quat Z; 4 - Accel X; 5 - Accel Y; 6 - Accel z;
     def manageIMUdata(self, p_samples):

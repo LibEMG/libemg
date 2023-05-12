@@ -6,6 +6,7 @@ from multiprocessing import Process
 from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
+from libemg._streamers._oymotion_streamer import OyMotionStreamer
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
     """Streams EMG from a test file over UDP.
@@ -133,3 +134,33 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
     p = Process(target=delsys.start_stream, daemon=True)
     p.start()
     return p
+
+
+def oymotion_streamer(ip='127.0.0.1', port=12345):
+    """The UDP streamer for the oymotion armband. 
+
+    This function connects to the oymotion and streams its data over UDP. It leverages the gforceprofile 
+    library. Note: this version requires the dongle to be plugged in. Note, you should run this with sudo
+    and using sudo -E python to preserve your environment.
+
+    Parameters
+    ----------
+    filtered: bool (optional), default=True
+        If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> oymotion_streamer()
+    """
+    oym = OyMotionStreamer(ip, port)
+    # p = Process(target=oym.start_stream, daemon=True)
+    # p.start()
+    oym.start_stream()
+    return 0
+    # start_stream()
+
+
