@@ -320,7 +320,7 @@ class EMGClassifier:
     def _get_velocity(self, window, c):
         if self.th_max_dic and self.th_min_dic:
             velocity_output = (np.sum(np.mean(np.abs(window),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
-            return '{0:.2f}'.format(max([velocity_output, 0]))
+            return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
     def _set_up_velocity_control(self, train_windows, train_labels):
         # Extract classes 
