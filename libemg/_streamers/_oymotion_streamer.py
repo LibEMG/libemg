@@ -66,8 +66,10 @@ class OyMotionStreamer():
         GF.startDataNotification(ondata)
 
 ## BEGIN HARDWARE SPECIFIC CONFIG
-from bluepy import btle
-from bluepy.btle import DefaultDelegate, Scanner, Peripheral
+import platform
+if platform.system() == 'Linux':
+    from bluepy import btle
+    from bluepy.btle import DefaultDelegate, Scanner, Peripheral
 from datetime import datetime, timedelta
 import struct
 from enum import Enum
@@ -285,32 +287,32 @@ class CommandCallbackTableEntry():
         self._timeoutTime = _timeoutTime
         self._cb = _cb
 
+if platform.system() == 'Linux':
+    class MyDelegate(btle.DefaultDelegate):
+        def __init__(self, gforce):
+            super().__init__()
+            self.gforce = gforce
+            self.bluepy_thread = threading.Thread(target=self.bluepy_handler)
+            self.bluepy_thread.setDaemon(True)
+            self.bluepy_thread.start()
 
-class MyDelegate(btle.DefaultDelegate):
-    def __init__(self, gforce):
-        super().__init__()
-        self.gforce = gforce
-        self.bluepy_thread = threading.Thread(target=self.bluepy_handler)
-        self.bluepy_thread.setDaemon(True)
-        self.bluepy_thread.start()
+        def bluepy_handler(self):
+            while True:
+                if not self.gforce.send_queue.empty():
+                    cmd = self.gforce.send_queue.get_nowait()
+                    self.gforce.cmdCharacteristic.write(cmd)
+                self.gforce.device.waitForNotifications(1)
 
-    def bluepy_handler(self):
-        while True:
-            if not self.gforce.send_queue.empty():
-                cmd = self.gforce.send_queue.get_nowait()
-                self.gforce.cmdCharacteristic.write(cmd)
-            self.gforce.device.waitForNotifications(1)
+        def handleNotification(self, cHandle, data):
+            # check cHandle
+            #        self.gforce.lock.acquire()
+            if cHandle == self.gforce.cmdCharacteristic.getHandle():
+                self.gforce._onResponse(data)
 
-    def handleNotification(self, cHandle, data):
-        # check cHandle
-        #        self.gforce.lock.acquire()
-        if cHandle == self.gforce.cmdCharacteristic.getHandle():
-            self.gforce._onResponse(data)
-
-        # check cHandle
-        if cHandle == self.gforce.notifyCharacteristic.getHandle():
-            self.gforce.handleDataNotification(data, self.gforce.onData)
-        # self.gforce.lock.release()
+            # check cHandle
+            if cHandle == self.gforce.notifyCharacteristic.getHandle():
+                self.gforce.handleDataNotification(data, self.gforce.onData)
+            # self.gforce.lock.release()
 
 
 class GForceProfile():
