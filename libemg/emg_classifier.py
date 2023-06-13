@@ -476,9 +476,14 @@ class OnlineEMGClassifier:
             if len(data) >= self.window_size:
                 # Extract window and predict sample
                 window = get_windows(data, self.window_size, self.window_size)
+
                 # Dealing with the case for CNNs when no features are used
                 if self.features:
                     features = fe.extract_features(self.features, window, self.classifier.feature_params)
+                    # If extracted features has an error - give error message
+                    if (fe.check_features(features) != 0):
+                        self.raw_data.adjust_increment(self.window_size, self.window_increment)
+                        continue
                     classifier_input = self._format_data_sample(features)
                 else:
                     classifier_input = window
