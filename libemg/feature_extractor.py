@@ -154,8 +154,6 @@ class FeatureExtractor:
             violations = self._check_dict_features(features)
         elif type(features) == np.ndarray:
             violations = self._check_ndarray_features(features)
-        if violations == 0:
-            print("No invalid values across all features")
         return violations
 
     def _check_dict_features(self, features):
