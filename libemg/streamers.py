@@ -41,7 +41,7 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
     data = np.loadtxt(file_path, delimiter=",")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     index = 0
-    while True and index < len(data):
+    while index < len(data):
         val = time.time() + (1000/sampling_rate)/1000
         while time.time() < val:
             pass
