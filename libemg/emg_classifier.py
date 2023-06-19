@@ -481,6 +481,7 @@ class OnlineEMGClassifier:
         
         (1) Time Between Prediction (Average): The average time between subsequent predictions.
         (2) STD Between Predictions (Standard Deviation): The standard deviation between predictions. 
+        (3) Total Number of Predictions: The number of predictions that were made. Sometimes if the increment is too small, samples will get dropped and this may be less than expected.  
         """
         print("Starting analysis of classifier " + "(" + str(analyze_time) + "s)...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -494,6 +495,7 @@ class OnlineEMGClassifier:
         times = np.diff(times)
         print("Time Between Predictions (Average): " + str(np.mean(times)) + 's')
         print("Time Between Predictions (STD): " + str(np.std(times)) + 's')
+        print("Total Number of Predictions: " + str(len(times) + 1))
         self.stop_running()
     
     def _run_helper(self):
