@@ -467,15 +467,43 @@ class OnlineEMGClassifier:
         """
         self.process.terminate()
 
+    def analyze_classifier(self, analyze_time=10, port=12346, ip='127.0.0.1'):
+        """Analyzes the latency of the designed classifier. 
+
+        Parameters
+        ----------
+        analyze_time: int (optional), default=10 (seconds)
+            The time in seconds that you want to analyze the device for. 
+        port: int (optional), default = 12346
+            The port used for streaming predictions over UDP.
+        ip: string (optional), default = '127.0.0.1'
+            The ip used for streaming predictions over UDP.
+        
+        (1) Time Between Prediction (Average): The average time between subsequent predictions.
+        (2) STD Between Predictions (Standard Deviation): The standard deviation between predictions. 
+        """
+        print("Starting analysis of classifier " + "(" + str(analyze_time) + "s)...")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        sock.bind((ip, port))
+        st = time.time()
+        times = []
+        while(time.time() - st < analyze_time):
+            data, _ = sock.recvfrom(1024)
+            if data:
+                times.append(time.time())
+        times = np.diff(times)
+        print("Time Between Predictions (Average): " + str(np.mean(times)) + 's')
+        print("Time Between Predictions (STD): " + str(np.std(times)) + 's')
+        self.stop_running()
+    
     def _run_helper(self):
-        # TODO: enable deep learning classifiers that don't operate on features
         fe = FeatureExtractor()
         self.raw_data.reset_emg()
         while True:
-            data = self._get_data_helper()
-            if len(data) >= self.window_size:
+            if len(self.raw_data.get_emg()) >= self.window_size:
+                data = self._get_data_helper()
                 # Extract window and predict sample
-                window = get_windows(data, self.window_size, self.window_size)
+                window = get_windows(data[-self.window_size:][:], self.window_size, self.window_size)
 
                 # Dealing with the case for CNNs when no features are used
                 if self.features:

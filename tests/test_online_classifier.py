@@ -31,7 +31,7 @@ def test_emg_classifier():
     }
     odh = OfflineDataHandler()
     odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
-    
+
     windows, metadata = odh.parse_windows(50,25)
     test_data = np.loadtxt("tests/data/stream_data_tester.csv", delimiter=",")
     test_windows = get_windows(test_data, 50,25)
@@ -39,22 +39,19 @@ def test_emg_classifier():
     fe = FeatureExtractor()
 
     data_set = {}
-    
+
     data_set['training_features'] = fe.extract_feature_group('HTD', windows)
     data_set['training_labels'] = metadata['classes']
-    data_set['testing_features'] = fe.extract_feature_group('HTD', test_windows)
-    data_set['testing_labels'] = []
+    testing_features = fe.extract_feature_group('HTD', test_windows)
 
     off_class = EMGClassifier()
     off_class.fit("LDA", data_set.copy())
-    offline_preds = off_class.run()
+    offline_preds, _ = off_class.run(test_data=testing_features)
 
     online_data_handler = OnlineDataHandler(emg_arr=True)
     online_data_handler.start_listening()
 
-    online_classifier = OnlineEMGClassifier("LDA",
-                                            data_set.copy(),
-                                            num_channels=8,
+    online_classifier = OnlineEMGClassifier(off_class,
                                             window_size=50,
                                             window_increment=25,
                                             online_data_handler=online_data_handler,
