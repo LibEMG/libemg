@@ -105,13 +105,18 @@ class EMGClassifier:
         return classifier
 
  
-    def run(self, test_data):
+    def run(self, test_data, fix_feature_errors=False, silent=False):
         """Runs the classifier on a pre-defined set of training data.
 
         Parameters
         ----------
         test_data: list
             A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
+        fix_feature_errors: bool (default=False)
+            If True, the classifier will update any feature erros (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
+
         Returns
         ----------
         list
@@ -121,8 +126,14 @@ class EMGClassifier:
         """
         if type(test_data) == dict:
             test_data = self._format_data(test_data)
-        prob_predictions = self.classifier.predict_proba(test_data)
         
+        # Remove any faulty values from test_data (these may have occured from feature extraction e.g., NANs)
+        if fix_feature_errors:
+            if FeatureExtractor().check_features(test_data, silent):
+                test_data = np.nan_to_num(test_data, neginf=0, nan=0, posinf=0) 
+        
+        prob_predictions = self.classifier.predict_proba(test_data)
+            
         # Default
         predictions, probabilities = self._prediction_helper(prob_predictions)
 

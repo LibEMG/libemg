@@ -127,7 +127,7 @@ class OfflineDataHandler(DataHandler):
                         metadata_column = np.expand_dims(column,1)
                     setattr(self, k, getattr(self,k)+[metadata_column])
     
-    def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, class_attribute="class"):
+    def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
 
         Parameters
@@ -142,6 +142,8 @@ class OfflineDataHandler(DataHandler):
             The number of standard deviations away from the no motion class that are relabeled.
         nm_label: int
             The class label associated with the no motion class.
+        silent: bool (default=True)
+            If False, it will print out the number of active windows that were relabeled.
         """
         num_relabeled = 0
         fe = FeatureExtractor()
@@ -157,7 +159,8 @@ class OfflineDataHandler(DataHandler):
             if np.mean(a_mavs[i]) < nm_mav_mean + num_std * nm_mav_std:
                 active_labels[i] = nm_label
                 num_relabeled += 1
-        print(f"{num_relabeled} of {len(active_labels)} active class windows were relabelled to no motion.")
+        if not silent:
+            print(f"{num_relabeled} of {len(active_labels)} active class windows were relabelled to no motion.")
         return active_labels
     
     def parse_windows(self, window_size, window_increment):
