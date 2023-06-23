@@ -136,13 +136,15 @@ class FeatureExtractor:
             
         return features
 
-    def check_features(self, features):
+    def check_features(self, features, silent=False):
         """Assesses a features object for np.nan, np.inf, and -np.inf. Can be used to check for clean data. 
         
         Parameters
         ----------
         features: np.ndarray or dict
             A group of features extracted with the feature extraction package in either dictionary or np.ndarray format
+        silent: bool (default=False)
+            If True, will silence all prints from this function.
         
         Returns
         ----------
@@ -150,13 +152,14 @@ class FeatureExtractor:
             A number of violations found within the data. This is the number of types of violations (nan, inf, -inf) per feature
             summed across all features. Returning 0 indicates that the features contain no invalid elements.
         """
+        violations = 0
         if type(features) == dict:
-            violations = self._check_dict_features(features)
+            violations = self._check_dict_features(features, silent)
         elif type(features) == np.ndarray:
-            violations = self._check_ndarray_features(features)
+            violations = self._check_ndarray_features(features, silent)
         return violations
 
-    def _check_dict_features(self, features):
+    def _check_dict_features(self, features, silent=False):
         """A helper function that assesses specifically dictionary of np.ndarrays (what is returned from the feature extraction module)
         Parameters
         ----------
@@ -175,16 +178,19 @@ class FeatureExtractor:
         for fk in feature_list:
             if (features[fk] == np.nan).any():
                 violations += 1
-                print(f"nan in  feature {fk}.")
+                if not silent:
+                    print(f"nan in  feature {fk}.")
             if (features[fk] == np.inf).any():
                 violations += 1
-                print(f"inf in feature {fk}.")
+                if not silent:
+                    print(f"inf in feature {fk}.")
             if (features[fk] == -1*np.inf).any():
                 violations += 1
-                print(f"-inf in feature {fk}.")
+                if not silent:
+                    print(f"-inf in feature {fk}.")
         return violations
 
-    def _check_ndarray_features(self, features):
+    def _check_ndarray_features(self, features, silent=False):
         """A helper function that assesses np.ndarrays directly.
         Parameters
         ----------
@@ -201,13 +207,16 @@ class FeatureExtractor:
         violations = 0
         if (features == np.nan).any():
             violations += 1
-            print(f"nan in  features.")
+            if not silent:
+                print(f"nan in  features.")
         if (features == np.inf).any():
             violations += 1
-            print(f"inf in features.")
+            if not silent:
+                print(f"inf in features.")
         if (features == -1*np.inf).any():
             violations += 1
-            print(f"-inf in features.")
+            if not silent:
+                print(f"-inf in features.")
         return violations
 
     '''
