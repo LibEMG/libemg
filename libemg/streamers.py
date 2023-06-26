@@ -7,6 +7,7 @@ from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._oymotion_streamer import OyMotionStreamer
+from libemg._streamers._emager_streamer import EmagerStreamer
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
     """Streams EMG from a test file over UDP.
@@ -164,3 +165,24 @@ def oymotion_streamer(ip='127.0.0.1', port=12345):
     # start_stream()
 
 
+
+def emager_streamer(ip='127.0.0.1', port=12345):
+    """The UDP streamer for the emager armband. 
+
+    This function connects to the emager cuff and streams its data over UDP.
+
+    Parameters
+    ----------
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> emager_streamer()
+    """
+    ema = EmagerStreamer(ip, port)
+    p = Process(target=ema.start_stream, daemon=True)
+    p.start()
+    return p
