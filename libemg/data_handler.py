@@ -127,41 +127,41 @@ class OfflineDataHandler(DataHandler):
                         metadata_column = np.expand_dims(column,1)
                     setattr(self, k, getattr(self,k)+[metadata_column])
     
-    def active_threshold(self, num_std=1.5, nm_label=0, class_attribute="class"):
-        """Replaces class labels with the no motion label when amplitude is outside of the no motion range. This is
-        an in-place operation on the offline data handler. This is especially useful for re-labeling ramp training data.
+    def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
+        """Returns an update label list of the active labels for a ramp contraction.
 
         Parameters
         ----------
-        num_std: float
-            The number of standard deviations that must be exceeded (from no motion) to be considered an active class.
+        nm_windows: list
+            The no motion windows that are used to establish the threshold. 
+        active_windows: list
+            The active windows that should be thresholded. 
+        active_labels: list
+            The active window labels that need to be updated.
+        num_std: int (default=3)
+            The number of standard deviations away from the no motion class that are relabeled.
         nm_label: int
             The class label associated with the no motion class.
-        class_attribute: string
-            The key used in the dictionary for classes when the dataset was constructed. This should exist in 
-            the extra_attributes of the offline data handler.
+        silent: bool (default=True)
+            If False, it will print out the number of active windows that were relabeled.
         """
-        # get the mean and std of channel amplitudes for nm class
-        assert class_attribute in self.extra_attributes
-        for data, labels in zip(self.data, getattr(self, class_attribute)):
-            nm_ids = (labels == nm_label).reshape(-1)
-            new_mavs = np.mean(np.abs(data[nm_ids,:]),axis=1)# mean across channels
-            nm_mavs = np.concatenate((nm_mavs, new_mavs)) if "nm_mavs" in locals() else new_mavs
-        nm_mav_mean = np.mean(nm_mavs)
-        nm_mav_std  = np.std(nm_mavs)
-        # act on the data, replacing all class labels that don't exceed the threshold
-        class_copy = getattr(self, class_attribute)
-        num_relabel = 0
-        total_samples = 0
-        for i, (data, labels) in enumerate(zip(self.data, getattr(self, class_attribute))):
-            nm_labels = labels == nm_label
-            mavs = np.mean(np.abs(data),axis=1)
-            relabel_ids = mavs < nm_mav_mean + num_std * nm_mav_std
-            num_relabel += sum(relabel_ids) - sum(nm_labels) # only count changed from active -> nm
-            total_samples += relabel_ids.shape[0] - sum(nm_labels) # only count changes from active -> nm
-            class_copy[i][relabel_ids] = nm_label
-        setattr(self, class_attribute, class_copy)
-        print(f"{num_relabel} of {total_samples} active class samples were relabelled to no motion.")
+        num_relabeled = 0
+        fe = FeatureExtractor()
+
+        # Get mean and STD of no motion
+        nm_mavs = fe.extract_features(['MAV'], nm_windows)['MAV']
+        nm_mean = np.mean(nm_mavs, axis=1)
+        nm_mav_mean = np.mean(nm_mean)
+        nm_mav_std = np.std(nm_mean)
+
+        a_mavs = fe.extract_features(['MAV'], active_windows)['MAV']
+        for i in range(0,len(a_mavs)):
+            if np.mean(a_mavs[i]) < nm_mav_mean + num_std * nm_mav_std:
+                active_labels[i] = nm_label
+                num_relabeled += 1
+        if not silent:
+            print(f"{num_relabeled} of {len(active_labels)} active class windows were relabelled to no motion.")
+        return active_labels
     
     def parse_windows(self, window_size, window_increment):
         """Parses windows based on the acquired data from the get_data function.
