@@ -131,6 +131,9 @@ class OfflineMetrics:
         valid_samples = y_predictions != -1
         y_predictions = y_predictions[valid_samples]
         y_true        = y_true[valid_samples]
+        if len(y_true) == 0:
+            print("No test samples - check the rejection rate.")
+            return 1.0
         return sum(y_predictions == y_true)/len(y_true)
 
     def get_AER(self, y_true, y_predictions, null_class):
