@@ -2,7 +2,9 @@ import math
 import numpy as np
 import numpy.matlib as matlib
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, KernelPCA, FastICA
+from sklearn.manifold import TSNE, Isomap
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 
@@ -85,7 +87,18 @@ class FeatureExtractor:
                         "MOB",
                         "COMP"]
         return feature_list
-    
+        
+    def get_projection_list(self):
+        """Gets a list of all available feature projections.
+        
+        Returns
+        ----------
+        list
+            A list of all available projections.
+        """
+        projection_list = ['pca', 'kernelpca', 'ica', 'lda', 'tsne', 'isomap']
+        return projection_list
+
     def extract_feature_group(self, feature_group, windows, feature_dic={}):
         """Extracts a group of features.
         
@@ -1459,7 +1472,7 @@ class FeatureExtractor:
             if render:
                 plt.show()
 
-    def visualize_feature_space(self, feature_dic, projection, classes=None, savedir=None, render=True, test_feature_dic=None, t_classes=None, normalize=True):
+    def visualize_feature_space(self, feature_dic, projection, classes=None, savedir=None, render=True, test_feature_dic=None, t_classes=None, normalize=True, projection_params=None):
         """Visualize the the feature space through a certain projection.
         
         Parameters
@@ -1479,58 +1492,154 @@ class FeatureExtractor:
             The classes for each window of testing data.
         normalize: boolean
             Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
+        projection_params: dict
+            Extra parameters taken by the projection method.
         """
-        for i, k in enumerate(feature_dic.keys()):
-            feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
-            if test_feature_dic is not None:
-                t_feature_matrix = test_feature_dic[k] if i == 0 else np.hstack((t_feature_matrix, test_feature_dic[k]))
-        
-        # normalization
-        if normalize:
-            feature_means = np.mean(feature_matrix, axis=0)
-            feature_stds  = np.std(feature_matrix, axis=0)
-            feature_matrix = (feature_matrix - feature_means) / feature_stds
 
-        if test_feature_dic is not None:
-            t_feature_matrix = (t_feature_matrix - feature_means)/feature_stds
+        if projection.lower() in self.get_projection_list():
+            for i, k in enumerate(feature_dic.keys()):
+                feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
+                if test_feature_dic is not None:
+                    t_feature_matrix = test_feature_dic[k] if i == 0 else np.hstack((t_feature_matrix, test_feature_dic[k]))
+                else :
+                    t_feature_matrix = None
+            
+            # normalization
+            if normalize:
+                feature_means = np.mean(feature_matrix, axis=0)
+                feature_stds  = np.std(feature_matrix, axis=0)
+                feature_matrix = (feature_matrix - feature_means) / feature_stds
+                if test_feature_dic is not None:
+                    t_feature_matrix = (t_feature_matrix - feature_means)/feature_stds
 
-        if classes is not None:
-            class_list = np.unique(classes)
-        fig, ax = plt.subplots(1,2,figsize=(8,4))
-        if projection == "PCA":
-            pca = PCA(n_components=feature_matrix.shape[1])
-            train_data = pca.fit_transform(feature_matrix)
+
+            projection_engine = self.__build_projection(projection, feature_matrix.shape[1],  projection_params)
+            train_data, test_data = self.__project_data(projection, projection_engine, feature_matrix, classes, t_feature_matrix)
+
+            fig, ax = plt.subplots()
             if classes is not None:
+                class_list = np.unique(classes)
                 for c in class_list:
                     class_ids = classes == c
-                    ax[0].scatter(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)))
+                    ax.scatter(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)))
             else:
-                ax[0].scatter(train_data[:,0], train_data[:,1], marker=".", label="tr")
-            ax[0].set_prop_cycle(None)
+                ax.scatter(train_data[:,0], train_data[:,1], marker=".", label="tr", color='black', alpha=0.75)
+            ax.set_prop_cycle(None)
+
             if test_feature_dic is not None:
-                test_data = pca.transform(t_feature_matrix)
                 if t_classes is not None:
-                    for c in class_list:
+                    t_class_list = np.unique(t_classes)
+                    for c in t_class_list:
                         class_ids = t_classes == c 
-                        ax[0].scatter(test_data[class_ids,0], test_data[class_ids,1], marker='+', alpha=0.75, label="te "+str(int(c)))
+                        ax.scatter(test_data[class_ids,0], test_data[class_ids,1], marker='+', alpha=0.75, label="te "+str(int(c)))
                 else:
-                    ax[0].scatter(test_data[:,0], test_data[:,1], marker="+", label="te")
-            
-            ax[0].legend()
-            ax[0].set_xlabel("PC1")
-            ax[0].set_ylabel("PC2")
-            ax[0].set_title("PCA Visualization")
-            ax[1].stem(np.cumsum(pca.explained_variance_ratio_))
-            ax[1].set_xlabel("Number of Components")
-            ax[1].set_ylabel("Explained Variance")
-            ax[1].set_title("Cumulative Variance Expressed by PCA")
+                    ax.scatter(test_data[:,0], test_data[:,1], marker="+", label="te", color='black', alpha=0.75)
+                
+            ax.legend()
+            ax.set_xlabel("Feature 1")
+            ax.set_ylabel("Feature 2")
+            ax.set_title("{} Visualization".format(projection.upper()))
+
+            if projection.lower() == "pca":
+                fig_pca, ax_pca = plt.subplots()
+                ax_pca.stem(np.cumsum(projection_engine.explained_variance_ratio_))
+                ax_pca.set_xlabel("Number of Components")
+                ax_pca.set_ylabel("Explained Variance")
+                ax_pca.set_title("Cumulative Variance Expressed by PCA")
 
             plt.tight_layout()
+
             if savedir is not None:
-                plt.savefig(savedir+projection+".png")
+                fig.savefig(savedir+projection+".png")
+                if projection.lower() == "pca":
+                    fig_pca.savefig(savedir+"PCA_variance.png")
             if render:
                 plt.show()
-
+                
         else:
-            print("unsupported projection method passed to FeatureExtractor.visualize_feature_space")
+            raise ValueError("Unsupported projection method passed to FeatureExtractor.visualize_feature_space")
+    
+    def __build_projection(self, projection, n_components, projection_params):
+        """Build the projection engine .
+        
+        Parameters
+        ----------
+        projection: string
+            The projection method to be used. See the get_projection_list()
+        n_components: int
+            The number of components to projected.
+        projection_params: dict
+            The parameters for the projection method.
+        
+        Returns
+        ----------
+        projection_engine: sklearn.decomposition, sklearn.manifold, sklearn.discriminant_analysis or  
+            The projection engine used.
+        """ 
+        if projection_params is None:
+            projection_params = {}
+
+        if "pca" not in projection.lower():
+            n_components = 2
+
+        if projection.lower() == "kernelpca":
+            projection_engine = KernelPCA(n_components=n_components, **projection_params)
+        elif projection.lower() == "isomap":
+            projection_engine = Isomap(n_components=n_components, **projection_params)
+        elif projection.lower() == "ica":
+            projection_engine = FastICA(n_components=n_components, **projection_params)
+        else:
+            projection_engine = eval(projection.upper()+"(n_components=n_components, **projection_params)")
+        return projection_engine
+    
+    def __project_data(self, projection, projection_engine, feature_matrix, classes, t_feature_matrix):
+        """Project the data using the projection engine.
+        
+        Parameters
+        ----------
+        projection: string
+            The projection method to be used. See the get_projection_list()
+        projection_engine: sklearn.decomposition, sklearn.manifold, sklearn.discriminant_analysis or  
+            The projection engine used.
+        feature_matrix: np.ndarray
+            The feature matrix to be projected.
+        classes: list
+            The classes for each window.
+        t_feature_matrix: np.ndarray
+            The feature matrix to be projected.
+        t_classes: list
+            The classes for each window.
+        
+        Returns
+        ----------
+        train_data: np.ndarray
+            The projected training data.
+        test_data: np.ndarray
+            The projected testing data.
+        """ 
+        train_data = None
+        test_data = None
+
+        if projection.lower() == "lda":
+            if classes is None:
+                raise ValueError("LDA requires class labels to be passed to the FeatureExtractor.visualize_feature_space method")
+            else:
+                train_data = projection_engine.fit_transform(feature_matrix, classes)
+                if t_feature_matrix is not None:
+                    test_data = projection_engine.transform(t_feature_matrix)
+            
+        elif projection.lower() == "tsne" or projection.lower() == "isomap":
+            if t_feature_matrix is not None:
+                concatened_feature_matrix = np.concatenate((feature_matrix, t_feature_matrix), axis=0)
+                projected_data = projection_engine.fit_transform(concatened_feature_matrix)
+                train_data = projected_data[0:feature_matrix.shape[0],:]
+                test_data = projected_data[feature_matrix.shape[0]:,:]
+            else :
+                train_data = projection_engine.fit_transform(feature_matrix)
+        else:
+            train_data = projection_engine.fit_transform(feature_matrix)
+            if t_feature_matrix is not None:
+                test_data = projection_engine.transform(t_feature_matrix)
+
+        return train_data, test_data
             
