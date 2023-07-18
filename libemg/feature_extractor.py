@@ -1541,7 +1541,8 @@ class FeatureExtractor:
             
             #dynamic legend based on the number of classes in the training and testing data. 
             ncol = 2*(int(n_classes//16)) if n_classes > 16 else 2
-            ax.legend(prop={'size': 8 if n_classes > 16 else 10}, ncol=ncol)
+            text_size = 8 if n_classes > 16 else 10
+            ax.legend(prop={'size': text_size}, ncol=ncol)
             ax.set_xlabel("Feature 1")
             ax.set_ylabel("Feature 2")
             ax.set_title("{} Visualization".format(projection.upper()))
