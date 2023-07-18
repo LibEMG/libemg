@@ -1519,23 +1519,29 @@ class FeatureExtractor:
             fig, ax = plt.subplots()
             if classes is not None:
                 class_list = np.unique(classes)
+                n_classes = len(class_list)
                 for c in class_list:
                     class_ids = classes == c
                     ax.scatter(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)))
             else:
-                ax.scatter(train_data[:,0], train_data[:,1], marker=".", label="tr", color='black', alpha=0.75)
+                ax.scatter(train_data[:,0], train_data[:,1], marker=".", label="tr", color='black', alpha=0.70)
+                n_classes = 1
             ax.set_prop_cycle(None)
 
             if test_feature_dic is not None:
                 if t_classes is not None:
                     t_class_list = np.unique(t_classes)
+                    n_classes += len(t_class_list)
                     for c in t_class_list:
                         class_ids = t_classes == c 
                         ax.scatter(test_data[class_ids,0], test_data[class_ids,1], marker='+', alpha=0.75, label="te "+str(int(c)))
                 else:
-                    ax.scatter(test_data[:,0], test_data[:,1], marker="+", label="te", color='black', alpha=0.75)
-                
-            ax.legend()
+                    ax.scatter(test_data[:,0], test_data[:,1], marker="+", label="te", color='black', alpha=0.70)
+                    n_classes += 1
+            
+            #dynamic legend based on the number of classes in the training and testing data. 
+            ncol = 2*(int(n_classes//16)) if n_classes > 16 else 2
+            ax.legend(prop={'size': 8 if n_classes > 16 else 10}, ncol=ncol)
             ax.set_xlabel("Feature 1")
             ax.set_ylabel("Feature 2")
             ax.set_title("{} Visualization".format(projection.upper()))
