@@ -146,7 +146,7 @@ class Ninapro(Dataset):
 
 class NinaproDB8(Ninapro):
     def __init__(self, save_dir='.', dataset_name="NinaproDB8"):
-        Ninapro.__init__(self, save_dir)
+        Ninapro.__init__(self, save_dir, dataset_name)
         self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
          "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
         self.exercise_step = [0,10,20]
