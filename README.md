@@ -5,9 +5,7 @@ The goal of this library is to provide an easy to use and feature-rich API for d
 **Authors**: Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme
 
 ## Documentation
-All documentation can be found at: [Toolbox Documentation](hhttps://eeddy.github.io/libemg/)
+All documentation can be found at: [Library Documentation](https://libemg.github.io/libemg/)
 
 ## Install 
 `pip install libemg`
-
-Note: Not yet published as part of this submission. 

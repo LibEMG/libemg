@@ -16,7 +16,7 @@ class ScreenGuidedTraining:
     By default, this module has two purposes: 
     (1) Launching a Screen Guided Training window. 
     (2) Downloading gesture sets from our library of gestures located at:
-    https://github.com/eeddy/LibEMGGestures
+    https://github.com/libemg/LibEMGGestures
     """
     def __init__(self):
         pass 
@@ -24,7 +24,7 @@ class ScreenGuidedTraining:
     def download_gestures(self, gesture_ids, folder, download_imgs=True, download_gifs=False, redownload=False):
         """
         Downloads gesture images (either .png or .gif) from: 
-        https://github.com/eeddy/LibEMGGestures.
+        https://github.com/libemg/LibEMGGestures.
         
         This function dowloads gestures using the "curl" command. 
 
@@ -32,7 +32,7 @@ class ScreenGuidedTraining:
         ----------
         gesture_ids: list
             A list of indexes corresponding to the gestures you want to download. A list of indexes and their respective 
-            gesture can be found at https://github.com/eeddy/LibEMGGestures.
+            gesture can be found at https://github.com/libemg/LibEMGGestures.
         folder: string
             The output folder where the downloaded gestures will be saved.
         download_gif: bool (optional), default=False
@@ -40,7 +40,7 @@ class ScreenGuidedTraining:
         redownload: bool (optional), default=False
             If True, all files will be re-downloaded (regardless if they are already downloaed).
         """
-        git_url = "https://raw.githubusercontent.com/eeddy/LibEMGGestures/main/"
+        git_url = "https://raw.githubusercontent.com/libemg/LibEMGGestures/main/"
         gif_folder = "GIFs/"
         img_folder = "Images/"
         json_file = "gesture_list.json"
