@@ -71,7 +71,7 @@ def test_get_feature_groups(fe):
                                     'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
                                     'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR'],
                                     'COMB': ['WL', 'SSC', 'LD', 'AR9'],     
-                                       }
+                                    'MSWT': ['WENG','WV','WWL','WENT']   }
 
 def test_get_feature_list(fe):
     assert fe.get_feature_list() == ['MAV',
@@ -118,7 +118,11 @@ def test_get_feature_list(fe):
                                     "MLK",
                                     "ACT",
                                     "MOB",
-                                    "COMP"]
+                                    "COMP",
+                                    "WENG",
+                                    "WV",
+                                    "WWL",
+                                    "WENT"]
 
 def test_all_features_normal(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
