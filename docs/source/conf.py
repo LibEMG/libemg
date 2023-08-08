@@ -18,8 +18,8 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'libemg'
-copyright = '2022, Anonymous'
-author = 'Anonymous'
+copyright = '2022'
+author = 'Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme'
 
 # The full version, including alpha/beta/rc tags
 release = '0.0.1'
@@ -56,7 +56,7 @@ exclude_patterns = []
 
 html_context = {
   'display_github': True,
-  'github_user': 'AnonSubmissions123',
+  'github_user': 'eeddy',
   'github_repo': 'libemg',
   'github_version': 'main/docs/source/',
 }

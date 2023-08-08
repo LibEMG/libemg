@@ -10,7 +10,7 @@
     }
 </style>
 
-[View Source Code](https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase)
+[View Source Code](https://github.com/eeddy/LibEMG_Snake_Showcase)
 
 # Snake Game 
 
@@ -20,11 +20,11 @@ We created an adapted version of the traditional snake game to explore a simple 
 <div class="float-container">
     <div class="container"> 
         <center><p> <b> <u> Myo </u> </b> </p></center>
-        <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/myo_game.gif?raw=true"/>
+        <img src="https://github.com/eeddy/LibEMG_Snake_Showcase/blob/main/docs/myo_game.gif?raw=true"/>
     </div>
     <div class="container"> 
     <center><p> <b> <u> Delsys </u> </b> </p></center>
-        <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/delsys.gif?raw=true"/>
+        <img src="https://github.com/eeddy/LibEMG_Snake_Showcase/blob/main/docs/delsys.gif?raw=true"/>
     </div>
 </div>
 <p> ________ </p>
@@ -110,9 +110,9 @@ def handle_emg(self):
 Now that we have shown how to leverage EMG predictions to replace traditional key presses for snake control, we need to explore the design of the continuous control system. The first step in any EMG-based control scheme is accumulating training data to train the machine learning model. The accumulation of screen-guided training data is built directly into the game using the Screen Guided Training tool. All code can be found in `game_menu.py`.
 
 <div>
-    <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
-    <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
-    <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/eeddy/LibEMG_Snake_Showcase/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+    <img src="https://github.com/eeddy/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+    <img src="https://github.com/eeddy/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
 </div>
 
 First, the required imports from libemg:
@@ -131,7 +131,7 @@ self.odh = OnlineDataHandler()
 self.odh.start_listening()
 ```
 
-When the data accumulation button is pressed the training UI menu is presented to the user. Note that using the [LibEMGGesture library](https://github.com/AnonSubmissions123/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
+When the data accumulation button is pressed the training UI menu is presented to the user. Note that using the [LibEMGGesture library](https://github.com/eeddy/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
 ```Python
 def launch_training(self):
     # Destroy the menu 
