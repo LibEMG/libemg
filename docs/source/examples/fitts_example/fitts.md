@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/AnonSubmissions123/LibEMG_Isofitts_Showcase)
+[View Source Code](https://github.com/libemg/LibEMG_Isofitts_Showcase)
 
 <style>
     .center {
@@ -17,14 +17,14 @@ This example acts as a mini experiment that you can try out on yourself or a fri
 The steps of this 'mini experiment' are as follows:
 1. **Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).** These classes correspond to movement in the isofitts task (do nothing,  and move left, right, up, and down).
     <div>
-        <img src="https://github.com/AnonSubmissions123/Isofitts/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
-        <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
-        <img src="https://github.com/AnonSubmissions123/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
+        <img src="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+        <img src="https://github.com/libemg/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+        <img src="https://github.com/libemg/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
     </div>
 2. **Train and evaluate four classifiers in an offline setting (LDA, SVM, KNN (k=5), and RF).** For this step, the first three reps are used for training and the last two for testing. 
 3. **Perform an Iso Fitts test to evaluate the online usability of each classifier trained in step 2.** These fitts law tests are useful for computing throughput, overshoots, and efficiency. Ultimately, these metrics provide an indication of the online usability of a model. The Iso Fitts test is useful for myoelectric control systems as it requires changes in degrees of freedom to complete sucessfully.
    
-    <img src="https://github.com/AnonSubmissions123/Isofitts/blob/main/docs/isofitts.PNG?raw=true" class="center"/>
+    <img src="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/isofitts.PNG?raw=true" class="center"/>
 
 **Note:** We have made this example to work with the `Myo Armband`. However, it can easily be used for any hardware by simply switching the `streamer`, `WINDOW_SIZE`, and `INCREMENT`.
 
@@ -192,4 +192,4 @@ return offline_metric
 There are clear discrepancies between offline and online metrics. For example, RF outperforms LDA in the offline analysis, but it is clear in the online test that it is much worse. This highlights the need to evaluate EMG-based control systems in online settings with user-in-the-loop feedback.
 
 **Visual Output:**
-<img src="https://github.com/AnonSubmissions123/Isofitts/blob/main/docs/perf_metrics.PNG?raw=true"/>
+<img src="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/perf_metrics.PNG?raw=true"/>

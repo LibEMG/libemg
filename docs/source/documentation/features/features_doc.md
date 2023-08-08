@@ -374,10 +374,11 @@ $
 A feature that computes all channel-wise differences in RMS values and incorporates spatial resolution to get the predominant directions of RMS and the derivative of RMS. $RMSi_{c}$ refers to the complex-valued spatial RMS of channel i. $dRMSi_{c}$ refers to the same complex-valued spatial RMS computed on the derivative of the channel i signal. This feature set returns (N)(N-1)/2 RMSPHASOR features and (N)(N-1)/2 dRMSPHASOR features for a total of (N)(N-1) features for N channels.
 
 $
-\text{RMSPHASOR_{i,j}} = \text{log}(\text{norm}(RMSi_{c} - RMSj_{c}))
+\text{RMSPHASOR}_{i,j} = \text{log}(\text{norm}(RMSi_{c} - RMSj_{c}))
 $
+
 $
-\text{dRMSPHASOR_{i,j}} = \text{log}(\text{norm}(dRMSi_{c} - dRMSj_{c}))
+\text{dRMSPHASOR}_{i,j} = \text{log}(\text{norm}(dRMSi_{c} - dRMSj_{c}))
 $
 
 ## **Waveform Length Phasor (WLPHASOR)** <sup>[12]</sup>
@@ -385,10 +386,11 @@ A feature that computes all channel-wise differences in WL values and incorporat
 This feature set returns (N)(N-1)/2 WLPHASOR features and (N)(N-1)/2 dWLPHASOR features for a total of (N)(N-1) features for N channels.
 
 $
-\text{WLPHASOR_{i,j}} = \text{norm}(WLi_{c} - WLj_{c})
+\text{WLPHASOR}_{i,j} = \text{norm}(WLi_{c} - WLj_{c})
 $
+
 $
-\text{dWLPHASOR_{i,j}} = \text{norm}(dWLi_{c} - dWLj_{c})
+\text{dWLPHASOR}_{i,j} = \text{norm}(dWLi_{c} - dWLj_{c})
 $
 
 ## **Peak Average Power (PAP)** <sup>[13]</sup>
@@ -441,7 +443,7 @@ where d and r are arguments to the function that correspond to the distance orde
 DFTR is a feature that computes the energy within 6 frequency bins of the EMG power spectrum (20-92, 92-163, 163-235, 235-307, 307-378, 378-450) Hz. If the frequency of the signal is less than these bins, then the bin is omitted (determined via a function argument).
 
 $
-\text{DFTR_{bin}} = \sum_{i \in bin} M_i
+\text{DFTR}_{bin} = \sum_{i \in bin} M_i
 $
 
 
@@ -497,6 +499,39 @@ tells us the number of zero crossings per unit time, the derivative of this metr
 
 $
 \text{COMP} = \sqrt{\frac{m4}{m2}}
+$
+
+## **Wavelet Energy (WENG)** 
+This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the average energy of a window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ :
+
+$
+\text{WENG}_o = \sum \phi_o ^2
+$
+
+
+## **Wavelet Variance (WV)**
+This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts variance of the window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ :
+
+$
+\text{WV}_o = \text{var}({\phi_o^2})
+$
+
+## **Wavelet Waveform Length (WWL)**
+This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts waveform length of the window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ :
+
+$
+\text{WWL}_o = \sum{|\nabla{\phi_o ^2}|}
+$
+
+## **Wavelet Entropy (WENT)**
+This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the entropy of the window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ and $i$ indicates the sample:
+
+$
+\text{WENT}_o = \sum{x \text{log}(x)}
+$
+
+$
+x = \frac{\phi_{i,o}^2}{\sum_{\forall i}{\phi_o^2}} 
 $
 
 # Feature Sets
@@ -564,7 +599,14 @@ Feature sets are validated groups of features that have been shown empirically t
 ## **Hjorth Parameters (HJORTH)** <sup>[17]</sup>
 1. Activation (ACT)
 2. Mobility (MOB)
-4. Complexity (COMP)
+3. Complexity (COMP)
+
+## **MultiSignal Wavelet Transform-Based Features (MSWT)** <sup>[18]</sup>
+1. Wavelet Energy (WENG)
+2. Wavelet Variance (WV)
+3. Wavelet Waveform Length (WWL)
+4. Wavelet Entropy (WENT)
+
 
 # References
 <a id="1">[1]</a> 
@@ -645,3 +687,6 @@ M. G. Asogbon Samuel et al., "Enhancing the Robustness of EMG-PR Based System ag
 
 <a id="17">[17]</a> 
 Bo Hjorth, EEG analysis based on time domain properties, Electroencephalography and Clinica Neurophysiology, Volume 29, Issue 3, 1970, Pages 306-310, ISSN 0013-4694, https://doi.org/10.1016/0013-4694(70)90143-4.
+
+<a id="18">[18]</a> 
+Rami Khushaba, https://github.com/RamiKhushaba/getmswtfeat
