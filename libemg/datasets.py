@@ -32,7 +32,7 @@ class Dataset:
 class _3DCDataset(Dataset):
     def __init__(self, save_dir='.', redownload=False, dataset_name="_3DCDataset"):
         Dataset.__init__(self, save_dir, redownload)
-        self.url = "https://github.com/AnonSubmissions123/3DCDataset"
+        self.url = "https://github.com/eeddy/3DCDataset"
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
         self.class_list = ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Supination",
@@ -214,7 +214,7 @@ def find_all_files_of_type_recursively(dir, terminator):
 class OneSubjectMyoDataset(Dataset):
     def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
         Dataset.__init__(self, save_dir, redownload)
-        self.url = "https://github.com/AnonSubmissions123/OneSubjectMyoDataset"
+        self.url = "https://github.com/eeddy/OneSubjectMyoDataset"
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
 

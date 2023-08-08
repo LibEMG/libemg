@@ -11,7 +11,7 @@
 
 The goal of this library is to provide an easy to use and feature-rich API for developing robust real-time EMG-based interactions, and performing thorough offline analysis.
 
-**Authors**: Anonymous
+**Authors**: Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme
 
 # Installing the Latest Release
 ```

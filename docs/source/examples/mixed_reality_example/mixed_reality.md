@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/AnonSubmissions123/LibEMG_MixedReality_Showcase)
+[View Source Code](https://github.com/eeddy/LibEMG_MixedReality_Showcase)
 ![](mr.gif)
 
 One reason for the renewed interest in EMG as a general-purpose input modality stems from its inherent potential for mixed reality. With the continued advancement of mixed reality technology, myoelectric control may become desirable for several reasons due to its subtlety and convenience. In this example, we show how LibEMG can be leveraged to navigate a menu on the HoloLens 2. While this example is not a robust MR application, it's the foundation for future work to explore EMG in MR.
