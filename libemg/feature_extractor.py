@@ -7,6 +7,7 @@ from sklearn.manifold import TSNE, Isomap
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from scipy.stats import skew, kurtosis
 from librosa import lpc
+from pywt import wavedec, upcoef
 
 class FeatureExtractor:
     """
@@ -29,7 +30,8 @@ class FeatureExtractor:
                           'LS9': ['LS', 'MFL', 'MSR', 'WAMP', 'ZC', 'RMS', 'IAV', 'DASDV', 'VAR'],
                           'TDPSD': ['M0','M2','M4','SPARSI','IRF','WLF'],
                           'TDAR': ['MAV', 'ZC', 'SSC', 'WL', 'AR'],
-                          'COMB': ['WL', 'SSC', 'LD', 'AR9'],     
+                          'COMB': ['WL', 'SSC', 'LD', 'AR9'],
+                          'MSWT': ['WENG','WV','WWL','WENT']
                           }
         return feature_groups
 
@@ -85,7 +87,11 @@ class FeatureExtractor:
                         "MLK",
                         "ACT",
                         "MOB",
-                        "COMP"]
+                        "COMP",
+                        "WENG",
+                        "WV",
+                        "WWL",
+                        "WENT"]
         return feature_list
         
     def get_projection_list(self):
@@ -1352,6 +1358,112 @@ class FeatureExtractor:
         m2 =  np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
         m4 =  np.sum(np.diff(np.diff(windows, axis=2),axis=2)**2)/windows.shape[2]
         return np.sqrt(m4/m2)
+    
+    def getWENGfeat(self, windows, WENG_fs = 1000):
+        """Extract Wavelet Energy (WENG) feature.
+        
+        Parameters
+        ----------
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        WENG_fs: int
+            The sampling frequency of the signal. This determines the number of wavelets used to decompose the signal.
+        
+        Returns
+        ----------
+        list
+            The computed features associated with each window. Size: Wx((order+1)*Nchannels)
+        """
+        # get the highest power of 2 the nyquist rate is divisible by
+        order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
+        # Khushaba et al suggests using sym8
+        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
+        # original paper suggests using as the order.
+        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+        # for every order, compute the energy (sum of DWT) - total of the squared signal
+        features = np.hstack([np.log(np.sum(i**2, axis=2)+1e-10) for i in wavelets])
+        return features
+
+
+    def getWVfeat(self, windows, WV_fs=1000):
+        """Extract Wavelet Variance (WV) feature.
+        
+        Parameters
+        ----------
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        WV_fs: int
+            The sampling frequency of the signal. This determines the number of wavelets used to decompose the signal.
+        Returns
+        ----------
+        list
+            The computed features associated with each window. 
+        """
+        # get the highest power of 2 the nyquist rate is divisible by
+        order    = math.floor(np.log(WV_fs/2)/np.log(2) - 1)
+        # Khushaba et al suggests using sym8
+        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
+        # original paper suggests using as the order.
+        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+        # for every order, compute the variance  (squared sum of DWT) - this is variance of the energy, so we keep the square
+        features = np.hstack([np.log(np.var(i**2, axis=2)+1e-10) for i in wavelets])
+        return features
+
+    def getWWLfeat(self, windows, WWL_fs=1000):
+        """Extract Wavelet Waveform Length (WWL) feature.
+        
+        Parameters
+        ----------
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        WWL_fs: int
+            The sampling frequency of the signal. This determines the number of wavelets used to decompose the signal.
+        Returns
+        ----------
+        list
+            The computed features associated with each window. 
+        """
+        # get the highest power of 2 the nyquist rate is divisible by
+        order    = math.floor(np.log(WWL_fs/2)/np.log(2) - 1)
+        # Khushaba et al suggests using sym8
+        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
+        # original paper suggests using as the order.
+        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+        # for every order, compute the waveform length (sum of absolute differences) -- this is WL of the energy, so we keep the square
+        features = np.hstack([np.log(np.sum(np.abs(np.diff(i**2, axis=2)),axis=2)+1e-10) for i in wavelets])
+        return features
+
+    def getWENTfeat(self, windows, WENT_fs=1000):
+        """Extract Wavelet Entropy (WENT) feature.
+        
+        Parameters
+        ----------
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        WENT_fs: int
+            The sampling frequency of the signal. This determines the number of wavelets used to decompose the signal.
+        Returns
+        ----------
+        list
+            The computed features associated with each window. 
+        """# get the highest power of 2 the nyquist rate is divisible by
+        order    = math.floor(np.log(WENT_fs/2)/np.log(2) - 1)
+        # Khushaba et al suggests using sym8
+        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
+        # original paper suggests using as the order.
+        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+        longs    = np.expand_dims(np.array([i.shape[2] for i in wavelets]),(1,2))
+        # for every order, compute the energy (squared sum of DWT)
+        window_energy = [i **2 for i in wavelets]
+        # within each window:
+        # 1. find the percentage of total energy a sample has (normalize by channel/wavelet amplitude)
+        # 2. once you have this "probability" convert it to an entropy on a per sample basis with:
+        #       entropy = x log x; where x is a probability
+        # 3. with the per sample entropy, just take the sum 
+        total_energy    = [np.sum(i, 2) for i in window_energy]
+        prob = [i/np.expand_dims(j,2) for  i,j in zip(window_energy, total_energy)]
+        features = np.hstack([-np.sum(i*np.log(i), axis=2) for i in prob])
+        return features
 
     def visualize(self, feature_dic):
         """Visualize a set of features.
