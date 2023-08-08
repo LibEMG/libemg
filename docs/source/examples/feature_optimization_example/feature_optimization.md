@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/eeddy/LibEMG_FeatureOptimization_Showcase)
+[View Source Code](https://github.com/libemg/LibEMG_FeatureOptimization_Showcase)
 
 <style>
     .center {
