@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/AnonSubmissions123/LibEMG_Cursor_Showcase)
+[View Source Code](https://github.com/libemg/LibEMG_Cursor_Showcase)
 
 **Note, this controller is by no means a robust mouse interface and is is instead a simple demonstration highlighting the possibilities of the library.**
 

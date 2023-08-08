@@ -22,6 +22,7 @@ By default, LibEMG supports several hardware devices (shown in Table 1).
 - The **Myo Armband** is a previously available commercial device popular for HCI applications due to its low cost.
 - The **Delsys** is a commercially available system primarily used for medical applications due to its relatively high cost. 
 - The **SIFI Cuff** is a pre-released device that will soon be commercially available. Compared to the Myo armband, this device has a much higher sampling rate (~2000 Hz).
+- The **Oymotion Cuff** is a commercial device that samples EMG at 1000 Hz. 
 
 If selecting EMG hardware for real-time use, wireless armbands that sample above 500 Hz are preferred. Additionally, future iterations of LibEMG will include Inertial Measurement Unit (IMU) support. As such, devices should have IMUs to enable more interaction opportunities.
 
@@ -29,7 +30,8 @@ If selecting EMG hardware for real-time use, wireless armbands that sample above
 | ------------- | ------------- | ------------- |
 | Myo Armband  | `myo_streamer()`  | <div class="device_img">![](devices/Myo.png) </div>|
 | Delsys  | `delsys_streamer()` | <div class="device_img_2">![](devices/delsys_trigno.png) </div>|
-| SIFI Cuff | `sifi_streamer()` | <div class="device_img">![](devices/sifi.png) </div>|
+| SIFI Cuff | `sifi_streamer()` | <div class="device_img">![](devices/sifi_cuff.png) </div>|
+| Oymotion | `oymotion_streamer()`| <div class="device_img">![](devices/oymotion.png) </div>| 
 
 <center> <p>Table 1: The list of all implemented streamers.</p> </center>
 

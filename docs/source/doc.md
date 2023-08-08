@@ -11,13 +11,12 @@
 
 The goal of this library is to provide an easy to use and feature-rich API for developing robust real-time EMG-based interactions, and performing thorough offline analysis.
 
-**Authors**: Anonymous
+**Authors**: Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme
 
 # Installing the Latest Release
 ```
 $ pip install libemg
 ```
-Note: Not yet published as part of this submission. 
 
 # Citing
 We ask that if you leverage this library for any research related purposes please cite the following publication:

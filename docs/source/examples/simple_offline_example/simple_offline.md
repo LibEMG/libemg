@@ -1,6 +1,6 @@
-[View Source Code](https://github.com/AnonSubmissions123/LibEMG_OneSubject_Showcase)
+[View Source Code](https://github.com/libemg/LibEMG_OneSubject_Showcase)
 
-<img src="https://github.com/AnonSubmissions123/LibEMG_OneSubject_Showcase/blob/main/Docs/Results.png?raw=true"/>
+<img src="https://github.com/libemg/LibEMG_OneSubject_Showcase/blob/main/Docs/Results.png?raw=true"/>
 
 This simple offline analysis serves as a starting point to understand the offline functionality of the library. In this example, we will load in the OneSubjectMyoDataset and test the classification accuracy of several different classifiers. Finally, we will look at the PCA feature space of the data. All code can be found in `main.py`.
 

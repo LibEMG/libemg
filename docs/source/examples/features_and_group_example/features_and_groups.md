@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/AnonSubmissions123/LibEMG_Feature_Showcase)
+[View Source Code](https://github.com/libemg/LibEMG_Feature_Showcase)
 
 <style>
     .center {
