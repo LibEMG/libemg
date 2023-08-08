@@ -56,7 +56,7 @@ exclude_patterns = []
 
 html_context = {
   'display_github': True,
-  'github_user': 'eeddy',
+  'github_user': 'libemg',
   'github_repo': 'libemg',
   'github_version': 'main/docs/source/',
 }

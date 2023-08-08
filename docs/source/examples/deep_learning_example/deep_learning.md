@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/eeddy/LibEMG_DeepLearning_Showcase)
+[View Source Code](https://github.com/libemg/LibEMG_DeepLearning_Showcase)
 
 <style>
     .center {
