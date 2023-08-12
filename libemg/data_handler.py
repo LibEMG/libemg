@@ -21,6 +21,7 @@ from multiprocessing.managers import BaseManager
 from libemg.raw_data import RawData
 from libemg.utils import get_windows, _get_mode_windows
 from libemg.feature_extractor import FeatureExtractor
+from scipy.signal import welch
 
 class DataHandler:
     def __init__(self):
@@ -448,11 +449,11 @@ class OnlineDataHandler(DataHandler):
             return
         num_channels = len(self.get_data()[0])
         emg_plots = []
-        figure, ax = pyplot.subplots()
-        figure.suptitle('Raw Data', fontsize=16)
+        fig, ax = pyplot.subplots()
+        fig.suptitle('Raw Data', fontsize=16)
         for i in range(0,num_channels):
             emg_plots.append(ax.plot([],[],label="CH"+str(i+1)))
-        figure.legend()
+        fig.legend()
         
         def update(frame):
             data = self.get_data()
@@ -463,13 +464,13 @@ class OnlineDataHandler(DataHandler):
                 for i in range(0,num_channels):
                     y_data = data[:,i]
                     emg_plots[i][0].set_data(x_data, y_data)
-                figure.gca().relim()
-                figure.gca().autoscale_view()
+                fig.gca().relim()
+                fig.gca().autoscale_view()
                 if not y_axes is None:
-                    figure.gca().set_ylim(y_axes)
+                    fig.gca().set_ylim(y_axes)
             return emg_plots,
 
-        animation = FuncAnimation(figure, update, interval=100)
+        animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
 
     def visualize_channels(self, channels, num_samples=500, y_axes=None):
@@ -486,8 +487,8 @@ class OnlineDataHandler(DataHandler):
         """
         pyplot.style.use('ggplot')
         emg_plots = []
-        figure, axs = pyplot.subplots(len(channels), 1)
-        figure.suptitle('Raw Data', fontsize=16)
+        fig, axs = pyplot.subplots(len(channels), 1)
+        fig.suptitle('Raw Data', fontsize=16)
         for i in range(0,len(channels)):
             axs[i].set_ylabel("Channel " + str(channels[i]))
             emg_plots.append(axs[i].plot([],[]))
@@ -508,7 +509,7 @@ class OnlineDataHandler(DataHandler):
                         axs[i].set_ylim(y_axes)
             return emg_plots,
 
-        animation = FuncAnimation(figure, update, interval=100)
+        animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
@@ -596,6 +597,55 @@ class OnlineDataHandler(DataHandler):
 
             animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
             plt.show()
+    
+    def visualize_spectrum(self, channels, sampling_rate, num_samples=500, y_axes=None):
+        """Visualize the power spectral density of the incoming EMG data.
+
+        Parameters
+        ----------
+        channels: list
+            A list of channels to graph indexing starts at 0.
+        sampling_rate: int
+            The sampling rate of the device.
+        num_samples: int (optional), default=500
+            The number of samples to use for the power density calculation.
+        y_axes: list (optional)
+            A list of two elements consisting of the y-axes.
+        """
+        pyplot.style.use('ggplot')
+        emg_plots = []
+        fig, axs = pyplot.subplots(len(channels), 1)
+        fig.suptitle('Periodogram', fontsize=16)
+        fig.supxlabel('Frequency (Hz)')
+
+        if num_samples < 512:
+            nperseg = num_samples
+        elif num_samples > 2048:
+            nperseg = 1024
+        else:
+            nperseg = int(num_samples/2)
+
+        for i in range(0,len(channels)):
+            axs[i].set_ylabel("Channel " + str(channels[i]))
+            axs[i].set_xlim([0, sampling_rate/2])
+            if y_axes is not None:
+                axs[i].set_ylim(y_axes)
+            emg_plots.append(axs[i].semilogy([],[]))
+
+        def update(frame):
+            data = self.get_data()
+            if len(data) > num_samples:
+                data = data[-num_samples:]
+                for i in range(0,len(channels)):
+                    f, Pxx = welch(data[:,i], sampling_rate, nperseg=nperseg)
+                    emg_plots[i][0].set_data(f, Pxx)
+
+                    axs[i].relim()
+                    axs[i].autoscale_view()
+
+            return emg_plots,
+        animation = FuncAnimation(fig, update, interval=100)
+        pyplot.show()
 
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
