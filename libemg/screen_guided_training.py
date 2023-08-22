@@ -145,6 +145,7 @@ class _SGTUI:
                 if not file in self.exclude_files:
                     self.inputs.append(file)
         self.og_inputs = list(self.inputs)
+        print(self.og_inputs)
     
     def _clear_frame(self):
         for widgets in self.window.winfo_children():

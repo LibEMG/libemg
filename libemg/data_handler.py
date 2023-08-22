@@ -388,6 +388,8 @@ class OnlineDataHandler(DataHandler):
 
     def get_data(self):
         data = np.array(self.raw_data.get_emg())
+        # data_all = np.concatenate((data, self.raw_data.get_imu()))
+        
         if self.fi is not None:
             try:
                 data = self.fi.filter(data)
@@ -397,6 +399,8 @@ class OnlineDataHandler(DataHandler):
             if len(data) > self.max_buffer:
                 self.raw_data.data = self.raw_data.adjust_increment(self.max_buffer, 0)
         return data
+        # return data_all
+
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -456,6 +460,7 @@ class OnlineDataHandler(DataHandler):
         
         def update(frame):
             data = self.get_data()
+            print(data)
             if len(data) > num_samples:
                 data = data[-num_samples:]
             if len(data) > 0:

@@ -62,6 +62,7 @@ class DelsysEMGStreamer:
 
         self._initialize()
         self.start()
+        
     def _initialize(self):
 
         # create command socket and consume the servers initial response

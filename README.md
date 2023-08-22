@@ -9,3 +9,6 @@ All documentation can be found at: [Library Documentation](https://libemg.github
 
 ## Install 
 `pip install libemg`
+
+To update local package after changes are made run (from libemg folder):
+`pip install --upgrade .`
