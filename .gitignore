@@ -1,4 +1,5 @@
 dist/*
+.idea/*
 libemg.egg-info/*
 token.txt
 .pytest_cache/*

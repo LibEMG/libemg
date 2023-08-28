@@ -2,7 +2,7 @@ import socket
 import struct
 import numpy
 import pickle
-import time
+
 
 """
 Some credit for the Trigno conenction goes to 
@@ -10,11 +10,9 @@ github: https://github.com/axopy
 name: Kenneth Lyons
 """
 
-class DelsysEMGStreamer:
+class ImuStreamer:
     """
-    Delsys Trigno wireless EMG system.
-
-    Requires the Trigno Control Utility to be running.
+    Imu Streamer
 
     Parameters
     ----------
@@ -47,7 +45,7 @@ class DelsysEMGStreamer:
     BYTES_PER_CHANNEL = 4
     CMD_TERM = '\r\n\r\n'
 
-    def __init__(self, stream_ip='localhost', stream_port='12345', recv_ip='localhost', cmd_port=50040, data_port=50043, total_channels=list(range(8)), timeout=10):
+    def __init__(self, stream_ip='localhost', stream_port='12345', recv_ip='localhost', cmd_port=50040, data_port=50044, total_channels=list(range(144)), timeout=10):
         """
         Note: data_port 50043 refers to the current port that EMG data is being streamed to. For older devices, the EMG data_port may be 50041 (e.g., the Delsys Trigno)"""
         self.host = recv_ip
@@ -58,7 +56,7 @@ class DelsysEMGStreamer:
         self.stream_ip = stream_ip
         self.stream_port = stream_port
 
-        self._min_recv_size = 16 * self.BYTES_PER_CHANNEL
+        self._min_recv_size = 144 * self.BYTES_PER_CHANNEL
 
         self._initialize()
         self.start()
@@ -66,9 +64,12 @@ class DelsysEMGStreamer:
     def _initialize(self):
 
         # create command socket and consume the servers initial response
-        self._comm_socket = socket.create_connection(
-            (self.host, self.cmd_port), self.timeout)
-        self._comm_socket.recv(1024)
+
+        """Justin: I don't think this is needed"""
+        # self._comm_socket = socket.create_connection(
+        #     (self.host, self.cmd_port), self.timeout)
+        # self._comm_socket.recv(1024)
+        """/Justin"""
 
         # create the data socket
         self._data_socket = socket.create_connection(
@@ -82,7 +83,10 @@ class DelsysEMGStreamer:
         You should call ``read()`` soon after this, though the device typically
         takes about two seconds to send back the first batch of data.
         """
-        self._send_cmd('START')
+
+        """Justin: EMG streamer should send this, no need to do twice"""
+        #self._send_cmd('START')
+        """/Justin"""
 
     def read(self):
         """
@@ -105,12 +109,12 @@ class DelsysEMGStreamer:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         while True:
-            packet = self._data_socket.recv(self._min_recv_size)
-            data = numpy.asarray(struct.unpack('<'+'f'*16, packet))
-            data = data[self.total_channels]  #
+            packet = self._data_socket.recv(self._min_recv_size)  # Justin: This seems really dodgy, are we guranteed to recieve the full packet?!?, I don't like non state machine like tcp code
+            data = numpy.asarray(struct.unpack('<'+'f'*144, packet))
+            data = data[self.total_channels]
             """Justin: Insert ID and timestamp for EMG"""
             data.insert(0, time.time())
-            data.insert(0, 0)  # ID == 0
+            data.insert(0, 1)  # ID == 1
             """/Justin"""
             data_arr = pickle.dumps(data)
             self.sock.sendto(data_arr, (self.stream_ip, self.stream_port))

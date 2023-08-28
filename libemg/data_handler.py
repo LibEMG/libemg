@@ -612,14 +612,18 @@ class OnlineDataHandler(DataHandler):
             if data:
                 data = pickle.loads(data)
                 timestamp = datetime.now()
+                """Justin: """
+                if data[0] == 0:  # EMG DATA
+                    raw_data.add_emg(data)
+                if data[0] == 1:  # IMU DATA
+                    raw_data.add_imu(data)
                 if self.options['std_out']:
                     print(str(data) + " " + str(timestamp))  
                 if self.options['file']:
                     with open(self.options['file_path'], 'a', newline='') as file:
                         writer = csv.writer(file)
                         writer.writerow(data)
-                if self.options['emg_arr']:
-                    raw_data.add_emg(data)
+
 
     def _check_streaming(self, timeout=10):
         wt = time.time()
