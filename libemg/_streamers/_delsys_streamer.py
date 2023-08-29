@@ -108,9 +108,10 @@ class DelsysEMGStreamer:
             packet = self._data_socket.recv(self._min_recv_size)
             data = numpy.asarray(struct.unpack('<'+'f'*16, packet))
             data = data[self.total_channels]  #
+            print(f"EMG DATA: {data}")
             """Justin: Insert ID and timestamp for EMG"""
-            data.insert(0, time.time())
-            data.insert(0, 0)  # ID == 0
+            data = numpy.insert(data, 0, time.time())
+            data = numpy.insert(data, 0, 0)  # ID == 0
             """/Justin"""
             data_arr = pickle.dumps(data)
             self.sock.sendto(data_arr, (self.stream_ip, self.stream_port))

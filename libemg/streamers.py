@@ -6,6 +6,7 @@ from multiprocessing import Process
 from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
+from libemg._streamers._imu_streamer import ImuStreamer
 from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
 
@@ -100,7 +101,7 @@ def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi
     p.start()
     return p
 
-def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localhost',cmd_port=50040, emg_port=50043, channel_list=list(range(8))):
+def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localhost',cmd_port=50040, emg_port=50043, imu_port=50044, channel_list=list(range(8))):
     """The UDP streamer for the Delsys device (Avanti/Trigno). 
 
     This function connects to the Delsys and streams its data over UDP. Note that you must have the Delsys Control Utility
@@ -134,7 +135,18 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
                             timeout=10)
     p = Process(target=delsys.start_stream, daemon=True)
     p.start()
-    return p
+
+    delsys_imu = ImuStreamer(stream_ip = stream_ip,
+                            stream_port = stream_port,
+                            recv_ip=delsys_ip,
+                            cmd_port=cmd_port,
+                            data_port=imu_port,
+                            total_channels=channel_list,
+                            timeout=10)
+
+    p2 = Process(target=delsys_imu.start_stream, daemon=True)
+    p2.start()
+    return (p, p2)
 
 
 def oymotion_streamer(ip='127.0.0.1', port=12345):

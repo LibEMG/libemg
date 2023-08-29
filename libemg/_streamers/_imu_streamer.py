@@ -2,6 +2,7 @@ import socket
 import struct
 import numpy
 import pickle
+import time
 
 
 """
@@ -45,13 +46,13 @@ class ImuStreamer:
     BYTES_PER_CHANNEL = 4
     CMD_TERM = '\r\n\r\n'
 
-    def __init__(self, stream_ip='localhost', stream_port='12345', recv_ip='localhost', cmd_port=50040, data_port=50044, total_channels=list(range(144)), timeout=10):
+    def __init__(self, stream_ip='localhost', stream_port='12345', recv_ip='localhost', cmd_port=50040, data_port=50044, total_channels=list(range(8)), timeout=10):
         """
         Note: data_port 50043 refers to the current port that EMG data is being streamed to. For older devices, the EMG data_port may be 50041 (e.g., the Delsys Trigno)"""
         self.host = recv_ip
         self.cmd_port = cmd_port
         self.data_port = data_port
-        self.total_channels = total_channels
+        self.total_channels = list(range((total_channels[-1]+1)*9))
         self.timeout = timeout
         self.stream_ip = stream_ip
         self.stream_port = stream_port
@@ -110,11 +111,14 @@ class ImuStreamer:
 
         while True:
             packet = self._data_socket.recv(self._min_recv_size)  # Justin: This seems really dodgy, are we guranteed to recieve the full packet?!?, I don't like non state machine like tcp code
-            data = numpy.asarray(struct.unpack('<'+'f'*144, packet))
+            data = struct.unpack('<'+'f'*144, packet)
+            print(f'IMU Data: {data}')
+
+            data = numpy.asarray(data)
             data = data[self.total_channels]
             """Justin: Insert ID and timestamp for EMG"""
-            data.insert(0, time.time())
-            data.insert(0, 1)  # ID == 1
+            data = numpy.insert(data, 0, time.time())
+            data = numpy.insert(data, 0, 1)  # ID == 1
             """/Justin"""
             data_arr = pickle.dumps(data)
             self.sock.sendto(data_arr, (self.stream_ip, self.stream_port))

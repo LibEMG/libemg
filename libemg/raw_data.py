@@ -24,6 +24,10 @@ class RawData:
     def reset_emg(self):
         with self.emg_lock:
             self.emg_data = []
+
+    def reset_imu(self):
+        with self.imu_lock:
+            self.imu_data = []
     
     def adjust_increment(self, window, increment):
         with self.emg_lock:
