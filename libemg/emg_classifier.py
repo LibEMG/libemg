@@ -12,6 +12,7 @@ import pickle
 import socket
 import random
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import time
 import inspect
 from scipy import stats
@@ -432,8 +433,10 @@ class OnlineEMGClassifier:
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    output_format: str (optional), default=predictions
+        If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
     """
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False, output_format="predictions"):
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
@@ -442,6 +445,7 @@ class OnlineEMGClassifier:
         self.port = port
         self.ip = ip
         self.classifier = offline_classifier
+        self.output_format = output_format
 
         self.tcp = tcp
         if not tcp:
@@ -509,6 +513,68 @@ class OnlineEMGClassifier:
         print("Total Number of Predictions: " + str(len(times) + 1))
         self.stop_running()
     
+    def visualize(self, max_len=50, legend=None):
+        """Produces a live plot of classifier decisions -- Note this consumes the decisions.
+        Do not use this alongside the actual control operation of libemg. Online classifier has to
+        be running in "probabilties" output mode for this plot.
+
+        Parameters
+        ----------
+        max_len: (int) (optional) 
+            number of decisions to visualize
+        legend: (list) (optional)
+            The legend to display on the plot
+        """
+        plt.style.use("ggplot")
+        figure, ax = plt.subplots()
+        figure.suptitle("Live Classifier Output", fontsize=16)
+        plot_handle = ax.scatter([],[],c=[])
+        
+
+        # make a new socket that subscribes to the libemg events
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        sock.bind(('127.0.0.1', 12346))
+        num_classes = len(self.classifier.classifier.classes_)
+        cmap = cm.get_cmap('turbo', num_classes)
+
+        if legend is not None:
+            for i in range(num_classes):
+                plt.plot(i, label=legend[i], color=cmap.colors[i])
+            ax.legend()
+            legend_handles, legend_labels = ax.get_legend_handles_labels()
+        decision_horizon_classes = []
+        decision_horizon_probabilities = []
+        timestamps = []
+        start_time = time.time()
+        while True:
+            data, _ = sock.recvfrom(1024)
+            data = str(data.decode("utf-8"))
+            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
+            max_prob = np.max(probabilities)
+            prediction = np.argmax(probabilities)
+            decision_horizon_classes.append(prediction)
+            decision_horizon_probabilities.append(max_prob)
+            timestamps.append(float(data.split(" ")[-1]) - start_time)
+
+            decision_horizon_classes = decision_horizon_classes[-max_len:]
+            decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
+            timestamps = timestamps[-max_len:]
+
+            if plt.fignum_exists(figure.number):
+                plt.cla()
+                ax.scatter(timestamps, decision_horizon_probabilities,c=cmap.colors[decision_horizon_classes])
+                plt.ylim([0,1.5])
+                ax.set_xlabel("Time (s)")
+                ax.set_ylabel("Probability")
+                ax.set_ylim([0, 1.5])
+                if legend is not None:
+                    ax.legend(handles=legend_handles, labels=legend_labels)
+                plt.draw()
+                plt.pause(0.0001)
+            else:
+                return
+
+
     def _run_helper(self):
         fe = FeatureExtractor()
         self.raw_data.reset_emg()
@@ -529,7 +595,8 @@ class OnlineEMGClassifier:
                 else:
                     classifier_input = window
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                prediction, probability = self.classifier._prediction_helper(self.classifier.classifier.predict_proba(classifier_input))
+                probabilities = self.classifier.classifier.predict_proba(classifier_input)
+                prediction, probability = self.classifier._prediction_helper(probabilities)
                 prediction = prediction[0]
                 probability = probability[0]
 
@@ -552,14 +619,26 @@ class OnlineEMGClassifier:
                     if prediction >= 0:
                         calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
+                time_stamp = time.time()
                 # Write classifier output:
                 if not self.tcp:
-                    self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
+                    if self.output_format == "predictions":
+                        message = str(str(prediction) + calculated_velocity + " " + str(time_stamp))
+                    elif self.output_format == "probabilities":
+                        message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+                    self.sock.sendto(bytes(message, "utf-8"), (self.ip, self.port))
                 else:
-                    self.conn.sendall(str.encode(str(prediction) + calculated_velocity + '\n'))
+                    if self.output_format == "predictions":
+                        message = str(prediction) + calculated_velocity + '\n'
+                    elif self.output_format == "probabilities":
+                        message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+                    self.conn.sendall(str.encode(message))
+                
                 if self.std_out:
-                    print(f"{int(prediction)} {calculated_velocity} {time.time()}")
+                    print(message)
     
+
+
     def _format_data_sample(self, data):
         arr = None
         for feat in data:
@@ -577,4 +656,5 @@ class OnlineEMGClassifier:
             except:
                 pass
         return data
-        
+    
+    
