@@ -3,6 +3,7 @@ from tkinter import *
 import numpy as np
 import os
 from sklearn.linear_model import ElasticNet
+import sklearn.metrics as metrics
 
 SUBJECT_NUMBER = 100
 WINDOW_SIZE = 350
@@ -63,10 +64,28 @@ class GUI:
         Button(self.window, font=("Arial", 10), text="Visualize classifier", 
                command=self.visualize_classifier).pack(pady=(0,10))
         # do regression things
+        # get training data button
+        Button(self.window, font=("Arial", 10), text="Screen Guided Training - Regressor", 
+               command=self.launch_regressor_training).pack(pady=(0,10))
+        # train regressor
         Button(self.window, font=("Arial", 10), text="Regressor stuff", 
                command=self.regression_stuff).pack(pady=(0,10))
         
     def launch_training(self):
+        self.window.destroy()
+        # get rid of GUI window in favour of libemg training gui
+        training_ui = libemg.screen_guided_training.ScreenGuidedTraining()
+        # you can find what these numbers in the list correspond to at:
+        # https://github.com/LibEMG/LibEMGGestures
+        # training will have all the classes you've downloaded into the images folder
+        training_ui.download_gestures([1,2,3,4,5,6,7], "images/")
+        training_ui.launch_training(self.odh, 4, 5, "images/", self.save_directory, 1)
+        # the thread is blocked now until the training process is completed and closed 
+        # once the training process ends, relaunch the GUI
+        self.initialize_ui()
+    
+
+    def launch_regressor_training(self):
         self.window.destroy()
         # get rid of GUI window in favour of libemg training gui
         training_ui = libemg.screen_guided_training.ScreenGuidedTraining()
@@ -189,7 +208,7 @@ class GUI:
 
         
         fe = libemg.feature_extractor.FeatureExtractor()
-        features = fe.extract_feature_group(FEATURES,train_windows)
+        features = fe.extract_features(FEATURES,train_windows)
         feature_dic = {
             'training_features': features,
             'training_labels': train_labels
@@ -197,11 +216,14 @@ class GUI:
 
         reg = libemg.emg_classifier.EMGRegressor()
         reg.fit(ElasticNet(), feature_dic)
-        predicitons, score = reg.run(fe.extract_feature_group(FEATURES, test_windows), test_labels)
-        print(score)
+        predictions = reg.run(fe.extract_features(FEATURES, test_windows), test_labels)
+        dof1_r2 = metrics.r2_score(test_metadata["regression0"], predictions[:,0])
+        print(dof1_r2)
+        dof2_r2 = metrics.r2_score(test_metadata["regression1"], predictions[:,1])
+        print(dof2_r2)
 
 
-        online_classifier = libemg.emg_classifier.OnlineEMGRegressor(reg, WINDOW_SIZE, WINDOW_INC, self.odh, fe.get_feature_groups()[FEATURES], std_out=True)
+        online_classifier = libemg.emg_classifier.OnlineEMGRegressor(reg, WINDOW_SIZE, WINDOW_INC, self.odh, FEATURES, std_out=True)
         online_classifier.run(block=True)
 
 
