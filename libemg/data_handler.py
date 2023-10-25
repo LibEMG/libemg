@@ -20,7 +20,7 @@ from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from libemg.raw_data import RawData
-from libemg.utils import get_windows, _get_mode_windows
+from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows
 from libemg.feature_extractor import FeatureExtractor
 
 class DataHandler:
@@ -192,7 +192,7 @@ class OfflineDataHandler(DataHandler):
             print(f"{num_relabeled} of {len(active_labels)} active class windows were relabelled to no motion.")
         return active_labels
     
-    def parse_windows(self, window_size, window_increment):
+    def parse_windows(self, window_size, window_increment, metadata_operations=None):
         """Parses windows based on the acquired data from the get_data function.
 
         Parameters
@@ -210,9 +210,9 @@ class OfflineDataHandler(DataHandler):
             A dictionary containing np.ndarrays for each metadata tag of the dataset. Each window will
             have an associated value for each metadata. Therefore, the dimensions of the metadata should be Wx1 for each field.
         """
-        return self._parse_windows_helper(window_size, window_increment)
+        return self._parse_windows_helper(window_size, window_increment, metadata_operations)
 
-    def _parse_windows_helper(self, window_size, window_increment):
+    def _parse_windows_helper(self, window_size, window_increment, metadata_operations):
         metadata_ = {}
         for i, file in enumerate(self.data):
             # emg data windowing
@@ -226,7 +226,14 @@ class OfflineDataHandler(DataHandler):
                 if type(getattr(self,k)[i]) != np.ndarray:
                     file_metadata = np.ones((windows.shape[0])) * getattr(self, k)[i]
                 else:
-                    file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
+                    if metadata_operations is not None:
+                        if k in metadata_operations.keys():
+                            # do the specified operation
+                            file_metadata = _get_fn_windows(getattr(self,k)[i], window_size, window_increment, metadata_operations[k])
+                        else:
+                            file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
+                    else:
+                        file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                 if k not in metadata_.keys():
                     metadata_[k] = file_metadata
                 else:
@@ -234,6 +241,7 @@ class OfflineDataHandler(DataHandler):
 
             
         return windows_, metadata_
+
     
     def isolate_channels(self, channels):
         """Entry point for isolating a certain range of channels. 
