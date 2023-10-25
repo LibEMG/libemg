@@ -10,6 +10,7 @@ import wfdb
 import copy
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from scipy.ndimage import zoom
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
@@ -127,6 +128,34 @@ class OfflineDataHandler(DataHandler):
                         metadata_column = np.expand_dims(column,1)
                     setattr(self, k, getattr(self,k)+[metadata_column])
     
+    def add_regression_labels(self, file_location, colnames):
+        """TODO: add docs
+        """
+        # load the data in from file
+        class_file = np.loadtxt(file_location, delimiter=",")
+        num_files = len(self.data)
+        assert num_files > 0
+        # if field doesn't exists initialize it as empty list
+        for field in colnames:
+            if not hasattr(self, field):
+                setattr(self, field, [])
+        # for each field -- fill it in 
+        for f, field in enumerate(colnames):
+            # get column from class file
+            field_values = class_file[:,f]
+            # get length of column (for reshape)
+            field_len = len(field_values)
+            # for every file of data we have
+            for file in range(num_files):
+                # get length of that file
+                file_len = self.data[file].shape[0]
+                # find the factor we need to reshape class field to match
+                zoom_rate = file_len / field_len
+                reshaped_field = np.expand_dims(zoom(field_values, zoom=zoom_rate),1)
+                # add reshaped field to odh
+                setattr(self, field, getattr(self,field)+[reshaped_field])
+        self.extra_attributes = self.extra_attributes + colnames
+
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
 
