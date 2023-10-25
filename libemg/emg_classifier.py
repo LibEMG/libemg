@@ -402,7 +402,192 @@ class EMGClassifier:
         plt.legend(loc='lower right')
         plt.show()
     
-class OnlineEMGClassifier:
+
+class EMGRegressor:
+    """The Offline EMG Regressor. 
+
+    This is the base class for any offline EMG regression. 
+
+    """
+    def __init__(self, random_seed=0):
+        random.seed(random_seed)
+        self.regressor = None
+        self.feature_params = {}
+    
+    def fit(self, model, feature_dictionary=None, dataloader_dictionary=None, parameters=None):
+        """The fit function for the EMG Regression class. 
+
+        This method relies on the sklearn package for regression. 
+
+        Parameters
+        ----------
+        model: custom sklearn regression model. 
+            A regressor model, must include a .fit and .predict.
+        feature_dictionary: dict
+            A dictionary including the associated features and labels associated with a set of data. 
+            Dictionary keys should include 'training_labels' and 'training_features'.
+        parameters: dict (optional)
+            A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+            in the sklearn docs for the given model. Alternatively, these can be custom parameters in the case of custom 
+            statistical models or deep learning models.
+        """
+
+        if feature_dictionary is not None:
+            if "training_features" in feature_dictionary.keys():
+                self._fit_regressor(model, feature_dictionary, parameters)
+        # TODO: Allow for deep learning regressors
+        # if dataloader_dictionary is not None:
+        #     self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
+        
+
+    def run(self, test_data, test_labels):
+        """Runs the classifier on a pre-defined set of training data.
+
+        Parameters
+        ----------
+        test_data: list
+            A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
+        Returns
+        ----------
+        list
+            A list of predictions, based on the passed in testing features.
+        """
+        if type(test_data) == dict:
+            test_data = EMGClassifier()._format_data(test_data)
+        predictions = self.regressor.predict(test_data)
+        # score = self.regressor.score(test_data, test_labels)
+        return predictions
+
+    @classmethod
+    def from_file(self, filename):
+        """Loads a regressor - rather than creates a new one.
+
+        After saving a regression model, you can recreate it by running EMGRegressor.from_file(). By default 
+        this function loads a previously saved and pickled classifier. 
+
+        Parameters
+        ----------
+        filename: string
+            The file path of the pickled model. 
+
+        Returns
+        ----------
+        EMGClassifier
+            Returns an EMGClassifier object.
+
+        Examples
+        -----------
+        >>> classifier = EMGClassifier.from_file('lda.pickle')
+        """
+        with open(filename, 'rb') as f:
+            classifier = pickle.load(f)
+        return classifier
+
+    def save(self, filename):
+        """Saves (pickles) the EMGRegressor object to a file.
+
+        Use this save function if you want to load the object later using the from_file function. 
+
+        Parameters
+        ----------
+        filename: string
+            The path of the outputted pickled file. 
+        """
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+    
+    def _fit_regressor(self, model, feature_dictionary, parameters):
+        assert 'training_features' in feature_dictionary.keys()
+        assert 'training_labels'   in feature_dictionary.keys()
+        # convert dictionary of features into np.ndarray format (Nwindow x Nfeatures)
+        feature_dictionary["training_features"] = EMGClassifier()._format_data(feature_dictionary['training_features'])
+        self.regressor = model
+        self.regressor.fit(feature_dictionary['training_features'], feature_dictionary['training_labels'])
+
+
+class OnlineStreamer:
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+        self.window_size = window_size
+        self.window_increment = window_increment
+        self.raw_data = online_data_handler.raw_data
+        self.filters = online_data_handler.fi
+        self.features = features
+        self.port = port
+        self.ip = ip
+        self.classifier = offline_classifier
+        self.fe = FeatureExtractor()
+
+        self.tcp = tcp
+        if not tcp:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        else:
+            print("Waiting for TCP connection...")
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.sock.bind((ip, port))
+            self.sock.listen()
+            self.conn, addr = self.sock.accept()
+            print(f"Connected by {addr}")
+
+        self.process = Process(target=self._run_helper, daemon=True,)
+        self.std_out = std_out
+    
+    def start_stream(self, block=True):
+        if block:
+            self._run_helper()
+        else:
+            self.process.start()
+
+    def get_data(self, data):
+        # Extract window and predict sample
+        window = get_windows(data, self.window_size, self.window_size)
+        # Dealing with the case for CNNs when no features are used
+        if self.features:
+            features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
+            classifier_input = self._format_data_sample(features)
+        else:
+            classifier_input = window
+        self.raw_data.adjust_increment(self.window_size, self.window_increment)
+        return window, classifier_input
+    
+    def write_output(self, prediction, calculated_velocity):
+        # Write classifier output:
+        if not self.tcp:
+            self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(str(prediction) + calculated_velocity + '\n'))
+        if self.std_out:
+            print(f"{str(prediction)} {calculated_velocity} {time.time()}")
+
+    def _format_data_sample(self, data):
+        arr = None
+        for feat in data:
+            if arr is None:
+                arr = data[feat]
+            else:
+                arr = np.hstack((arr, data[feat]))
+        return arr
+
+    def _get_data_helper(self):
+        data = np.array(self.raw_data.get_emg())
+        if self.filters is not None:
+            try:
+                data = self.filters.filter(data)
+            except:
+                pass
+        return data
+    
+    # ----- All of these are unique to each online streamer ----------
+    def run(self):
+        pass 
+
+    def stop_running(self):
+        pass
+
+    def _run_helper(self):
+        pass
+
+class OnlineEMGClassifier(OnlineStreamer):
     """OnlineEMGClassifier.
 
     Given a EMGClassifier and additional information, this class will stream class predictions over UDP in real-time.
@@ -437,32 +622,10 @@ class OnlineEMGClassifier:
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False, output_format="predictions"):
-        self.window_size = window_size
-        self.window_increment = window_increment
-        self.raw_data = online_data_handler.raw_data
-        self.filters = online_data_handler.fi
-        self.features = features
-        self.port = port
-        self.ip = ip
-        self.classifier = offline_classifier
+        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, features, port, ip, std_out, tcp)
+        self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         self.output_format = output_format
 
-        self.tcp = tcp
-        if not tcp:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        else:
-            print("Waiting for TCP connection...")
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            self.sock.bind((ip, port))
-            self.sock.listen()
-            self.conn, addr = self.sock.accept()
-            print(f"Connected by {addr}")
-
-        self.process = Process(target=self._run_helper, daemon=True,)
-        self.std_out = std_out
-        self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
-        
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
 
@@ -472,10 +635,7 @@ class OnlineEMGClassifier:
             If True, the run function blocks the main thread. Otherwise it runs in a 
             seperate process.
         """
-        if block:
-            self._run_helper()
-        else:
-            self.process.start()
+        self.start_stream(block)
 
     def stop_running(self):
         """Kills the process streaming classification decisions.
@@ -576,27 +736,18 @@ class OnlineEMGClassifier:
 
 
     def _run_helper(self):
-        fe = FeatureExtractor()
         self.raw_data.reset_emg()
         while True:
-            if len(self.raw_data.get_emg()) >= self.window_size:
-                data = self._get_data_helper()
+            data = self._get_data_helper()
+            if len(data) >= self.window_size:
                 # Extract window and predict sample
-                window = get_windows(data[-self.window_size:][:], self.window_size, self.window_size)
-
-                # Dealing with the case for CNNs when no features are used
-                if self.features:
-                    features = fe.extract_features(self.features, window, self.classifier.feature_params)
-                    # If extracted features has an error - give error message
-                    if (fe.check_features(features) != 0):
-                        self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                        continue
-                    classifier_input = self._format_data_sample(features)
-                else:
-                    classifier_input = window
+                window, classifier_input = self.get_data(data)
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
+
+                # Make prediction
                 probabilities = self.classifier.classifier.predict_proba(classifier_input)
                 prediction, probability = self.classifier._prediction_helper(probabilities)
+                
                 prediction = prediction[0]
                 probability = probability[0]
 
@@ -619,8 +770,8 @@ class OnlineEMGClassifier:
                     if prediction >= 0:
                         calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
+                #self.write_output(prediction, calculated_velocity, self.output_format)
                 time_stamp = time.time()
-                # Write classifier output:
                 if not self.tcp:
                     if self.output_format == "predictions":
                         message = str(str(prediction) + calculated_velocity + " " + str(time_stamp))
@@ -657,4 +808,59 @@ class OnlineEMGClassifier:
                 pass
         return data
     
-    
+class OnlineEMGRegressor(OnlineStreamer):
+    """OnlineEMGRegressor.
+
+    Given a EMGRegressor and additional information, this class will stream regression predictions over UDP or TCP in real-time.
+
+    Parameters
+    ----------
+    offline_regressor: EMGRegressor
+        An EMGRegressor object. 
+    window_size: int
+        The number of samples in a window. 
+    window_increment: int
+        The number of samples that advances before next window.
+    online_data_handler: OnlineDataHandler
+        An online data handler object.
+    features: list
+        A list of features that will be extracted during real-time regression. 
+    parameters: dict (optional)
+        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+        in the sklearn docs for the given model.
+    port: int (optional), default = 12346
+        The port used for streaming predictions over UDP.
+    ip: string (optional), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    std_out: bool (optional), default = False
+        If True, prints predictions to std_out.
+    tcp: bool (optional), default = False
+        If True, will stream predictions over TCP instead of UDP.
+    """
+    def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+        super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, features, port, ip, std_out, tcp)
+        
+    def run(self, block=True):
+        """Runs the regressor - continuously streams predictions over UDP or TCP.
+
+        Parameters
+        ----------
+        block: bool (optional), default = True
+            If True, the run function blocks the main thread. Otherwise it runs in a 
+            seperate process.
+        """
+        self.start_stream(block)
+
+    def stop_running(self):
+        """Kills the process streaming classification decisions.
+        """
+        self.process.terminate()
+
+    def _run_helper(self):
+        self.raw_data.reset_emg()
+        while True:
+            data = self._get_data_helper()
+            if len(data) >= self.window_size:
+                window, classifier_input = self.get_data(data)
+                prediction = np.array(self.classifier.regressor.predict(classifier_input)).squeeze()
+                self.write_output(prediction, "")
