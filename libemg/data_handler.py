@@ -547,6 +547,26 @@ class OnlineDataHandler(DataHandler):
 
         animation = FuncAnimation(figure, update, interval=100)
         pyplot.show()
+    
+    def visualize_heatmap(self, num_samples = 500, representation_type = 'RMS'):
+        """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
+
+        Parameters
+        ----------
+        num_samples: int (optional), default=500
+            The number of samples to average over (i.e., window size) when showing heatmap.
+        representation_type: str (optional), default=RMS
+            Type of representation for heatmap (e.g., RMS, MAV, etc.).
+        """
+        # See https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html for heatmap example
+        # Is it better to have them just pass in the data (see feature_dic in visualize_feature_space()) or have set feature types they can select?
+        
+        # Transform data based on desired representation
+        
+        # Display heatmap
+        
+        # Loop through continuously to always update (probably do this in an update function like in visualize())
+        pass
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
         """Visualize a live pca plot. This is reliant on previously collected training data.
