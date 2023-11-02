@@ -435,8 +435,10 @@ class OnlineEMGClassifier:
         If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
+    channels: list (optional), default=None 
+        If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
     """
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False, output_format="predictions"):
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False, output_format="predictions", channels=None):
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
@@ -446,6 +448,7 @@ class OnlineEMGClassifier:
         self.ip = ip
         self.classifier = offline_classifier
         self.output_format = output_format
+        self.channels = channels
 
         self.tcp = tcp
         if not tcp:
@@ -581,6 +584,9 @@ class OnlineEMGClassifier:
         while True:
             if len(self.raw_data.get_emg()) >= self.window_size:
                 data = self._get_data_helper()
+                if self.channels is not None:
+                    data = data[:,self.channels]
+
                 # Extract window and predict sample
                 window = get_windows(data[-self.window_size:][:], self.window_size, self.window_size)
 
