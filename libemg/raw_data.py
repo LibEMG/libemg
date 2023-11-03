@@ -21,6 +21,10 @@ class RawData:
         with self.imu_lock:
             self.imu_data.append(data)
     
+    def reset_imu(self):
+        with self.imu_lock:
+            self.imu_data = []
+    
     def reset_emg(self):
         with self.emg_lock:
             self.emg_data = []

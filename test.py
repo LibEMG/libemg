@@ -4,7 +4,7 @@ from libemg.screen_guided_training import ScreenGuidedTraining
 
 if __name__ == '__main__':
     myo_streamer(imu=True)
-    odh = OnlineDataHandler()
+    odh = OnlineDataHandler(imu_arr=True)
     odh.start_listening()
 
     training_ui = ScreenGuidedTraining()

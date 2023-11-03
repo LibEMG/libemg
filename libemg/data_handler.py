@@ -402,6 +402,10 @@ class OnlineDataHandler(DataHandler):
             if len(data) > self.max_buffer:
                 self.raw_data.data = self.raw_data.adjust_increment(self.max_buffer, 0)
         return data
+    
+    def get_imu_data(self):
+        print(self.raw_data.get_imu())
+        return np.array(self.raw_data.get_imu())
 
 
     def analyze_hardware(self, analyze_time=10):

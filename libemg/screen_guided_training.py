@@ -248,7 +248,8 @@ class _SGTUI:
         if self.rep_number < int(self.num_reps.get()):
             if self.randomize.get(): 
                 random.shuffle(self.inputs)
-            data = {}
+            emg_data = {}
+            imu_data = {}
             file_index = 0 
             while(file_index < len(self.inputs)):
                 file = self.inputs[file_index]
@@ -267,9 +268,11 @@ class _SGTUI:
                     self._update_class(str(file.split(".")[0]))
                     if val != 0:
                         self.data_handler.raw_data.reset_emg()
+                        self.data_handler.raw_data.reset_imu()
                     self._bar_count_down(cd_time)
                     if val != 0:
-                        data[self.og_inputs.index(file)] = self.data_handler.get_data()               
+                        emg_data[self.og_inputs.index(file)] = self.data_handler.get_data()
+                        imu_data[self.og_inputs.index(file)] = self.data_handler.get_imu_data()              
                     if val == 1 and self.wait and file != self.inputs[-1]:
                         next_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._next)
                         redo_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._redo)
@@ -281,8 +284,10 @@ class _SGTUI:
                         self.wait_state = 0
                         redo_gest.destroy()
                         next_gest.destroy()
+                    else:
+                        file_index += 1
 
-            self._write_data(data)
+            self._write_data(emg_data, imu_data)
             self.rep_number += 1
             self.next_rep_button = Button(self.window, text = 'Next Rep', font = ("Arial", 12), command=self._next_rep)
             self.redo_rep_button = Button(self.window, text = 'Redo Rep', font = ("Arial", 12), command=self._redo_rep)
@@ -320,22 +325,33 @@ class _SGTUI:
         self.class_label['text'] = "Class: " + str(label)
         self.window.update_idletasks()
     
-    def _write_data(self, data):
+    def _write_data(self, emg_data, imu_data):
         if not os.path.isdir(self.output_folder.get()):
             os.makedirs(self.output_folder.get()) 
-        for c in data.keys():
+        for c in emg_data.keys():
             # Write EMG Files
-            emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + ".csv"
+            emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_EMG.csv"
+            imu_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_IMU.csv"
             self.meta_data_dic[emg_file] = {
                 'rep_idx': self.rep_number,
                 'class_idx': c,
                 'class_name': self.og_inputs[c].split(".")[0],
                 'file_type': self.og_inputs[c].split(".")[1]
             }
+
+            # Write EMG Data 
             with open(emg_file, "w", newline='', encoding='utf-8') as file:
                 emg_writer = csv.writer(file)
-                for row in data[c]:
+                for row in emg_data[c]:
                     emg_writer.writerow(row)
+
+            # Write IMU Data
+            if len(imu_data[0]) > 0: # Only write if there is IMU data
+                with open(imu_file, "w", newline='', encoding='utf-8') as file:
+                    imu_writer = csv.writer(file)
+                    for row in imu_data[c]:
+                        imu_writer.writerow(row)
+
         # Write Metadata file
         with open(self.output_folder.get() + "metadata.json", 'w') as f: 
             f.write(json.dumps(self.meta_data_dic))
