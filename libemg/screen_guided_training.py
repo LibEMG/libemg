@@ -65,7 +65,7 @@ class ScreenGuidedTraining:
                     os.system(curl_commands + git_url + gif_folder + gif_file)
 
 
-    def launch_training(self, data_handler, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[]):
+    def launch_training(self, data_handler, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[], wait_btwn_prompts=False):
         """Launches the Screen Guided Training UI.
 
         Parameters
@@ -90,12 +90,16 @@ class ScreenGuidedTraining:
             If True looks and plays gifs (this option of for discrete training).
         exclude_files: list, default=None
             A list of files (i.e., classes) to exclude. 
+        wait_btwn_prompts: bool, default=False
+            If True, the SGT module will wait between each prompt for user input (button click) before moving on to the next gesture. 
         """
-        _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, time_between_reps=time_between_reps, randomize=randomize, continuous=continuous, gifs=gifs, exclude_files=exclude_files)
+        _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, 
+               time_between_reps=time_between_reps, randomize=randomize, continuous=continuous, gifs=gifs, exclude_files=exclude_files,
+               wait_btwn_prompts=wait_btwn_prompts)
 
 
 class _SGTUI:
-    def __init__(self, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[]):
+    def __init__(self, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[], wait_btwn_prompts=False):
         self.window = Tk()
 
         self.meta_data_dic = {}
@@ -113,6 +117,8 @@ class _SGTUI:
         self.data_handler = data_handler
         self.og_inputs = []
         self.photo_width = 450
+        self.wait = wait_btwn_prompts
+        self.wait_state = 0
         
         # For Data Accumulation Screen:
         self.pb = None
@@ -243,7 +249,9 @@ class _SGTUI:
             if self.randomize.get(): 
                 random.shuffle(self.inputs)
             data = {}
-            for file in self.inputs:
+            file_index = 0 
+            while(file_index < len(self.inputs)):
+                file = self.inputs[file_index]
                 for val in range(0,2):
                     image_file = str(self.rep_folder.get() + file)
                     cd_time = int(self.time_between_reps.get())
@@ -261,7 +269,19 @@ class _SGTUI:
                         self.data_handler.raw_data.reset_emg()
                     self._bar_count_down(cd_time)
                     if val != 0:
-                        data[self.og_inputs.index(file)] = self.data_handler.get_data()
+                        data[self.og_inputs.index(file)] = self.data_handler.get_data()               
+                    if val == 1 and self.wait and file != self.inputs[-1]:
+                        next_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._next)
+                        redo_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._redo)
+                        next_gest.pack()
+                        while(self.wait_state == 0):
+                            pass 
+                        if self.wait_state == 1: 
+                            file_index += 1
+                        self.wait_state = 0
+                        redo_gest.destroy()
+                        next_gest.destroy()
+
             self._write_data(data)
             self.rep_number += 1
             self.next_rep_button = Button(self.window, text = 'Next Rep', font = ("Arial", 12), command=self._next_rep)
@@ -273,6 +293,12 @@ class _SGTUI:
             self.rep_number = 0
             return
     
+    def _next(self):
+        self.wait_state = 1
+
+    def _redo(self):
+        self.wait_state = -1
+
     def _redo_rep(self):
         self.rep_number -= 1
         self._next_rep()

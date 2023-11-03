@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA, KernelPCA, FastICA
 from sklearn.manifold import TSNE, Isomap
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-from libemg.emg_classifier import EMGClassifier
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 from pywt import wavedec, upcoef
@@ -130,7 +129,7 @@ class FeatureExtractor:
             return features
         feats = self.extract_features(self.get_feature_groups()[feature_group], windows, feature_dic)
         if array:
-            return EMGClassifier()._format_data(feats)
+            return self._format_data(feats)
         return feats 
 
     def extract_features(self, feature_list, windows, feature_dic={}, array=False):
@@ -161,7 +160,7 @@ class FeatureExtractor:
                 smaller_dictionary = dict((k, feature_dic[k]) for k in valid_keys if k in feature_dic)
                 features[feature] = method_to_call(windows, **smaller_dictionary)
         if array:
-            return EMGClassifier()._format_data(features)  
+            return self._format_data(features)  
         return features
 
     def check_features(self, features, silent=False):
@@ -1770,4 +1769,13 @@ class FeatureExtractor:
                 test_data = projection_engine.transform(t_feature_matrix)
 
         return train_data, test_data
+    
+    def _format_data(self, feature_dictionary):
+        arr = None
+        for feat in feature_dictionary:
+            if arr is None:
+                arr = feature_dictionary[feat]
+            else:
+                arr = np.hstack((arr, feature_dictionary[feat]))
+        return arr
             
