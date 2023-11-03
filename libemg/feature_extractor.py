@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA, KernelPCA, FastICA
 from sklearn.manifold import TSNE, Isomap
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from libemg.emg_classifier import EMGClassifier
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 from pywt import wavedec, upcoef
@@ -105,7 +106,7 @@ class FeatureExtractor:
         projection_list = ['pca', 'kernelpca', 'ica', 'lda', 'tsne', 'isomap']
         return projection_list
 
-    def extract_feature_group(self, feature_group, windows, feature_dic={}):
+    def extract_feature_group(self, feature_group, windows, feature_dic={}, array=False):
         """Extracts a group of features.
         
         Parameters
@@ -116,18 +117,23 @@ class FeatureExtractor:
             A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         feature_dic: dict
             A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
+        array: bool (optional), default=False 
+            If True, the dictionary will get converted to a list. 
         Returns
         ----------
-        dictionary
+        dictionary or list 
             A dictionary where each key is a specific feature and its value is a list of the computed 
             features for each window.
         """
         features = {}
         if not feature_group in self.get_feature_groups():
             return features
-        return self.extract_features(self.get_feature_groups()[feature_group], windows, feature_dic)
+        feats = self.extract_features(self.get_feature_groups()[feature_group], windows, feature_dic)
+        if array:
+            return EMGClassifier()._format_data(feats)
+        return feats 
 
-    def extract_features(self, feature_list, windows, feature_dic={}):
+    def extract_features(self, feature_list, windows, feature_dic={}, array=False):
         """Extracts a list of features.
         
         Parameters
@@ -139,9 +145,11 @@ class FeatureExtractor:
             A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
         feature_dic: dict
             A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
+        array: bool (optional), default=False 
+            If True, the dictionary will get converted to a list.
         Returns
         ----------
-        dictionary
+        dictionary or list 
             A dictionary where each key is a specific feature and its value is a list of the computed 
             features for each window.
         """
@@ -152,7 +160,8 @@ class FeatureExtractor:
                 valid_keys = [i for i in list(feature_dic.keys()) if feature+"_" in i]
                 smaller_dictionary = dict((k, feature_dic[k]) for k in valid_keys if k in feature_dic)
                 features[feature] = method_to_call(windows, **smaller_dictionary)
-            
+        if array:
+            return EMGClassifier()._format_data(features)  
         return features
 
     def check_features(self, features, silent=False):

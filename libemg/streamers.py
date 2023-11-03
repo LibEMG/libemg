@@ -50,7 +50,7 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
         sock.sendto(data_arr, (ip, port))
         index += 1
 
-def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
+def myo_streamer(filtered=True, ip='127.0.0.1', port=12345, imu=False):
     """The UDP streamer for the myo armband. 
 
     This function connects to the Myo and streams its data over UDP. It leverages the PyoMyo 
@@ -64,12 +64,13 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
         The desired port to stream over. 
     ip: string (option), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
-
+    imu: bool (optional), default=False
+        If True, the IMU data will also stream. Columns: 0,1,2,3 (quaternion), 4,5,6 (accelerometer), 7,8,9 (gyroscope). 
     Examples
     ---------
     >>> myo_streamer()
     """
-    myo = MyoStreamer(filtered, ip, port)
+    myo = MyoStreamer(filtered, ip, port, imu)
     p = Process(target=myo.start_stream, daemon=True)
     p.start()
     return p
