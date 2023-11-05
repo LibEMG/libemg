@@ -279,12 +279,12 @@ class _SGTUI:
                         next_gest.pack()
                         while(self.wait_state == 0):
                             pass 
-                        if self.wait_state == 1: 
+                        if self.wait_state != -1: 
                             file_index += 1
                         self.wait_state = 0
                         redo_gest.destroy()
                         next_gest.destroy()
-                    else:
+                    elif not self.wait and val == 1:
                         file_index += 1
 
             self._write_data(emg_data, imu_data)
