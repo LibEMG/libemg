@@ -26,6 +26,7 @@ class SiFiBridge:
                                 stdout=subprocess.PIPE)
         self.config = config
         self.emg_handlers = []
+        self.imu_handlers = []
 
     def connect(self):
         connected = False
@@ -50,6 +51,9 @@ class SiFiBridge:
     def add_emg_handler(self, closure):
         self.emg_handlers.append(closure)
 
+    def add_imu_handler(self, closure):
+        self.imu_handlers.append(closure)
+
     def run(self):
         self.proc.stdin.write(b'-cmd 1\n')
         self.proc.stdin.flush()
@@ -72,6 +76,12 @@ class SiFiBridge:
                     emg = data_arr_as_json['data']["emg"]
                     for e in emg:
                         self.emg_handlers[0]([e])
+                if "acc_x" in list(data_arr_as_json["data"].keys()):
+                    accel = np.transpose(np.vstack([data_arr_as_json['data']['acc_x'], data_arr_as_json['data']['acc_y'], data_arr_as_json['data']['acc_z']]))
+                    quat = np.transpose(np.vstack([data_arr_as_json['data']['w'], data_arr_as_json['data']['x'], data_arr_as_json['data']['y'], data_arr_as_json['data']['z']]))
+                    imu = np.hstack((accel, quat))
+                    for i in imu:
+                        self.imu_handlers[0](i)
 
     def close(self):
         self.proc.stdin.write(b'-cmd 1\n')
@@ -133,6 +143,12 @@ class SiFiBridgeStreamer:
             data_arr = pickle.dumps(list(emg))
             sock.sendto(data_arr, (self.ip, self.port))
         b.add_emg_handler(write_emg)
+
+        def write_imu(imu):
+            imu_list = ['IMU', imu]
+            data_arr = pickle.dumps(list(imu_list))
+            sock.sendto(data_arr, (self.ip, self.port))
+        b.add_imu_handler(write_imu)
 
         while True:
             try:

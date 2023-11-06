@@ -88,6 +88,7 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
     """The UDP streamer for the sifi armband. 
     This function connects to the sifi bridge and streams its data over UDP. This is used
     for the SiFi biopoint and bioarmband.
+    Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
     Parameters
     ----------
     port: int (optional), default=12345

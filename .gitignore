@@ -1,4 +1,8 @@
 dist/*
+.vscode/*
+raw_imu.csv
+test.py
+sifi_bridge_windows.exe
 libemg.egg-info/*
 token.txt
 .pytest_cache/*
