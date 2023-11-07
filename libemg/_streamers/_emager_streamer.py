@@ -66,10 +66,7 @@ class Emager:
         ### ^ Number of bytes in message (i.e. channel bytes + header/tail bytes)
         self.mask = np.array([0, 2] + [0, 1] * 63)
         ### ^ Template mask for template matching on input data
-        self.channelMap = [10, 22, 12, 24, 13, 26, 7, 28, 1, 30, 59, 32, 53, 34, 48, 36] + \
-                          [62, 16, 14, 21, 11, 27, 5, 33, 63, 39, 57, 45, 51, 44, 50, 40] + \
-                          [8, 18, 15, 19, 9, 25, 3, 31, 61, 37, 55, 43, 49, 46, 52, 38] + \
-                          [6, 20, 4, 17, 2, 23, 0, 29, 60, 35, 58, 41, 56, 47, 54, 42]
+        self.channelMap = _get_channel_map()
         self.emg_handlers = []
 
     def connect(self):
