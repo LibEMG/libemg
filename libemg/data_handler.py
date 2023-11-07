@@ -563,6 +563,7 @@ class OnlineDataHandler(DataHandler):
         # See https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html for heatmap example
         fig, ax = plt.subplots(1, 1)
         fig.suptitle(f'{representation_type} Heatmap')
+        cmap = cm.viridis
 
         def update(frame):
             # Update function to produce live animation
@@ -574,12 +575,11 @@ class OnlineDataHandler(DataHandler):
                 # Transform data based on desired representation
                 # Need to reorder data because it currently returns a N x 64. See live_display.py from the Laval team
                 # Convert to coloured map
-                image_colors = cm.viridis(data)
-                im = plt.imshow(image_colors, cmap=cm.viridis, animated=True)
+                image_colors = cmap(data)
+                im = plt.imshow(image_colors, cmap=cmap, animated=True)
                 im.set_data(image_colors)
-                # ax.imshow(image_colors, animated=True, cmap=cm.viridis)
             else:
-                im = plt.imshow([[]], cmap=cm.viridis, animated=True)
+                im = plt.imshow([[]], cmap=cmap, animated=True)
             return im, 
                 
         animation = FuncAnimation(fig, update, interval=100)
