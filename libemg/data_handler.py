@@ -9,6 +9,7 @@ import math
 import wfdb
 import copy
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
 from matplotlib import pyplot
@@ -558,15 +559,31 @@ class OnlineDataHandler(DataHandler):
         representation_type: str (optional), default=RMS
             Type of representation for heatmap (e.g., RMS, MAV, etc.).
         """
+        pyplot.style.use('ggplot')
         # See https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html for heatmap example
-        # Is it better to have them just pass in the data (see feature_dic in visualize_feature_space()) or have set feature types they can select?
-        
-        # Transform data based on desired representation
-        
-        # Display heatmap
-        
-        # Loop through continuously to always update (probably do this in an update function like in visualize())
-        pass
+        fig, ax = plt.subplots(1, 1)
+        fig.suptitle(f'{representation_type} Heatmap')
+
+        def update(frame):
+            # Update function to produce live animation
+            data = self.get_data()
+            if len(data) > num_samples:
+                # Only look at the most recent num_samples samples
+                data = data[-num_samples]
+            if len(data) > 0:
+                # Transform data based on desired representation
+                # Need to reorder data because it currently returns a N x 64. See live_display.py from the Laval team
+                # Convert to coloured map
+                image_colors = cm.viridis(data)
+                im = plt.imshow(image_colors, cmap=cm.viridis, animated=True)
+                im.set_data(image_colors)
+                # ax.imshow(image_colors, animated=True, cmap=cm.viridis)
+            else:
+                im = plt.imshow([[]], cmap=cm.viridis, animated=True)
+            return im, 
+                
+        animation = FuncAnimation(fig, update, interval=100)
+        pyplot.show()
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
         """Visualize a live pca plot. This is reliant on previously collected training data.
