@@ -561,11 +561,9 @@ class OnlineDataHandler(DataHandler):
         remap_function: callable or None (optional), default=None
             Function pointer that remaps raw data to a format that can be represented by an image.
         """
+        # Create figure
         pyplot.style.use('ggplot')
-        # See https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html for heatmap example
         fig, ax = plt.subplots(1, 1)
-        fig.suptitle(f'{representation_type} Heatmap')
-        cmap = cm.viridis
         
         def get_remapped_data():
             data = self.get_data()
@@ -576,10 +574,22 @@ class OnlineDataHandler(DataHandler):
                 # Remap raw data to image format
                 data = remap_function(data)
             return data
+
+        cmap = cm.viridis   # colourmap to determine heatmap style
         
         # Access sample data to determine heatmap size
         sample_data = get_remapped_data()
-        im = plt.imshow(np.zeros(shape=sample_data.shape[1:]), cmap=cmap, animated=True)
+        sample_image = np.zeros(shape=sample_data.shape[1:])
+        im = plt.imshow(np.zeros(shape=sample_image.shape), cmap=cmap, animated=True)
+        
+        # Format figure
+        fig.suptitle(f'{representation_type} Heatmap')
+        ax.set_xlabel('Electrode Row')
+        ax.set_ylabel('Electrode Column')
+        ax.grid(visible=False)  # disable grid
+        ax.set_xticks(range(sample_image.shape[1]))
+        ax.set_yticks(range(sample_image.shape[0]))
+        
 
         def update(frame):
             # Update function to produce live animation
