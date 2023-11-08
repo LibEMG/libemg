@@ -572,14 +572,18 @@ class OnlineDataHandler(DataHandler):
         def extract_data():
             data = self.get_data()
             if len(data) > num_samples:
-                # Only look at the most recent num_samples samples
+                # Only look at the most recent num_samples samples (essentially extracting a single window)
                 data = data[-num_samples:]
+            # Extract features along each channel
+            windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
+            fe = FeatureExtractor()
+            features = fe.extract_features([representation_type], windows)
+            # features = fe.extract_features([representation_type], data.transpose((1, 2, 0)))   
             if remap_function is not None:
                 # Remap raw data to image format
-                data = remap_function(data)
-            # Extract features
-            fe = FeatureExtractor()
-            features = fe.extract_features([representation_type], data.transpose((1, 2, 0)))    # tranpose to convert to (windows x channels x samples)
+                for key in features:
+                    features[key] = remap_function(features[key]).squeeze() # squeeze to remove extra axis added for windows
+                # data = remap_function(data)
             return features[representation_type]
 
         cmap = cm.viridis   # colourmap to determine heatmap style
