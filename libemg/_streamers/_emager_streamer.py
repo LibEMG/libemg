@@ -45,7 +45,6 @@ def remap_raw_to_spatial(data):
             data_remap[:, remap_channel_idx] = data[:, channel_idx]
         num_samples = data.shape[0]
         data_remap = data_remap.reshape((num_samples, 4, 16))    # reshape to image format
-        print(data_remap.shape)
     return data_remap
 
 class Emager:
