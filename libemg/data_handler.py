@@ -564,6 +564,9 @@ class OnlineDataHandler(DataHandler):
         """
         # Create figure
         pyplot.style.use('ggplot')
+        if not self._check_streaming():
+            # Not reading any data
+            return
         fig, ax = plt.subplots(1, 1)
         
         def extract_data():
