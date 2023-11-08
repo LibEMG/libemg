@@ -564,9 +564,8 @@ class OnlineDataHandler(DataHandler):
         fig, ax = plt.subplots(1, 1)
         fig.suptitle(f'{representation_type} Heatmap')
         cmap = cm.viridis
-
-        def update(frame):
-            # Update function to produce live animation
+        
+        def get_remapped_data():
             data = self.get_data()
             if len(data) > num_samples:
                 # Only look at the most recent num_samples samples
@@ -574,11 +573,23 @@ class OnlineDataHandler(DataHandler):
             if remap_function is not None:
                 # Remap raw data to image format
                 data = remap_function(data)
+            return data
+        
+        # Access sample data to determine heatmap size
+        sample_data = get_remapped_data()
+        im = plt.imshow(np.zeros(shape=sample_data.shape[1:]), cmap=cmap, animated=True)
+
+        def update(frame):
+            # Update function to produce live animation
+            data = get_remapped_data()
+                
             if len(data) > 0:
                 # TODO: Transform data based on desired representation (e.g., RMS, MAV, etc.)
 
                 # Take mean over window
                 mean_data = np.mean(np.absolute(data), axis=0)
+                
+                # Normalize to properly display colours
                 min = 100  # -32769
                 max = 22000  # 32769
                 min = 10  # -32769
@@ -586,13 +597,10 @@ class OnlineDataHandler(DataHandler):
                 mean_data = (mean_data - min) / (max - min)
                 # Convert to coloured map
                 heatmap_data = cmap(mean_data)
-                im = plt.imshow(heatmap_data, cmap=cmap, animated=True)
                 im.set_data(heatmap_data)
-            else:
-                im = plt.imshow([[]], cmap=cmap, animated=True)
             return im, 
-                
-        animation = FuncAnimation(fig, update, interval=50, blit=True)
+        
+        animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
