@@ -558,6 +558,8 @@ class OnlineDataHandler(DataHandler):
             The number of samples to average over (i.e., window size) when showing heatmap.
         representation_type: str (optional), default=RMS
             Type of representation for heatmap (e.g., RMS, MAV, etc.).
+        remap_function: callable or None (optional), default=None
+            Function pointer that remaps raw data to a format that can be represented by an image.
         """
         pyplot.style.use('ggplot')
         # See https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html for heatmap example
