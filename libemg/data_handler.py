@@ -557,7 +557,8 @@ class OnlineDataHandler(DataHandler):
         num_samples: int (optional), default=500
             The number of samples to average over (i.e., window size) when showing heatmap.
         representation_type: str (optional), default=RMS
-            Type of representation for heatmap (e.g., RMS, MAV, etc.).
+            Type of representation for heatmap (e.g., RMS, MAV, etc.). For expected parameters, see 
+            libemg.feature_extractor.get_feature_list().
         remap_function: callable or None (optional), default=None
             Function pointer that remaps raw data to a format that can be represented by an image.
         """
@@ -565,7 +566,7 @@ class OnlineDataHandler(DataHandler):
         pyplot.style.use('ggplot')
         fig, ax = plt.subplots(1, 1)
         
-        def get_remapped_data():
+        def extract_data():
             data = self.get_data()
             if len(data) > num_samples:
                 # Only look at the most recent num_samples samples
@@ -573,42 +574,39 @@ class OnlineDataHandler(DataHandler):
             if remap_function is not None:
                 # Remap raw data to image format
                 data = remap_function(data)
-            return data
+            # Extract features
+            fe = FeatureExtractor()
+            features = fe.extract_features([representation_type], data.transpose((1, 2, 0)))    # tranpose to convert to (windows x channels x samples)
+            return features[representation_type]
 
         cmap = cm.viridis   # colourmap to determine heatmap style
         
         # Access sample data to determine heatmap size
-        sample_data = get_remapped_data()
-        sample_image = np.zeros(shape=sample_data.shape[1:])
-        im = plt.imshow(np.zeros(shape=sample_image.shape), cmap=cmap, animated=True)
+        sample_data = extract_data()
+        im = plt.imshow(np.zeros(shape=sample_data.shape), cmap=cmap, animated=True)
         
         # Format figure
         fig.suptitle(f'{representation_type} Heatmap')
         ax.set_xlabel('Electrode Row')
         ax.set_ylabel('Electrode Column')
         ax.grid(visible=False)  # disable grid
-        ax.set_xticks(range(sample_image.shape[1]))
-        ax.set_yticks(range(sample_image.shape[0]))
+        ax.set_xticks(range(sample_data.shape[1]))
+        ax.set_yticks(range(sample_data.shape[0]))
         
 
         def update(frame):
             # Update function to produce live animation
-            data = get_remapped_data()
+            data = extract_data()
                 
             if len(data) > 0:
-                # TODO: Transform data based on desired representation (e.g., RMS, MAV, etc.)
-
-                # Take mean over window
-                mean_data = np.mean(np.absolute(data), axis=0)
-                
                 # Normalize to properly display colours
                 min = 100  # -32769
                 max = 22000  # 32769
                 min = 10  # -32769
                 max = 3200  # 32769
-                mean_data = (mean_data - min) / (max - min)
+                normalized_data = (data - min) / (max - min)
                 # Convert to coloured map
-                heatmap_data = cmap(mean_data)
+                heatmap_data = cmap(normalized_data)
                 im.set_data(heatmap_data)
             return im, 
         
