@@ -567,7 +567,6 @@ class OnlineDataHandler(DataHandler):
         if not self._check_streaming():
             # Not reading any data
             return
-        fig, ax = plt.subplots(1, 1)
         
         if feature_list is None:
             # Default to MAV
@@ -581,45 +580,49 @@ class OnlineDataHandler(DataHandler):
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
-            features = fe.extract_features(feature_list, windows)
-            # features = fe.extract_features([representation_type], data.transpose((1, 2, 0)))   
+            feature_set_dict = fe.extract_features(feature_list, windows)
             if remap_function is not None:
                 # Remap raw data to image format
-                for key in features:
-                    features[key] = remap_function(features[key]).squeeze() # squeeze to remove extra axis added for windows
+                for key in feature_set_dict:
+                    feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
                 # data = remap_function(data)
-            return features
+            return feature_set_dict
 
         cmap = cm.viridis   # colourmap to determine heatmap style
         
-        # Access sample data to determine heatmap size
-        sample_data = extract_data()[feature_list[0]]
-        im = plt.imshow(np.zeros(shape=sample_data.shape), cmap=cmap, animated=True)
-        
         # Format figure
-        fig.suptitle(f'{feature_list} Heatmap')
-        ax.set_xlabel('Electrode Row')
-        ax.set_ylabel('Electrode Column')
-        ax.grid(visible=False)  # disable grid
-        ax.set_xticks(range(sample_data.shape[1]))
-        ax.set_yticks(range(sample_data.shape[0]))
-        
+        sample_data = extract_data()    # access sample data to determine heatmap size
+        fig, axs = plt.subplots(len(sample_data.keys()), 1)
+        fig.suptitle(f'HD-EMG Heatmap')
+        plots = []
+        for (feature_key, feature_data), ax in zip(sample_data.items(), axs):
+            ax.set_title(f'{feature_key}')
+            ax.set_xlabel('Electrode Row')
+            ax.set_ylabel('Electrode Column')
+            ax.grid(visible=False)  # disable grid
+            ax.set_xticks(range(feature_data.shape[1]))
+            ax.set_yticks(range(feature_data.shape[0]))
+            plots.append(ax.imshow(np.zeros(shape=feature_data.shape), cmap=cmap, animated=True))
+        plt.tight_layout()
+            
 
         def update(frame):
             # Update function to produce live animation
-            data = extract_data()[feature_list[0]]
+            data = extract_data()
                 
             if len(data) > 0:
-                # Normalize to properly display colours
                 min = 100  # -32769
                 max = 22000  # 32769
                 min = 10  # -32769
                 max = 3200  # 32769
-                normalized_data = (data - min) / (max - min)
-                # Convert to coloured map
-                heatmap_data = cmap(normalized_data)
-                im.set_data(heatmap_data)
-            return im, 
+                # Loop through feature plots
+                for feature_data, plot in zip(data.values(), plots):
+                    # Normalize to properly display colours
+                    normalized_data = (feature_data - min) / (max - min)
+                    # Convert to coloured map
+                    heatmap_data = cmap(normalized_data)
+                    plot.set_data(heatmap_data) # update plot
+            return plots, 
         
         animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
