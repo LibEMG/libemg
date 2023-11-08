@@ -4,10 +4,10 @@ class RawData:
     def __init__(self):
         self.emg_lock = multiprocessing.Lock()
         self.imu_lock = multiprocessing.Lock()
-        # self.other_lock = multiprocessing.Lock()
+        self.other_lock = multiprocessing.Lock()
         self.emg_data = []
         self.imu_data = []
-        # self.other_modalities = {}
+        self.other_modalities = {}
 
     def get_imu(self):
         return self.imu_data
@@ -36,23 +36,22 @@ class RawData:
             self.emg_data = self.emg_data[-window:]
             self.emg_data = self.emg_data[increment:window]
 
-    # def instantialize_others(self, others):
-    #     for o in others:
-    #         self.other_modalities[o] = []
+    def instantialize_other(self, other):
+        self.other_modalities[other] = []
 
-    # def get_other(self, other):
-    #     self.check_other(other)
-    #     return self.other_modalities['other']
+    def get_others(self):
+        return self.other_modalities
     
-    # def add_other(self, other, data):
-    #     self.check_other(other)
-    #     with self.other_lock:
-    #         self.other_modalities[other].append(data)
+    def add_other(self, other, data):
+        assert self.check_other(other) == True
+        self.check_other(other)
+        with self.other_lock:
+            self.other_modalities[other].append(data)
     
-    # def reset_other(self, other):
-    #     self.check_other()
-    #     with self.other_lock:
-    #         self.other_modalities[other] = []
+    def reset_others(self):
+        for k in self.other_modalities.keys():
+            self.other_modalities[k] = []
 
-    # def check_other(self, other):
-    #     assert other in self.other_modalities
+    def check_other(self, other):
+        return other in self.other_modalities
+

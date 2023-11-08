@@ -3,7 +3,7 @@ import os
 import requests
 # this is responsible for receiving the data
 class SiFiBridge:
-    def __init__(self, config, version):
+    def __init__(self, config, version, other):
         self.version = version
         import platform
         # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
@@ -25,8 +25,10 @@ class SiFiBridge:
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE)
         self.config = config
+        self.other = other
         self.emg_handlers = []
         self.imu_handlers = []
+        self.other_handlers = []
 
     def connect(self):
         connected = False
@@ -47,12 +49,14 @@ class SiFiBridge:
         self.proc.stdin.write(self.config)
         self.proc.stdin.flush()
 
-
     def add_emg_handler(self, closure):
         self.emg_handlers.append(closure)
 
     def add_imu_handler(self, closure):
         self.imu_handlers.append(closure)
+
+    def add_other_handler(self, closure):
+        self.other_handlers.append(closure)
 
     def run(self):
         self.proc.stdin.write(b'-cmd 1\n')
@@ -75,13 +79,28 @@ class SiFiBridge:
                 elif "emg" in list(data_arr_as_json["data"].keys()): # This is the biopoint emg 
                     emg = data_arr_as_json['data']["emg"]
                     for e in emg:
-                        self.emg_handlers[0]([e])
+                        if not self.other:
+                            self.emg_handlers[0]([e])
+                        else:
+                            self.other_handlers[0]('EMG-bio', [e])
                 if "acc_x" in list(data_arr_as_json["data"].keys()):
                     accel = np.transpose(np.vstack([data_arr_as_json['data']['acc_x'], data_arr_as_json['data']['acc_y'], data_arr_as_json['data']['acc_z']]))
                     quat = np.transpose(np.vstack([data_arr_as_json['data']['w'], data_arr_as_json['data']['x'], data_arr_as_json['data']['y'], data_arr_as_json['data']['z']]))
                     imu = np.hstack((accel, quat))
                     for i in imu:
-                        self.imu_handlers[0](i)
+                        if not self.other:
+                            self.imu_handlers[0](i)
+                        else:
+                            self.other_handlers[0]('IMU-bio', i)
+                if "eda" in list(data_arr_as_json["data"].keys()):
+                    eda = data_arr_as_json['data']['eda']
+                    for e in eda:
+                        self.other_handlers[0]('EDA-bio', [e])
+                if "b" in list(data_arr_as_json["data"].keys()):
+                    sizes = [len(data_arr_as_json['data']['b']), len(data_arr_as_json['data']['g']), len(data_arr_as_json['data']['r']), len(data_arr_as_json['data']['ir'])]
+                    ppg = np.transpose(np.vstack([data_arr_as_json['data']['b'][0:min(sizes)], data_arr_as_json['data']['g'][0:min(sizes)], data_arr_as_json['data']['r'][0:min(sizes)], data_arr_as_json['data']['ir'][0:min(sizes)]]))
+                    for p in ppg:
+                        self.other_handlers[0]('PPG-bio', p)      
 
     def close(self):
         self.proc.stdin.write(b'-cmd 1\n')
@@ -108,10 +127,12 @@ class SiFiBridgeStreamer:
                  notch_on=True,
                  notch_freq = 60,
                  emgfir_on=True,
-                 emg_fir = [20, 450]):
+                 emg_fir = [20, 450],
+                 other=False):
         # notch_on refers to EMG notch filter
         # notch_freq refers to frequency cutoff of notch filter
         # 
+        self.other = other
         self.version = version
         self.ip = ip 
         self.port = port
@@ -136,7 +157,7 @@ class SiFiBridgeStreamer:
     def start_stream(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
-        b= SiFiBridge(self.config, self.version)
+        b= SiFiBridge(self.config, self.version, self.other)
         b.connect()
 
         def write_emg(emg):
@@ -149,6 +170,12 @@ class SiFiBridgeStreamer:
             data_arr = pickle.dumps(list(imu_list))
             sock.sendto(data_arr, (self.ip, self.port))
         b.add_imu_handler(write_imu)
+
+        def write_other(other, data):
+            other_list = [other, data]
+            data_arr = pickle.dumps(list(other_list))
+            sock.sendto(data_arr, (self.ip, self.port))
+        b.add_other_handler(write_other)
 
         while True:
             try:

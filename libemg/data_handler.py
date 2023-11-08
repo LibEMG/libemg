@@ -352,10 +352,10 @@ class OnlineDataHandler(DataHandler):
     add_timestamps: bool(optional): default = False 
         If True, timestamps will be added to the raw filese generated when setting the file flag to true.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", imu_file_path="raw_imu.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", imu_file_path="raw_imu.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False, other_arr=False):
         self.port = port 
         self.ip = ip
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_file_path': imu_file_path, 'imu_arr': imu_arr}
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_file_path': imu_file_path, 'imu_arr': imu_arr, 'other_arr': other_arr}
         self.fi = None
         self.max_buffer = max_buffer
         self.timestamps = timestamps
@@ -404,9 +404,10 @@ class OnlineDataHandler(DataHandler):
         return data
     
     def get_imu_data(self):
-        print(self.raw_data.get_imu())
         return np.array(self.raw_data.get_imu())
 
+    def get_other_data(self):
+        return self.raw_data.get_others()
 
     def analyze_hardware(self, analyze_time=10):
         """Analyzes several metrics from the hardware:
@@ -617,11 +618,18 @@ class OnlineDataHandler(DataHandler):
                 data = pickle.loads(data)
 
                 # Check if IMU or EMG 
-                tag = 'EMG'
-                file = self.options['file_path']
-                if data[0] == 'IMU':
+                if type(data[0]) != str:
+                    tag = 'EMG'
+                    file = self.options['file_path']
+                elif data[0] == 'IMU':
                     file = self.options['imu_file_path']
                     tag = 'IMU'
+                    data = data[1]
+                else:
+                    # We have some custom tag we need to deal with
+                    if not raw_data.check_other(data[0]):
+                        raw_data.instantialize_other(data[0])
+                    tag = data[0]
                     data = data[1]
 
                 timestamp = datetime.now()
@@ -631,6 +639,8 @@ class OnlineDataHandler(DataHandler):
                     file_path = self.options['file_path']
                     if tag == 'IMU':
                         file_path = self.options['imu_file_path']
+                    elif tag != 'EMG':
+                        file_path = tag + '.csv'
                     with open(file_path, 'a', newline='') as file:
                         writer = csv.writer(file)
                         if self.timestamps:
@@ -643,6 +653,9 @@ class OnlineDataHandler(DataHandler):
                 if self.options['imu_arr']:
                     if tag == 'IMU':
                         raw_data.add_imu(data)
+                if self.options['other_arr']:
+                    if tag != 'IMU' and tag != 'EMG':
+                        raw_data.add_other(tag, data)
 
     def _check_streaming(self, timeout=10):
         wt = time.time()

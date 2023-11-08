@@ -250,6 +250,7 @@ class _SGTUI:
                 random.shuffle(self.inputs)
             emg_data = {}
             imu_data = {}
+            other_data = {}
             file_index = 0 
             while(file_index < len(self.inputs)):
                 file = self.inputs[file_index]
@@ -269,10 +270,12 @@ class _SGTUI:
                     if val != 0:
                         self.data_handler.raw_data.reset_emg()
                         self.data_handler.raw_data.reset_imu()
+                        self.data_handler.raw_data.reset_others()
                     self._bar_count_down(cd_time)
                     if val != 0:
                         emg_data[self.og_inputs.index(file)] = self.data_handler.get_data()
-                        imu_data[self.og_inputs.index(file)] = self.data_handler.get_imu_data()              
+                        imu_data[self.og_inputs.index(file)] = self.data_handler.get_imu_data()
+                        other_data[self.og_inputs.index(file)] = self.data_handler.get_other_data()            
                     if val == 1 and self.wait and file != self.inputs[-1]:
                         next_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._next)
                         redo_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._redo)
@@ -287,7 +290,7 @@ class _SGTUI:
                     elif not self.wait and val == 1:
                         file_index += 1
 
-            self._write_data(emg_data, imu_data)
+            self._write_data(emg_data, imu_data, other_data)
             self.rep_number += 1
             self.next_rep_button = Button(self.window, text = 'Next Rep', font = ("Arial", 12), command=self._next_rep)
             self.redo_rep_button = Button(self.window, text = 'Redo Rep', font = ("Arial", 12), command=self._redo_rep)
@@ -325,13 +328,14 @@ class _SGTUI:
         self.class_label['text'] = "Class: " + str(label)
         self.window.update_idletasks()
     
-    def _write_data(self, emg_data, imu_data):
+    def _write_data(self, emg_data, imu_data, other_data):
         if not os.path.isdir(self.output_folder.get()):
             os.makedirs(self.output_folder.get()) 
         for c in emg_data.keys():
             # Write EMG Files
             emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_EMG.csv"
             imu_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_IMU.csv"
+            other_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_"
             self.meta_data_dic[emg_file] = {
                 'rep_idx': self.rep_number,
                 'class_idx': c,
@@ -351,6 +355,14 @@ class _SGTUI:
                     imu_writer = csv.writer(file)
                     for row in imu_data[c]:
                         imu_writer.writerow(row)
+            
+            # Write Other Data
+            if other_data[c]: # Only write if there is other data
+                for k in other_data[c].keys():
+                    with open(other_file + k + '.csv', "w", newline='', encoding='utf-8') as file:
+                        other_writer = csv.writer(file)
+                        for row in other_data[c][k]:
+                            other_writer.writerow(row)
 
         # Write Metadata file
         with open(self.output_folder.get() + "metadata.json", 'w') as f: 
