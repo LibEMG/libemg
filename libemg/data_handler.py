@@ -549,16 +549,16 @@ class OnlineDataHandler(DataHandler):
         animation = FuncAnimation(figure, update, interval=100)
         pyplot.show()
     
-    def visualize_heatmap(self, num_samples = 500, representation_type = 'RMS', remap_function = None):
+    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None):
         """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
 
         Parameters
         ----------
         num_samples: int (optional), default=500
             The number of samples to average over (i.e., window size) when showing heatmap.
-        representation_type: str (optional), default=RMS
-            Type of representation for heatmap (e.g., RMS, MAV, etc.). For expected parameters, see 
-            libemg.feature_extractor.get_feature_list().
+        feature_list: list or None (optional), default=None
+            List of feature representations to extract, where each feature will be shown in a different subplot. 
+            For expected parameters, see libemg.feature_extractor.get_feature_list(). If None, defaults to MAV.
         remap_function: callable or None (optional), default=None
             Function pointer that remaps raw data to a format that can be represented by an image.
         """
@@ -569,6 +569,10 @@ class OnlineDataHandler(DataHandler):
             return
         fig, ax = plt.subplots(1, 1)
         
+        if feature_list is None:
+            # Default to MAV
+            feature_list = ['MAV']
+        
         def extract_data():
             data = self.get_data()
             if len(data) > num_samples:
@@ -577,23 +581,23 @@ class OnlineDataHandler(DataHandler):
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
-            features = fe.extract_features([representation_type], windows)
+            features = fe.extract_features(feature_list, windows)
             # features = fe.extract_features([representation_type], data.transpose((1, 2, 0)))   
             if remap_function is not None:
                 # Remap raw data to image format
                 for key in features:
                     features[key] = remap_function(features[key]).squeeze() # squeeze to remove extra axis added for windows
                 # data = remap_function(data)
-            return features[representation_type]
+            return features
 
         cmap = cm.viridis   # colourmap to determine heatmap style
         
         # Access sample data to determine heatmap size
-        sample_data = extract_data()
+        sample_data = extract_data()[feature_list[0]]
         im = plt.imshow(np.zeros(shape=sample_data.shape), cmap=cmap, animated=True)
         
         # Format figure
-        fig.suptitle(f'{representation_type} Heatmap')
+        fig.suptitle(f'{feature_list} Heatmap')
         ax.set_xlabel('Electrode Row')
         ax.set_ylabel('Electrode Column')
         ax.grid(visible=False)  # disable grid
@@ -603,7 +607,7 @@ class OnlineDataHandler(DataHandler):
 
         def update(frame):
             # Update function to produce live animation
-            data = extract_data()
+            data = extract_data()[feature_list[0]]
                 
             if len(data) > 0:
                 # Normalize to properly display colours
