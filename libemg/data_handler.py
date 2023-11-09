@@ -558,7 +558,8 @@ class OnlineDataHandler(DataHandler):
             The number of samples to average over (i.e., window size) when showing heatmap.
         feature_list: list or None (optional), default=None
             List of feature representations to extract, where each feature will be shown in a different subplot. 
-            For expected parameters, see libemg.feature_extractor.get_feature_list(). If None, defaults to MAV.
+            Compatible with all features in libemg.feature_extractor.get_feature_list() that return a single value per channel (e.g., MAV, RMS). 
+            If a feature type that returns multiple values is passed, an error will be thrown. If None, defaults to MAV.
         remap_function: callable or None (optional), default=None
             Function pointer that remaps raw data to a format that can be represented by an image.
         """
