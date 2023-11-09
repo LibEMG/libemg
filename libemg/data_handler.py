@@ -602,7 +602,9 @@ class OnlineDataHandler(DataHandler):
             ax.grid(visible=False)  # disable grid
             ax.set_xticks(range(feature_data.shape[1]))
             ax.set_yticks(range(feature_data.shape[0]))
-            plots.append(ax.imshow(np.zeros(shape=feature_data.shape), cmap=cmap, animated=True))
+            im = ax.imshow(np.zeros(shape=feature_data.shape), cmap=cmap, animated=True)
+            plt.colorbar(im)
+            plots.append(im)
         plt.tight_layout()
             
 
