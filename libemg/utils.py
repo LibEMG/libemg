@@ -84,3 +84,27 @@ def make_regex(left_bound, right_bound, values=[]):
     mid_str += ")"
     right_bound_str = "(?=" + right_bound +")"
     return left_bound_str + mid_str + right_bound_str
+
+def make_gif(frames, output_filepath = 'libemg.gif', duration = 100):
+    """Save a .gif video file from a list of images.
+
+
+    Parameters
+    ----------
+    frames: list
+        List of frames, where each element is a PIL.Image object.
+    output_filepath: string (optional), default='libemg.gif'
+        Filepath of output file.
+    duration: int (optional), default=100
+        Duration of each frame in milliseconds.
+    
+    """
+    frames[0].save(
+        output_filepath,
+        save_all=True,
+        append_images=frames[1:],   # append remaining frames
+        format='GIF',
+        duration=duration,
+        loop=0  # infinite loop
+    )
+
