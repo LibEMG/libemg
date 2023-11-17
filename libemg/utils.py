@@ -150,7 +150,7 @@ def make_gif_from_directory(directory_path, output_filepath = 'libemg.gif', matc
                 matching_filenames.append(absolute_path)
             except UnidentifiedImageError:
                 # Reading non-image file
-                print(f'Skipping {absolute_path} because it is not an image.')
+                print(f'Skipping {absolute_path} because it is not an image file.')
     
     # Make .gif from frames
     make_gif(frames, output_filepath, duration=duration)
