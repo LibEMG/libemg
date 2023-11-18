@@ -2,6 +2,8 @@ import os
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 
 def get_windows(data, window_size, window_increment):
@@ -160,3 +162,46 @@ def make_gif_from_directory(directory_path, output_filepath = 'libemg.gif', matc
         # Delete all images used to create .gif
         for filename in matching_filenames:
             os.remove(filename)
+            
+def _convert_plot_to_image(fig):
+    canvas = FigureCanvasAgg(fig)
+    
+    canvas.draw()
+    rgba_buffer = canvas.buffer_rgba()
+
+    # Convert the buffer to a PIL Image
+    return Image.frombytes('RGBA', canvas.get_width_height(), rgba_buffer)
+
+def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100):
+    # Coordinates is a N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis (would having the image get larger be better?),
+    # rotation.
+    # Maybe add an option to put images and/or labels somewhere
+    # Arrow properties
+    arrow_length = 0.1
+    head_size = 0.05
+    arrow_colour = 'black'
+    def plot_arrow(x_tail, y_tail, angle_degrees):
+        # Convert angle to radians
+        arrow_angle_radians = np.radians(angle_degrees)
+
+        # Calculate arrow head coordinates
+        x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
+        y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
+        plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
+
+    for frame_coordinates in coordinates:
+        # Format plot
+        fig = plt.figure()
+        plt.xlim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper arrow size
+        plt.ylim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper arrow size
+        plt.xlabel('X-axis')
+        plt.ylabel('Y-axis')
+
+        # Parse coordinates
+        x_tail = frame_coordinates[0]
+        y_tail = frame_coordinates[1]
+        angle_degrees = frame_coordinates[2]
+        plot_arrow(x_tail, y_tail, angle_degrees)
+        _convert_plot_to_image(fig)
+
+
