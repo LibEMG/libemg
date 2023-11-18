@@ -205,7 +205,7 @@ def _add_image_label_axes(fig):
         ax.axis('off')
     return (ax_main, ax_top, ax_right, ax_bottom, ax_left)
 
-def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xaxis_label = '', yaxis_label = '', axis_images = None):
+def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xlabel = '', ylabel = '', axis_images = None):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -217,9 +217,9 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         Filepath of output file.
     duration: int (optional), default=100
         Duration of each frame in milliseconds.
-    xaxis_label: string (optional), default=''
+    xlabel: string (optional), default=''
         Label for x-axis.
-    yaxis_label: string (optional), default=''
+    ylabel: string (optional), default=''
         Label for y-axis.
     axis_images: dict (optional), default=None
         Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
