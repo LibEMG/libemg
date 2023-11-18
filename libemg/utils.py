@@ -205,7 +205,7 @@ def _add_image_label_axes(fig):
         ax.axis('off')
     return (ax_main, ax_top, ax_right, ax_bottom, ax_left)
 
-def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xlabel = '', ylabel = '', axis_images = None):
+def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xlabel = '', ylabel = '', axis_images = None, save_coordinates = False):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -223,7 +223,9 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         Label for y-axis.
     axis_images: dict (optional), default=None
         Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
-        Valid keys are 'N', 'E', 'S', and 'W'. 
+        Valid keys are 'N', 'E', 'S', and 'W'.
+    save_coordinates: bool (optional), default=False
+        True if coordinates should be saved to a .txt file for ground truth values, otherwise False.
     """
     # Plotting functions
     def plot_dot(frame_coordinates):
@@ -252,6 +254,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
     
     # Plot a dot if 2 DOFs were passed in, otherwise plot arrow
+    axis_limits = (-1.2, 1.2)
     plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
     frames = []
     for frame_coordinates in coordinates:
@@ -274,11 +277,17 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         plot_icon(frame_coordinates)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        plt.xlim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper icon size
-        plt.ylim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper icon size
+        plt.xlim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
+        plt.ylim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
         plt.tight_layout()
         frame = _convert_plot_to_image(fig)
         frames.append(frame)
+        plt.close() # close figure
     
     # Save file
     make_gif(frames, output_filepath=output_filepath, duration=duration)
+    if save_coordinates:
+        # Save coordinates in .txt file
+        filename_no_extension = os.path.splitext(output_filepath)[0]
+        labels_filepath = filename_no_extension + '.txt'
+        np.savetxt(labels_filepath, coordinates, delimiter=',')
