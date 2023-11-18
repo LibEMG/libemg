@@ -184,19 +184,35 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     # Coordinates is a N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis (would having the image get larger be better?),
     # rotation.
     # Maybe add an option to put images and/or labels somewhere
-    # Arrow properties
-    arrow_length = 0.1
-    head_size = 0.05
-    arrow_colour = 'black'
-    def plot_arrow(x_tail, y_tail, angle_degrees):
+    
+    # Plotting functions
+    def plot_dot(frame_coordinates):
+        # Parse coordinates
+        x = frame_coordinates[0]
+        y = frame_coordinates[1]
+        # Dot properties
+        size = 50
+        colour = 'black'
+        plt.scatter(x, y, s=size, c=colour)
+    
+    def plot_arrow(frame_coordinates):
+        # Parse coordinates
+        x_tail = frame_coordinates[0]
+        y_tail = frame_coordinates[1]
+        angle_degrees = frame_coordinates[2]
         # Convert angle to radians
         arrow_angle_radians = np.radians(angle_degrees)
-
+        # Arrow properties
+        arrow_length = 0.1
+        head_size = 0.05
+        arrow_colour = 'black'
         # Calculate arrow head coordinates
         x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
         y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
         plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
 
+    # Plot a dot if 2 DOFs were passed in, otherwise plot arrow
+    plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
     frames = []
     for frame_coordinates in coordinates:
         # Format plot
@@ -206,13 +222,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         plt.xlabel('X-axis')
         plt.ylabel('Y-axis')
 
-        # Parse coordinates
-        x_tail = frame_coordinates[0]
-        y_tail = frame_coordinates[1]
-        angle_degrees = frame_coordinates[2]
-        plot_arrow(x_tail, y_tail, angle_degrees)
+        plot_icon(frame_coordinates)
         frame = _convert_plot_to_image(fig)
         frames.append(frame)
     
+    # Save file
     make_gif(frames, output_filepath=output_filepath, duration=duration)
 
