@@ -114,8 +114,8 @@ def make_gif(frames, output_filepath = 'libemg.gif', duration = 100):
 
 def make_gif_from_directory(directory_path, output_filepath = 'libemg.gif', match_filename_function = None, 
                             delete_images = False, duration = 100):
-    """Save a .gif video file from image files in a specified directory. Accepts all images that be read using
-    PIL.Image.open().
+    """Save a .gif video file from image files in a specified directory. Accepts all image types that can be read using
+    PIL.Image.open(). Appends images in alphabetical order.
 
 
     Parameters
@@ -138,6 +138,7 @@ def make_gif_from_directory(directory_path, output_filepath = 'libemg.gif', matc
         match_filename_function = lambda x: True
     frames = []
     filenames = os.listdir(directory_path)
+    filenames.sort()    # sort alphabetically
     matching_filenames = [] # images used to create .gif
 
     for filename in filenames:
