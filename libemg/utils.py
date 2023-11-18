@@ -180,10 +180,28 @@ def _convert_plot_to_image(fig):
     # Convert the buffer to a PIL Image
     return Image.frombytes('RGBA', canvas.get_width_height(), rgba_buffer)
 
-def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100):
+def _add_image_label_axes(fig):
+    # Make 3 x 3 grid
+    gs = fig.add_gridspec(3, 3, width_ratios=[1, 2, 1], height_ratios=[1, 2, 1])
+
+    # Create subplots using the gridspec
+    ax_main = plt.subplot(gs[1, 1])  # Main plot
+    ax_right = plt.subplot(gs[1, 2])  # Right side subplot
+    ax_left = plt.subplot(gs[1, 0])   # Left side subplot
+    ax_top = plt.subplot(gs[0, 1])    # Top subplot
+    ax_bottom = plt.subplot(gs[2, 1]) # Bottom subplot
+    
+    image_axs = (ax_top, ax_right, ax_bottom, ax_left)
+    
+    # Turn off axes for image axes
+    for ax in image_axs:
+        ax.axis('off')
+    return (ax_main, ax_top, ax_right, ax_bottom, ax_left)
+
+def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xaxis_label = '', yaxis_label = '', axis_images = None):
     # Coordinates is a N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis (would having the image get larger be better?),
     # rotation.
-    # Maybe add an option to put images and/or labels somewhere
+
     
     # Plotting functions
     def plot_dot(frame_coordinates):
@@ -210,22 +228,33 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
         y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
         plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
-
+    
     # Plot a dot if 2 DOFs were passed in, otherwise plot arrow
     plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
     frames = []
     for frame_coordinates in coordinates:
-        # Format plot
         fig = plt.figure()
-        plt.xlim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper arrow size
-        plt.ylim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper arrow size
-        plt.xlabel('X-axis')
-        plt.ylabel('Y-axis')
-
+        
+        if axis_images is not None:
+            ax_main, ax_top, ax_right, ax_bottom, ax_left = _add_image_label_axes(fig)
+            loc_axis_map = {
+                'N': ax_top,
+                'E': ax_right,
+                'S': ax_bottom,
+                'W': ax_left
+            }
+            for loc, image in axis_images.items():
+                ax = loc_axis_map[loc]
+                ax.imshow(image)
+            plt.sca(ax_main)    # set main axis so icon is drawn correctly
+        
+        # Plot icon
         plot_icon(frame_coordinates)
+        plt.xlim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper icon size
+        plt.ylim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper icon size
+        plt.tight_layout()
         frame = _convert_plot_to_image(fig)
         frames.append(frame)
     
     # Save file
     make_gif(frames, output_filepath=output_filepath, duration=duration)
-
