@@ -189,6 +189,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
         plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
 
+    frames = []
     for frame_coordinates in coordinates:
         # Format plot
         fig = plt.figure()
@@ -202,6 +203,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         y_tail = frame_coordinates[1]
         angle_degrees = frame_coordinates[2]
         plot_arrow(x_tail, y_tail, angle_degrees)
-        _convert_plot_to_image(fig)
-
+        frame = _convert_plot_to_image(fig)
+        frames.append(frame)
+    
+    make_gif(frames, output_filepath=output_filepath, duration=duration)
 
