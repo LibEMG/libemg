@@ -164,8 +164,16 @@ def make_gif_from_directory(directory_path, output_filepath = 'libemg.gif', matc
             os.remove(filename)
             
 def _convert_plot_to_image(fig):
+    """Convert a matplotlib Figure to a PIL.Image object.
+
+    Parameters
+    ----------
+    fig: matplotlib.pyplot.Figure
+        Figure that should be saved as an image.
+    """
     canvas = FigureCanvasAgg(fig)
     
+    # Get RGBA buffer
     canvas.draw()
     rgba_buffer = canvas.buffer_rgba()
 
