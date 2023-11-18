@@ -272,6 +272,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         
         # Plot icon
         plot_icon(frame_coordinates)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
         plt.xlim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper icon size
         plt.ylim(-1, 1) # restrict axis to -1, 1 for visual clarity and proper icon size
         plt.tight_layout()
