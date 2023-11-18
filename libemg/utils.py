@@ -181,6 +181,13 @@ def _convert_plot_to_image(fig):
     return Image.frombytes('RGBA', canvas.get_width_height(), rgba_buffer)
 
 def _add_image_label_axes(fig):
+    """Add axes to a matplotlib Figure for displaying images in the top, right, bottom, and left of the Figure. 
+    
+    Parameters
+    ----------
+    fig: matplotlib.pyplot.Figure
+        Figure to add image axes to.
+    """
     # Make 3 x 3 grid
     gs = fig.add_gridspec(3, 3, width_ratios=[1, 2, 1], height_ratios=[1, 2, 1])
 
@@ -199,10 +206,25 @@ def _add_image_label_axes(fig):
     return (ax_main, ax_top, ax_right, ax_bottom, ax_left)
 
 def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xaxis_label = '', yaxis_label = '', axis_images = None):
-    # Coordinates is a N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis (would having the image get larger be better?),
-    # rotation.
-
+    """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
+    Parameters
+    ----------
+    coordinates: numpy.ndarray
+        N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and angle (degrees counter-clockwise).
+        Each row contains the value for x position, y position, and / or angle depending on how many DOFs are passed in.
+    output_filepath: string (optional), default='libemg.gif'
+        Filepath of output file.
+    duration: int (optional), default=100
+        Duration of each frame in milliseconds.
+    xaxis_label: string (optional), default=''
+        Label for x-axis.
+    yaxis_label: string (optional), default=''
+        Label for y-axis.
+    axis_images: dict (optional), default=None
+        Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
+        Valid keys are 'N', 'E', 'S', and 'W'. 
+    """
     # Plotting functions
     def plot_dot(frame_coordinates):
         # Parse coordinates
