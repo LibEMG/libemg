@@ -30,8 +30,12 @@ class DataHandler:
     def _get_repeating_values(self, data):
         repeats = 0
         for i in range(1, len(data)):
-            if (data[i] == data[i-1]).all():
-                repeats += 1
+            if len(data[0]) > 1:
+                if (data[i] == data[i-1]).all():
+                    repeats += 1
+            else:
+                if data[i] == data[i-1]:
+                    repeats += 1
         return repeats
 
 
@@ -632,7 +636,7 @@ class OnlineDataHandler(DataHandler):
                     tag = data[0]
                     data = data[1]
 
-                timestamp = datetime.now()
+                timestamp = time.time()
                 if self.options['std_out']:
                     print(tag + ": " + str(data) + " " + str(timestamp))  
                 if self.options['file']:
@@ -640,7 +644,7 @@ class OnlineDataHandler(DataHandler):
                     if tag == 'IMU':
                         file_path = self.options['imu_file_path']
                     elif tag != 'EMG':
-                        file_path = tag + '.csv'
+                        file_path = self.options['file_path'].replace('EMG', tag)
                     with open(file_path, 'a', newline='') as file:
                         writer = csv.writer(file)
                         if self.timestamps:

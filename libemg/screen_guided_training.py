@@ -278,8 +278,9 @@ class _SGTUI:
                         other_data[self.og_inputs.index(file)] = self.data_handler.get_other_data()            
                     if val == 1 and self.wait and file != self.inputs[-1]:
                         next_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._next)
-                        redo_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._redo)
+                        redo_gest = Button(self.window, text = 'Redo', font = ("Arial", 12), command=self._redo)
                         next_gest.pack()
+                        redo_gest.pack()
                         while(self.wait_state == 0):
                             pass 
                         if self.wait_state != -1: 
@@ -287,7 +288,7 @@ class _SGTUI:
                         self.wait_state = 0
                         redo_gest.destroy()
                         next_gest.destroy()
-                    elif not self.wait and val == 1:
+                    elif (not self.wait and val == 1) or file == self.inputs[-1]:
                         file_index += 1
 
             self._write_data(emg_data, imu_data, other_data)
