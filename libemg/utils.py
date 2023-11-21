@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.patches import Circle
 
 
 def get_windows(data, window_size, window_increment):
@@ -211,8 +212,9 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     Parameters
     ----------
     coordinates: numpy.ndarray
-        N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and angle (degrees counter-clockwise).
-        Each row contains the value for x position, y position, and / or angle depending on how many DOFs are passed in.
+        N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
+        If the third DOF has a value greater than 1, it is assumed to be rotation in degrees counter-clockwise; otherwise it is assumed to be
+        z. Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
     output_filepath: string (optional), default='libemg.gif'
         Filepath of output file.
     duration: int (optional), default=100
@@ -228,6 +230,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         True if coordinates should be saved to a .txt file for ground truth values, otherwise False.
     """
     # Plotting functions
+    def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
+        circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
+        plt.gca().add_patch(circle)
+        
     def plot_dot(frame_coordinates):
         # Parse coordinates
         x = frame_coordinates[0]
@@ -253,9 +259,34 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
         plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
     
-    # Plot a dot if 2 DOFs were passed in, otherwise plot arrow
+    def plot_target(frame_coordinates):
+        # Parse coordinates
+        x = frame_coordinates[0]
+        y = frame_coordinates[1]
+        z = frame_coordinates[2]
+
+        min_radius = 0.05
+        max_radius = 0.2
+        radius = np.interp(z, [-1, 1], [min_radius, max_radius])  # map z value from [-1, 1] to actual limits of target
+        
+        # Plot target
+        xy = (x, y)
+        limit_alpha = 0.7
+        plot_circle(xy, radius=radius, edgecolor='none', facecolor='red') # plot target
+        plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
+        plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
+        
     axis_limits = (-1.2, 1.2)
     plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
+    if coordinates.shape[1] == 2:
+        # Plot a dot if 2 DOFs were passed in
+        plot_icon = plot_dot
+    elif np.any(coordinates[:, 2] > 1):
+        # Degrees passed in, so plot arrow
+        plot_icon = plot_arrow
+    else:
+        # Plot target
+        plot_icon = plot_target
     frames = []
     for frame_coordinates in coordinates:
         fig = plt.figure()
