@@ -213,8 +213,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     ----------
     coordinates: numpy.ndarray
         N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
-        If the third DOF has a value greater than 1, it is assumed to be rotation in degrees counter-clockwise; otherwise it is assumed to be
-        z. Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
+        Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
     output_filepath: string (optional), default='libemg.gif'
         Filepath of output file.
     duration: int (optional), default=100
