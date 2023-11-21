@@ -271,7 +271,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         
         # Plot target
         xy = (x, y)
-        limit_alpha = 0.7
+        limit_alpha = 0.4
         plot_circle(xy, radius=radius, edgecolor='none', facecolor='red') # plot target
         plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
