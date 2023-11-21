@@ -230,7 +230,6 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     third_dof_display: string (optional), default='size'
         Determines how the third DOF is displayed. Valid values are 'size' (third DOF is target size), 'rotation' (third DOF is rotation in degrees).
     """
-    # TODO: Add third DOF parameter that defaults to 'target' and then if it's the arrow it'll map to degrees internally
     # Plotting functions
     def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
