@@ -206,7 +206,7 @@ def _add_image_label_axes(fig):
         ax.axis('off')
     return (ax_main, ax_top, ax_right, ax_bottom, ax_left)
 
-def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xlabel = '', ylabel = '', axis_images = None, save_coordinates = False):
+def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, xlabel = '', ylabel = '', axis_images = None, save_coordinates = False, third_dof_display = 'size'):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -228,7 +228,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         Valid keys are 'N', 'E', 'S', and 'W'.
     save_coordinates: bool (optional), default=False
         True if coordinates should be saved to a .txt file for ground truth values, otherwise False.
+    third_dof_display: string (optional), default='size'
+        Determines how the third DOF is displayed. Valid values are 'size' (third DOF is target size), 'rotation' (third DOF is rotation in degrees).
     """
+    # TODO: Add third DOF parameter that defaults to 'target' and then if it's the arrow it'll map to degrees internally
     # Plotting functions
     def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
@@ -247,7 +250,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Parse coordinates
         x_tail = frame_coordinates[0]
         y_tail = frame_coordinates[1]
-        angle_degrees = frame_coordinates[2]
+        angle = frame_coordinates[2]
+
+        # Map from [-1, 1] to degrees
+        angle_degrees = np.interp(angle, [-1, 1], [0, 360])
         # Convert angle to radians
         arrow_angle_radians = np.radians(angle_degrees)
         # Arrow properties
@@ -281,12 +287,15 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     if coordinates.shape[1] == 2:
         # Plot a dot if 2 DOFs were passed in
         plot_icon = plot_dot
-    elif np.any(coordinates[:, 2] > 1):
+    elif third_dof_display == 'rotation':
         # Degrees passed in, so plot arrow
         plot_icon = plot_arrow
-    else:
-        # Plot target
+    elif third_dof_display == 'size':
+        # Plot target of varying size
         plot_icon = plot_target
+    else:
+        # Unexpected format
+        raise ValueError("Please pass in 'rotation' or 'size' for third_dof_display.")
     frames = []
     for frame_coordinates in coordinates:
         fig = plt.figure()
