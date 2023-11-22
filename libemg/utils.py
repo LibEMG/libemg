@@ -171,6 +171,11 @@ def _convert_plot_to_image(fig):
     ----------
     fig: matplotlib.pyplot.Figure
         Figure that should be saved as an image.
+    
+    Returns
+    ----------
+    PIL.Image
+        Matplotlib Figure as a PIL.Image.
     """
     canvas = FigureCanvasAgg(fig)
     
@@ -188,6 +193,11 @@ def _add_image_label_axes(fig):
     ----------
     fig: matplotlib.pyplot.Figure
         Figure to add image axes to.
+    
+    Returns
+    ----------
+    np.ndarray
+        Array of matplotlib axes objects. The location in the array corresponds to the location of the axis in the figure.
     """
     # Make 3 x 3 grid
     gs = fig.add_gridspec(3, 3, width_ratios=[1, 2, 1], height_ratios=[1, 2, 1])
