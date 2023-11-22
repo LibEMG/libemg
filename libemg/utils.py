@@ -200,21 +200,21 @@ def _add_image_label_axes(fig):
         Array of matplotlib axes objects. The location in the array corresponds to the location of the axis in the figure.
     """
     # Make 3 x 3 grid
-    gs = fig.add_gridspec(3, 3, width_ratios=[1, 2, 1], height_ratios=[1, 2, 1])
+    grid_shape = (3, 3)
+    gs = fig.add_gridspec(grid_shape[0], grid_shape[1], width_ratios=[1, 2, 1], height_ratios=[1, 2, 1])
 
     # Create subplots using the gridspec
-    ax_main = plt.subplot(gs[1, 1])  # Main plot
-    ax_right = plt.subplot(gs[1, 2])  # Right side subplot
-    ax_left = plt.subplot(gs[1, 0])   # Left side subplot
-    ax_top = plt.subplot(gs[0, 1])    # Top subplot
-    ax_bottom = plt.subplot(gs[2, 1]) # Bottom subplot
+    axs = np.empty(shape=grid_shape, dtype=object)
+    for row_idx in range(grid_shape[0]):
+        for col_idx in range(grid_shape[1]):
+            ax = plt.subplot(gs[row_idx, col_idx])
+            if (row_idx, col_idx) != (1, 1):
+                # Disable axis for images, not for main plot
+                ax.axis('off')
+            axs[row_idx, col_idx] = ax
     
-    image_axs = (ax_top, ax_right, ax_bottom, ax_left)
-    
-    # Turn off axes for image axes
-    for ax in image_axs:
-        ax.axis('off')
-    return (ax_main, ax_top, ax_right, ax_bottom, ax_left)
+    return axs
+
 
 def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False, third_dof_display = 'size'):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
@@ -236,7 +236,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         Label for y-axis.
     axis_images: dict (optional), default=None
         Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
-        Valid keys are 'N', 'E', 'S', and 'W'.
+        Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
     save_coordinates: bool (optional), default=False
         True if coordinates should be saved to a .txt file for ground truth values, otherwise False.
     third_dof_display: string (optional), default='size'
@@ -311,17 +311,21 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         fig = plt.figure()
         
         if axis_images is not None:
-            ax_main, ax_top, ax_right, ax_bottom, ax_left = _add_image_label_axes(fig)
+            axs = _add_image_label_axes(fig)
             loc_axis_map = {
-                'N': ax_top,
-                'E': ax_right,
-                'S': ax_bottom,
-                'W': ax_left
+                'NW': axs[0, 0],
+                'N': axs[0, 1],
+                'NE': axs[0, 2],
+                'W': axs[1, 0],
+                'E': axs[1, 2],
+                'SW': axs[2, 0],
+                'S': axs[2, 1],
+                'SE': axs[2, 2]
             }
             for loc, image in axis_images.items():
                 ax = loc_axis_map[loc]
                 ax.imshow(image)
-            plt.sca(ax_main)    # set main axis so icon is drawn correctly
+            plt.sca(axs[1, 1])    # set main axis so icon is drawn correctly
         
         # Plot icon
         plot_icon(frame_coordinates)
