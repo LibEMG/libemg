@@ -216,7 +216,8 @@ def _add_image_label_axes(fig):
     return axs
 
 
-def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False, third_dof_display = 'size'):
+def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
+                                 third_dof_display = 'size', show_direction = False):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -241,22 +242,24 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         True if coordinates should be saved to a .txt file for ground truth values, otherwise False.
     third_dof_display: string (optional), default='size'
         Determines how the third DOF is displayed. Valid values are 'size' (third DOF is target size), 'rotation' (third DOF is rotation in degrees).
+    show_direction: bool (optional), default=False
+        True if the direction of the icon should be displayed as a faded icon, otherwise False.
     """
     # Plotting functions
     def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
         plt.gca().add_patch(circle)
         
-    def plot_dot(frame_coordinates):
+    def plot_dot(frame_coordinates, alpha = 1.0):
         # Parse coordinates
         x = frame_coordinates[0]
         y = frame_coordinates[1]
         # Dot properties
         size = 50
         colour = 'black'
-        plt.scatter(x, y, s=size, c=colour)
+        plt.scatter(x, y, s=size, c=colour, alpha=alpha)
     
-    def plot_arrow(frame_coordinates):
+    def plot_arrow(frame_coordinates, alpha = 1.0):
         # Parse coordinates
         x_tail = frame_coordinates[0]
         y_tail = frame_coordinates[1]
@@ -273,9 +276,9 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Calculate arrow head coordinates
         x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
         y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
-        plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour)
+        plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour, alpha=alpha)
     
-    def plot_target(frame_coordinates):
+    def plot_target(frame_coordinates, alpha = 1.0):
         # Parse coordinates
         x = frame_coordinates[0]
         y = frame_coordinates[1]
@@ -288,7 +291,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Plot target
         xy = (x, y)
         limit_alpha = 0.4
-        plot_circle(xy, radius=radius, edgecolor='none', facecolor='red') # plot target
+        plot_circle(xy, radius=radius, edgecolor='none', facecolor='red', alpha = alpha) # plot target
         plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
         
@@ -306,8 +309,15 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     else:
         # Unexpected format
         raise ValueError("Please pass in 'rotation' or 'size' for third_dof_display.")
+    if show_direction:
+        direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[1:] * np.diff(coordinates, axis=0, n=2)
+        direction_change_indices = np.where(direction_changes)[0]
+        direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
+    else:
+        direction_change_indices = None
+        
     frames = []
-    for frame_coordinates in coordinates:
+    for frame_idx, frame_coordinates in enumerate(coordinates):
         fig = plt.figure()
         
         if axis_images is not None:
@@ -329,6 +339,11 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         
         # Plot icon
         plot_icon(frame_coordinates)
+        if show_direction and direction_change_indices is not None:
+            # Show path until a change in direction
+            nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
+            direction_change_idx = direction_change_indices[nearest_direction_change_idx]
+            plot_icon(coordinates[direction_change_idx], alpha=0.4)
         fig.suptitle(title)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
