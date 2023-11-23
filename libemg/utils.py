@@ -315,28 +315,30 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
     else:
         direction_change_indices = None
+    
+    # Format figure
+    fig = plt.figure()
+    if axis_images is not None:
+        axs = _add_image_label_axes(fig)
+        loc_axis_map = {
+            'NW': axs[0, 0],
+            'N': axs[0, 1],
+            'NE': axs[0, 2],
+            'W': axs[1, 0],
+            'E': axs[1, 2],
+            'SW': axs[2, 0],
+            'S': axs[2, 1],
+            'SE': axs[2, 2]
+        }
+        for loc, image in axis_images.items():
+            ax = loc_axis_map[loc]
+            ax.imshow(image)
+        plt.sca(axs[1, 1])    # set main axis so icon is drawn correctly
+    fig.suptitle(title)
+    plt.tight_layout()
         
     frames = []
     for frame_idx, frame_coordinates in enumerate(coordinates):
-        fig = plt.figure()
-        
-        if axis_images is not None:
-            axs = _add_image_label_axes(fig)
-            loc_axis_map = {
-                'NW': axs[0, 0],
-                'N': axs[0, 1],
-                'NE': axs[0, 2],
-                'W': axs[1, 0],
-                'E': axs[1, 2],
-                'SW': axs[2, 0],
-                'S': axs[2, 1],
-                'SE': axs[2, 2]
-            }
-            for loc, image in axis_images.items():
-                ax = loc_axis_map[loc]
-                ax.imshow(image)
-            plt.sca(axs[1, 1])    # set main axis so icon is drawn correctly
-        
         # Plot icon
         plot_icon(frame_coordinates)
         if show_direction and direction_change_indices is not None:
@@ -344,15 +346,14 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
             nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
             direction_change_idx = direction_change_indices[nearest_direction_change_idx]
             plot_icon(coordinates[direction_change_idx], alpha=0.4)
-        fig.suptitle(title)
+        # Format axis
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.xlim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
         plt.ylim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
-        plt.tight_layout()
         frame = _convert_plot_to_image(fig)
         frames.append(frame)
-        plt.close() # close figure
+        plt.cla()   # clear axis
     
     # Save file
     make_gif(frames, output_filepath=output_filepath, duration=duration)
