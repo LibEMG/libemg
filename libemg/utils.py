@@ -217,7 +217,7 @@ def _add_image_label_axes(fig):
 
 
 def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
-                                 third_dof_display = 'size', show_direction = False, show_countdown = False):
+                                 third_dof_display = 'size', show_direction = False, show_countdown = False, verbose = False):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -342,6 +342,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         
     frames = []
     for frame_idx, frame_coordinates in enumerate(coordinates):
+        if verbose and frame_idx % 10 == 0:
+            print(f'Frame {frame_idx} / {coordinates.shape[0]}')
         # Plot icon
         plot_icon(frame_coordinates)
 
