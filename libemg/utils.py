@@ -295,7 +295,6 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
         
-    axis_limits = (-1.2, 1.2)
     plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
     if coordinates.shape[1] == 2:
         # Plot a dot if 2 DOFs were passed in
@@ -318,7 +317,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         direction_change_indices = None
     
     # Format figure
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8, 8))
+    axis_limits = (-1, 1)
     if axis_images is not None:
         axs = _add_image_label_axes(fig)
         loc_axis_map = {
@@ -336,7 +336,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
             ax.imshow(image)
         plt.sca(axs[1, 1])    # set main axis so icon is drawn correctly
     fig.suptitle(title)
-    plt.tight_layout()
+    fig.tight_layout()
         
     frames = []
     for frame_idx, frame_coordinates in enumerate(coordinates):
@@ -350,6 +350,13 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Format axis
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
+        an = np.linspace(0, 2 * np.pi, 100)
+
+        plt.plot(np.cos(an), np.sin(an))
+        ticks = [-1., -0.5, 0, 0.5, 1.]
+        plt.xticks(ticks)
+        plt.yticks(ticks)
+        plt.axis('equal')
         plt.xlim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
         plt.ylim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
         frame = _convert_plot_to_image(fig)
