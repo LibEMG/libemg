@@ -380,10 +380,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
                     else:
                         # No other steady states at these coordinates, so just take the end of the current one
                         final_steady_state_idx = future_matching_indices[-1]
-                    time_until_movement = int((final_steady_state_idx - frame_idx) * duration / 1000)   # convert from frames to seconds
-                    if time_until_movement >= 1:
+                    time_until_movement = (final_steady_state_idx - frame_idx) * duration / 1000   # convert from frames to seconds
+                    if time_until_movement >= 0.25:
                         # Only show countdown if the steady state is longer than 1 second
-                        plt.text(frame_coordinates[0] - 0.03, frame_coordinates[1] - 0.2, str(time_until_movement), fontweight='bold', c='red')
+                        plt.text(frame_coordinates[0] - 0.03, frame_coordinates[1] - 0.2, str(int(time_until_movement)), fontweight='bold', c='red')
                 except IndexError:
                     # Did not find steady state
                     pass
