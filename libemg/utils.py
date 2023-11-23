@@ -310,8 +310,9 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Unexpected format
         raise ValueError("Please pass in 'rotation' or 'size' for third_dof_display.")
     if show_direction:
-        direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[1:] * np.diff(coordinates, axis=0, n=2)
-        direction_change_indices = np.where(direction_changes)[0]
+        # Calculate direction changes
+        direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / duration
+        direction_change_indices = np.where(np.abs(direction_changes) > 1e-8)[0] + 1 # add 1 to align with coordinates
         direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
     else:
         direction_change_indices = None
