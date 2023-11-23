@@ -252,16 +252,15 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
         plt.gca().add_patch(circle)
         
-    def plot_dot(frame_coordinates, alpha = 1.0):
+    def plot_dot(frame_coordinates, alpha = 1.0, colour = 'black'):
         # Parse coordinates
         x = frame_coordinates[0]
         y = frame_coordinates[1]
         # Dot properties
         size = 50
-        colour = 'black'
         plt.scatter(x, y, s=size, c=colour, alpha=alpha)
     
-    def plot_arrow(frame_coordinates, alpha = 1.0):
+    def plot_arrow(frame_coordinates, alpha = 1.0, colour = 'black'):
         # Parse coordinates
         x_tail = frame_coordinates[0]
         y_tail = frame_coordinates[1]
@@ -274,13 +273,12 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Arrow properties
         arrow_length = 0.1
         head_size = 0.05
-        arrow_colour = 'black'
         # Calculate arrow head coordinates
         x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
         y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
-        plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=arrow_colour, ec=arrow_colour, alpha=alpha)
+        plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=colour, ec=colour, alpha=alpha)
     
-    def plot_target(frame_coordinates, alpha = 1.0):
+    def plot_target(frame_coordinates, alpha = 1.0, colour = 'red'):
         # Parse coordinates
         x = frame_coordinates[0]
         y = frame_coordinates[1]
@@ -293,7 +291,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         # Plot target
         xy = (x, y)
         limit_alpha = 0.4
-        plot_circle(xy, radius=radius, edgecolor='none', facecolor='red', alpha = alpha) # plot target
+        plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
         plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
         
@@ -367,7 +365,7 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
             direction_change_idx = direction_change_indices[nearest_direction_change_idx]
             if show_direction:
                 # Show path until a change in direction
-                plot_icon(coordinates[direction_change_idx], alpha=0.4)
+                plot_icon(coordinates[direction_change_idx], alpha=0.5, colour='green')
             if show_countdown:
                 # Show countdown below target
                 try:
