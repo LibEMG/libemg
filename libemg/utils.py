@@ -217,7 +217,7 @@ def _add_image_label_axes(fig):
 
 
 def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
-                                 third_dof_display = 'size', show_direction = False):
+                                 third_dof_display = 'size', show_direction = False, show_countdown = False):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -244,6 +244,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         Determines how the third DOF is displayed. Valid values are 'size' (third DOF is target size), 'rotation' (third DOF is rotation in degrees).
     show_direction: bool (optional), default=False
         True if the direction of the icon should be displayed as a faded icon, otherwise False.
+    show_countdown: bool (optional), default=False
+        True if a countdown should be displayed below the target, otherwise False.
     """
     # Plotting functions
     def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
@@ -308,17 +310,15 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     else:
         # Unexpected format
         raise ValueError("Please pass in 'rotation' or 'size' for third_dof_display.")
-    if show_direction:
-        # Calculate direction changes
-        direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / duration
-        direction_change_indices = np.where(np.abs(direction_changes) > 1e-8)[0] + 1 # add 1 to align with coordinates
-        direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
-    else:
-        direction_change_indices = None
+    
+    # Calculate direction changes
+    direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / duration
+    direction_change_indices = np.where(np.abs(direction_changes) > 1e-8)[0] + 1 # add 1 to align with coordinates
+    direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
     
     # Format figure
     fig = plt.figure(figsize=(8, 8))
-    axis_limits = (-1, 1)
+    axis_limits = (-1.25, 1.25)
     if axis_images is not None:
         axs = _add_image_label_axes(fig)
         loc_axis_map = {
@@ -334,7 +334,11 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         for loc, image in axis_images.items():
             ax = loc_axis_map[loc]
             ax.imshow(image)
-        plt.sca(axs[1, 1])    # set main axis so icon is drawn correctly
+        # Set main axis so icon is drawn correctly
+        plt.sca(axs[1, 1])    
+        ax = axs[1, 1]
+    else:
+        ax = plt.gca()
     fig.suptitle(title)
     fig.tight_layout()
         
@@ -342,26 +346,54 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     for frame_idx, frame_coordinates in enumerate(coordinates):
         # Plot icon
         plot_icon(frame_coordinates)
-        if show_direction and direction_change_indices is not None:
-            # Show path until a change in direction
-            nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
-            direction_change_idx = direction_change_indices[nearest_direction_change_idx]
-            plot_icon(coordinates[direction_change_idx], alpha=0.4)
-        # Format axis
+
+         # Format axis
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        an = np.linspace(0, 2 * np.pi, 100)
-
-        plt.plot(np.cos(an), np.sin(an))
         ticks = [-1., -0.5, 0, 0.5, 1.]
         plt.xticks(ticks)
         plt.yticks(ticks)
         plt.axis('equal')
-        plt.xlim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
-        plt.ylim(axis_limits[0], axis_limits[1]) # restrict axis to -1, 1 for visual clarity and proper icon size
+        ax.set(xlim=axis_limits, ylim=axis_limits)
+
+        # Show boundaries
+        an = np.linspace(0, 2 * np.pi, 100)
+        plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
+        
+        # Plot additional information
+        if show_direction or show_countdown:
+            # Calculate nearest direction change
+            nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
+            direction_change_idx = direction_change_indices[nearest_direction_change_idx]
+            if show_direction:
+                # Show path until a change in direction
+                plot_icon(coordinates[direction_change_idx], alpha=0.4)
+            if show_countdown:
+                # Show countdown below target
+                try:
+                    matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
+                    future_matching_indices = matching_indices[np.where(matching_indices >= frame_idx)[0]] # only look at indices that are in the future, not the past
+                    steady_state_indices = future_matching_indices[np.where(np.diff(future_matching_indices) != 1)[0]]
+                    if steady_state_indices.size > 0:
+                        # Found end of current steady state
+                        final_steady_state_idx = steady_state_indices[0]
+                    else:
+                        # No other steady states at these coordinates, so just take the end of the current one
+                        final_steady_state_idx = future_matching_indices[-1]
+                    time_until_movement = int((final_steady_state_idx - frame_idx) * duration / 1000)   # convert from frames to seconds
+                    if time_until_movement >= 1:
+                        # Only show countdown if the steady state is longer than 1 second
+                        plt.text(frame_coordinates[0] - 0.03, frame_coordinates[1] - 0.2, str(time_until_movement), fontweight='bold', c='red')
+                except IndexError:
+                    # Did not find steady state
+                    pass
+            
+        # Save frame
         frame = _convert_plot_to_image(fig)
         frames.append(frame)
         plt.cla()   # clear axis
+            
+       
     
     # Save file
     make_gif(frames, output_filepath=output_filepath, duration=duration)
