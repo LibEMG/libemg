@@ -341,6 +341,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     fig.tight_layout()
         
     frames = []
+    direction_change_idx = None
+    target_alpha = 0.05
     for frame_idx, frame_coordinates in enumerate(coordinates):
         if verbose and frame_idx % 10 == 0:
             print(f'Frame {frame_idx} / {coordinates.shape[0]}')
@@ -361,32 +363,38 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
         
         # Plot additional information
-        if show_direction or show_countdown:
-            # Calculate nearest direction change
+        if show_direction:
+            # Show path until a change in direction
             nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
-            direction_change_idx = direction_change_indices[nearest_direction_change_idx]
-            if show_direction:
-                # Show path until a change in direction
-                plot_icon(coordinates[direction_change_idx], alpha=0.5, colour='green')
-            if show_countdown:
-                # Show countdown below target
-                try:
-                    matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
-                    future_matching_indices = matching_indices[np.where(matching_indices >= frame_idx)[0]] # only look at indices that are in the future, not the past
-                    steady_state_indices = future_matching_indices[np.where(np.diff(future_matching_indices) != 1)[0]]
-                    if steady_state_indices.size > 0:
-                        # Found end of current steady state
-                        final_steady_state_idx = steady_state_indices[0]
-                    else:
-                        # No other steady states at these coordinates, so just take the end of the current one
-                        final_steady_state_idx = future_matching_indices[-1]
-                    time_until_movement = (final_steady_state_idx - frame_idx) * duration / 1000   # convert from frames to seconds
-                    if time_until_movement >= 0.25:
-                        # Only show countdown if the steady state is longer than 1 second
-                        plt.text(frame_coordinates[0] - 0.03, frame_coordinates[1] - 0.2, str(int(time_until_movement)), fontweight='bold', c='red')
-                except IndexError:
-                    # Did not find steady state
-                    pass
+            new_direction_change_idx = direction_change_indices[nearest_direction_change_idx]  
+            if new_direction_change_idx != direction_change_idx:
+                # Update value
+                direction_change_idx = direction_change_indices[nearest_direction_change_idx]
+                target_alpha = 0.05  # reset alpha
+            else:
+                # Add in fade
+                target_alpha += 0.01
+                target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
+            plot_icon(coordinates[direction_change_idx], alpha=target_alpha, colour='green')
+        if show_countdown:
+            # Show countdown below target
+            try:
+                matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
+                future_matching_indices = matching_indices[np.where(matching_indices >= frame_idx)[0]] # only look at indices that are in the future, not the past
+                steady_state_indices = future_matching_indices[np.where(np.diff(future_matching_indices) != 1)[0]]
+                if steady_state_indices.size > 0:
+                    # Found end of current steady state
+                    final_steady_state_idx = steady_state_indices[0]
+                else:
+                    # No other steady states at these coordinates, so just take the end of the current one
+                    final_steady_state_idx = future_matching_indices[-1]
+                time_until_movement = (final_steady_state_idx - frame_idx) * duration / 1000   # convert from frames to seconds
+                if time_until_movement >= 0.25:
+                    # Only show countdown if the steady state is longer than 1 second
+                    plt.text(frame_coordinates[0] - 0.03, frame_coordinates[1] - 0.2, str(int(time_until_movement)), fontweight='bold', c='red')
+            except IndexError:
+                # Did not find steady state
+                pass
             
         # Save frame
         frame = _convert_plot_to_image(fig)
