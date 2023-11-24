@@ -217,7 +217,8 @@ def _add_image_label_axes(fig):
 
 
 def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
-                                 third_dof_display = 'size', show_direction = False, show_countdown = False, verbose = False):
+                                 third_dof_display = 'size', show_direction = False, show_countdown = False, show_boundary = False,
+                                 verbose = False):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -246,6 +247,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         True if the direction of the icon should be displayed as a faded icon, otherwise False.
     show_countdown: bool (optional), default=False
         True if a countdown should be displayed below the target, otherwise False.
+    show_boundary: bool (optional), default=False
+        True if a circle of radius 1 should be displayed as boundaries, otherwise False.
+    verbose: bool (optional), default=False
+        True if progress should be printed to console, otherwise False.
     """
     # Plotting functions
     def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
@@ -359,8 +364,9 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         ax.set(xlim=axis_limits, ylim=axis_limits)
 
         # Show boundaries
-        an = np.linspace(0, 2 * np.pi, 100)
-        plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
+        if show_boundary:
+            an = np.linspace(0, 2 * np.pi, 100)
+            plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
         
         # Plot additional information
         if show_direction:
