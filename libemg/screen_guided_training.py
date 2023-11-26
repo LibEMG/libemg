@@ -65,7 +65,7 @@ class ScreenGuidedTraining:
                     os.system(curl_commands + git_url + gif_folder + gif_file)
 
 
-    def launch_training(self, data_handler, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[]):
+    def launch_training(self, data_handler, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[], wait_btwn_prompts=False):
         """Launches the Screen Guided Training UI.
 
         Parameters
@@ -90,12 +90,16 @@ class ScreenGuidedTraining:
             If True looks and plays gifs (this option of for discrete training).
         exclude_files: list, default=None
             A list of files (i.e., classes) to exclude. 
+        wait_btwn_prompts: bool, default=False
+            If True, the SGT module will wait between each prompt for user input (button click) before moving on to the next gesture. 
         """
-        _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, time_between_reps=time_between_reps, randomize=randomize, continuous=continuous, gifs=gifs, exclude_files=exclude_files)
+        _SGTUI(num_reps=num_reps, rep_time=rep_time, rep_folder=rep_folder, output_folder=output_folder, data_handler=data_handler, 
+               time_between_reps=time_between_reps, randomize=randomize, continuous=continuous, gifs=gifs, exclude_files=exclude_files,
+               wait_btwn_prompts=wait_btwn_prompts)
 
 
 class _SGTUI:
-    def __init__(self, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[]):
+    def __init__(self, num_reps=3, rep_time=3, rep_folder=None, output_folder=None, data_handler=None, time_between_reps=3, randomize=False, continuous=False, gifs=False, exclude_files=[], wait_btwn_prompts=False):
         self.window = Tk()
 
         self.meta_data_dic = {}
@@ -113,6 +117,8 @@ class _SGTUI:
         self.data_handler = data_handler
         self.og_inputs = []
         self.photo_width = 450
+        self.wait = wait_btwn_prompts
+        self.wait_state = 0
         
         # For Data Accumulation Screen:
         self.pb = None
@@ -242,8 +248,12 @@ class _SGTUI:
         if self.rep_number < int(self.num_reps.get()):
             if self.randomize.get(): 
                 random.shuffle(self.inputs)
-            data = {}
-            for file in self.inputs:
+            emg_data = {}
+            imu_data = {}
+            other_data = {}
+            file_index = 0 
+            while(file_index < len(self.inputs)):
+                file = self.inputs[file_index]
                 for val in range(0,2):
                     image_file = str(self.rep_folder.get() + file)
                     cd_time = int(self.time_between_reps.get())
@@ -259,10 +269,29 @@ class _SGTUI:
                     self._update_class(str(file.split(".")[0]))
                     if val != 0:
                         self.data_handler.raw_data.reset_emg()
+                        self.data_handler.raw_data.reset_imu()
+                        self.data_handler.raw_data.reset_others()
                     self._bar_count_down(cd_time)
                     if val != 0:
-                        data[self.og_inputs.index(file)] = self.data_handler.get_data()
-            self._write_data(data)
+                        emg_data[self.og_inputs.index(file)] = self.data_handler.get_data()
+                        imu_data[self.og_inputs.index(file)] = self.data_handler.get_imu_data()
+                        other_data[self.og_inputs.index(file)] = self.data_handler.get_other_data()            
+                    if val == 1 and self.wait and file != self.inputs[-1]:
+                        next_gest = Button(self.window, text = 'Next', font = ("Arial", 12), command=self._next)
+                        redo_gest = Button(self.window, text = 'Redo', font = ("Arial", 12), command=self._redo)
+                        next_gest.pack()
+                        redo_gest.pack()
+                        while(self.wait_state == 0):
+                            pass 
+                        if self.wait_state != -1: 
+                            file_index += 1
+                        self.wait_state = 0
+                        redo_gest.destroy()
+                        next_gest.destroy()
+                    elif (not self.wait and val == 1) or file == self.inputs[-1]:
+                        file_index += 1
+
+            self._write_data(emg_data, imu_data, other_data)
             self.rep_number += 1
             self.next_rep_button = Button(self.window, text = 'Next Rep', font = ("Arial", 12), command=self._next_rep)
             self.redo_rep_button = Button(self.window, text = 'Redo Rep', font = ("Arial", 12), command=self._redo_rep)
@@ -273,6 +302,12 @@ class _SGTUI:
             self.rep_number = 0
             return
     
+    def _next(self):
+        self.wait_state = 1
+
+    def _redo(self):
+        self.wait_state = -1
+
     def _redo_rep(self):
         self.rep_number -= 1
         self._next_rep()
@@ -294,22 +329,42 @@ class _SGTUI:
         self.class_label['text'] = "Class: " + str(label)
         self.window.update_idletasks()
     
-    def _write_data(self, data):
+    def _write_data(self, emg_data, imu_data, other_data):
         if not os.path.isdir(self.output_folder.get()):
             os.makedirs(self.output_folder.get()) 
-        for c in data.keys():
+        for c in emg_data.keys():
             # Write EMG Files
-            emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + ".csv"
+            emg_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_EMG.csv"
+            imu_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_IMU.csv"
+            other_file = self.output_folder.get() + "R_" + str(self.rep_number) + "_C_" + str(c) + "_"
             self.meta_data_dic[emg_file] = {
                 'rep_idx': self.rep_number,
                 'class_idx': c,
                 'class_name': self.og_inputs[c].split(".")[0],
                 'file_type': self.og_inputs[c].split(".")[1]
             }
+
+            # Write EMG Data 
             with open(emg_file, "w", newline='', encoding='utf-8') as file:
                 emg_writer = csv.writer(file)
-                for row in data[c]:
+                for row in emg_data[c]:
                     emg_writer.writerow(row)
+
+            # Write IMU Data
+            if len(imu_data[0]) > 0: # Only write if there is IMU data
+                with open(imu_file, "w", newline='', encoding='utf-8') as file:
+                    imu_writer = csv.writer(file)
+                    for row in imu_data[c]:
+                        imu_writer.writerow(row)
+            
+            # Write Other Data
+            if other_data[c]: # Only write if there is other data
+                for k in other_data[c].keys():
+                    with open(other_file + k + '.csv', "w", newline='', encoding='utf-8') as file:
+                        other_writer = csv.writer(file)
+                        for row in other_data[c][k]:
+                            other_writer.writerow(row)
+
         # Write Metadata file
         with open(self.output_folder.get() + "metadata.json", 'w') as f: 
             f.write(json.dumps(self.meta_data_dic))

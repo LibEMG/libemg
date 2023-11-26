@@ -30,8 +30,12 @@ class DataHandler:
     def _get_repeating_values(self, data):
         repeats = 0
         for i in range(1, len(data)):
-            if (data[i] == data[i-1]).all():
-                repeats += 1
+            if len(data[0]) > 1:
+                if (data[i] == data[i-1]).all():
+                    repeats += 1
+            else:
+                if data[i] == data[i-1]:
+                    repeats += 1
         return repeats
 
 
@@ -345,15 +349,20 @@ class OnlineDataHandler(DataHandler):
         If True, all data acquired over the UDP port will be written to std_out.
     emg_arr: bool (optional): default = True
         If True, all data acquired over the UDP port will be written to an array object that can be accessed.
+    imu_arr: bool (optional): default = False
+        If True, all data acquired over the UDP port will be written to an array object (of IMU data) that can be accessed.
     max_buffer: int (optional): default = None
         The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
+    add_timestamps: bool(optional): default = False 
+        If True, timestamps will be added to the raw filese generated when setting the file flag to true.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, max_buffer=None):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", imu_file_path="raw_imu.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False, other_arr=False):
         self.port = port 
         self.ip = ip
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr}
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_file_path': imu_file_path, 'imu_arr': imu_arr, 'other_arr': other_arr}
         self.fi = None
         self.max_buffer = max_buffer
+        self.timestamps = timestamps
         if not file and not std_out and not emg_arr:
             raise Exception("Set either file, std_out, or emg_arr parameters or this class will have no functionality.")
 
@@ -397,7 +406,12 @@ class OnlineDataHandler(DataHandler):
             if len(data) > self.max_buffer:
                 self.raw_data.data = self.raw_data.adjust_increment(self.max_buffer, 0)
         return data
+    
+    def get_imu_data(self):
+        return np.array(self.raw_data.get_imu())
 
+    def get_other_data(self):
+        return self.raw_data.get_others()
 
     def analyze_hardware(self, analyze_time=10):
         """Analyzes several metrics from the hardware:
@@ -606,15 +620,46 @@ class OnlineDataHandler(DataHandler):
             data = sock.recv(4096)
             if data:
                 data = pickle.loads(data)
-                timestamp = datetime.now()
+
+                # Check if IMU or EMG 
+                if type(data[0]) != str:
+                    tag = 'EMG'
+                    file = self.options['file_path']
+                elif data[0] == 'IMU':
+                    file = self.options['imu_file_path']
+                    tag = 'IMU'
+                    data = data[1]
+                else:
+                    # We have some custom tag we need to deal with
+                    if not raw_data.check_other(data[0]):
+                        raw_data.instantialize_other(data[0])
+                    tag = data[0]
+                    data = data[1]
+
+                timestamp = time.time()
                 if self.options['std_out']:
-                    print(str(data) + " " + str(timestamp))  
+                    print(tag + ": " + str(data) + " " + str(timestamp))  
                 if self.options['file']:
-                    with open(self.options['file_path'], 'a', newline='') as file:
+                    file_path = self.options['file_path']
+                    if tag == 'IMU':
+                        file_path = self.options['imu_file_path']
+                    elif tag != 'EMG':
+                        file_path = self.options['file_path'].replace('EMG', tag)
+                    with open(file_path, 'a', newline='') as file:
                         writer = csv.writer(file)
-                        writer.writerow(data)
+                        if self.timestamps:
+                            writer.writerow(np.hstack([timestamp,data]))
+                        else:
+                            writer.writerow(data)
                 if self.options['emg_arr']:
-                    raw_data.add_emg(data)
+                    if tag == 'EMG':
+                        raw_data.add_emg(data)
+                if self.options['imu_arr']:
+                    if tag == 'IMU':
+                        raw_data.add_imu(data)
+                if self.options['other_arr']:
+                    if tag != 'IMU' and tag != 'EMG':
+                        raw_data.add_other(tag, data)
 
     def _check_streaming(self, timeout=10):
         wt = time.time()

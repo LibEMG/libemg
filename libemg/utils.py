@@ -27,8 +27,11 @@ def get_windows(data, window_size, window_increment):
     windows = []
     st_id=0
     ed_id=st_id+window_size
-    for w in range(num_windows):
-        windows.append(data[st_id:ed_id,:].transpose())
+    for _ in range(num_windows):
+        if data.ndim == 1:
+            windows.append([data[st_id:ed_id].transpose()]) # One Channel EMG
+        else:
+            windows.append(data[st_id:ed_id,:].transpose())
         st_id += window_increment
         ed_id += window_increment
     return np.array(windows)

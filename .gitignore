@@ -1,4 +1,8 @@
 dist/*
+.vscode/*
+raw_imu.csv
+test.py
+sifi_bridge_windows.exe
 libemg.egg-info/*
 token.txt
 .pytest_cache/*
@@ -26,3 +30,5 @@ demos/images/
 demos/data/sgt/*
 demos/data/GRABMyo/*
 demos/data/*
+data_tmp/*
+images_tmp/*

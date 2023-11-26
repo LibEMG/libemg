@@ -514,39 +514,42 @@ class Myo(object):
 import socket
 import pickle
 class MyoStreamer:
-    def __init__(self, filtered, ip, port):
-        self.filtered = filtered
-        self.ip = ip 
-        self.port = port
+	def __init__(self, filtered, ip, port, imu):
+		self.filtered = filtered
+		self.ip = ip 
+		self.port = port
+		self.imu = imu
 
-    def start_stream(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        mode = emg_mode.FILTERED
-        if not self.filtered:
-            mode = emg_mode.RAW
-        m = Myo(mode=mode)
-        m.connect()
+	def start_stream(self):
+		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		mode = emg_mode.FILTERED
+		if not self.filtered:
+			mode = emg_mode.RAW
+		m = Myo(mode=mode)
+		m.connect()
 
-        def write_emg(emg, _):
-            data_arr = pickle.dumps(list(emg))
-            sock.sendto(data_arr, (self.ip, self.port))
-        m.add_emg_handler(write_emg)
+		def write_emg(emg, _):
+			data_arr = pickle.dumps(list(emg))
+			sock.sendto(data_arr, (self.ip, self.port))
+		m.add_emg_handler(write_emg)
 
-        m.set_leds([128, 0, 0], [128, 0, 0])
+		if self.imu:
+			def write_imu(quat, acc, gyro):
+				imu_arr = ['IMU', [*quat, *acc, *gyro]]
+				data_arr = pickle.dumps(imu_arr)
+				sock.sendto(data_arr, (self.ip, self.port))
+			m.add_imu_handler(write_imu)
+
+		m.set_leds([0, 128, 0], [0, 128, 0])
 		# Vibrate to show that its connected
-        m.vibrate(3)
+		m.vibrate(3)
 		# Disable vibrations
-        m.vibrate(0)
+		m.vibrate(0)
 
-        # def write_imu(quat, acc, gyro):
-        #     imu_arr = [*quat, *acc, *gyro]
-        #     sock.sendto(bytes(str(imu_arr), "utf-8"), (ip, port))
-        #     pass
-        # m.add_imu_handler(write_imu)
-        
-        while True:
-            try:
-                m.run()
-            except:
-                print("Worker Stopped.")
-                quit() 
+
+		while True:
+			try:
+				m.run()
+			except:
+				print("Worker Stopped.")
+				quit() 
