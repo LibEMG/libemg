@@ -2,6 +2,7 @@ dist/*
 libemg.egg-info/*
 token.txt
 .pytest_cache/*
+.vscode/*
 tests/__pycache__/*
 .coverage
 build/*
