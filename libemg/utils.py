@@ -216,9 +216,24 @@ def _add_image_label_axes(fig):
     return axs
 
 
+def _normalize_to_unit_distance(x, y):
+    assert x.shape == y.shape, "x and y must be the same length."
+    # Calculate angles
+    angles = np.arctan(y / x)
+    np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
+    
+    # Normalize by angles (max distance of 1)
+    normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
+    normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
+    normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
+    
+    assert normalized_coordinates.shape == (x.shape[0], 1)
+    return normalized_coordinates
+
+
 def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', duration = 100, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
                                  third_dof_display = 'size', show_direction = False, show_countdown = False, show_boundary = False,
-                                 verbose = False):
+                                 normalize_distance = False, verbose = False):
     """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
     
     Parameters
@@ -249,6 +264,8 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         True if a countdown should be displayed below the target, otherwise False.
     show_boundary: bool (optional), default=False
         True if a circle of radius 1 should be displayed as boundaries, otherwise False.
+    normalize_distance: bool (optional), default=False
+        True if the distance between each coordinate should be normalized to 1, otherwise False.
     verbose: bool (optional), default=False
         True if progress should be printed to console, otherwise False.
     """
@@ -299,6 +316,14 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
         plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
+    
+    
+    if save_coordinates:
+        # Save coordinates in .txt file
+        filename_no_extension = os.path.splitext(output_filepath)[0]
+        labels_filepath = filename_no_extension + '.txt'
+        np.savetxt(labels_filepath, coordinates, delimiter=',')
+    
         
     plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
     if coordinates.shape[1] == 2:
@@ -318,6 +343,10 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
     direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / duration
     direction_change_indices = np.where(np.abs(direction_changes) > 1e-8)[0] + 1 # add 1 to align with coordinates
     direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
+
+    if normalize_distance:
+        # Normalize to unit circle distance
+        coordinates = _normalize_to_unit_distance(coordinates[:, 0], coordinates[:, 1])
     
     # Format figure
     fig = plt.figure(figsize=(8, 8))
@@ -406,13 +435,6 @@ def make_regression_training_gif(coordinates, output_filepath = 'libemg.gif', du
         frame = _convert_plot_to_image(fig)
         frames.append(frame)
         plt.cla()   # clear axis
-            
-       
     
     # Save file
     make_gif(frames, output_filepath=output_filepath, duration=duration)
-    if save_coordinates:
-        # Save coordinates in .txt file
-        filename_no_extension = os.path.splitext(output_filepath)[0]
-        labels_filepath = filename_no_extension + '.txt'
-        np.savetxt(labels_filepath, coordinates, delimiter=',')
