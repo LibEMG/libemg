@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
 
+
 class Animator:
-    
     def __init__(self, output_filepath = 'libemg.gif', duration = 100):
         self.output_filepath = output_filepath
         self.duration = duration
@@ -75,6 +75,7 @@ class Animator:
             # Delete all images used to create .gif
             for filename in matching_filenames:
                 os.remove(filename)
+
 
 class RegressionAnimator(ABC, Animator):
 
@@ -184,55 +185,6 @@ class RegressionAnimator(ABC, Animator):
         verbose: bool (optional), default=False
             True if progress should be printed to console, otherwise False.
         """
-        # Plotting functions
-        def plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
-            circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
-            plt.gca().add_patch(circle)
-            
-        def plot_dot(frame_coordinates, alpha = 1.0, colour = 'black'):
-            # Parse coordinates
-            x = frame_coordinates[0]
-            y = frame_coordinates[1]
-            # Dot properties
-            size = 50
-            plt.scatter(x, y, s=size, c=colour, alpha=alpha)
-        
-        def plot_arrow(frame_coordinates, alpha = 1.0, colour = 'black'):
-            # Parse coordinates
-            x_tail = frame_coordinates[0]
-            y_tail = frame_coordinates[1]
-            angle = frame_coordinates[2]
-
-            # Map from [-1, 1] to degrees
-            angle_degrees = np.interp(angle, [-1, 1], [0, 360])
-            # Convert angle to radians
-            arrow_angle_radians = np.radians(angle_degrees)
-            # Arrow properties
-            arrow_length = 0.1
-            head_size = 0.05
-            # Calculate arrow head coordinates
-            x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
-            y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
-            plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=colour, ec=colour, alpha=alpha)
-        
-        def plot_target(frame_coordinates, alpha = 1.0, colour = 'red'):
-            # Parse coordinates
-            x = frame_coordinates[0]
-            y = frame_coordinates[1]
-            z = frame_coordinates[2]
-
-            min_radius = 0.05
-            max_radius = 0.2
-            radius = np.interp(z, [-1, 1], [min_radius, max_radius])  # map z value from [-1, 1] to actual limits of target
-            
-            # Plot target
-            xy = (x, y)
-            limit_alpha = 0.4
-            plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
-            plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
-            plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
-        
-        
         if save_coordinates:
             # Save coordinates in .txt file
             filename_no_extension = os.path.splitext(self.output_filepath)[0]
@@ -339,3 +291,59 @@ class RegressionAnimator(ABC, Animator):
         # Save file
         self.make_gif(frames)
 
+
+class DotRegressionAnimator(RegressionAnimator):
+    @staticmethod
+    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+        # Parse coordinates
+        x = frame_coordinates[0]
+        y = frame_coordinates[1]
+        # Dot properties
+        size = 50
+        plt.scatter(x, y, s=size, c=colour, alpha=alpha)
+
+
+class ArrowRegressionAnimator(RegressionAnimator):
+    @staticmethod
+    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+        # Parse coordinates
+        x_tail = frame_coordinates[0]
+        y_tail = frame_coordinates[1]
+        angle = frame_coordinates[2]
+
+        # Map from [-1, 1] to degrees
+        angle_degrees = np.interp(angle, [-1, 1], [0, 360])
+        # Convert angle to radians
+        arrow_angle_radians = np.radians(angle_degrees)
+        # Arrow properties
+        arrow_length = 0.1
+        head_size = 0.05
+        # Calculate arrow head coordinates
+        x_head = x_tail + arrow_length * np.cos(arrow_angle_radians)
+        y_head = y_tail + arrow_length * np.sin(arrow_angle_radians)
+        plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=colour, ec=colour, alpha=alpha)
+
+
+class TargetRegressionAnimator(RegressionAnimator):
+    @staticmethod
+    def _plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
+        circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
+        plt.gca().add_patch(circle)
+    
+    @staticmethod
+    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+        # Parse coordinates
+        x = frame_coordinates[0]
+        y = frame_coordinates[1]
+        z = frame_coordinates[2]
+
+        min_radius = 0.05
+        max_radius = 0.2
+        radius = np.interp(z, [-1, 1], [min_radius, max_radius])  # map z value from [-1, 1] to actual limits of target
+        
+        # Plot target
+        xy = (x, y)
+        limit_alpha = 0.4
+        TargetRegressionAnimator._plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
+        TargetRegressionAnimator._plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
+        TargetRegressionAnimator._plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
