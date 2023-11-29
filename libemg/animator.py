@@ -15,11 +15,6 @@ class Animator:
         ----------
         frames: list
             List of frames, where each element is a PIL.Image object.
-        output_filepath: string (optional), default='libemg.gif'
-            Filepath of output file.
-        duration: int (optional), default=100
-            Duration of each frame in milliseconds.
-        
         """
         frames[0].save(
             self.output_filepath,
