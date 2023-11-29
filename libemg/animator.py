@@ -9,9 +9,25 @@ from matplotlib.patches import Circle
 
 
 class Animator:
-    def __init__(self, output_filepath = 'libemg.gif', duration = 100):
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24):
         self.output_filepath = output_filepath
-        self.duration = duration
+        self.fps = fps
+        self.duration = 1 / fps
+    
+    def convert_time_to_frames(self, duration_seconds):
+        """Calculate the number of frames from the desired duration.
+        
+        Parameters
+        ----------
+        duration_seconds: float
+            Duration of video in seconds.
+        
+        Returns
+        ----------
+        int
+            Number of frames for given duration.
+        """
+        return duration_seconds * self.fps
         
     def make_gif(self, frames):
         """Save a .gif video file from a list of images.
@@ -78,10 +94,32 @@ class Animator:
 
 
 class RegressionAnimator(ABC, Animator):
+    def __init__(self, output_filepath='libemg.gif', fps=24):
+        super().__init__(output_filepath, fps)
+        self.fpd = fps * 2  # number of frames to generate to travel a distance of 1
 
     @abstractstaticmethod
     def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
         raise NotImplementedError('plot_icon() method was not implemented.')
+    
+    def convert_distance_to_frames(self, coordinates1, coordinates2):
+        """Calculate the number of frames needed to move from coordinates1 to coordinates2.
+        
+        Parameters
+        ----------
+        coordinates1: numpy.ndarray
+            1D array where each element corresponds to the value along a different DOF.
+        coordinates2: numpy.ndarray
+            1D array where each element corresponds to the value along a different DOF. DOFs must line up
+            with coordinates1.
+        
+        Returns
+        ----------
+        int
+            Number of frames to travel for given distance.
+        """
+        distance = np.linalg.norm(coordinates2 - coordinates1)  # calculate euclidean distance between two points
+        return int(distance * self.fpd)
     
     @staticmethod
     def _convert_plot_to_image(fig):
