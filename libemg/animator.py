@@ -77,6 +77,10 @@ class Animator:
                 os.remove(filename)
 
 class RegressionAnimator(ABC, Animator):
+
+    @abstractstaticmethod
+    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+        raise NotImplementedError('plot_icon() method was not implemented.')
     
     @staticmethod
     def _convert_plot_to_image(fig):
@@ -147,7 +151,7 @@ class RegressionAnimator(ABC, Animator):
         return normalized_coordinates
     
     def make_regression_training_gif(self, coordinates, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
-                                 third_dof_display = 'size', show_direction = False, show_countdown = False, show_boundary = False,
+                                 show_direction = False, show_countdown = False, show_boundary = False,
                                  normalize_distance = False, verbose = False):
         """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
         
@@ -235,21 +239,6 @@ class RegressionAnimator(ABC, Animator):
             labels_filepath = filename_no_extension + '.txt'
             np.savetxt(labels_filepath, coordinates, delimiter=',')
         
-            
-        plot_icon = plot_dot if coordinates.shape[1] == 2 else plot_arrow
-        if coordinates.shape[1] == 2:
-            # Plot a dot if 2 DOFs were passed in
-            plot_icon = plot_dot
-        elif third_dof_display == 'rotation':
-            # Degrees passed in, so plot arrow
-            plot_icon = plot_arrow
-        elif third_dof_display == 'size':
-            # Plot target of varying size
-            plot_icon = plot_target
-        else:
-            # Unexpected format
-            raise ValueError("Please pass in 'rotation' or 'size' for third_dof_display.")
-        
         # Calculate direction changes
         direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / self.duration
         direction_change_indices = np.where(np.abs(direction_changes) > 1e-8)[0] + 1 # add 1 to align with coordinates
@@ -292,7 +281,7 @@ class RegressionAnimator(ABC, Animator):
             if verbose and frame_idx % 10 == 0:
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
             # Plot icon
-            plot_icon(frame_coordinates)
+            self.plot_icon(frame_coordinates)
 
             # Format axis
             plt.xlabel(xlabel)
@@ -321,7 +310,7 @@ class RegressionAnimator(ABC, Animator):
                     # Add in fade
                     target_alpha += 0.01
                     target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
-                plot_icon(coordinates[direction_change_idx], alpha=target_alpha, colour='green')
+                self.plot_icon(coordinates[direction_change_idx], alpha=target_alpha, colour='green')
             if show_countdown:
                 # Show countdown below target
                 try:
@@ -349,3 +338,4 @@ class RegressionAnimator(ABC, Animator):
         
         # Save file
         self.make_gif(frames)
+
