@@ -24,7 +24,7 @@ class Media:
             
     
     def reset(self):
-        if self.type == ".gif":
+        if self.type == "gif":
             self.frame = 0
             self.file_content.seek(self.frame)
 
@@ -182,7 +182,6 @@ class DataCollectionPanel:
             dpg.delete_item("__dc_configuration_window")
             media_list = self.gather_media()
             self.spawn_collection_window(media_list)
-            print("start")
 
     def get_settings(self):
         self.num_reps      = int(dpg.get_value("__num_reps"))
@@ -197,6 +196,7 @@ class DataCollectionPanel:
         files = os.listdir(self.media_folder)
         valid_files = [file.endswith((".gif",".png")) for file in files]
         files = list(compress(files, valid_files))
+        self.num_motions = len(files)
         collection_conf = []
         for rep in range(self.num_reps):
             for motion_class in files:
@@ -212,7 +212,9 @@ class DataCollectionPanel:
         set_texture("collection_visual", texture, width=720, height=480)
 
         with dpg.window(label="Collection Window",
-                        tag="__dc_collection_window"):
+                        tag="__dc_collection_window",
+                        width=800,
+                        height=800):
             dpg.add_spacer(height=50)
             with dpg.group(horizontal=True):
                 dpg.add_spacer(width=275, height=10)
@@ -223,73 +225,85 @@ class DataCollectionPanel:
             dpg.add_image("collection_visual")
             dpg.add_progress_bar(tag="progress", default_value=0.0,width=720)
             
-        dpg.set_primary_window("__dc_collection_window", True)
+        # dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
     
     def run_sgt(self, media_list):
-        i = 0
-        while i < len(media_list):
-            # set the prompt to be the label of the motion (from the file)
-            dpg.set_value("__prompt", value=media_list[i][1])
-            dpg.set_item_width("__prompt_spacer", 300)
-            # reset the frame of the file to 0 (useful for gif, irrelevant for png)
-            media_list[i][0].reset()
-            texture = media_list[i][0].get_dpg_formatted_texture(width=720,height=480)
-            set_texture("collection_visual", texture, 720, 480)
-
-            # reset emg data
-            self.odh.raw_data.reset_emg()
-
-            # initialize motion and frame timers
-            motion_timer = time.perf_counter_ns()
-            frame_timer  = time.perf_counter_ns()
-            # play the gif (or keep image on screen) until motion timer > self.rep_time
-            while (time.perf_counter_ns() - motion_timer)/1e9 < self.rep_time:
-                time_remaining = 1/media_list[i][0].fps - (time.perf_counter_ns() - frame_timer)/1e9
-                time.sleep(max(0, time_remaining))
-                frame_timer = time.perf_counter_ns()
-                # update visual
-                media_list[i][0].advance()
-                
-                texture = media_list[i][0].get_dpg_formatted_texture(width=720,height=480)
-                set_texture("collection_visual", texture, 720, 480)
-                # update progress bar
-                progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*self.rep_time))
-                dpg.set_value("progress", value = progress)
-                # reset frame timer
-                
-            
-            self.save_data(self.output_folder + "C_" + str(media_list[i][1]) + "_R_" + str(media_list[i][2]) + ".csv")
-
-            i = i+1
-            # pause / redo goes here!
+        self.i = 0
+        self.advance = True
+        while self.i < len(media_list):
 
             # do the rest
-            if self.rest_time and i < len(media_list):
-                dpg.set_value("__prompt", value="Up next: "+media_list[i][1])
-                dpg.set_item_width("__prompt_spacer", 250)
-                texture = media_list[i][0].get_dpg_formatted_texture(width=720,height=480, grayscale=True)
-                set_texture("collection_visual", texture, 720, 480)
-
-                # initialize motion and frame timers
-                motion_timer = time.perf_counter_ns()
-                frame_timer  = time.perf_counter_ns()
-                while (time.perf_counter_ns() - motion_timer)/1e9 < self.rest_time:
-                    time_remaining = 1/media_list[i][0].fps - (time.perf_counter_ns() - frame_timer)/1e9
-                    time.sleep(max(0, time_remaining))
-                    frame_timer = time.perf_counter_ns()
-                    # update visual
-                    media_list[i][0].advance()
-                    
-                    texture = media_list[i][0].get_dpg_formatted_texture(width=720,height=480, grayscale=True)
-                    set_texture("collection_visual", texture, 720, 480)
-                    # update progress bar
-                    progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*self.rest_time))
-                    dpg.set_value("progress", value = progress)
-            # 
+            if self.rest_time and self.i < len(media_list):
+                self.play_collection_visual(media_list[self.i], active=False)
+                media_list[self.i][0].reset()
             
+            self.play_collection_visual(media_list[self.i], active=True)
+            
+            self.save_data(self.output_folder + "C_" + str(media_list[self.i][1]) + "_R_" + str(media_list[self.i][2]) + ".csv")
+            last_rep = media_list[self.i][2]
+            self.i = self.i+1
+            if self.i  == len(media_list):
+                break
+            current_rep = media_list[self.i][2]
+            # pause / redo goes here!
+            if last_rep != current_rep  or (not self.auto_advance):
+                self.advance = False
+                dpg.add_button(tag="__redo_button", label="Redo", callback=self.redo_collection_callback, parent="__dc_collection_window")
+                dpg.add_button(tag="__continue_button", label="Continue", callback=self.continue_collection_callback, parent="__dc_collection_window")
+                while not self.advance:
+                    time.sleep(0.1)
+                    dpg.configure_app(manual_callback_management=True)
+                    jobs = dpg.get_callback_queue()
+                    dpg.run_callbacks(jobs)
+                dpg.configure_app(manual_callback_management=False)
+        # clean up the window
+        dpg.delete_item("__dc_collection_window")
+    
+    def redo_collection_callback(self):
+        if self.auto_advance:
+            self.i      = self.i - self.num_motions
+        else:
+            self.i      = self.i - 1 
+        dpg.delete_item("__redo_button")
+        dpg.delete_item("__continue_button")
+        self.advance = True
+    
+    def continue_collection_callback(self):
+        dpg.delete_item("__redo_button")
+        dpg.delete_item("__continue_button")
+        self.advance = True
+
+    def play_collection_visual(self, media, active=True):
+        if active:
+            timer_duration = self.rep_time
+            dpg.set_value("__prompt", value=media[1])
+            dpg.set_item_width("__prompt_spacer", 300)
+        else:
+            timer_duration = self.rest_time
+            dpg.set_value("__prompt", value="Up next: "+media[1])
+            dpg.set_item_width("__prompt_spacer", 250)
         
+        
+        texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
+        set_texture("collection_visual", texture, 720, 480)
+        self.odh.raw_data.reset_emg()
+        # initialize motion and frame timers
+        motion_timer = time.perf_counter_ns()
+        frame_timer  = time.perf_counter_ns()
+        while (time.perf_counter_ns() - motion_timer)/1e9 < timer_duration:
+            time_remaining = 1/media[0].fps - (time.perf_counter_ns() - frame_timer)/1e9
+            time.sleep(max(0, time_remaining))
+            frame_timer = time.perf_counter_ns()
+            # update visual
+            media[0].advance()
+            texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
+            set_texture("collection_visual", texture, 720, 480)
+            # update progress bar
+            progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
+            dpg.set_value("progress", value = progress)        
+    
     def save_data(self, filename):
         data = self.odh.raw_data.get_emg()
         with open(filename, "w", newline='', encoding='utf-8') as file:
@@ -303,6 +317,7 @@ if __name__ == "__main__":
     p = libemg.streamers.sifibridge_streamer(version="1_1")
     odh = libemg.data_handler.OnlineDataHandler()
     odh.start_listening()
+    # odh.analyze_hardware()
     args = {
         "odh"         : odh,
         "media_folder": "media/",
@@ -315,7 +330,8 @@ if __name__ == "__main__":
     gui = LibEMGGUI(args = args)
 
 
-
+    # Useful code snippets:
+    # how media is loaded and prepared:
     # media = Media()
     # media.from_file("images/Hand_Close.png")
     # texture = media.get_dpg_formatted_texture(width=720, height=480)
@@ -325,3 +341,32 @@ if __name__ == "__main__":
     #                         default_value=texture,
     #                         tag="__dcs_image",
     #                         format=dpg.mvFormat_Float_rgb)
+
+    ## # set the prompt to be the label of the motion (from the file)
+    # dpg.set_value("__prompt", value=media_list[i][1])
+    # dpg.set_item_width("__prompt_spacer", 300)
+    # # reset the frame of the file to 0 (useful for gif, irrelevant for png)
+    # media_list[i][0].reset()
+    # texture = media_list[i][0].get_dpg_formatted_texture(width=720,height=480)
+    # set_texture("collection_visual", texture, 720, 480)
+
+    # # reset emg data
+    # self.odh.raw_data.reset_emg()
+
+    # # initialize motion and frame timers
+    # motion_timer = time.perf_counter_ns()
+    # frame_timer  = time.perf_counter_ns()
+    # # play the gif (or keep image on screen) until motion timer > self.rep_time
+    # while (time.perf_counter_ns() - motion_timer)/1e9 < self.rep_time:
+    #     time_remaining = 1/media_list[i][0].fps - (time.perf_counter_ns() - frame_timer)/1e9
+    #     time.sleep(max(0, time_remaining))
+    #     frame_timer = time.perf_counter_ns()
+    #     # update visual
+    #     media_list[i][0].advance()
+        
+    #     texture = media_list[i][0].get_dpg_formatted_texture(width=720,height=480)
+    #     set_texture("collection_visual", texture, 720, 480)
+    #     # update progress bar
+    #     progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*self.rep_time))
+    #     dpg.set_value("progress", value = progress)
+    #     # reset frame timer
