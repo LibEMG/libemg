@@ -282,8 +282,7 @@ class PlotAnimator(Animator):
         for frame_idx, frame_coordinates in enumerate(coordinates):
             if verbose and frame_idx % 10 == 0:
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
-            # Plot icon
-            self.plot_icon(frame_coordinates)
+            
 
             # Plot additional information
             if self.show_boundary:
@@ -307,6 +306,8 @@ class PlotAnimator(Animator):
             if self.show_countdown:
                 # Show countdown during steady state
                 self._show_countdown(coordinates, frame_idx)
+            # Plot icon
+            self.plot_icon(frame_coordinates)
                 
             # Save frame
             frame = self._convert_plot_to_image(fig)
@@ -487,6 +488,7 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
         size = 50
         plt.scatter(x, y, s=size, c=colour, alpha=alpha)
         if self.plot_line and alpha == 1.0:
+            # TODO: Add a _is_target() method to detect this
             # Plot line to current point, but not to target
             plt.plot([0, x], [0, y], c=colour, linewidth=5)
 
@@ -536,10 +538,17 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 
 class BarPlotAnimator(PlotAnimator):
-    def __init__(self, output_filepath='libemg.gif', fps=24, bar_labels = None):
-        super().__init__(output_filepath, fps)
+    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False, bar_labels = None):
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary)
         self.bar_labels = bar_labels
+    
+    def _format_figure(self):
+        fig = plt.figure()
+        ax = plt.gca()
+        axis_limits = (-1.25, 1.25)
+        ax.set(ylim=axis_limits)
+        return fig, ax
     
     def plot_icon(self, frame_coordinates, alpha=1, colour='black'):
         bar_labels = self.bar_labels if self.bar_labels is not None else np.arange(frame_coordinates.shape[0])
-        plt.bar(bar_labels, frame_coordinates, alpha=alpha)
+        plt.bar(bar_labels, frame_coordinates, alpha=alpha, color=colour, width=0.4)
