@@ -47,7 +47,7 @@ class Animator:
             loop=0  # infinite loop
         )
     
-    def make_gif_from_directory(self, directory_path, match_filename_function = None, 
+    def save_gif_from_directory(self, directory_path, match_filename_function = None, 
                             delete_images = False):
         """Save a .gif video file from image files in a specified directory. Accepts all image types that can be read using
         PIL.Image.open(). Appends images in alphabetical order.
