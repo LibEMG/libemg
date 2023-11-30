@@ -135,6 +135,10 @@ class DataCollectionPanel:
         # dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
+        # clean up the window
+        dpg.delete_item("__dc_collection_window")
+        # open config back up
+        self.spawn_configuration_window()
     
     def run_sgt(self, media_list):
         self.i = 0
@@ -165,9 +169,7 @@ class DataCollectionPanel:
                     jobs = dpg.get_callback_queue()
                     dpg.run_callbacks(jobs)
                 dpg.configure_app(manual_callback_management=False)
-        # clean up the window
-        dpg.delete_item("__dc_collection_window")
-    
+        
     def redo_collection_callback(self):
         if self.auto_advance:
             self.i      = self.i - self.num_motions
