@@ -12,7 +12,7 @@ class Animator:
     def __init__(self, output_filepath = 'libemg.gif', fps = 24):
         self.output_filepath = output_filepath
         self.fps = fps
-        self.duration = 1 / fps
+        self.duration = 1000 // fps  # milliseconds per frame
     
     def convert_time_to_frames(self, duration_seconds):
         """Calculate the number of frames from the desired duration.
