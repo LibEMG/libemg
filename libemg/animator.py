@@ -29,7 +29,7 @@ class Animator:
         """
         return duration_seconds * self.fps
         
-    def make_gif(self, frames):
+    def save_gif(self, frames):
         """Save a .gif video file from a list of images.
 
 
@@ -85,7 +85,7 @@ class Animator:
                     print(f'Skipping {absolute_path} because it is not an image file.')
         
         # Make .gif from frames
-        self.make_gif(frames)
+        self.save_gif(frames)
 
         if delete_images:
             # Delete all images used to create .gif
@@ -269,7 +269,7 @@ class PlotAnimator(Animator):
             plt.cla()   # clear axis
         
         # Save file
-        self.make_gif(frames)
+        self.save_gif(frames)
 
 
 class CartesianPlotAnimator(PlotAnimator):
