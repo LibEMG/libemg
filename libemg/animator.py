@@ -99,7 +99,7 @@ class RegressionAnimator(ABC, Animator):
         self.fpd = fps * 4  # number of frames to generate to travel a distance of 1
 
     @abstractmethod
-    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
         raise NotImplementedError('plot_icon() method was not implemented.')
     
     def convert_distance_to_frames(self, coordinates1, coordinates2):
@@ -390,3 +390,5 @@ class TargetRegressionAnimator(RegressionAnimator):
         TargetRegressionAnimator._plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
         TargetRegressionAnimator._plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         TargetRegressionAnimator._plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
+
+
