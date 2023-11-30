@@ -1,4 +1,11 @@
+import os
+
 import numpy as np
+from PIL import Image, UnidentifiedImageError
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.patches import Circle
+
 
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
