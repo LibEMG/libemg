@@ -127,7 +127,7 @@ class DataCollectionPanel:
     def spawn_configuration_window(self):
         with dpg.window(tag="__dc_configuration_window", label="Data Collection Configuration"):
             
-            dpg.add_spacer(height=50)
+            # dpg.add_spacer(height=50)
             dpg.add_text(label="Training Menu")
             with dpg.table(header_row=False, resizable=True, policy=dpg.mvTable_SizingStretchProp,
                    borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True):
@@ -174,7 +174,7 @@ class DataCollectionPanel:
                     with dpg.group(horizontal=True):
                         dpg.add_button(label="Start", callback=self.start_callback)
         
-        dpg.set_primary_window("__dc_configuration_window", True)
+        # dpg.set_primary_window("__dc_configuration_window", True)
 
     def start_callback(self):
         if self.odh and len(self.odh.raw_data.get_emg()) > 0:
