@@ -93,7 +93,7 @@ class Animator:
                 os.remove(filename)
 
 
-class RegressionAnimator(ABC, Animator):
+class PlotAnimator(ABC, Animator):
     def __init__(self, output_filepath='libemg.gif', fps=24):
         super().__init__(output_filepath, fps)
         self.fpd = fps * 4  # number of frames to generate to travel a distance of 1
@@ -330,7 +330,7 @@ class RegressionAnimator(ABC, Animator):
         self.make_gif(frames)
 
 
-class DotRegressionAnimator(RegressionAnimator):
+class ScatterPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, plot_line = False):
         super().__init__(output_filepath, fps)
         self.plot_line = plot_line
@@ -348,7 +348,7 @@ class DotRegressionAnimator(RegressionAnimator):
             plt.plot([0, x], [0, y], c=colour, linewidth=5)
 
 
-class ArrowRegressionAnimator(RegressionAnimator):
+class ArrowPlotAnimator(PlotAnimator):
     def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
         # Parse coordinates
         x_tail = frame_coordinates[0]
@@ -368,7 +368,7 @@ class ArrowRegressionAnimator(RegressionAnimator):
         plt.arrow(x_tail, y_tail, x_head - x_tail, y_head - y_tail, head_width=head_size, head_length=head_size, fc=colour, ec=colour, alpha=alpha)
 
 
-class TargetRegressionAnimator(RegressionAnimator):
+class TargetPlotAnimator(PlotAnimator):
     @staticmethod
     def _plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
@@ -387,8 +387,8 @@ class TargetRegressionAnimator(RegressionAnimator):
         # Plot target
         xy = (x, y)
         limit_alpha = 0.4
-        TargetRegressionAnimator._plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
-        TargetRegressionAnimator._plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
-        TargetRegressionAnimator._plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
+        TargetPlotAnimator._plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
+        TargetPlotAnimator._plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
+        TargetPlotAnimator._plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
 
 
