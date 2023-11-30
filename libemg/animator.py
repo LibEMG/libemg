@@ -10,6 +10,15 @@ from matplotlib.patches import Circle
 
 class Animator:
     def __init__(self, output_filepath = 'libemg.gif', fps = 24):
+        """Animator object for creating .gif files from a list of images.
+        
+        Parameters
+        ----------
+        output_filepath: string (optional), default='libemg.gif'
+            Path to output file.
+        fps: int (optional), default=24
+            Frames per second of output file.
+        """
         self.output_filepath = output_filepath
         self.fps = fps
         self.duration = 1000 // fps  # milliseconds per frame
@@ -95,6 +104,21 @@ class Animator:
 
 class PlotAnimator(Animator):
     def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False):
+        """Animator object specifically for plots.
+        
+        Parameters
+        ----------
+        output_filepath: string (optional), default='libemg.gif'
+            Path to output file.
+        fps: int (optional), default=24
+            Frames per second of output file.
+        show_direction: bool (optional), default=False
+            True if the direction of the icon should be displayed as a faded icon, otherwise False.
+        show_countdown: bool (optional), default=False
+            True if a countdown should be displayed below the target, otherwise False.
+        show_boundary: bool (optional), default=False
+            True if a circle of radius 1 should be displayed as boundaries, otherwise False.
+        """
         super().__init__(output_filepath, fps)
         self.show_direction = show_direction
         self.show_countdown = show_countdown
@@ -145,17 +169,37 @@ class PlotAnimator(Animator):
         return Image.frombytes('RGBA', canvas.get_width_height(), rgba_buffer)
     
     def _format_figure(self):
+        """Set Figure to desired format."""
         fig = plt.figure()
         ax = plt.gca()
         return fig, ax
     
     def _preprocess_coordinates(self, coordinates):
+        """Modify coordinates before plotting (e.g., normalization).
+        
+        Parameters
+        ----------
+        coordinates: numpy.ndarray
+            N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
+            Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
+        """
         return coordinates
     
     def _show_boundary(self):
+        """Plot boundary to axis."""
         pass    # going to be different for each implementation, so don't implement it here
 
     def _show_countdown(self, coordinates, frame_idx):
+        """Show a countdown based on the current coordinates and frame index.
+        
+        Parameters
+        ----------
+        coordinates: numpy.ndarray
+            N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
+            Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
+        frame_idx: int
+            Current frame index.
+        """
         frame_coordinates = coordinates[frame_idx]
         try:
             matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
@@ -176,6 +220,13 @@ class PlotAnimator(Animator):
             pass
     
     def plot_icon(self, coordinates):
+        """Plot target / icon on axis.
+        
+        Parameters
+        ----------
+        coordinates: numpy.ndarray
+            1D array where each element corresponds to the value along a different DOF.
+        """
         plt.plot(coordinates[0], coordinates[1])
     
     
@@ -276,13 +327,29 @@ class PlotAnimator(Animator):
 
 class CartesianPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None):
+        """Animator object for creating .gif files from a list of coordinates on a cartesian plane.
+        
+        Parameters
+        ----------
+        output_filepath: string (optional), default='libemg.gif'
+            Path to output file.
+        fps: int (optional), default=24
+            Frames per second of output file.
+        show_direction: bool (optional), default=False
+            True if the direction of the icon should be displayed as a faded icon, otherwise False.
+        show_countdown: bool (optional), default=False
+            True if a countdown should be displayed below the target, otherwise False.
+        show_boundary: bool (optional), default=False
+            True if a circle of radius 1 should be displayed as boundaries, otherwise False.
+        normalize_distance: bool (optional), default=False
+            True if the distance between each coordinate should be normalized to 1, otherwise False.
+        axis_images: dict (optional), default=None
+            Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
+            Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
+        """
         super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary)
         self.normalize_distance = normalize_distance
         self.axis_images = axis_images
-        
-
-    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
-        raise NotImplementedError('plot_icon() method was not implemented.')
     
     def _format_figure(self):
         fig = plt.figure(figsize=(8, 8))
@@ -356,6 +423,20 @@ class CartesianPlotAnimator(PlotAnimator):
 
     @staticmethod
     def _normalize_to_unit_distance(x, y):
+        """Normalize coordinates to a unit circle distance.
+        
+        Parameters
+        ----------
+        x: numpy.ndarray
+            1D array of x coordinates.
+        y: numpy.ndarray
+            1D array of y coordinates.
+        
+        Returns
+        ----------
+        numpy.ndarray
+            N x 2 matrix, where N is the number of coordinates. Each row contains the normalized x and y coordinates.
+        """
         assert x.shape == y.shape, "x and y must be the same length."
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)    # ignore divide by 0 warnings
@@ -375,6 +456,28 @@ class CartesianPlotAnimator(PlotAnimator):
 class ScatterPlotAnimator(CartesianPlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
                  plot_line = False):
+        """Animator object for creating .gif files from a list of coordinates on a cartesian plane shown as a scatter plot.
+        
+        Parameters
+        ----------
+        output_filepath: string (optional), default='libemg.gif'
+            Path to output file.
+        fps: int (optional), default=24
+            Frames per second of output file.
+        show_direction: bool (optional), default=False
+            True if the direction of the icon should be displayed as a faded icon, otherwise False.
+        show_countdown: bool (optional), default=False
+            True if a countdown should be displayed below the target, otherwise False.
+        show_boundary: bool (optional), default=False
+            True if a circle of radius 1 should be displayed as boundaries, otherwise False.
+        normalize_distance: bool (optional), default=False
+            True if the distance between each coordinate should be normalized to 1, otherwise False.
+        axis_images: dict (optional), default=None
+            Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
+            Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
+        plot_line: bool (optional), default=False
+            True if a line should be plotted between the origin and the current point, otherwise False.
+        """
         super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images)
         self.plot_line = plot_line
 
