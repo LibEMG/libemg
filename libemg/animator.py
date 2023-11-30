@@ -189,7 +189,7 @@ class PlotAnimator(ABC, Animator):
         assert normalized_coordinates.shape == (x.shape[0], 2)
         return normalized_coordinates
     
-    def make_regression_training_gif(self, coordinates, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
+    def make_plot_gif(self, coordinates, title = '', xlabel = '', ylabel = '', axis_images = None, save_coordinates = False,
                                  show_direction = False, show_countdown = False, show_boundary = False,
                                  normalize_distance = False, verbose = False):
         """Save a .gif file of an icon moving around a 2D plane. Can be used for regression training.
