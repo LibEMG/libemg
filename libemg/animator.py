@@ -1,5 +1,5 @@
 import os
-from abc import ABC, abstractstaticmethod
+from abc import ABC, abstractmethod
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -96,9 +96,9 @@ class Animator:
 class RegressionAnimator(ABC, Animator):
     def __init__(self, output_filepath='libemg.gif', fps=24):
         super().__init__(output_filepath, fps)
-        self.fpd = fps * 2  # number of frames to generate to travel a distance of 1
+        self.fpd = fps * 4  # number of frames to generate to travel a distance of 1
 
-    @abstractstaticmethod
+    @abstractmethod
     def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
         raise NotImplementedError('plot_icon() method was not implemented.')
     
@@ -331,19 +331,25 @@ class RegressionAnimator(ABC, Animator):
 
 
 class DotRegressionAnimator(RegressionAnimator):
-    @staticmethod
-    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24, plot_line = False):
+        super().__init__(output_filepath, fps)
+        self.plot_line = plot_line
+
+    
+    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
         # Parse coordinates
         x = frame_coordinates[0]
         y = frame_coordinates[1]
         # Dot properties
         size = 50
         plt.scatter(x, y, s=size, c=colour, alpha=alpha)
+        if self.plot_line and alpha == 1.0:
+            # Plot line to current point, but not to target
+            plt.plot([0, x], [0, y], c=colour, linewidth=5)
 
 
 class ArrowRegressionAnimator(RegressionAnimator):
-    @staticmethod
-    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
         # Parse coordinates
         x_tail = frame_coordinates[0]
         y_tail = frame_coordinates[1]
@@ -368,8 +374,7 @@ class TargetRegressionAnimator(RegressionAnimator):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
         plt.gca().add_patch(circle)
     
-    @staticmethod
-    def plot_icon(frame_coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
         # Parse coordinates
         x = frame_coordinates[0]
         y = frame_coordinates[1]
