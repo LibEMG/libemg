@@ -1,5 +1,5 @@
 import os
-from abc import ABC, abstractmethod
+import warnings
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -355,14 +355,16 @@ class CartesianPlotAnimator(PlotAnimator):
     @staticmethod
     def _normalize_to_unit_distance(x, y):
         assert x.shape == y.shape, "x and y must be the same length."
-        # Calculate angles
-        angles = np.arctan(y / x)
-        np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
-        
-        # Normalize by angles (max distance of 1)
-        normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
-        normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
-        normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)    # ignore divide by 0 warnings
+            # Calculate angles
+            angles = np.arctan(y / x)
+            np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
+            
+            # Normalize by angles (max distance of 1)
+            normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
+            normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
+            normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
         
         assert normalized_coordinates.shape == (x.shape[0], 2)
         return normalized_coordinates
