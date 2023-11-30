@@ -263,7 +263,10 @@ class PlotAnimator(Animator):
         
         # Format figure
         fig, ax = self._format_figure()
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
         fig.suptitle(title)
+        fig.tight_layout()
 
         # Calculate direction changes
         direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / self.duration
@@ -274,8 +277,6 @@ class PlotAnimator(Animator):
         coordinates = self._preprocess_coordinates(coordinates)
         
         frames = []
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
         direction_change_idx = None
         target_alpha = 0.05
         for frame_idx, frame_coordinates in enumerate(coordinates):
@@ -283,15 +284,6 @@ class PlotAnimator(Animator):
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
             # Plot icon
             self.plot_icon(frame_coordinates)
-
-            # Format axis
-            plt.xlabel(xlabel)
-            plt.ylabel(ylabel)
-            ticks = [-1., -0.5, 0, 0.5, 1.]
-            plt.xticks(ticks)
-            plt.yticks(ticks)
-            plt.axis('equal')
-            ax.set(xlim=xlim, ylim=ylim)    # maintain the same axis limits
 
             # Plot additional information
             if self.show_boundary:
@@ -319,7 +311,9 @@ class PlotAnimator(Animator):
             # Save frame
             frame = self._convert_plot_to_image(fig)
             frames.append(frame)
-            plt.cla()   # clear axis
+            # Clear axis while retaining formatting
+            for artist in ax.lines + ax.collections + ax.patches + ax.texts:
+                artist.remove()
         
         # Save file
         self.save_gif(frames)
@@ -374,8 +368,11 @@ class CartesianPlotAnimator(PlotAnimator):
             ax = axs[1, 1]
         else:
             ax = plt.gca()
+        ticks = [-1., -0.5, 0, 0.5, 1.]
+        plt.xticks(ticks)
+        plt.yticks(ticks)
+        plt.axis('equal')
         ax.set(xlim=axis_limits, ylim=axis_limits)
-        fig.tight_layout()
         return fig, ax
     
     def _preprocess_coordinates(self, coordinates):
@@ -536,3 +533,13 @@ class TargetPlotAnimator(CartesianPlotAnimator):
         TargetPlotAnimator._plot_circle(xy, radius=radius, edgecolor='none', facecolor=colour, alpha = alpha) # plot target
         TargetPlotAnimator._plot_circle(xy, radius=max_radius, edgecolor='black', facecolor='none', alpha=limit_alpha)   # plot max boundary
         TargetPlotAnimator._plot_circle(xy, radius=min_radius, edgecolor='black', facecolor='black', alpha=limit_alpha)   # plot min boundary
+
+
+class BarPlotAnimator(PlotAnimator):
+    def __init__(self, output_filepath='libemg.gif', fps=24, bar_labels = None):
+        super().__init__(output_filepath, fps)
+        self.bar_labels = bar_labels
+    
+    def plot_icon(self, frame_coordinates, alpha=1, colour='black'):
+        bar_labels = self.bar_labels if self.bar_labels is not None else np.arange(frame_coordinates.shape[0])
+        plt.bar(bar_labels, frame_coordinates, alpha=alpha)
