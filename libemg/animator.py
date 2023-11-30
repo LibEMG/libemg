@@ -94,9 +94,12 @@ class Animator:
 
 
 class PlotAnimator(Animator):
-    def __init__(self, output_filepath='libemg.gif', fps=24):
+    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False):
         super().__init__(output_filepath, fps)
-        self.fpd = fps * 4  # number of frames to generate to travel a distance of 1
+        self.show_direction = show_direction
+        self.show_countdown = show_countdown
+        self.show_boundary = show_boundary
+        self.fpd = fps * 2  # number of frames to generate to travel a distance of 1
     
     
     def convert_distance_to_frames(self, coordinates1, coordinates2):
@@ -176,8 +179,7 @@ class PlotAnimator(Animator):
         plt.plot(coordinates[0], coordinates[1])
     
     
-    def save_plot_gif(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, 
-                      show_direction = False, show_countdown = False, show_boundary = False, verbose = False):
+    def save_plot_gif(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, verbose = False):
         """Save a .gif file of an icon moving around a 2D plane.
         
         Parameters
@@ -241,11 +243,11 @@ class PlotAnimator(Animator):
             ax.set(xlim=xlim, ylim=ylim)    # maintain the same axis limits
 
             # Plot additional information
-            if show_boundary:
+            if self.show_boundary:
                 # Show boundaries
                 self._show_boundary()
             
-            if show_direction:
+            if self.show_direction:
                 # Show path until a change in direction
                 nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
                 new_direction_change_idx = direction_change_indices[nearest_direction_change_idx]  
@@ -259,7 +261,7 @@ class PlotAnimator(Animator):
                     target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
                 self.plot_icon(coordinates[direction_change_idx], alpha=target_alpha, colour='green')
                 
-            if show_countdown:
+            if self.show_countdown:
                 # Show countdown during steady state
                 self._show_countdown(coordinates, frame_idx)
                 
@@ -273,8 +275,8 @@ class PlotAnimator(Animator):
 
 
 class CartesianPlotAnimator(PlotAnimator):
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24, normalize_distance = False, axis_images = None):
-        super().__init__(output_filepath, fps)
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None):
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary)
         self.normalize_distance = normalize_distance
         self.axis_images = axis_images
         
@@ -371,8 +373,9 @@ class CartesianPlotAnimator(PlotAnimator):
 
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24, normalize_distance = False, axis_images = None, plot_line = False):
-        super().__init__(output_filepath, fps, normalize_distance, axis_images)
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
+                 plot_line = False):
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images)
         self.plot_line = plot_line
 
     
