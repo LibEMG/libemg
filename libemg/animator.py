@@ -176,7 +176,7 @@ class PlotAnimator(Animator):
         plt.plot(coordinates[0], coordinates[1])
     
     
-    def make_plot_gif(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, 
+    def save_plot_gif(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, 
                       show_direction = False, show_countdown = False, show_boundary = False, verbose = False):
         """Save a .gif file of an icon moving around a 2D plane.
         
