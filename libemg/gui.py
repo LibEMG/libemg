@@ -38,12 +38,31 @@ class GUI:
                 
             with dpg.menu(label="Data"):
                 dpg.add_menu_item(label="Collect Data", callback=self.data_collection_callback)
-                dpg.add_menu_item(label="Import Data")
-                dpg.add_menu_item(label="Export Data")
-                dpg.add_menu_item(label="Inspect Data")
+                dpg.add_menu_item(label="Import Data",  callback=self.import_data_callback )
+                dpg.add_menu_item(label="Export Data",  callback=self.export_data_callback)
+                dpg.add_menu_item(label="Inspect Data", callback=self.inspect_data_callback)
+            
+            with dpg.menu(label="Model"):
+                dpg.add_menu_item(label="Train Classifier", callback=self.train_classifier_callback)
+
+            with dpg.menu(label="HCI"):
+                dpg.add_menu_item(label="Fitts Law", callback=self.fitts_law_callback)
 
     def data_collection_callback(self):
         self.dcp = DataCollectionPanel(**self.args)
         self.dcp.spawn_configuration_window()
 
+    def import_data_callback(self):
+        pass
 
+    def export_data_callback(self):
+        pass
+
+    def inspect_data_callback(self):
+        pass
+
+    def train_classifier_callback(self):
+        pass
+    
+    def fitts_law_callback(self):
+        pass
