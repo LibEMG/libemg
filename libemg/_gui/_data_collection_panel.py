@@ -1,11 +1,9 @@
 import dearpygui.dearpygui as dpg
 import numpy as np
-import libemg
 import os
 from itertools import compress
 import time
 import csv
-import copy
 
 from ._utils import Media, set_texture
 
