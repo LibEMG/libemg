@@ -10,7 +10,7 @@ class GUI:
         self.window_init(width, height)
         
     
-    def window_init(self, width, height):
+    def window_init(self, width, height, debug=False):
         dpg.create_context()
         dpg.create_viewport(title="LibEMG",
                             width=width,
@@ -22,12 +22,14 @@ class GUI:
 
         dpg.show_viewport()
 
-        # dpg.configure_app(manual_callback_management=True)
-        # while dpg.is_dearpygui_running():
-        #     jobs = dpg.get_callback_queue()
-        #     dpg.run_callbacks(jobs)
-        #     dpg.render_dearpygui_frame()
-        dpg.start_dearpygui()
+        if debug:
+            dpg.configure_app(manual_callback_management=True)
+            while dpg.is_dearpygui_running():
+                jobs = dpg.get_callback_queue()
+                dpg.run_callbacks(jobs)
+                dpg.render_dearpygui_frame()
+        else:
+            dpg.start_dearpygui()
         dpg.destroy_context()
 
     def file_menu_init(self):
@@ -63,6 +65,6 @@ class GUI:
 
     def train_classifier_callback(self):
         pass
-    
+
     def fitts_law_callback(self):
         pass
