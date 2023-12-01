@@ -27,3 +27,6 @@ demos/images/
 demos/data/sgt/*
 demos/data/GRABMyo/*
 demos/data/*
+libemg/_gui/__pycache__/*
+images/*
+media/*
