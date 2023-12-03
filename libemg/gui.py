@@ -5,9 +5,10 @@ class GUI:
     def __init__(self, 
                  width=1920,
                  height=1080,
-                 args = None):
+                 args = None, 
+                 debug = False):
         self.args = args
-        self.window_init(width, height)
+        self.window_init(width, height, debug)
         
     
     def window_init(self, width, height, debug=False):
