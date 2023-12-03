@@ -4,8 +4,10 @@ import os
 from itertools import compress
 import time
 import csv
-
+import json
+from datetime import datetime
 from ._utils import Media, set_texture
+
 
 class DataCollectionPanel:
     def __init__(self,
@@ -103,12 +105,23 @@ class DataCollectionPanel:
         files = list(compress(files, valid_files))
         self.num_motions = len(files)
         collection_conf = []
-        for rep in range(self.num_reps):
-            for motion_class in files:
+        # make the collection_details.json file
+        collection_details = {}
+        collection_details["num_motions"] = self.num_motions
+        collection_details["num_reps"]    = self.num_reps
+        collection_details["classes"] =   [f.split('.')[0] for f in files]
+        collection_details["class_map"] = {index: f.split('.')[0] for index, f in enumerate(files)}
+        collection_details["time"]    = datetime.now().isoformat()
+        with open(self.data_folder + "collection_details.json", 'w') as f:
+            json.dump(collection_details, f)
+
+        # make the media list for SGT progression
+        for rep_index in range(self.num_reps):
+            for class_index, motion_class in enumerate(files):
                 # entry for collection of rep
                 media = Media()
                 media.from_file(self.media_folder + motion_class)
-                collection_conf.append([media,motion_class.split('.')[0],rep,self.rep_time])
+                collection_conf.append([media,motion_class.split('.')[0],class_index,rep_index,self.rep_time])
         return collection_conf
 
     def spawn_collection_window(self, media_list):
@@ -150,12 +163,12 @@ class DataCollectionPanel:
             
             self.play_collection_visual(media_list[self.i], active=True)
             
-            self.save_data(self.output_folder + "C_" + str(media_list[self.i][1]) + "_R_" + str(media_list[self.i][2]) + ".csv")
-            last_rep = media_list[self.i][2]
+            self.save_data(self.output_folder + "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv")
+            last_rep = media_list[self.i][3]
             self.i = self.i+1
             if self.i  == len(media_list):
                 break
-            current_rep = media_list[self.i][2]
+            current_rep = media_list[self.i][3]
             # pause / redo goes here!
             if last_rep != current_rep  or (not self.auto_advance):
                 self.advance = False
