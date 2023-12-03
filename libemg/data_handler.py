@@ -341,8 +341,8 @@ class OnlineDataHandler(DataHandler):
         The UDP port to listen for events on. 
     ip: string (optional), default = '127.0.0.1'
         The UDP ip to listen for events on.
-    file_path: string (optional), default = "raw_emg.csv"
-        The path of the file to write the raw EMG to. This only gets written to if the file parameter is set to true.
+    file_path: string (optional), default = "data/"
+        The path of the folder/file to write the raw data to. This only gets written to if the file parameter is set to true. For example data/test_ would write data/test_EMG.csv.
     file: bool (optional): default = False
         If True, all data acquired over the UDP port will be written to a file specified by the file_path parameter.
     std_out: bool (optional): default = False
@@ -356,10 +356,10 @@ class OnlineDataHandler(DataHandler):
     add_timestamps: bool(optional): default = False 
         If True, timestamps will be added to the raw filese generated when setting the file flag to true.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", imu_file_path="raw_imu.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False, other_arr=False):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False, other_arr=False):
         self.port = port 
         self.ip = ip
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_file_path': imu_file_path, 'imu_arr': imu_arr, 'other_arr': other_arr}
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_arr': imu_arr, 'other_arr': other_arr}
         self.fi = None
         self.max_buffer = max_buffer
         self.timestamps = timestamps
@@ -614,8 +614,7 @@ class OnlineDataHandler(DataHandler):
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind((self.ip, self.port))
-        if self.options['file']:
-            open(self.options['file_path'], "w").close()
+        files = {}
         while True:
             data = sock.recv(4096)
             if data:
@@ -624,9 +623,7 @@ class OnlineDataHandler(DataHandler):
                 # Check if IMU or EMG 
                 if type(data[0]) != str:
                     tag = 'EMG'
-                    file = self.options['file_path']
                 elif data[0] == 'IMU':
-                    file = self.options['imu_file_path']
                     tag = 'IMU'
                     data = data[1]
                 else:
@@ -640,17 +637,13 @@ class OnlineDataHandler(DataHandler):
                 if self.options['std_out']:
                     print(tag + ": " + str(data) + " " + str(timestamp))  
                 if self.options['file']:
-                    file_path = self.options['file_path']
-                    if tag == 'IMU':
-                        file_path = self.options['imu_file_path']
-                    elif tag != 'EMG':
-                        file_path = self.options['file_path'].replace('EMG', tag)
-                    with open(file_path, 'a', newline='') as file:
-                        writer = csv.writer(file)
-                        if self.timestamps:
-                            writer.writerow(np.hstack([timestamp,data]))
-                        else:
-                            writer.writerow(data)
+                    if not tag in files.keys():
+                        files[tag] = open(self.options['file_path'] + tag + '.csv', "a", newline='')
+                    writer = csv.writer(files[tag])
+                    if self.timestamps:
+                        writer.writerow(np.hstack([timestamp,data]))
+                    else:
+                        writer.writerow(data)
                 if self.options['emg_arr']:
                     if tag == 'EMG':
                         raw_data.add_emg(data)
