@@ -559,10 +559,14 @@ class BarPlotAnimator(PlotAnimator):
         plt.bar(bar_labels, 1, color='none', edgecolor='black', linewidth=2, width=bar_width)
 
         axis_limits = plt.gca().get_ylim()
-        for label in self.bar_labels:
-            negative_label, positive_label = label.split(' / ')
-            plt.text(label, axis_limits[0] + 0.1, negative_label)
-            plt.text(label, axis_limits[1] - 0.1, positive_label)
+        if self.bar_labels is not None:
+            for label in self.bar_labels:
+                try:
+                    negative_label, positive_label = label.split(' / ')
+                    plt.text(label, axis_limits[0] + 0.1, negative_label)
+                    plt.text(label, axis_limits[1] - 0.1, positive_label)
+                except ValueError:
+                    break
 
 
 class SingleDirectionBarPlotAnimator(BarPlotAnimator):
