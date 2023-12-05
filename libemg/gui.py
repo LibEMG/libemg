@@ -1,5 +1,7 @@
 import dearpygui.dearpygui as dpg
 from libemg._gui._data_collection_panel import DataCollectionPanel
+from libemg._gui._data_import_panel import DataImportPanel
+from inspect import signature
 
 class GUI:
     def __init__(self, 
@@ -52,11 +54,18 @@ class GUI:
                 dpg.add_menu_item(label="Fitts Law", callback=self.fitts_law_callback)
 
     def data_collection_callback(self):
-        self.dcp = DataCollectionPanel(**self.args)
+        dcp_parameter_list  = list(signature(DataCollectionPanel.__init__).parameters)
+        common_set = [element for element in dcp_parameter_list if element in self.args.keys()]
+        passable_args = {common_key: self.args[common_key] for common_key in common_set}
+        self.dcp = DataCollectionPanel(**passable_args)
         self.dcp.spawn_configuration_window()
 
     def import_data_callback(self):
-        pass
+        dip_parameter_list  = list(signature(DataImportPanel.__init__).parameters)
+        common_set = [element for element in dip_parameter_list if element in self.args.keys()]
+        passable_args = {common_key: self.args[common_key] for common_key in common_set}
+        self.dip = DataImportPanel(**passable_args)
+        self.dip.spawn_configuration_window()
 
     def export_data_callback(self):
         pass
