@@ -7,12 +7,19 @@ class GUI:
     def __init__(self, 
                  width=1920,
                  height=1080,
-                 args = None,
+                 args = {},
                  debug=False):
+        
         self.args = args
+        self.install_global_fields()
+
         self.window_init(width, height, debug)
         
-    
+    def install_global_fields(self):
+        # self.global_fields = ['offline_data_handlers', 'online_data_handler']
+        self.offline_data_handlers = []   if 'offline_data_handlers' not in self.args.keys() else self.args["offline_data_handlers"]
+        self.online_data_handlers  = None if 'online_data_handler'   not in self.args.keys() else self.args["online_data_handler"]
+
     def window_init(self, width, height, debug=False):
         dpg.create_context()
         dpg.create_viewport(title="LibEMG",
@@ -62,7 +69,7 @@ class GUI:
     def import_data_callback(self):
         panel_arguments = list(inspect.signature(DataImportPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
-        self.dip = DataImportPanel(**passed_arguments)
+        self.dip = DataImportPanel(**passed_arguments, gui=self)
         self.dip.spawn_configuration_window()
 
     def export_data_callback(self):
