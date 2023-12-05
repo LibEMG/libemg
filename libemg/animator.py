@@ -552,3 +552,10 @@ class BarPlotAnimator(PlotAnimator):
     def plot_icon(self, frame_coordinates, alpha=1, colour='black'):
         bar_labels = self.bar_labels if self.bar_labels is not None else np.arange(frame_coordinates.shape[0])
         plt.bar(bar_labels, frame_coordinates, alpha=alpha, color=colour, width=0.4)
+
+
+class SingleDirectionBarPlotAnimator(BarPlotAnimator):
+    def _format_figure(self):
+        fig, ax = super()._format_figure()
+        ax.set(ylim=(0, 1.25)) # set limits only positive instead of both directions
+        return fig, ax
