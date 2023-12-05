@@ -551,7 +551,12 @@ class BarPlotAnimator(PlotAnimator):
     
     def plot_icon(self, frame_coordinates, alpha=1, colour='black'):
         bar_labels = self.bar_labels if self.bar_labels is not None else np.arange(frame_coordinates.shape[0])
-        plt.bar(bar_labels, frame_coordinates, alpha=alpha, color=colour, width=0.4)
+        bar_width = 0.4
+        plt.bar(bar_labels, frame_coordinates, alpha=alpha, color=colour, width=bar_width)
+        
+        # Plot border
+        plt.bar(bar_labels, -1, color='none', edgecolor='black', linewidth=2, width=bar_width)
+        plt.bar(bar_labels, 1, color='none', edgecolor='black', linewidth=2, width=bar_width)
 
 
 class SingleDirectionBarPlotAnimator(BarPlotAnimator):
