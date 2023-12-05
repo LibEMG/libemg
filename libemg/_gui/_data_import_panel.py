@@ -1,17 +1,27 @@
 import dearpygui.dearpygui as dpg
 import os
 import json
+import libemg
 
 class DataImportPanel:
     def __init__(self, 
                  data_folder="data/",
-                 class_list=None):
+                 gui=None):
         
         self.data_folder = data_folder
         self.fields = []
+        self.widget_tags = {"configuration": ['__di_configuration_window', '__di_data_folder', '__di_folder_validation', \
+                                              '__di_import_validation']}
+        self.gui = gui
+
+    def cleanup_window(self, window_name):
+        widget_list = self.widget_tags[window_name]
+        for w in widget_list:
+            if dpg.does_alias_exist(w):
+                dpg.delete_item(w)     
     
     def spawn_configuration_window(self):
-
+        self.cleanup_window("configuration")
         with dpg.window(tag="__di_configuration_window",
                         label="Data Import Configuration",
                         width=720,
@@ -46,10 +56,10 @@ class DataImportPanel:
                 validation_text += "Found collections_details \n"
                 if os.path.exists(folder_location + "collection_details.json"):
                     with open(folder_location + "collection_details.json") as f:
-                        collection_details = json.load(f)
-                    for key in collection_details.keys():
+                        self.collection_details = json.load(f)
+                    for key in self.collection_details.keys():
                         validation_text += "\t" +  key + ": "+\
-                              str(collection_details[key]) + "\n"
+                              str(self.collection_details[key]) + "\n"
                     
                     validation_text += "Ready to Import!"
                     self.ready_to_import = True
@@ -69,6 +79,15 @@ class DataImportPanel:
         if not self.ready_to_import:
             validation_text += "Import not available -- check data folder."
         else:
+            offline_data_handler = libemg.data_handler.OfflineDataHandler()
+            offline_data_handler.get_data(dpg.get_value(item="__di_data_folder"),
+                                          {"classes":       [str(i) for i in range(self.collection_details["num_motions"])],
+                                           "classes_regex": libemg.utils.make_regex("C_", "_R_",[str(i) for i in range(self.collection_details["num_motions"])]),
+                                           "reps":          [str(i) for i in range(self.collection_details["num_reps"])],
+                                           "reps_regex":    libemg.utils.make_regex("_R_",".csv", [str(i) for i in range(self.collection_details["num_reps"])])
+                                           }
+                                         )
+            self.gui.offline_data_handlers.append(offline_data_handler)
             validation_text += "Import successful"
             pass
         
