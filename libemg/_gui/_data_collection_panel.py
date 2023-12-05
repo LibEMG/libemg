@@ -29,9 +29,20 @@ class DataCollectionPanel:
         self.rest_time = rest_time
         self.auto_advance=auto_advance
         self.exclude_files = exclude_files
-        
+
+        self.widget_tags = {"configuration":['__dc_configuration_window','__dc_num_reps','__dc_rep_time','__dc_rest_time', '__dc_media_folder',\
+                                             '__dc_auto_advance'],
+                            "collection":   ['__dc_collection_window', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button']}
+
+    def cleanup_window(self, window_name):
+        widget_list = self.widget_tags[window_name]
+        for w in widget_list:
+            if dpg.does_alias_exist(w):
+                dpg.delete_item(w)      
     
     def spawn_configuration_window(self):
+        self.cleanup_window("configuration")
+        self.cleanup_window("collection")
         with dpg.window(tag="__dc_configuration_window", label="Data Collection Configuration"):
             
             # dpg.add_spacer(height=50)
@@ -47,35 +58,35 @@ class DataCollectionPanel:
                     with dpg.group(horizontal=True):
                         dpg.add_text("Num Reps: ")
                         dpg.add_input_text(default_value=self.num_reps,
-                                        tag="__num_reps",
+                                        tag="__dc_num_reps",
                                         width=100)
                     with dpg.group(horizontal=True):
                         dpg.add_text("Time Per Rep")
                         dpg.add_input_text(default_value=self.rep_time,
-                                        tag="__rep_time",
+                                        tag="__dc_rep_time",
                                         width=100)
                     with dpg.group(horizontal=True):
                         dpg.add_text("Time Between Reps")
                         dpg.add_input_text(default_value=self.rest_time,
-                                        tag="__rest_time", 
+                                        tag="__dc_rest_time", 
                                         width=100)
                 # FOLDER ROW
                 with dpg.table_row():
                     with dpg.group(horizontal=True):
                         dpg.add_text("Media Folder:")
                         dpg.add_input_text(default_value=self.media_folder, 
-                                        tag="__media_folder", width=250)
+                                        tag="__dc_media_folder", width=250)
                     with dpg.group(horizontal=True):
                         dpg.add_text("Output Folder:")
                         dpg.add_input_text(default_value=self.data_folder, 
-                                        tag="__output_folder",
+                                        tag="__dc_output_folder",
                                         width=250)
                 # CHECKBOX ROW
                 with dpg.table_row():
                     with dpg.group(horizontal=True):
                         dpg.add_text("Auto-Advance")
                         dpg.add_checkbox(default_value=self.auto_advance,
-                                        tag="__auto_advance")
+                                        tag="__dc_auto_advance")
                 # BUTTON ROW
                 with dpg.table_row():
                     with dpg.group(horizontal=True):
@@ -83,20 +94,23 @@ class DataCollectionPanel:
         
         # dpg.set_primary_window("__dc_configuration_window", True)
 
+
+
     def start_callback(self):
         if self.odh and len(self.odh.raw_data.get_emg()) > 0:
             self.get_settings()
             dpg.delete_item("__dc_configuration_window")
+            self.cleanup_window("configuration")
             media_list = self.gather_media()
             self.spawn_collection_window(media_list)
 
     def get_settings(self):
-        self.num_reps      = int(dpg.get_value("__num_reps"))
-        self.rep_time      = float(dpg.get_value("__rep_time"))
-        self.rest_time     = float(dpg.get_value("__rest_time"))
-        self.media_folder  = dpg.get_value("__media_folder")
-        self.output_folder = dpg.get_value("__output_folder")
-        self.auto_advance  = bool(dpg.get_value("__auto_advance"))
+        self.num_reps      = int(dpg.get_value("__dc_num_reps"))
+        self.rep_time      = float(dpg.get_value("__dc_rep_time"))
+        self.rest_time     = float(dpg.get_value("__dc_rest_time"))
+        self.media_folder  = dpg.get_value("__dc_media_folder")
+        self.output_folder = dpg.get_value("__dc_output_folder")
+        self.auto_advance  = bool(dpg.get_value("__dc_auto_advance"))
 
     def gather_media(self):
         # find everything in the media folder
@@ -112,7 +126,7 @@ class DataCollectionPanel:
         collection_details["classes"] =   [f.split('.')[0] for f in files]
         collection_details["class_map"] = {index: f.split('.')[0] for index, f in enumerate(files)}
         collection_details["time"]    = datetime.now().isoformat()
-        with open(self.data_folder + "collection_details.json", 'w') as f:
+        with open(self.output_folder + "collection_details.json", 'w') as f:
             json.dump(collection_details, f)
 
         # make the media list for SGT progression
@@ -138,16 +152,18 @@ class DataCollectionPanel:
                 dpg.add_spacer(width=275, height=10)
                 dpg.add_text(default_value="Collection Menu")
             with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__prompt_spacer",width=300, height=10)
-                dpg.add_text(media_list[0][1], tag="__prompt")
+                dpg.add_spacer(tag="__dc_prompt_spacer",width=300, height=10)
+                dpg.add_text(media_list[0][1], tag="__dc_prompt")
             dpg.add_image("collection_visual")
-            dpg.add_progress_bar(tag="progress", default_value=0.0,width=720)
+            dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=720)
             
         # dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
         # clean up the window
+        
         dpg.delete_item("__dc_collection_window")
+        self.cleanup_window("collection")
         # open config back up
         self.spawn_configuration_window()
     
@@ -172,8 +188,8 @@ class DataCollectionPanel:
             # pause / redo goes here!
             if last_rep != current_rep  or (not self.auto_advance):
                 self.advance = False
-                dpg.add_button(tag="__redo_button", label="Redo", callback=self.redo_collection_callback, parent="__dc_collection_window")
-                dpg.add_button(tag="__continue_button", label="Continue", callback=self.continue_collection_callback, parent="__dc_collection_window")
+                dpg.add_button(tag="__dc_redo_button", label="Redo", callback=self.redo_collection_callback, parent="__dc_collection_window")
+                dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback, parent="__dc_collection_window")
                 while not self.advance:
                     time.sleep(0.1)
                     dpg.configure_app(manual_callback_management=True)
@@ -186,24 +202,24 @@ class DataCollectionPanel:
             self.i      = self.i - self.num_motions
         else:
             self.i      = self.i - 1 
-        dpg.delete_item("__redo_button")
-        dpg.delete_item("__continue_button")
+        dpg.delete_item("__dc_redo_button")
+        dpg.delete_item("__dc_continue_button")
         self.advance = True
     
     def continue_collection_callback(self):
-        dpg.delete_item("__redo_button")
-        dpg.delete_item("__continue_button")
+        dpg.delete_item("__dc_redo_button")
+        dpg.delete_item("__dc_continue_button")
         self.advance = True
 
     def play_collection_visual(self, media, active=True):
         if active:
             timer_duration = self.rep_time
-            dpg.set_value("__prompt", value=media[1])
-            dpg.set_item_width("__prompt_spacer", 300)
+            dpg.set_value("__dc_prompt", value=media[1])
+            dpg.set_item_width("__dc_prompt_spacer", 300)
         else:
             timer_duration = self.rest_time
-            dpg.set_value("__prompt", value="Up next: "+media[1])
-            dpg.set_item_width("__prompt_spacer", 250)
+            dpg.set_value("__dc_prompt", value="Up next: "+media[1])
+            dpg.set_item_width("__dc_prompt_spacer", 250)
         
         
         texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
@@ -222,7 +238,7 @@ class DataCollectionPanel:
             set_texture("collection_visual", texture, 720, 480)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
-            dpg.set_value("progress", value = progress)        
+            dpg.set_value("__dc_progress", value = progress)        
     
     def save_data(self, filename):
         data = self.odh.raw_data.get_emg()
