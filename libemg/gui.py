@@ -1,6 +1,7 @@
 import dearpygui.dearpygui as dpg
 from libemg._gui._data_collection_panel import DataCollectionPanel
 from libemg._gui._data_import_panel import DataImportPanel
+from libemg._gui._visualize_livesignal_panel import VisualizeLiveSignalPanel
 import inspect
 
 class GUI:
@@ -18,7 +19,7 @@ class GUI:
     def install_global_fields(self):
         # self.global_fields = ['offline_data_handlers', 'online_data_handler']
         self.offline_data_handlers = []   if 'offline_data_handlers' not in self.args.keys() else self.args["offline_data_handlers"]
-        self.online_data_handlers  = None if 'online_data_handler'   not in self.args.keys() else self.args["online_data_handler"]
+        self.online_data_handler  = None if 'online_data_handler'   not in self.args.keys() else self.args["online_data_handler"]
 
     def window_init(self, width, height, debug=False):
         dpg.create_context()
@@ -54,6 +55,9 @@ class GUI:
                 dpg.add_menu_item(label="Export Data",  callback=self.export_data_callback)
                 dpg.add_menu_item(label="Inspect Data", callback=self.inspect_data_callback)
             
+            with dpg.menu(label="Visualize"):
+                dpg.add_menu_item(label="Live Signal", callback=self.visualize_livesignal_callback)
+            
             with dpg.menu(label="Model"):
                 dpg.add_menu_item(label="Train Classifier", callback=self.train_classifier_callback)
 
@@ -63,7 +67,7 @@ class GUI:
     def data_collection_callback(self):
         panel_arguments = list(inspect.signature(DataCollectionPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
-        self.dcp = DataCollectionPanel(**passed_arguments)
+        self.dcp = DataCollectionPanel(**passed_arguments, gui=self)
         self.dcp.spawn_configuration_window()
 
     def import_data_callback(self):
@@ -77,6 +81,12 @@ class GUI:
 
     def inspect_data_callback(self):
         pass
+
+    def visualize_livesignal_callback(self):
+        panel_arguments = list(inspect.signature(VisualizeLiveSignalPanel.__init__).parameters)
+        passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
+        self.vlsp = VisualizeLiveSignalPanel(**passed_arguments, gui=self)
+        self.vlsp.spawn_configuration_window()
 
     def train_classifier_callback(self):
         pass
