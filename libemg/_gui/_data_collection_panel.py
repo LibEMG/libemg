@@ -6,12 +6,14 @@ import time
 import csv
 import json
 from datetime import datetime
-from ._utils import Media, set_texture
+from ._utils import Media, set_texture, init_matplotlib_canvas, matplotlib_to_numpy
+
+import threading
+import matplotlib.pyplot as plt
 
 
 class DataCollectionPanel:
     def __init__(self,
-                 odh = None,
                  num_reps=3,
                  rep_time=3,
                  media_folder='media/',
@@ -19,9 +21,8 @@ class DataCollectionPanel:
                  rest_time=2,
                  auto_advance=True,
                  exclude_files=[],
-                 args = None):
+                 gui = None):
         
-        self.odh = odh
         self.num_reps = num_reps
         self.rep_time = rep_time
         self.media_folder = media_folder
@@ -29,10 +30,13 @@ class DataCollectionPanel:
         self.rest_time = rest_time
         self.auto_advance=auto_advance
         self.exclude_files = exclude_files
+        self.gui = gui
 
         self.widget_tags = {"configuration":['__dc_configuration_window','__dc_num_reps','__dc_rep_time','__dc_rest_time', '__dc_media_folder',\
                                              '__dc_auto_advance'],
-                            "collection":   ['__dc_collection_window', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button']}
+                            "collection":   ['__dc_collection_window', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button'],
+                            "visualization": ['__vls_visualize_window']}
+        
 
     def cleanup_window(self, window_name):
         widget_list = self.widget_tags[window_name]
@@ -43,6 +47,7 @@ class DataCollectionPanel:
     def spawn_configuration_window(self):
         self.cleanup_window("configuration")
         self.cleanup_window("collection")
+        self.cleanup_window("visualization")
         with dpg.window(tag="__dc_configuration_window", label="Data Collection Configuration"):
             
             # dpg.add_spacer(height=50)
@@ -91,18 +96,22 @@ class DataCollectionPanel:
                 with dpg.table_row():
                     with dpg.group(horizontal=True):
                         dpg.add_button(label="Start", callback=self.start_callback)
+                        dpg.add_button(label="Visualize", callback=self.visualize_callback)
         
         # dpg.set_primary_window("__dc_configuration_window", True)
 
 
 
     def start_callback(self):
-        if self.odh and len(self.odh.raw_data.get_emg()) > 0:
+        if self.gui.online_data_handler and len(self.gui.online_data_handler.raw_data.get_emg()) > 0:
             self.get_settings()
             dpg.delete_item("__dc_configuration_window")
             self.cleanup_window("configuration")
             media_list = self.gather_media()
-            self.spawn_collection_window(media_list)
+
+            self.spawn_collection_thread = threading.Thread(target=self.spawn_collection_window, args=(media_list,))
+            self.spawn_collection_thread.start()
+            # self.spawn_collection_window(media_list)
 
     def get_settings(self):
         self.num_reps      = int(dpg.get_value("__dc_num_reps"))
@@ -141,7 +150,7 @@ class DataCollectionPanel:
     def spawn_collection_window(self, media_list):
         # open first frame of gif
         texture = media_list[0][0].get_dpg_formatted_texture(width=720,height=480)
-        set_texture("collection_visual", texture, width=720, height=480)
+        set_texture("__dc_collection_visual", texture, width=720, height=480)
 
         with dpg.window(label="Collection Window",
                         tag="__dc_collection_window",
@@ -154,7 +163,7 @@ class DataCollectionPanel:
             with dpg.group(horizontal=True):
                 dpg.add_spacer(tag="__dc_prompt_spacer",width=300, height=10)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
-            dpg.add_image("collection_visual")
+            dpg.add_image("__dc_collection_visual")
             dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=720)
             
         # dpg.set_primary_window("__dc_collection_window", True)
@@ -223,8 +232,8 @@ class DataCollectionPanel:
         
         
         texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
-        set_texture("collection_visual", texture, 720, 480)
-        self.odh.raw_data.reset_emg()
+        set_texture("__dc_collection_visual", texture, 720, 480)
+        self.gui.online_data_handler.raw_data.reset_emg()
         # initialize motion and frame timers
         motion_timer = time.perf_counter_ns()
         frame_timer  = time.perf_counter_ns()
@@ -235,15 +244,93 @@ class DataCollectionPanel:
             # update visual
             media[0].advance()
             texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
-            set_texture("collection_visual", texture, 720, 480)
+            set_texture("__dc_collection_visual", texture, 720, 480)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
             dpg.set_value("__dc_progress", value = progress)        
     
     def save_data(self, filename):
-        data = self.odh.raw_data.get_emg()
+        data = self.gui.online_data_handler.raw_data.get_emg()
         with open(filename, "w", newline='', encoding='utf-8') as file:
             emg_writer = csv.writer(file)
             for row in data:
                 emg_writer.writerow(row)
-        self.odh.raw_data.reset_emg()
+        self.gui.online_data_handler.raw_data.reset_emg()
+
+    def visualize_callback(self):
+        self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
+        self.visualization_thread.start()
+        # self.visualization_process = Process(target=self._run_visualization_helper, daemon=True,)
+        # self.visualization_process.start()
+        # self._run_visualization_helper()
+    
+    def _run_visualization_helper(self):
+
+        self.last_new_data_size = 0
+
+        self.visualization_horizon = 5000
+        self.visualization_rate    = 24
+        # initialize blank data object
+        self.data = np.zeros((self.visualization_horizon, np.stack(self.gui.online_data_handler.raw_data.get_emg()).shape[1]))
+        self.visualizing = True
+        init_matplotlib_canvas(width=800, height=600)
+        self.plot_handles = plt.plot(self.data)
+
+        plt.xlabel("Samples")
+        plt.ylabel("Values")
+        self.update_data()
+        img = matplotlib_to_numpy()
+        media = Media()
+        media.from_numpy(img)
+        texture = media.get_dpg_formatted_texture(width=720, height=480)
+        set_texture("__vls_plot", texture, width=720, height=480)
+
+        self.cleanup_window("visualization")
+        with dpg.window(tag="__vls_visualization_window",
+                        label="Live Signal Visualization Configuration",
+                        width=800,
+                        height=600):
+            
+            dpg.add_text(label="Visualization Panel")
+            dpg.add_image("__vls_plot")
+            dpg.add_button(label="Quit", callback=self.quit_visualization_callback)
+        
+        dpg.configure_app(manual_callback_management=True)
+        
+        while self.visualizing:
+            
+            self.update_data()
+            img = matplotlib_to_numpy()
+            media = Media()
+            media.from_numpy(img)
+            texture = media.get_dpg_formatted_texture(width=720, height=480)
+            set_texture("__vls_plot", texture, width=720, height=480)
+            # time.sleep(1/self.visualization_rate)
+            jobs = dpg.get_callback_queue()
+            dpg.run_callbacks(jobs)
+
+        
+
+        dpg.delete_item("__vls_visualization_window")
+        self.cleanup_window("visualization")
+        dpg.configure_app(manual_callback_management=False)
+    
+    def quit_visualization_callback(self):
+        self.visualizing = False
+
+    def update_data(self):
+        new_data = self.gui.online_data_handler.raw_data.get_emg()
+        if len(new_data):
+            new_data = np.stack(new_data)
+            current_new_data_size = new_data.shape[0]
+            if current_new_data_size == self.last_new_data_size:
+                return
+            if current_new_data_size > self.last_new_data_size:
+                new_data = new_data[self.last_new_data_size:,:]
+            self.last_new_data_size = current_new_data_size
+            self.data = np.vstack((self.data, new_data))
+            # self.gui.online_data_handler.raw_data.reset_emg()
+            self.data = self.data[-self.visualization_horizon:,:]
+            for i, h in enumerate(self.plot_handles):
+                h.set_ydata(self.data[:,i])
+            plt.ylim((np.min(self.data), np.max(self.data)))
