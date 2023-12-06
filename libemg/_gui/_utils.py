@@ -1,6 +1,7 @@
 from PIL import Image
 import numpy as np
 import dearpygui.dearpygui as dpg
+import matplotlib.pyplot as plt
 
 class Media:
     def __init__(self):
@@ -15,7 +16,10 @@ class Media:
         if self.type == "gif":
             self.frame = 0
             self.file_content.seek(self.frame)
-            
+        
+    def from_numpy(self, numpy_array):
+        self.file_content = Image.fromarray(numpy_array)
+        self.type = "png"
     
     def reset(self):
         if self.type == "gif":
@@ -50,3 +54,13 @@ def set_texture(tag, texture, width, height, format=dpg.mvFormat_Float_rgb):
                                 default_value=texture,
                                 tag=tag,
                                 format=format)
+
+def init_matplotlib_canvas(width=720, height=480):
+    plt.figure(figsize=(width/80,height/80), dpi=80)
+    
+def matplotlib_to_numpy():
+    canvas = plt.gca().figure.canvas
+    canvas.draw()
+    data = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
+    image = data.reshape(canvas.get_width_height()[::-1] + (3,))
+    return image
