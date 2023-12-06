@@ -3,13 +3,13 @@ import os
 import json
 import libemg
 
+
 class DataImportPanel:
     def __init__(self, 
                  data_folder="data/",
                  gui=None):
         
         self.data_folder = data_folder
-        self.fields = []
         self.widget_tags = {"configuration": ['__di_configuration_window', '__di_data_folder', '__di_folder_validation', \
                                               '__di_import_validation']}
         self.gui = gui
@@ -89,7 +89,6 @@ class DataImportPanel:
                                          )
             self.gui.offline_data_handlers.append(offline_data_handler)
             validation_text += "Import successful"
-            pass
         
 
         dpg.set_value(item="__di_import_validation", value=validation_text)
