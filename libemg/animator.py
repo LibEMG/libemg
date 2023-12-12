@@ -10,7 +10,7 @@ import cv2
 
 
 class Animator:
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24):
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24, video_format = 'gif'):
         """Animator object for creating .gif files from a list of images.
         
         Parameters
@@ -23,6 +23,7 @@ class Animator:
         self.output_filepath = output_filepath
         self.fps = fps
         self.duration = 1000 // fps  # milliseconds per frame
+        self.video_format = video_format
     
     def convert_time_to_frames(self, duration_seconds):
         """Calculate the number of frames from the desired duration.
@@ -40,7 +41,7 @@ class Animator:
         return duration_seconds * self.fps
     
     def save_mp4(self, frames):
-        """Save a .np4 video file from a list of images.
+        """Save a .mp4 video file from a list of images.
 
 
         Parameters
@@ -56,6 +57,25 @@ class Animator:
             bgr_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
             video.write(bgr_img)
         video.release()
+    
+    def save_video(self, frames):
+        """Save a video file from a list of images.
+
+
+        Parameters
+        ----------
+        frames: list
+            List of frames, where each element is a PIL.Image object.
+        """
+        if self.video_format == 'gif':
+            # Make .gif from frames
+            self.save_gif(frames)
+        elif self.video_format == 'mp4':
+            # Make .mp4 from frames
+            self.save_mp4(frames)
+        else:
+            # Unrecognized format
+            raise ValueError(f'Unrecognized format {format}.')
         
     def save_gif(self, frames):
         """Save a .gif video file from a list of images.
@@ -76,7 +96,7 @@ class Animator:
         )
     
     def save_video_from_directory(self, directory_path, match_filename_function = None, 
-                                  delete_images = False, format = 'gif'):
+                                  delete_images = False):
         """Save a video file from image files in a specified directory. Accepts all image types that can be read using
         PIL.Image.open(). Appends images in alphabetical order.
 
@@ -91,8 +111,6 @@ class Animator:
             If None, reads in all images in the directory.
         delete_images: bool (optional), default=False
             True if images used to create video should be deleted, otherwise False.
-        format: string (optional), default='gif'
-            Format of output file. Valid options are 'gif' and 'mp4'.
         """
         if match_filename_function is None:
             # Combine all images in directory
@@ -114,15 +132,7 @@ class Animator:
                     # Reading non-image file
                     print(f'Skipping {absolute_path} because it is not an image file.')
         
-        if format == 'gif':
-            # Make .gif from frames
-            self.save_gif(frames)
-        elif format == 'mp4':
-            # Make .mp4 from frames
-            self.save_mp4(frames)
-        else:
-            # Unrecognized format
-            raise ValueError(f'Unrecognized format {format}.')
+        self.save_video(frames)
 
         if delete_images:
             # Delete all images used to create .gif
@@ -258,8 +268,8 @@ class PlotAnimator(Animator):
         plt.plot(coordinates[0], coordinates[1])
     
     
-    def save_plot_gif(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, verbose = False):
-        """Save a .gif file of an icon moving around a 2D plane.
+    def save_plot_video(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, verbose = False):
+        """Save a video file of an icon moving around a 2D plane.
         
         Parameters
         ----------
@@ -345,7 +355,7 @@ class PlotAnimator(Animator):
                 artist.remove()
         
         # Save file
-        self.save_gif(frames)
+        self.save_video(frames)
 
 
 class CartesianPlotAnimator(PlotAnimator):
