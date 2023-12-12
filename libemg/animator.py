@@ -75,9 +75,9 @@ class Animator:
             loop=0  # infinite loop
         )
     
-    def save_gif_from_directory(self, directory_path, match_filename_function = None, 
-                            delete_images = False):
-        """Save a .gif video file from image files in a specified directory. Accepts all image types that can be read using
+    def save_video_from_directory(self, directory_path, match_filename_function = None, 
+                                  delete_images = False, format = 'gif'):
+        """Save a video file from image files in a specified directory. Accepts all image types that can be read using
         PIL.Image.open(). Appends images in alphabetical order.
 
 
@@ -86,11 +86,13 @@ class Animator:
         directory_path: string
             Path to directory that contains images.
         match_filename_function: Callable or None (optional), default=None
-            Match function that determines which images in directory to use to create .gif. The match function should only expect a filename
-            as a parameter and return True if the image should be used to create the .gif, otherwise it should return False. 
+            Match function that determines which images in directory to use to create video. The match function should only expect a filename
+            as a parameter and return True if the image should be used to create the video, otherwise it should return False. 
             If None, reads in all images in the directory.
         delete_images: bool (optional), default=False
-            True if images used to create .gif should be deleted, otherwise False.
+            True if images used to create video should be deleted, otherwise False.
+        format: string (optional), default='gif'
+            Format of output file. Valid options are 'gif' and 'mp4'.
         """
         if match_filename_function is None:
             # Combine all images in directory
@@ -112,8 +114,15 @@ class Animator:
                     # Reading non-image file
                     print(f'Skipping {absolute_path} because it is not an image file.')
         
-        # Make .gif from frames
-        self.save_gif(frames)
+        if format == 'gif':
+            # Make .gif from frames
+            self.save_gif(frames)
+        elif format == 'mp4':
+            # Make .mp4 from frames
+            self.save_mp4(frames)
+        else:
+            # Unrecognized format
+            raise ValueError(f'Unrecognized format {format}.')
 
         if delete_images:
             # Delete all images used to create .gif
