@@ -10,7 +10,7 @@ import cv2
 
 
 class Animator:
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24, video_format = 'gif'):
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24):
         """Animator object for creating .gif files from a list of images.
         
         Parameters
@@ -23,6 +23,7 @@ class Animator:
         self.output_filepath = output_filepath
         self.fps = fps
         self.duration = 1000 // fps  # milliseconds per frame
+        _, video_format = os.path.splitext(output_filepath) # set format to file extension
         self.video_format = video_format
     
     def convert_time_to_frames(self, duration_seconds):
@@ -67,10 +68,10 @@ class Animator:
         frames: list
             List of frames, where each element is a PIL.Image object.
         """
-        if self.video_format == 'gif':
+        if self.video_format == '.gif':
             # Make .gif from frames
             self.save_gif(frames)
-        elif self.video_format == 'mp4':
+        elif self.video_format == '.mp4':
             # Make .mp4 from frames
             self.save_mp4(frames)
         else:
