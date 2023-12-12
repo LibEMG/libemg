@@ -6,6 +6,7 @@ from PIL import Image, UnidentifiedImageError
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
+import cv2
 
 
 class Animator:
@@ -37,6 +38,24 @@ class Animator:
             Number of frames for given duration.
         """
         return duration_seconds * self.fps
+    
+    def save_mp4(self, frames):
+        """Save a .np4 video file from a list of images.
+
+
+        Parameters
+        ----------
+        frames: list
+            List of frames, where each element is a PIL.Image object.
+        """
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        video = cv2.VideoWriter(self.output_filepath, fourcc, fps=self.fps, frameSize=frames[0].size)
+        
+        for frame in frames:
+            img = frame.copy()
+            bgr_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            video.write(bgr_img)
+        video.release()
         
     def save_gif(self, frames):
         """Save a .gif video file from a list of images.
