@@ -2,7 +2,7 @@ import dearpygui.dearpygui as dpg
 import os
 import json
 import libemg
-
+import numpy as np
 
 class DataImportPanel:
     def __init__(self, 
@@ -31,13 +31,17 @@ class DataImportPanel:
             dpg.add_text(label="Import Menu")
             
             with dpg.group(horizontal=True):
-                dpg.add_text(label="Data Folder")
+                dpg.add_text(default_value="Data Folder")
                 dpg.add_input_text(default_value=self.data_folder, tag="__di_data_folder", callback=self.check_data_folder)
             
             dpg.add_text(label="Preliminary Check Portal")
 
             dpg.add_text(label=" ", tag="__di_folder_validation")
             self.check_data_folder()
+
+            with dpg.group(horizontal=True):
+                dpg.add_text(default_value="Data Alias")
+                dpg.add_input_text(default_value="Dataset" + str(np.random.randint(0,100)), tag="__di_data_alias")
 
             dpg.add_button(label="Import", callback=self.import_button_callback)
             
@@ -88,6 +92,7 @@ class DataImportPanel:
                                            }
                                          )
             self.gui.offline_data_handlers.append(offline_data_handler)
+            self.gui.offline_data_aliases.append(dpg.get_value("__di_data_alias"))
             validation_text += "Import successful"
         
 
