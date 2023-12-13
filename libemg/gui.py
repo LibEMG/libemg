@@ -19,7 +19,8 @@ class GUI:
     def install_global_fields(self):
         # self.global_fields = ['offline_data_handlers', 'online_data_handler']
         self.offline_data_handlers = []   if 'offline_data_handlers' not in self.args.keys() else self.args["offline_data_handlers"]
-        self.online_data_handler  = None if 'online_data_handler'   not in self.args.keys() else self.args["online_data_handler"]
+        self.offline_data_aliases  = []   if 'offline_data_aliases'  not in self.args.keys() else self.args["offline_data_aliases"]
+        self.online_data_handler   = None if 'online_data_handler'   not in self.args.keys() else self.args["online_data_handler"]
 
     def window_init(self, width, height, debug=False):
         dpg.create_context()
