@@ -22,3 +22,4 @@ PyWavelets==1.4.1
 # for new sgt
 dearpygui
 json
+opencv-python
