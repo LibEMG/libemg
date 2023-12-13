@@ -235,35 +235,16 @@ class PlotAnimator(Animator):
         """Plot boundary to axis."""
         pass    # going to be different for each implementation, so don't implement it here
 
-    def _show_countdown(self, coordinates, frame_idx):
+    def _show_countdown(self, coordinates, text):
         """Show a countdown based on the current coordinates and frame index.
         
         Parameters
         ----------
         coordinates: numpy.ndarray
-            N x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
+            1 x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
             Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
-        frame_idx: int
-            Current frame index.
         """
-        frame_coordinates = coordinates[frame_idx]
-        try:
-            matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
-            future_matching_indices = matching_indices[np.where(matching_indices >= frame_idx)[0]] # only look at indices that are in the future, not the past
-            steady_state_indices = future_matching_indices[np.where(np.diff(future_matching_indices) != 1)[0]]
-            if steady_state_indices.size > 0:
-                # Found end of current steady state
-                final_steady_state_idx = steady_state_indices[0]
-            else:
-                # No other steady states at these coordinates, so just take the end of the current one
-                final_steady_state_idx = future_matching_indices[-1]
-            time_until_movement = (final_steady_state_idx - frame_idx) * self.duration / 1000   # convert from frames to seconds
-            if time_until_movement >= 0.25:
-                # Only show countdown if the steady state is longer than 1 second
-                plt.text(frame_coordinates[0] - 0.03, frame_coordinates[1] - 0.2, str(int(time_until_movement)), fontweight='bold', c='red')
-        except IndexError:
-            # Did not find steady state
-            pass
+        plt.text(coordinates[0], coordinates[1], text, fontweight='bold', c='red', ha='center', va='center')
     
     def _show_direction(self, coordinates, alpha = 1.0):
         """Show the direction of the next part of the movement.
@@ -368,7 +349,23 @@ class PlotAnimator(Animator):
                 
             if self.show_countdown:
                 # Show countdown during steady state
-                self._show_countdown(coordinates, frame_idx)
+                try:
+                    matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
+                    future_matching_indices = matching_indices[np.where(matching_indices >= frame_idx)[0]] # only look at indices that are in the future, not the past
+                    steady_state_indices = future_matching_indices[np.where(np.diff(future_matching_indices) != 1)[0]]
+                    if steady_state_indices.size > 0:
+                        # Found end of current steady state
+                        final_steady_state_idx = steady_state_indices[0]
+                    else:
+                        # No other steady states at these coordinates, so just take the end of the current one
+                        final_steady_state_idx = future_matching_indices[-1]
+                    time_until_movement = (final_steady_state_idx - frame_idx) * self.duration / 1000   # convert from frames to seconds
+                    if time_until_movement >= 0.25:
+                        # Only show countdown if the steady state is longer than 1 second
+                        self._show_countdown(frame_coordinates, str(int(time_until_movement)))
+                except IndexError:
+                    # Did not find steady state
+                    pass
             # Plot icon
             self.plot_icon(frame_coordinates)
                 
@@ -456,6 +453,10 @@ class CartesianPlotAnimator(PlotAnimator):
         an = np.linspace(0, 2 * np.pi, 100)
         plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
     
+    def _show_countdown(self, coordinates, text):
+        x = coordinates[0]
+        y = coordinates[1] - 0.2
+        return super()._show_countdown((x, y), text)
     
     @staticmethod
     def _add_image_label_axes(fig):
@@ -650,11 +651,17 @@ class BarPlotAnimator(PlotAnimator):
         ax.set(ylim=axis_limits)
         return fig, ax
     
-    def _plot_border(self, coordinates, edgecolor='black', alpha = 1):
+    def _plot_border(self, coordinates, edgecolor='black'):
         plt.bar(self.bar_labels, coordinates, color='none', edgecolor=edgecolor, linewidth=2, width=self.bar_width)
     
     def _show_direction(self, coordinates, alpha = 1):
-        self._plot_border(coordinates, edgecolor='green', alpha=alpha)
+        self._plot_border(coordinates, edgecolor='green')
+        
+    def _show_countdown(self, coordinates, text):
+        adjustment = 0.05
+        for label, dof_value in zip(self.bar_labels, coordinates):
+            modifier = -adjustment if dof_value < 0 else adjustment
+            super()._show_countdown((label, dof_value + modifier), text)
     
     def _show_boundary(self):
         self._plot_border(-1)
@@ -667,6 +674,7 @@ class BarPlotAnimator(PlotAnimator):
         for label in self.bar_labels:
             try:
                 negative_label, positive_label = label.split(' / ')
+                # TODO: Center this text
                 plt.text(label, axis_limits[0] + 0.1, negative_label)
                 plt.text(label, axis_limits[1] - 0.1, positive_label)
             except ValueError:
