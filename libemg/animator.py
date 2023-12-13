@@ -143,7 +143,7 @@ class Animator:
 
 class PlotAnimator(Animator):
     def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (1280, 720), dpi=80):
+                 figsize = (6, 6), dpi=80):
         """Animator object specifically for plots.
         
         Parameters
@@ -158,8 +158,8 @@ class PlotAnimator(Animator):
             True if a countdown should be displayed below the target, otherwise False.
         show_boundary: bool (optional), default=False
             True if a circle of radius 1 should be displayed as boundaries, otherwise False.
-        figsize: tuple (optional), default=(1280, 720)
-            Size of figure in pixels.
+        figsize: tuple (optional), default=(6, 6)
+            Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
         """
@@ -216,9 +216,7 @@ class PlotAnimator(Animator):
     
     def _format_figure(self):
         """Set Figure to desired format."""
-        figsize_inches = tuple(float(dim / self.dpi) for dim in self.figsize)  # convert to inches
-        assert len(figsize_inches) == 2
-        fig = plt.figure(figsize=figsize_inches, dpi=self.dpi)
+        fig = plt.figure(figsize=self.figsize, dpi=self.dpi)
         ax = plt.gca()
         return fig, ax
     
@@ -328,6 +326,7 @@ class PlotAnimator(Animator):
             np.savetxt(labels_filepath, coordinates, delimiter=',')
         
         # Format figure
+        # TODO: ISSUE HERE WITH AXIS FORMATTING
         fig, ax = self._format_figure()
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -388,7 +387,7 @@ class PlotAnimator(Animator):
 
 class CartesianPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False,
-                 axis_images = None, figsize = (1280, 720), dpi=80):
+                 axis_images = None, figsize = (6, 6), dpi=80):
         """Animator object for creating video files from a list of coordinates on a cartesian plane.
         
         Parameters
@@ -408,8 +407,8 @@ class CartesianPlotAnimator(PlotAnimator):
         axis_images: dict (optional), default=None
             Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
             Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
-        figsize: tuple (optional), default=(1280, 720)
-            Size of figure in pixels.
+        figsize: tuple (optional), default=(6, 6)
+            Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
         """
@@ -421,6 +420,7 @@ class CartesianPlotAnimator(PlotAnimator):
         fig, ax = super()._format_figure()
         axis_limits = (-1.25, 1.25)
         if self.axis_images is not None:
+            ax.axis('off')  # hide default axis
             axs = self._add_image_label_axes(fig)
             loc_axis_map = {
                 'NW': axs[0, 0],
@@ -523,7 +523,7 @@ class CartesianPlotAnimator(PlotAnimator):
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
-                 plot_line = False, figsize = (1280, 720), dpi=80):
+                 plot_line = False, figsize = (6, 6), dpi=80):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a scatter plot.
         
         Parameters
@@ -545,8 +545,8 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
             Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
         plot_line: bool (optional), default=False
             True if a line should be plotted between the origin and the current point, otherwise False.
-        figsize: tuple (optional), default=(1280, 720)
-            Size of figure in pixels.
+        figsize: tuple (optional), default=(6, 6)
+            Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
         """
@@ -613,7 +613,7 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 class BarPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False, bar_labels = None,
-                 figsize = (1280, 720), dpi=80):
+                 figsize = (6, 6), dpi=80):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a bar plot.
         
         Parameters
@@ -635,8 +635,8 @@ class BarPlotAnimator(PlotAnimator):
             Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
         plot_line: bool (optional), default=False
             True if a line should be plotted between the origin and the current point, otherwise False.
-        figsize: tuple (optional), default=(1280, 720)
-            Size of figure in pixels.
+        figsize: tuple (optional), default=(6, 6)
+            Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
         """
