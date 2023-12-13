@@ -267,15 +267,33 @@ class PlotAnimator(Animator):
             # Did not find steady state
             pass
     
-    def plot_icon(self, coordinates):
+    def _show_direction(self, coordinates, alpha = 1.0):
+        """Show the direction of the next part of the movement.
+        
+        Parameters
+        ----------
+        coordinates: numpy.ndarray
+            1 x M matrix, where M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
+            Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
+        alpha: float (optional), default=1.0
+            Alpha value of icon.
+        """
+        self.plot_icon(coordinates, alpha=alpha, colour='green')
+
+    
+    def plot_icon(self, coordinates, alpha = 1.0, colour = 'black'):
         """Plot target / icon on axis.
         
         Parameters
         ----------
         coordinates: numpy.ndarray
             1D array where each element corresponds to the value along a different DOF.
+        alpha: float (optional), default=1.0
+            Alpha value of icon.
+        colour: string (optional), default='black'
+            Colour of icon.
         """
-        plt.plot(coordinates[0], coordinates[1])
+        plt.plot(coordinates[0], coordinates[1], alpha=alpha, c=colour)
     
     
     def save_plot_video(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, verbose = False):
@@ -349,7 +367,7 @@ class PlotAnimator(Animator):
                     # Add in fade
                     target_alpha += 0.01
                     target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
-                self.plot_icon(coordinates[direction_change_idx], alpha=target_alpha, colour='green')
+                self._show_direction(coordinates[direction_change_idx], alpha=target_alpha)
                 
             if self.show_countdown:
                 # Show countdown during steady state
