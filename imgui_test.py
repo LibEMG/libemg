@@ -11,10 +11,10 @@ if __name__ == "__main__":
     # odh.analyze_hardware()
     args = {
         "online_data_handler"  : odh,
-        "media_folder"         : "images/",
+        "media_folder"         : "media2/",
         "data_folder"          : "data/",
         "num_reps"             : 5,
-        "rep_time"             : 3,
+        "rep_time"             : 39,
         "rest_time"            : 1,
         "auto_advance"         : True,
         "window_size"          : 250,
