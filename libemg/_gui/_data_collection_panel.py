@@ -124,7 +124,7 @@ class DataCollectionPanel:
     def gather_media(self):
         # find everything in the media folder
         files = os.listdir(self.media_folder)
-        valid_files = [file.endswith((".gif",".png")) for file in files]
+        valid_files = [file.endswith((".gif",".png",".mp4")) for file in files]
         files = list(compress(files, valid_files))
         self.num_motions = len(files)
         collection_conf = []
@@ -236,13 +236,10 @@ class DataCollectionPanel:
         self.gui.online_data_handler.raw_data.reset_emg()
         # initialize motion and frame timers
         motion_timer = time.perf_counter_ns()
-        frame_timer  = time.perf_counter_ns()
         while (time.perf_counter_ns() - motion_timer)/1e9 < timer_duration:
-            time_remaining = 1/media[0].fps - (time.perf_counter_ns() - frame_timer)/1e9
-            time.sleep(max(0, time_remaining))
-            frame_timer = time.perf_counter_ns()
+            time.sleep(1/media[0].fps) # never refresh faster than media fps
             # update visual
-            media[0].advance()
+            media[0].advance_to((time.perf_counter_ns() - motion_timer)/1e9)
             texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
             set_texture("__dc_collection_visual", texture, 720, 480)
             # update progress bar
