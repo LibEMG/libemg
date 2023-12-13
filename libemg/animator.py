@@ -142,7 +142,8 @@ class Animator:
 
 
 class PlotAnimator(Animator):
-    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False):
+    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
+                 figsize = (1280, 720), dpi=80):
         """Animator object specifically for plots.
         
         Parameters
@@ -157,12 +158,18 @@ class PlotAnimator(Animator):
             True if a countdown should be displayed below the target, otherwise False.
         show_boundary: bool (optional), default=False
             True if a circle of radius 1 should be displayed as boundaries, otherwise False.
+        figsize: tuple (optional), default=(1280, 720)
+            Size of figure in pixels.
+        dpi: int (optional), default=80
+            Dots per inch of figure.
         """
         super().__init__(output_filepath, fps)
         self.show_direction = show_direction
         self.show_countdown = show_countdown
         self.show_boundary = show_boundary
         self.fpd = fps * 2  # number of frames to generate to travel a distance of 1
+        self.figsize = figsize
+        self.dpi = dpi
     
     
     def convert_distance_to_frames(self, coordinates1, coordinates2):
@@ -209,7 +216,9 @@ class PlotAnimator(Animator):
     
     def _format_figure(self):
         """Set Figure to desired format."""
-        fig = plt.figure()
+        figsize_inches = tuple(float(dim / self.dpi) for dim in self.figsize)  # convert to inches
+        assert len(figsize_inches) == 2
+        fig = plt.figure(figsize=figsize_inches, dpi=self.dpi)
         ax = plt.gca()
         return fig, ax
     
@@ -360,7 +369,8 @@ class PlotAnimator(Animator):
 
 
 class CartesianPlotAnimator(PlotAnimator):
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None):
+    def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False,
+                 axis_images = None, figsize = (1280, 720), dpi=80):
         """Animator object for creating .gif files from a list of coordinates on a cartesian plane.
         
         Parameters
@@ -380,13 +390,17 @@ class CartesianPlotAnimator(PlotAnimator):
         axis_images: dict (optional), default=None
             Dictionary mapping compass directions to images. Images will be displayed in the corresponding compass direction (i.e., 'N' correponds to the top of the image).
             Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
+        figsize: tuple (optional), default=(1280, 720)
+            Size of figure in pixels.
+        dpi: int (optional), default=80
+            Dots per inch of figure.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
         self.normalize_distance = normalize_distance
         self.axis_images = axis_images
     
     def _format_figure(self):
-        fig = plt.figure(figsize=(8, 8))
+        fig, ax = super()._format_figure()
         axis_limits = (-1.25, 1.25)
         if self.axis_images is not None:
             axs = self._add_image_label_axes(fig)
@@ -406,8 +420,7 @@ class CartesianPlotAnimator(PlotAnimator):
             # Set main axis so icon is drawn correctly
             plt.sca(axs[1, 1])    
             ax = axs[1, 1]
-        else:
-            ax = plt.gca()
+        
         ticks = [-1., -0.5, 0, 0.5, 1.]
         plt.xticks(ticks)
         plt.yticks(ticks)
@@ -492,7 +505,7 @@ class CartesianPlotAnimator(PlotAnimator):
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
-                 plot_line = False):
+                 plot_line = False, figsize = (1280, 720), dpi=80):
         """Animator object for creating .gif files from a list of coordinates on a cartesian plane shown as a scatter plot.
         
         Parameters
@@ -514,8 +527,12 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
             Valid keys are 'NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE'. If None, no images will be displayed.
         plot_line: bool (optional), default=False
             True if a line should be plotted between the origin and the current point, otherwise False.
+        figsize: tuple (optional), default=(1280, 720)
+            Size of figure in pixels.
+        dpi: int (optional), default=80
+            Dots per inch of figure.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images, figsize, dpi)
         self.plot_line = plot_line
 
     
@@ -577,13 +594,13 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 
 class BarPlotAnimator(PlotAnimator):
-    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False, bar_labels = None):
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary)
+    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False, bar_labels = None,
+                 figsize = (1280, 720), dpi=80):
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
         self.bar_labels = bar_labels
     
     def _format_figure(self):
-        fig = plt.figure()
-        ax = plt.gca()
+        fig, ax = super()._format_figure()
         axis_limits = (-1.25, 1.25)
         ax.set(ylim=axis_limits)
         return fig, ax
