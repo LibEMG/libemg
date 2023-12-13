@@ -326,7 +326,6 @@ class PlotAnimator(Animator):
             np.savetxt(labels_filepath, coordinates, delimiter=',')
         
         # Format figure
-        # TODO: ISSUE HERE WITH AXIS FORMATTING
         fig, ax = self._format_figure()
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -348,7 +347,6 @@ class PlotAnimator(Animator):
             if verbose and frame_idx % 10 == 0:
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
             
-
             # Plot additional information
             if self.show_boundary:
                 # Show boundaries
@@ -612,12 +610,14 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 
 class BarPlotAnimator(PlotAnimator):
-    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False, bar_labels = None,
+    def __init__(self, bar_labels, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
                  figsize = (6, 6), dpi=80):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a bar plot.
         
         Parameters
         ----------
+        bar_labels: list
+            List of labels for each bar.
         output_filepath: string (optional), default='libemg.gif'
             Path to output file.
         fps: int (optional), default=24
@@ -642,6 +642,7 @@ class BarPlotAnimator(PlotAnimator):
         """
         super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
         self.bar_labels = bar_labels
+        self.bar_width = 0.4
     
     def _format_figure(self):
         fig, ax = super()._format_figure()
@@ -649,24 +650,27 @@ class BarPlotAnimator(PlotAnimator):
         ax.set(ylim=axis_limits)
         return fig, ax
     
+    def _plot_border(self, coordinates, edgecolor='black', alpha = 1):
+        plt.bar(self.bar_labels, coordinates, color='none', edgecolor=edgecolor, linewidth=2, width=self.bar_width)
+    
+    def _show_direction(self, coordinates, alpha = 1):
+        self._plot_border(coordinates, edgecolor='green', alpha=alpha)
+    
+    def _show_boundary(self):
+        self._plot_border(-1)
+        self._plot_border(1)
+    
     def plot_icon(self, frame_coordinates, alpha=1, colour='black'):
-        bar_labels = self.bar_labels if self.bar_labels is not None else np.arange(frame_coordinates.shape[0])
-        bar_width = 0.4
-        plt.bar(bar_labels, frame_coordinates, alpha=alpha, color=colour, width=bar_width)
-        
-        # Plot border
-        plt.bar(bar_labels, -1, color='none', edgecolor='black', linewidth=2, width=bar_width)
-        plt.bar(bar_labels, 1, color='none', edgecolor='black', linewidth=2, width=bar_width)
+        plt.bar(self.bar_labels, frame_coordinates, alpha=alpha, color=colour, width=self.bar_width)
 
         axis_limits = plt.gca().get_ylim()
-        if self.bar_labels is not None:
-            for label in self.bar_labels:
-                try:
-                    negative_label, positive_label = label.split(' / ')
-                    plt.text(label, axis_limits[0] + 0.1, negative_label)
-                    plt.text(label, axis_limits[1] - 0.1, positive_label)
-                except ValueError:
-                    break
+        for label in self.bar_labels:
+            try:
+                negative_label, positive_label = label.split(' / ')
+                plt.text(label, axis_limits[0] + 0.1, negative_label)
+                plt.text(label, axis_limits[1] - 0.1, positive_label)
+            except ValueError:
+                break
 
 
 class SingleDirectionBarPlotAnimator(BarPlotAnimator):
