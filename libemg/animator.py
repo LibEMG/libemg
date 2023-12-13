@@ -371,7 +371,7 @@ class PlotAnimator(Animator):
 class CartesianPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False,
                  axis_images = None, figsize = (1280, 720), dpi=80):
-        """Animator object for creating .gif files from a list of coordinates on a cartesian plane.
+        """Animator object for creating video files from a list of coordinates on a cartesian plane.
         
         Parameters
         ----------
@@ -506,7 +506,7 @@ class CartesianPlotAnimator(PlotAnimator):
 class ScatterPlotAnimator(CartesianPlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
                  plot_line = False, figsize = (1280, 720), dpi=80):
-        """Animator object for creating .gif files from a list of coordinates on a cartesian plane shown as a scatter plot.
+        """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a scatter plot.
         
         Parameters
         ----------
