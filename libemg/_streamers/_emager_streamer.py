@@ -1,6 +1,7 @@
 import serial # pyserial
 import numpy as np
 import time
+import platform
 
 def reorder(data, mask, match_result):
     '''
@@ -24,11 +25,15 @@ def reorder(data, mask, match_result):
 
 class Emager:
     def __init__(self, baud_rate):
-        com_name = 'KitProg3 USB-UART'
+        com_name = 'KitProg3'
         ports = list(serial.tools.list_ports.comports())
         for p in ports:
             if com_name in p.description:
-                com_port = p.name
+                if platform.system() == 'Windows':
+                    com_port = p.name
+                else:
+                    # Different port names for Mac / Linux (has been tested on Mac but not Linux)
+                    com_port = p.device.replace('cu', 'tty')    # using the 'cu' port on Mac doesn't work, so renaming it to 'tty' port
         self.ser = serial.Serial(com_port,baud_rate, timeout=1)
         self.ser.close()
 
