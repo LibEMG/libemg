@@ -313,21 +313,30 @@ class PlotAnimator(Animator):
         fig.suptitle(title)
         fig.tight_layout()
 
-        # Calculate direction changes
-        direction_changes = np.sign(np.diff(coordinates, axis=0, n=1))[:-1] * np.diff(coordinates, axis=0, n=2) / self.duration
-        direction_change_indices = np.where(np.abs(direction_changes) > 1e-8)[0] + 1 # add 1 to align with coordinates
-        direction_change_indices = np.append(direction_change_indices, coordinates.shape[0] - 1)    # append final frame position
+        # Calculate steady states
+        diff = np.diff(coordinates, axis=0)
+        max_diff = np.max(np.abs(diff), axis=1)
+        all_steady_state_indices = np.where(max_diff < 0.01)[0] # find where the differences at each frame is less than some threshold
+        # Only take starts and ends of each segment
+        split_steady_state_indices = np.split(all_steady_state_indices, np.where(np.diff(all_steady_state_indices) != 1)[0] + 1)    # add 1 to align diff with original
+        split_steady_state_indices.append(np.array([coordinates.shape[0] - 1])) # append last frame
+        steady_state_start_indices = np.array([segment[0] for segment in split_steady_state_indices])
+        steady_state_end_indices = np.array([segment[-1] for segment in split_steady_state_indices])
         
         # Adjust coordinates if desired
         coordinates = self._preprocess_coordinates(coordinates)
         
         frames = []
-        direction_change_idx = None
+        current_steady_state_idx = 0
         target_alpha = 0.05
         for frame_idx, frame_coordinates in enumerate(coordinates):
             if verbose and frame_idx % 10 == 0:
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
             
+            # Calculate next steady state frame
+            if frame_idx > steady_state_end_indices[current_steady_state_idx]:
+                current_steady_state_idx += 1
+                target_alpha = 0.05 # reset alpha
             # Plot additional information
             if self.show_boundary:
                 # Show boundaries
@@ -335,37 +344,19 @@ class PlotAnimator(Animator):
             
             if self.show_direction:
                 # Show path until a change in direction
-                nearest_direction_change_idx = np.where(direction_change_indices - frame_idx >= 0)[0][0]     # get nearest direction change frame that hasn't passed
-                new_direction_change_idx = direction_change_indices[nearest_direction_change_idx]  
-                if new_direction_change_idx != direction_change_idx:
-                    # Update value
-                    direction_change_idx = direction_change_indices[nearest_direction_change_idx]
-                    target_alpha = 0.05  # reset alpha
-                else:
-                    # Add in fade
-                    target_alpha += 0.01
-                    target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
-                self._show_direction(coordinates[direction_change_idx], alpha=target_alpha)
+                next_steady_state_start = steady_state_start_indices[current_steady_state_idx]
+                target_alpha += 0.01    # add in fade
+                target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
+                self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
                 
             if self.show_countdown:
                 # Show countdown during steady state
-                try:
-                    matching_indices = np.where(np.all(coordinates == frame_coordinates, axis=1))[0]
-                    future_matching_indices = matching_indices[np.where(matching_indices >= frame_idx)[0]] # only look at indices that are in the future, not the past
-                    steady_state_indices = future_matching_indices[np.where(np.diff(future_matching_indices) != 1)[0]]
-                    if steady_state_indices.size > 0:
-                        # Found end of current steady state
-                        final_steady_state_idx = steady_state_indices[0]
-                    else:
-                        # No other steady states at these coordinates, so just take the end of the current one
-                        final_steady_state_idx = future_matching_indices[-1]
-                    time_until_movement = (final_steady_state_idx - frame_idx) * self.duration / 1000   # convert from frames to seconds
-                    if time_until_movement >= 0.25:
-                        # Only show countdown if the steady state is longer than 1 second
-                        self._show_countdown(frame_coordinates, str(int(time_until_movement)))
-                except IndexError:
-                    # Did not find steady state
-                    pass
+                steady_state_end = steady_state_end_indices[current_steady_state_idx]
+                time_until_movement = (steady_state_end - frame_idx) * self.duration / 1000   # convert from frames to seconds
+                if time_until_movement >= 0.25 and frame_idx in split_steady_state_indices[current_steady_state_idx]:
+                    # Only show countdown if the steady state is longer than 1 second
+                    self._show_countdown(frame_coordinates, str(int(time_until_movement)))
+                
             # Plot icon
             self.plot_icon(frame_coordinates)
                 
@@ -674,9 +665,8 @@ class BarPlotAnimator(PlotAnimator):
         for label in self.bar_labels:
             try:
                 negative_label, positive_label = label.split(' / ')
-                # TODO: Center this text
-                plt.text(label, axis_limits[0] + 0.1, negative_label)
-                plt.text(label, axis_limits[1] - 0.1, positive_label)
+                plt.text(label, axis_limits[0] + 0.1, negative_label, ha='center', va='center')
+                plt.text(label, axis_limits[1] - 0.1, positive_label, ha='center', va='center')
             except ValueError:
                 break
 
