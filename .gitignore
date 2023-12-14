@@ -2,6 +2,7 @@ dist/*
 libemg.egg-info/*
 token.txt
 .pytest_cache/*
+.vscode/*
 tests/__pycache__/*
 .coverage
 build/*
@@ -26,3 +27,6 @@ demos/images/
 demos/data/sgt/*
 demos/data/GRABMyo/*
 demos/data/*
+libemg/_gui/__pycache__/*
+images/*
+media/*
