@@ -71,7 +71,7 @@ class OfflineDataHandler(DataHandler):
             # Objects don't have the same attributes
             raise ValueError("Objects being concatenated must have the same attributes.")
         
-        new_odh = copy.deepcopy(self)
+        new_odh = OfflineDataHandler()
         for self_attribute, other_attribute in zip(self_attributes, other_attributes):
             # Concatenate attributes together
             if self_attribute == 'extra_attributes':
