@@ -74,12 +74,12 @@ class OfflineDataHandler(DataHandler):
         new_odh = OfflineDataHandler()
         for self_attribute, other_attribute in zip(self_attributes, other_attributes):
             # Concatenate attributes together
-            if self_attribute == 'extra_attributes':
-                # Skip this field
-                continue
             new_value = []
             new_value.extend(getattr(self, self_attribute))
             new_value.extend(getattr(other, other_attribute))
+            if self_attribute == 'extra_attributes':
+                # Remove duplicates
+                new_value = list(np.unique(new_value))
             # Set attributes of new handler
             setattr(new_odh, self_attribute, new_value)
         return new_odh
