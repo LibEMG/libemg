@@ -344,7 +344,7 @@ class PlotAnimator(Animator):
             
             if self.show_direction:
                 # Show path until a change in direction
-                next_steady_state_start = steady_state_start_indices[current_steady_state_idx]
+                next_steady_state_start = steady_state_start_indices[current_steady_state_idx + 1]
                 target_alpha += 0.01    # add in fade
                 target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
                 self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
