@@ -334,6 +334,7 @@ class PlotAnimator(Animator):
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
             
             # Calculate next steady state frame
+            next_steady_state_idx = min(current_steady_state_idx, len(steady_state_end_indices) - 1)    # limit max index
             if frame_idx > steady_state_end_indices[current_steady_state_idx]:
                 current_steady_state_idx += 1
                 target_alpha = 0.05 # reset alpha
@@ -344,7 +345,8 @@ class PlotAnimator(Animator):
             
             if self.show_direction:
                 # Show path until a change in direction
-                next_steady_state_start = steady_state_start_indices[current_steady_state_idx + 1]
+                next_steady_state_idx = current_steady_state_idx + 1 if frame_idx > steady_state_start_indices[current_steady_state_idx] else current_steady_state_idx
+                next_steady_state_start = steady_state_start_indices[next_steady_state_idx]
                 target_alpha += 0.01    # add in fade
                 target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
                 self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
