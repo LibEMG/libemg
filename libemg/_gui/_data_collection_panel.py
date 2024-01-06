@@ -103,7 +103,9 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if self.gui.online_data_handler and len(self.gui.online_data_handler.raw_data.get_emg()) > 0:
+        if self.gui.online_data_handler and (len(self.gui.online_data_handler.raw_data.get_emg()) > 0
+                                             or len(self.gui.online_data_handler.raw_data.get_imu()) > 0
+                                                    or len(self.gui.online_data_handler.raw_data.get_others()) > 0):
             self.get_settings()
             dpg.delete_item("__dc_configuration_window")
             self.cleanup_window("configuration")
@@ -247,12 +249,35 @@ class DataCollectionPanel:
             dpg.set_value("__dc_progress", value = progress)        
     
     def save_data(self, filename):
-        data = self.gui.online_data_handler.raw_data.get_emg()
-        with open(filename, "w", newline='', encoding='utf-8') as file:
-            emg_writer = csv.writer(file)
-            for row in data:
-                emg_writer.writerow(row)
-        self.gui.online_data_handler.raw_data.reset_emg()
+        file_parts = filename.split('.')
+        if len(self.gui.online_data_handler.raw_data.get_emg()):
+            data = self.gui.online_data_handler.raw_data.get_emg()
+            with open(filename, "w", newline='', encoding='utf-8') as file:
+                emg_writer = csv.writer(file)
+                for row in data:
+                    emg_writer.writerow(row)
+            self.gui.online_data_handler.raw_data.reset_emg()
+        # write the other information if we have it
+        if len(self.gui.online_data_handler.raw_data.get_imu()):
+            filename_imu = file_parts[0] + "_IMU." + file_parts[1]
+            with open(filename_imu, "w", newline='', encoding='utf-8') as file:
+                imu_writer = csv.writer(file)
+                for row in data:
+                    imu_writer.writerow(row)
+            self.gui.online_data_handler.raw_data.reset_imu()
+        # write the other information if we have it
+        if len(self.gui.online_data_handler.raw_data.get_others()):
+            # for every key in dictionary
+            others_data = self.gui.online_data_handler.raw_data.get_others()
+            for key in others_data.keys():
+                modality_data = others_data[key]
+                filename_modality = file_parts[0] + "_" + key + "." + file_parts[1]
+                with open(filename_modality, "w", newline='', encoding='utf-8') as file:
+                    filename_modality = csv.writer(file)
+                    for row in modality_data:
+                        filename_modality.writerow(row)
+            self.gui.online_data_handler.raw_data.reset_others()
+        
 
     def visualize_callback(self):
         self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
