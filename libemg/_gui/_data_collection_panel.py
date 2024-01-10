@@ -236,6 +236,8 @@ class DataCollectionPanel:
         texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
         set_texture("__dc_collection_visual", texture, 720, 480)
         self.gui.online_data_handler.raw_data.reset_emg()
+        self.gui.online_data_handler.raw_data.reset_imu()
+        self.gui.online_data_handler.raw_data.reset_others()
         # initialize motion and frame timers
         motion_timer = time.perf_counter_ns()
         while (time.perf_counter_ns() - motion_timer)/1e9 < timer_duration:
