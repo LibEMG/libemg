@@ -105,6 +105,9 @@ class OfflineDataHandler(DataHandler):
                 file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
                 file_data = np.genfromtxt(f,delimiter=delimiter)
+                if len(file_data.shape) == 1:
+                    # some devices may have one channel -> make sure it interprets it as a 2d array
+                    file_data = np.expand_dims(file_data, 1)
             # collect the data from the file
             if "data_column" in dictionary_keys:
                 self.data.append(file_data[:, filename_dic["data_column"]])
