@@ -27,6 +27,10 @@ class RawData:
         with self.emg_lock:
             self.emg_data = []
     
+    def reset_imu(self):
+        with self.imu_lock:
+            self.imu_data = []
+    
     def adjust_increment(self, window, increment):
         with self.emg_lock:
             self.emg_data = self.emg_data[-window:]
@@ -50,3 +54,8 @@ class RawData:
 
     def check_other(self, other):
         return other in self.other_modalities
+
+    def adjust_others_increment(self, window, increment, key):
+        with self.other_lock:
+            self.other_modalities[key] = self.other_modalities[key][-window:]
+            self.other_modalities[key] = self.other_modalities[key][increment:window]
