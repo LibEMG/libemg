@@ -105,6 +105,9 @@ class OfflineDataHandler(DataHandler):
                 file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
                 file_data = np.genfromtxt(f,delimiter=delimiter)
+                if len(file_data.shape) == 1:
+                    # some devices may have one channel -> make sure it interprets it as a 2d array
+                    file_data = np.expand_dims(file_data, 1)
             # collect the data from the file
             if "data_column" in dictionary_keys:
                 self.data.append(file_data[:, filename_dic["data_column"]])
@@ -385,10 +388,10 @@ class OnlineDataHandler(DataHandler):
     max_buffer: int (optional): default = None
         The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, max_buffer=None):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False, other_arr=False):
         self.port = port 
         self.ip = ip
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr}
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_arr': imu_arr, 'other_arr': other_arr}
         self.fi = None
         self.max_buffer = max_buffer
         if not file and not std_out and not emg_arr:
@@ -637,21 +640,45 @@ class OnlineDataHandler(DataHandler):
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind((self.ip, self.port))
-        if self.options['file']:
-            open(self.options['file_path'], "w").close()
+        files = {}
         while True:
             data = sock.recv(4096)
             if data:
                 data = pickle.loads(data)
-                timestamp = datetime.now()
+
+                # Check if IMU or EMG 
+                if type(data[0]) != str:
+                    tag = 'EMG'
+                elif data[0] == 'IMU':
+                    tag = 'IMU'
+                    data = data[1]
+                else:
+                    # We have some custom tag we need to deal with
+                    if not raw_data.check_other(data[0]):
+                        raw_data.instantialize_other(data[0])
+                    tag = data[0]
+                    data = data[1]
+
+                timestamp = time.time()
                 if self.options['std_out']:
-                    print(str(data) + " " + str(timestamp))  
+                    print(tag + ": " + str(data) + " " + str(timestamp))  
                 if self.options['file']:
-                    with open(self.options['file_path'], 'a', newline='') as file:
-                        writer = csv.writer(file)
+                    if not tag in files.keys():
+                        files[tag] = open(self.options['file_path'] + tag + '.csv', "a", newline='')
+                    writer = csv.writer(files[tag])
+                    if self.timestamps:
+                        writer.writerow(np.hstack([timestamp,data]))
+                    else:
                         writer.writerow(data)
                 if self.options['emg_arr']:
-                    raw_data.add_emg(data)
+                    if tag == 'EMG':
+                        raw_data.add_emg(data)
+                if self.options['imu_arr']:
+                    if tag == 'IMU':
+                        raw_data.add_imu(data)
+                if self.options['other_arr']:
+                    if tag != 'IMU' and tag != 'EMG':
+                        raw_data.add_other(tag, data)
 
     def _check_streaming(self, timeout=10):
         wt = time.time()

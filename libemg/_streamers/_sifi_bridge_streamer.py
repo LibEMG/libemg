@@ -102,6 +102,7 @@ class SiFiBridge:
                     for p in ppg:
                         self.other_handlers[0]('PPG-bio', p)      
 
+
     def close(self):
         self.proc.stdin.write(b'-cmd 1\n')
         self.proc.stdin.flush()
@@ -128,7 +129,8 @@ class SiFiBridgeStreamer:
                  notch_freq = 60,
                  emgfir_on=True,
                  emg_fir = [20, 450],
-                 other=False):
+                 other=False,
+                 streaming=False):
         # notch_on refers to EMG notch filter
         # notch_freq refers to frequency cutoff of notch filter
         # 
@@ -150,7 +152,8 @@ class SiFiBridgeStreamer:
 
         else:
             self.config += " enable_filters 0 "
-
+        if streaming:
+            self.config += " data_mode 1"
         print(self.config)
         self.config = bytes(self.config,"UTF-8")
 
