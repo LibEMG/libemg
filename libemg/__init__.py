@@ -8,4 +8,5 @@ from libemg import filtering
 from libemg import feature_selector
 from libemg import datasets
 from libemg import streamers
+from libemg import animator
 from libemg import gui
