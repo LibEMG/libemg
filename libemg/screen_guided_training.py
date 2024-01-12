@@ -11,7 +11,9 @@ from os import walk
 import random
 import numpy as np
 random.seed(time.time())
-    
+
+
+
 class ScreenGuidedTraining:
     """The Screen Guided Training module. 
 
