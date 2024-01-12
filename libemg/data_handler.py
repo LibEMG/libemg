@@ -9,6 +9,7 @@ import math
 import wfdb
 import copy
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
 from matplotlib import pyplot
@@ -105,6 +106,9 @@ class OfflineDataHandler(DataHandler):
                 file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
                 file_data = np.genfromtxt(f,delimiter=delimiter)
+                if len(file_data.shape) == 1:
+                    # some devices may have one channel -> make sure it interprets it as a 2d array
+                    file_data = np.expand_dims(file_data, 1)
             # collect the data from the file
             if "data_column" in dictionary_keys:
                 self.data.append(file_data[:, filename_dic["data_column"]])
@@ -385,10 +389,10 @@ class OnlineDataHandler(DataHandler):
     max_buffer: int (optional): default = None
         The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, max_buffer=None):
+    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None, timestamps=False, other_arr=False):
         self.port = port 
         self.ip = ip
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr}
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_arr': imu_arr, 'other_arr': other_arr}
         self.fi = None
         self.max_buffer = max_buffer
         if not file and not std_out and not emg_arr:
@@ -547,6 +551,87 @@ class OnlineDataHandler(DataHandler):
 
         animation = FuncAnimation(figure, update, interval=100)
         pyplot.show()
+    
+    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None):
+        """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
+
+        Parameters
+        ----------
+        num_samples: int (optional), default=500
+            The number of samples to average over (i.e., window size) when showing heatmap.
+        feature_list: list or None (optional), default=None
+            List of feature representations to extract, where each feature will be shown in a different subplot. 
+            Compatible with all features in libemg.feature_extractor.get_feature_list() that return a single value per channel (e.g., MAV, RMS). 
+            If a feature type that returns multiple values is passed, an error will be thrown. If None, defaults to MAV.
+        remap_function: callable or None (optional), default=None
+            Function pointer that remaps raw data to a format that can be represented by an image.
+        """
+        # Create figure
+        pyplot.style.use('ggplot')
+        if not self._check_streaming():
+            # Not reading any data
+            return
+        
+        if feature_list is None:
+            # Default to MAV
+            feature_list = ['MAV']
+        
+        def extract_data():
+            data = self.get_data()
+            if len(data) > num_samples:
+                # Only look at the most recent num_samples samples (essentially extracting a single window)
+                data = data[-num_samples:]
+            # Extract features along each channel
+            windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
+            fe = FeatureExtractor()
+            feature_set_dict = fe.extract_features(feature_list, windows)
+            if remap_function is not None:
+                # Remap raw data to image format
+                for key in feature_set_dict:
+                    feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
+                # data = remap_function(data)
+            return feature_set_dict
+
+        cmap = cm.viridis   # colourmap to determine heatmap style
+        
+        # Format figure
+        sample_data = extract_data()    # access sample data to determine heatmap size
+        fig, axs = plt.subplots(len(sample_data.keys()), 1)
+        fig.suptitle(f'HD-EMG Heatmap')
+        plots = []
+        for (feature_key, feature_data), ax in zip(sample_data.items(), axs):
+            ax.set_title(f'{feature_key}')
+            ax.set_xlabel('Electrode Row')
+            ax.set_ylabel('Electrode Column')
+            ax.grid(visible=False)  # disable grid
+            ax.set_xticks(range(feature_data.shape[1]))
+            ax.set_yticks(range(feature_data.shape[0]))
+            im = ax.imshow(np.zeros(shape=feature_data.shape), cmap=cmap, animated=True)
+            plt.colorbar(im)
+            plots.append(im)
+        plt.tight_layout()
+            
+
+        def update(frame):
+            # Update function to produce live animation
+            data = extract_data()
+                
+            if len(data) > 0:
+                min = 100  # -32769
+                max = 22000  # 32769
+                min = 10  # -32769
+                max = 3200  # 32769
+                # Loop through feature plots
+                for feature_data, plot in zip(data.values(), plots):
+                    # Normalize to properly display colours
+                    normalized_data = (feature_data - min) / (max - min)
+                    # Convert to coloured map
+                    heatmap_data = cmap(normalized_data)
+                    plot.set_data(heatmap_data) # update plot
+            return plots, 
+        
+        animation = FuncAnimation(fig, update, interval=100)
+        pyplot.show()
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
         """Visualize a live pca plot. This is reliant on previously collected training data.
@@ -637,21 +722,45 @@ class OnlineDataHandler(DataHandler):
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind((self.ip, self.port))
-        if self.options['file']:
-            open(self.options['file_path'], "w").close()
+        files = {}
         while True:
             data = sock.recv(4096)
             if data:
                 data = pickle.loads(data)
-                timestamp = datetime.now()
+
+                # Check if IMU or EMG 
+                if type(data[0]) != str:
+                    tag = 'EMG'
+                elif data[0] == 'IMU':
+                    tag = 'IMU'
+                    data = data[1]
+                else:
+                    # We have some custom tag we need to deal with
+                    if not raw_data.check_other(data[0]):
+                        raw_data.instantialize_other(data[0])
+                    tag = data[0]
+                    data = data[1]
+
+                timestamp = time.time()
                 if self.options['std_out']:
-                    print(str(data) + " " + str(timestamp))  
+                    print(tag + ": " + str(data) + " " + str(timestamp))  
                 if self.options['file']:
-                    with open(self.options['file_path'], 'a', newline='') as file:
-                        writer = csv.writer(file)
+                    if not tag in files.keys():
+                        files[tag] = open(self.options['file_path'] + tag + '.csv', "a", newline='')
+                    writer = csv.writer(files[tag])
+                    if self.timestamps:
+                        writer.writerow(np.hstack([timestamp,data]))
+                    else:
                         writer.writerow(data)
                 if self.options['emg_arr']:
-                    raw_data.add_emg(data)
+                    if tag == 'EMG':
+                        raw_data.add_emg(data)
+                if self.options['imu_arr']:
+                    if tag == 'IMU':
+                        raw_data.add_imu(data)
+                if self.options['other_arr']:
+                    if tag != 'IMU' and tag != 'EMG':
+                        raw_data.add_other(tag, data)
 
     def _check_streaming(self, timeout=10):
         wt = time.time()
