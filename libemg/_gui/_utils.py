@@ -36,7 +36,7 @@ class Media:
         # get first frame
         self.frame = 0
         _, cv2_image  = self.video_capture.read()
-        cv2_image = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2RGB)
+        cv2_image = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2RGBA)
         self.file_content =  Image.fromarray(cv2_image)
 
     def from_numpy(self, numpy_array):
@@ -67,7 +67,7 @@ class Media:
             if not ret:
                 print("End of video reached")
             else:
-                cv2_image = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2RGB)
+                cv2_image = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2RGBA)
                 self.file_content =  Image.fromarray(cv2_image)
     
     def advance_to(self, play_time):
@@ -87,19 +87,19 @@ class Media:
             if not ret:
                 print("End of video reached")
             else:
-                cv2_image = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2RGB)
+                cv2_image = cv2.cvtColor(cv2_image,cv2.COLOR_BGR2RGBA)
                 self.file_content =  Image.fromarray(cv2_image)
 
     def get_dpg_formatted_texture(self, width, height, grayscale=False):
         dpg_img = self.file_content.resize((width, height))
         if grayscale:
             dpg_img = dpg_img.convert("L")
-        dpg_img = dpg_img.convert("RGB")
+        dpg_img = dpg_img.convert("RGBA")
         dpg_img = np.asfarray(dpg_img, dtype='f').ravel()
         dpg_img = np.true_divide(dpg_img, 255.0)
         return dpg_img
 
-def set_texture(tag, texture, width, height, format=dpg.mvFormat_Float_rgb):
+def set_texture(tag, texture, width, height, format=dpg.mvFormat_Float_rgba):
     with dpg.texture_registry(show=False):
         if dpg.does_item_exist(tag):
             dpg.set_value(tag, value=texture)
