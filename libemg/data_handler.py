@@ -9,6 +9,7 @@ import math
 import wfdb
 import copy
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
 from matplotlib import pyplot
@@ -549,6 +550,87 @@ class OnlineDataHandler(DataHandler):
             return emg_plots,
 
         animation = FuncAnimation(figure, update, interval=100)
+        pyplot.show()
+    
+    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None):
+        """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
+
+        Parameters
+        ----------
+        num_samples: int (optional), default=500
+            The number of samples to average over (i.e., window size) when showing heatmap.
+        feature_list: list or None (optional), default=None
+            List of feature representations to extract, where each feature will be shown in a different subplot. 
+            Compatible with all features in libemg.feature_extractor.get_feature_list() that return a single value per channel (e.g., MAV, RMS). 
+            If a feature type that returns multiple values is passed, an error will be thrown. If None, defaults to MAV.
+        remap_function: callable or None (optional), default=None
+            Function pointer that remaps raw data to a format that can be represented by an image.
+        """
+        # Create figure
+        pyplot.style.use('ggplot')
+        if not self._check_streaming():
+            # Not reading any data
+            return
+        
+        if feature_list is None:
+            # Default to MAV
+            feature_list = ['MAV']
+        
+        def extract_data():
+            data = self.get_data()
+            if len(data) > num_samples:
+                # Only look at the most recent num_samples samples (essentially extracting a single window)
+                data = data[-num_samples:]
+            # Extract features along each channel
+            windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
+            fe = FeatureExtractor()
+            feature_set_dict = fe.extract_features(feature_list, windows)
+            if remap_function is not None:
+                # Remap raw data to image format
+                for key in feature_set_dict:
+                    feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
+                # data = remap_function(data)
+            return feature_set_dict
+
+        cmap = cm.viridis   # colourmap to determine heatmap style
+        
+        # Format figure
+        sample_data = extract_data()    # access sample data to determine heatmap size
+        fig, axs = plt.subplots(len(sample_data.keys()), 1)
+        fig.suptitle(f'HD-EMG Heatmap')
+        plots = []
+        for (feature_key, feature_data), ax in zip(sample_data.items(), axs):
+            ax.set_title(f'{feature_key}')
+            ax.set_xlabel('Electrode Row')
+            ax.set_ylabel('Electrode Column')
+            ax.grid(visible=False)  # disable grid
+            ax.set_xticks(range(feature_data.shape[1]))
+            ax.set_yticks(range(feature_data.shape[0]))
+            im = ax.imshow(np.zeros(shape=feature_data.shape), cmap=cmap, animated=True)
+            plt.colorbar(im)
+            plots.append(im)
+        plt.tight_layout()
+            
+
+        def update(frame):
+            # Update function to produce live animation
+            data = extract_data()
+                
+            if len(data) > 0:
+                min = 100  # -32769
+                max = 22000  # 32769
+                min = 10  # -32769
+                max = 3200  # 32769
+                # Loop through feature plots
+                for feature_data, plot in zip(data.values(), plots):
+                    # Normalize to properly display colours
+                    normalized_data = (feature_data - min) / (max - min)
+                    # Convert to coloured map
+                    heatmap_data = cmap(normalized_data)
+                    plot.set_data(heatmap_data) # update plot
+            return plots, 
+        
+        animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
 
     def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
