@@ -62,6 +62,30 @@ class OfflineDataHandler(DataHandler):
     def __init__(self):
         super().__init__()
     
+    def __add__(self, other):
+        # Concatenate two OfflineDataHandlers together
+        if not isinstance(other, OfflineDataHandler):
+            raise ValueError("Incorrect type used when concatenating OfflineDataHandlers.")
+        self_attributes = self.__dict__.keys()
+        other_attributes = other.__dict__.keys()
+        if not self_attributes == other_attributes:
+            # Objects don't have the same attributes
+            raise ValueError("Objects being concatenated must have the same attributes.")
+        
+        new_odh = OfflineDataHandler()
+        for self_attribute, other_attribute in zip(self_attributes, other_attributes):
+            # Concatenate attributes together
+            new_value = []
+            new_value.extend(getattr(self, self_attribute))
+            new_value.extend(getattr(other, other_attribute))
+            if self_attribute == 'extra_attributes':
+                # Remove duplicates
+                new_value = list(np.unique(new_value))
+            # Set attributes of new handler
+            setattr(new_odh, self_attribute, new_value)
+        return new_odh
+        
+    
 
     def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal'):
         """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
