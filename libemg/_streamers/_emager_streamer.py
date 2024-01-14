@@ -1,6 +1,15 @@
 import serial # pyserial
 import numpy as np
 import time
+import platform
+
+
+def _get_channel_map():
+    channel_map = [10, 22, 12, 24, 13, 26, 7, 28, 1, 30, 59, 32, 53, 34, 48, 36] + \
+                    [62, 16, 14, 21, 11, 27, 5, 33, 63, 39, 57, 45, 51, 44, 50, 40] + \
+                    [8, 18, 15, 19, 9, 25, 3, 31, 61, 37, 55, 43, 49, 46, 52, 38] + \
+                    [6, 20, 4, 17, 2, 23, 0, 29, 60, 35, 58, 41, 56, 47, 54, 42]
+    return channel_map
 
 def reorder(data, mask, match_result):
     '''
@@ -22,13 +31,33 @@ def reorder(data, mask, match_result):
         roll_data.append(np.roll(data[i*128:(i+1)*128], -offset))
     return roll_data
 
+def remap_raw_to_spatial(data):
+    '''
+    Remap raw data to spatial format, where each element in the matrix is ordered based on the
+    location of the electrode.
+    :param data: (numpy array) - (N x 64) data input, where N is the number of samples.
+    :return: (numpy array) - (N x 4 x 16) spatial image, where the order corresponds to electrode location.
+    '''
+    channel_map = _get_channel_map()
+    data_remap = np.empty_like(data)
+    if data.shape[0] != 0:
+        for remap_channel_idx, channel_idx in enumerate(channel_map):
+            data_remap[:, remap_channel_idx] = data[:, channel_idx]
+        num_samples = data.shape[0]
+        data_remap = data_remap.reshape((num_samples, 4, 16))    # reshape to image format
+    return data_remap
+
 class Emager:
     def __init__(self, baud_rate):
-        com_name = 'KitProg3 USB-UART'
+        com_name = 'KitProg3'
         ports = list(serial.tools.list_ports.comports())
         for p in ports:
             if com_name in p.description:
-                com_port = p.name
+                if platform.system() == 'Windows':
+                    com_port = p.name
+                else:
+                    # Different port names for Mac / Linux (has been tested on Mac but not Linux)
+                    com_port = p.device.replace('cu', 'tty')    # using the 'cu' port on Mac doesn't work, so renaming it to 'tty' port
         self.ser = serial.Serial(com_port,baud_rate, timeout=1)
         self.ser.close()
 
@@ -36,10 +65,7 @@ class Emager:
         ### ^ Number of bytes in message (i.e. channel bytes + header/tail bytes)
         self.mask = np.array([0, 2] + [0, 1] * 63)
         ### ^ Template mask for template matching on input data
-        self.channelMap = [10, 22, 12, 24, 13, 26, 7, 28, 1, 30, 59, 32, 53, 34, 48, 36] + \
-                          [62, 16, 14, 21, 11, 27, 5, 33, 63, 39, 57, 45, 51, 44, 50, 40] + \
-                          [8, 18, 15, 19, 9, 25, 3, 31, 61, 37, 55, 43, 49, 46, 52, 38] + \
-                          [6, 20, 4, 17, 2, 23, 0, 29, 60, 35, 58, 41, 56, 47, 54, 42]
+        self.channelMap = _get_channel_map()
         self.emg_handlers = []
 
     def connect(self):
@@ -105,6 +131,5 @@ class EmagerStreamer:
         while True:
             try:
                 e.run()
-            except:
+            except Exception as ex:
                 print("Error Occured.")
-                # quit() 
