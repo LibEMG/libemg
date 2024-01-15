@@ -9,9 +9,13 @@ class GUI:
                  width=1920,
                  height=1080,
                  args = {},
-                 debug=False):
+                 debug=False,
+                 video_player_width = 720,
+                 video_player_height = 480):
         
         self.args = args
+        self.video_player_width = video_player_width
+        self.video_player_height = video_player_height
         self.install_global_fields()
 
         self.window_init(width, height, debug)
@@ -68,7 +72,7 @@ class GUI:
     def data_collection_callback(self):
         panel_arguments = list(inspect.signature(DataCollectionPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
-        self.dcp = DataCollectionPanel(**passed_arguments, gui=self)
+        self.dcp = DataCollectionPanel(**passed_arguments, gui=self, video_player_width=self.video_player_width, video_player_height=self.video_player_height)
         self.dcp.spawn_configuration_window()
 
     def import_data_callback(self):
