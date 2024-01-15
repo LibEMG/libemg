@@ -21,7 +21,9 @@ class DataCollectionPanel:
                  rest_time=2,
                  auto_advance=True,
                  exclude_files=[],
-                 gui = None):
+                 gui = None,
+                 video_player_width = 720,
+                 video_player_height = 480):
         
         self.num_reps = num_reps
         self.rep_time = rep_time
@@ -31,6 +33,8 @@ class DataCollectionPanel:
         self.auto_advance=auto_advance
         self.exclude_files = exclude_files
         self.gui = gui
+        self.video_player_width = video_player_width
+        self.video_player_height = video_player_height
 
         self.widget_tags = {"configuration":['__dc_configuration_window','__dc_num_reps','__dc_rep_time','__dc_rest_time', '__dc_media_folder',\
                                              '__dc_auto_advance'],
@@ -151,22 +155,29 @@ class DataCollectionPanel:
 
     def spawn_collection_window(self, media_list):
         # open first frame of gif
-        texture = media_list[0][0].get_dpg_formatted_texture(width=720,height=480)
-        set_texture("__dc_collection_visual", texture, width=720, height=480)
-
+        texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
+        set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
+        
+        collection_window_width = self.video_player_width + 100
+        collection_window_height = self.video_player_height + 300
         with dpg.window(label="Collection Window",
                         tag="__dc_collection_window",
-                        width=800,
-                        height=800):
+                        width=collection_window_width,
+                        height=collection_window_height):
             dpg.add_spacer(height=50)
+            width_spacer = (collection_window_width - self.video_player_width) // 2
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=275, height=10)
+                dpg.add_spacer(width=width_spacer, height=10)
                 dpg.add_text(default_value="Collection Menu")
             with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_prompt_spacer",width=300, height=10)
+                dpg.add_spacer(tag="__dc_prompt_spacer",width=width_spacer, height=10)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
-            dpg.add_image("__dc_collection_visual")
-            dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=720)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_image("__dc_collection_visual")
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
             
         # dpg.set_primary_window("__dc_collection_window", True)
 
@@ -233,8 +244,8 @@ class DataCollectionPanel:
             dpg.set_item_width("__dc_prompt_spacer", 250)
         
         
-        texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
-        set_texture("__dc_collection_visual", texture, 720, 480)
+        texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
+        set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
         self.gui.online_data_handler.raw_data.reset_emg()
         self.gui.online_data_handler.raw_data.reset_imu()
         self.gui.online_data_handler.raw_data.reset_others()
@@ -244,8 +255,8 @@ class DataCollectionPanel:
             time.sleep(1/media[0].fps) # never refresh faster than media fps
             # update visual
             media[0].advance_to((time.perf_counter_ns() - motion_timer)/1e9)
-            texture = media[0].get_dpg_formatted_texture(width=720,height=480, grayscale=not(active))
-            set_texture("__dc_collection_visual", texture, 720, 480)
+            texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
+            set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
             dpg.set_value("__dc_progress", value = progress)        
@@ -306,8 +317,8 @@ class DataCollectionPanel:
         img = matplotlib_to_numpy()
         media = Media()
         media.from_numpy(img)
-        texture = media.get_dpg_formatted_texture(width=720, height=480)
-        set_texture("__vls_plot", texture, width=720, height=480)
+        texture = media.get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height)
+        set_texture("__vls_plot", texture, width=self.video_player_width, height=self.video_player_height)
 
         self.cleanup_window("visualization")
         with dpg.window(tag="__vls_visualization_window",
@@ -327,8 +338,8 @@ class DataCollectionPanel:
             img = matplotlib_to_numpy()
             media = Media()
             media.from_numpy(img)
-            texture = media.get_dpg_formatted_texture(width=720, height=480)
-            set_texture("__vls_plot", texture, width=720, height=480)
+            texture = media.get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height)
+            set_texture("__vls_plot", texture, width=self.video_player_width, height=self.video_player_height)
             # time.sleep(1/self.visualization_rate)
             jobs = dpg.get_callback_queue()
             dpg.run_callbacks(jobs)
