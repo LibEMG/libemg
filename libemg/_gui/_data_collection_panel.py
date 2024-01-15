@@ -157,20 +157,27 @@ class DataCollectionPanel:
         # open first frame of gif
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
-
+        
+        collection_window_width = self.video_player_width + 100
+        collection_window_height = self.video_player_height + 300
         with dpg.window(label="Collection Window",
                         tag="__dc_collection_window",
-                        width=800,
-                        height=800):
+                        width=collection_window_width,
+                        height=collection_window_height):
             dpg.add_spacer(height=50)
+            width_spacer = (collection_window_width - self.video_player_width) // 2
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=275, height=10)
+                dpg.add_spacer(width=width_spacer, height=10)
                 dpg.add_text(default_value="Collection Menu")
             with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_prompt_spacer",width=300, height=10)
+                dpg.add_spacer(tag="__dc_prompt_spacer",width=width_spacer, height=10)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
-            dpg.add_image("__dc_collection_visual")
-            dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_image("__dc_collection_visual")
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
             
         # dpg.set_primary_window("__dc_collection_window", True)
 
