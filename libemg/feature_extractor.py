@@ -91,7 +91,8 @@ class FeatureExtractor:
                         "WENG",
                         "WV",
                         "WWL",
-                        "WENT"]
+                        "WENT",
+                        "MEAN"]
         return feature_list
         
     def get_projection_list(self):
@@ -268,6 +269,20 @@ class FeatureExtractor:
         """
         feat = np.mean(np.abs(windows),2)
         return feat
+
+    def getMEANfeat(self, windows):
+        """Extract mean of signal (MEAN) feature.
+        
+        Parameters
+        ----------
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        Returns
+        ----------
+        list
+            The computed features associated with each window. 
+        """
+        return np.mean(windows, -1)
     
 
     def getZCfeat(self, windows):
