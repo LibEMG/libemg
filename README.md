@@ -10,6 +10,9 @@ All documentation can be found at: [Library Documentation](https://libemg.github
 ## Install 
 `pip install libemg`
 
+## Questions
+Check out our discord server if you have questions, comments, or feature requests: https://discord.gg/NeqTTXmM4F
+
 ## Citing
 We ask that if you leverage this library for any research-related purposes please cite the following publication:
 
