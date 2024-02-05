@@ -171,7 +171,7 @@ class EmgRawDataConfig:
     batch_len: int = 32
     resolution: SampleResolution = SampleResolution.BITS_8
 
-    def to_bytes(self) -> bytes:
+    def to_bytes(self):
         body = b''
         body += struct.pack('<H', self.fs)
         body += struct.pack('<H', self.channel_mask)
@@ -295,7 +295,7 @@ class Gforce:
 
         q.put_nowait(data)
 
-    def _convert_emg_to_uv(self, data: bytes) -> np.ndarray[np.float32]:
+    def _convert_emg_to_uv(self, data: bytes):
         min_voltage = -1.25
         max_voltage = 1.25
 
@@ -319,7 +319,7 @@ class Gforce:
         return emg_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_acceleration_to_g(data: bytes) -> np.ndarray[np.float32]:
+    def _convert_acceleration_to_g(data: bytes):
         normalizing_factor = 65536.0
 
         acceleration_data = np.frombuffer(data, dtype=np.int32).astype(np.float32) / normalizing_factor
@@ -328,7 +328,7 @@ class Gforce:
         return acceleration_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_gyro_to_dps(data: bytes) -> np.ndarray[np.float32]:
+    def _convert_gyro_to_dps(data: bytes):
         normalizing_factor = 65536.0
 
         gyro_data = np.frombuffer(data, dtype=np.int32).astype(np.float32) / normalizing_factor
@@ -337,7 +337,7 @@ class Gforce:
         return gyro_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_magnetometer_to_ut(data: bytes) -> np.ndarray[np.float32]:
+    def _convert_magnetometer_to_ut(data: bytes):
         normalizing_factor = 65536.0
 
         magnetometer_data = np.frombuffer(data, dtype=np.int32).astype(np.float32) / normalizing_factor
@@ -346,7 +346,7 @@ class Gforce:
         return magnetometer_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_euler(data: bytes) -> np.ndarray[np.float32]:
+    def _convert_euler(data: bytes):
 
         euler_data = np.frombuffer(data, dtype=np.float32).astype(np.float32)
         num_channels = 3
@@ -354,7 +354,7 @@ class Gforce:
         return euler_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_quaternion(data: bytes) -> np.ndarray[np.float32]:
+    def _convert_quaternion(data: bytes):
 
         quaternion_data = np.frombuffer(data, dtype=np.float32).astype(np.float32)
         num_channels = 4
@@ -362,7 +362,7 @@ class Gforce:
         return quaternion_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_rotation_matrix(data: bytes) -> np.ndarray[np.float32]:
+    def _convert_rotation_matrix(data: bytes):
 
         rotation_matrix_data = np.frombuffer(data, dtype=np.int32).astype(np.float32)
         num_channels = 9
@@ -370,7 +370,7 @@ class Gforce:
         return rotation_matrix_data.reshape(-1, num_channels)
 
     @staticmethod
-    def _convert_emg_gesture(data: bytes) -> np.ndarray[np.float16]:
+    def _convert_emg_gesture(data: bytes):
 
         emg_gesture_data = np.frombuffer(data, dtype=np.int16).astype(np.float16)
         num_channels = 6
@@ -388,7 +388,7 @@ class Gforce:
             raise Exception("Failed to parse response: %s" % e)
 
     @staticmethod
-    def _parse_response(res: bytes) -> Response:
+    def _parse_response(res: bytes):
         code = int.from_bytes(res[:1], byteorder='big')
         code = ResponseCode(code)
 
@@ -403,56 +403,56 @@ class Gforce:
             data=data,
         )
 
-    async def get_protocol_version(self) -> str:
+    async def get_protocol_version(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_PROTOCOL_VERSION,
             has_res=True,
         ))
         return buf.decode('utf-8')
 
-    async def get_feature_map(self) -> int:
+    async def get_feature_map(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_FEATURE_MAP,
             has_res=True,
         ))
         return int.from_bytes(buf, byteorder='big')  # TODO: check if this is correct
 
-    async def get_device_name(self) -> str:
+    async def get_device_name(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_DEVICE_NAME,
             has_res=True,
         ))
         return buf.decode('utf-8')
 
-    async def get_firmware_revision(self) -> str:
+    async def get_firmware_revision(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_FW_REVISION,
             has_res=True,
         ))
         return buf.decode('utf-8')
 
-    async def get_hardware_revision(self) -> str:
+    async def get_hardware_revision(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_HW_REVISION,
             has_res=True,
         ))
         return buf.decode('utf-8')
 
-    async def get_model_number(self) -> str:
+    async def get_model_number(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_MODEL_NUMBER,
             has_res=True,
         ))
         return buf.decode('utf-8')
 
-    async def get_serial_number(self) -> str:
+    async def get_serial_number(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_SERIAL_NUMBER,
             has_res=True,
         ))
         return buf.decode('utf-8')
 
-    async def get_manufacturer_name(self) -> str:
+    async def get_manufacturer_name(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_MANUFACTURER_NAME,
             has_res=True,
@@ -460,7 +460,7 @@ class Gforce:
 
         return buf.decode('utf-8')
 
-    async def get_bootloader_version(self) -> str:
+    async def get_bootloader_version(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_BOOTLOADER_VERSION,
             has_res=True,
@@ -468,21 +468,21 @@ class Gforce:
 
         return buf.decode('utf-8')
 
-    async def get_battery_level(self) -> int:
+    async def get_battery_level(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_BATTERY_LEVEL,
             has_res=True,
         ))
         return int.from_bytes(buf, byteorder='big')
 
-    async def get_temperature(self) -> int:
+    async def get_temperature(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_TEMPERATURE,
             has_res=True,
         ))
         return int.from_bytes(buf, byteorder='big')
 
-    async def power_off(self) -> None:
+    async def power_off(self):
         await self._send_request(Request(
             cmd=Command.POWEROFF,
             has_res=False,
@@ -557,7 +557,7 @@ class Gforce:
         ))
         self.resolution = cfg.resolution
 
-    async def get_emg_raw_data_config(self) -> EmgRawDataConfig:
+    async def get_emg_raw_data_config(self):
         buf = await self._send_request(Request(
             cmd=Command.GET_EMG_RAWDATA_CONFIG,
             has_res=True,
@@ -574,7 +574,7 @@ class Gforce:
             has_res=True,
         ))
 
-    async def start_streaming(self) -> Queue:
+    async def start_streaming(self):
         q = Queue()
         await self.client.start_notify(
             DATA_NOTIFY_CHAR_UUID,
@@ -604,12 +604,12 @@ class Gforce:
         with suppress(asyncio.CancelledError):
             await self.client.disconnect()
 
-    def _get_response_channel(self, cmd: Command) -> Queue:
+    def _get_response_channel(self, cmd: Command):
         q = Queue()
         self.responses[cmd] = q
         return q
 
-    async def _send_request(self, req: Request) -> Optional[bytes]:
+    async def _send_request(self, req: Request):
         q = None
         if req.has_res:
             q = self._get_response_channel(req.cmd)
