@@ -31,7 +31,10 @@ If selecting EMG hardware for real-time use, wireless armbands that sample above
 | Myo Armband  | `myo_streamer()`  | <div class="device_img">![](devices/Myo.png) </div>|
 | Delsys  | `delsys_streamer()` | <div class="device_img_2">![](devices/delsys_trigno.png) </div>|
 | SIFI Cuff | `sifi_streamer()` | <div class="device_img">![](devices/sifi_cuff.png) </div>|
-| Oymotion | `oymotion_streamer()`| <div class="device_img">![](devices/oymotion.png) </div>| 
+| Oymotion | `oymotion_streamer()`| <div class="device_img">![](devices/oymotion.png) </div>|
+| Muovi | `otb_muovi_streamer()`| <div class="device_img">![](devices/muovi.png) </div>| 
+| Muovi+ | `otb_muovi_plus_streamer()`| <div class="device_img">![](devices/muovi+.png) </div>| 
+| Sessantaquattro+ | `otb_sessantaquattro_plus_streamer()`| <div class="device_img">![](devices/sess.png) </div>| 
 
 <center> <p>Table 1: The list of all implemented streamers.</p> </center>
 

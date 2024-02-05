@@ -9,6 +9,10 @@ from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
+from libemg._streamers._OTB_SessantaquattroPlus import OTBSessantaquattroPlusStreamer
+from libemg._streamers._OTB_MuoviPlus import OTBMuoviPlusStreamer
+from libemg._streamers._OTB_Muovi import OTBMuoviStreamer
+from libemg._streamers._OTB_Syncstation import OTBSyncstationStreamer
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
     """Streams EMG from a test file over UDP.
@@ -204,9 +208,6 @@ def oymotion_streamer(ip='127.0.0.1', port=12345):
     # p.start()
     oym.start_stream()
     return 0
-    # start_stream()
-
-
 
 def emager_streamer(ip='127.0.0.1', port=12345):
     """The UDP streamer for the emager armband. 
@@ -226,5 +227,83 @@ def emager_streamer(ip='127.0.0.1', port=12345):
     """
     ema = EmagerStreamer(ip, port)
     p = Process(target=ema.start_stream, daemon=True)
+    p.start()
+    return p
+
+def otb_syncstation_streamer(ip='localhost', port=12345):
+    """OT Bioelettronica sync station streamer.
+
+    Parameters
+    ----------
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> otb_syncstation_streamer()
+    """
+    syncstation = OTBSyncstationStreamer(ip, port)
+    p = Process(target=syncstation.start_stream, daemon=True)
+    p.start()
+    return p
+
+
+def otb_muovi_plus_streamer(ip='localhost', port=12345):
+    """OT Bioelettronica muovi+ streamer.
+
+    Parameters
+    ----------
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> otb_muovi_plus_streamer()
+    """
+    muoviplus = OTBMuoviPlusStreamer(ip, port)
+    p = Process(target=muoviplus.start_stream, daemon=True)
+    p.start()
+    return p
+
+def otb_muovi_streamer(ip='localhost', port=12345):
+    """OT Bioelettronica muovi streamer.
+
+    Parameters
+    ----------
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> otb_muovi_streamer()
+    """
+    muovi = OTBMuoviStreamer(ip, port)
+    p = Process(target=muovi.start_stream, daemon=True)
+    p.start()
+    return p
+
+
+def otb_sessantaquattro_plus_streamer(ip='localhost', port=12345):
+    """OT Bioelettronica sessantaquatro streamer.
+
+    Parameters
+    ----------
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+
+    Examples
+    ---------
+    >>> otb_sessantaquattro_plus_streamer()
+    """
+    sessantaquattro_plus = OTBSessantaquattroPlusStreamer(ip, port)
+    p = Process(target=sessantaquattro_plus.start_stream, daemon=True)
     p.start()
     return p
