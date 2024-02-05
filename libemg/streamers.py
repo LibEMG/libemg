@@ -1,13 +1,16 @@
 import time
 import socket
 import pickle
+import platform
 import numpy as np
 from multiprocessing import Process
 from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
-from libemg._streamers._oymotion_streamer import OyMotionStreamer
-from libemg._streamers._oymotion_windows_streamer import Gforce, oym_start_stream
+if platform.system() != 'Linux':
+    from libemg._streamers._oymotion_windows_streamer import Gforce, oym_start_stream
+else: 
+    from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._OTB_SessantaquattroPlus import OTBSessantaquattroPlusStreamer
