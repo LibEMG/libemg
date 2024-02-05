@@ -161,14 +161,15 @@ class SampleResolution(IntEnum):
 class SamplingRate(IntEnum):
     HZ_500 = 500,
     HZ_650 = 650,
+    HZ_1000 = 1000
 
 
 @dataclass
 class EmgRawDataConfig:
-    fs: SamplingRate = SamplingRate.HZ_500
+    fs: SamplingRate = SamplingRate.HZ_1000
     channel_mask: int = 0xFF
     batch_len: int = 32
-    resolution: SampleResolution = SampleResolution.BITS_12
+    resolution: SampleResolution = SampleResolution.BITS_8
 
     def to_bytes(self) -> bytes:
         body = b''
@@ -217,23 +218,19 @@ def _match_nus_uuid(_device: BLEDevice, adv: AdvertisementData):
 
 
 class Gforce:
-    def __init__(self):
+    def __init__(self, ip, port):
         self.client = None
         self.cmd_char = None
         self.data_char = None
         self.responses: Dict[Command, Queue] = {}
         self.resolution = SampleResolution.BITS_12
+        self.ip = ip
+        self.port = port
 
         self.packet_id = 0
         self.data_packet = []
 
     async def connect(self):
-        scanner = BleakScanner()
-
-        print(f'discovering ...')
-        addresses = [device.address for device in await scanner.discover(timeout=1)]
-        print(addresses)
-
         device = await BleakScanner.find_device_by_filter(_match_nus_uuid)
         if device is None:
             raise Exception("No GForce device found")
@@ -628,23 +625,26 @@ class Gforce:
         return await asyncio.wait_for(q.get(), 3)
 
 
-async def main():
-    gforce = Gforce()
+async def start_stream(gforce,sampling):
+    import socket
+    import pickle
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     await gforce.connect()
-    await gforce.set_emg_raw_data_config(EmgRawDataConfig())
+    emg_conf = EmgRawDataConfig()
+    if sampling == 500:
+        emg_conf = EmgRawDataConfig(fs = SamplingRate.HZ_500, resolution=SampleResolution.BITS_12)
+    await gforce.set_emg_raw_data_config(emg_conf)
     await gforce.set_subscription(
-        DataSubscription.EMG_RAW | DataSubscription.ACCELERATE
+        DataSubscription.EMG_RAW
     )
+    print("Connected to Oymotion Cuff!")
 
     q = await gforce.start_streaming()
-    for _ in range(1000):
-        v = await q.get()
-        print(v)
+    while True:
+        for e in await q.get():
+            data_arr = pickle.dumps(list(e))
+            sock.sendto(data_arr, (gforce.ip, gforce.port))
 
-    await gforce.stop_streaming()
-    await gforce.disconnect()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+def oym_start_stream(gforce, sampling):
+    asyncio.run(start_stream(gforce, sampling))

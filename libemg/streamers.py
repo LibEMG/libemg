@@ -7,6 +7,7 @@ from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._oymotion_streamer import OyMotionStreamer
+from libemg._streamers._oymotion_windows_streamer import Gforce, oym_start_stream
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._OTB_SessantaquattroPlus import OTBSessantaquattroPlusStreamer
@@ -34,7 +35,7 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
         The desired sampling rate in Hz.
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
     
     Examples
@@ -67,7 +68,7 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345, imu=False):
         If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
     imu: bool (optional), default=False
         If True, the IMU data will also stream. Columns: 0,1,2,3 (quaternion), 4,5,6 (accelerometer), 7,8,9 (gyroscope). 
@@ -98,9 +99,9 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
     ----------
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
-    version: string (option), default = '1.2'
+    version: string optional, default = '1.2'
         The version for the sifi streamer.
     Examples
     ---------
@@ -130,7 +131,7 @@ def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi
     ----------
     stream_port: int (optional), default=12345
         The desired port to stream over. 
-    stream_ip: string (option), default = '127.0.0.1'
+    stream_ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
     sifi_port: int (optional), default=5000
         The port that the SIFI cuff is streaming over.
@@ -156,7 +157,7 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
     ----------
     stream_port: int (optional), default=12345
         The desired port to stream over. 
-    stream_ip: string (option), default = 'localhost'
+    stream_ip: string optional, default = 'localhost'
         The ip used for streaming predictions over UDP.
     cmd_port: int (optional), default=50040.
         The port that commands are sent to the Delsys system (ie., the start command and the stop command.)
@@ -183,7 +184,7 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
     return p
 
 
-def oymotion_streamer(ip='127.0.0.1', port=12345):
+def oymotion_streamer(ip='127.0.0.1', port=12345, platform='windows', sampling_rate=1000):
     """The UDP streamer for the oymotion armband. 
 
     This function connects to the oymotion and streams its data over UDP. It leverages the gforceprofile 
@@ -192,21 +193,34 @@ def oymotion_streamer(ip='127.0.0.1', port=12345):
 
     Parameters
     ----------
-    filtered: bool (optional), default=True
-        If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string (optional), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
+    platform: string ('windows', 'linux', or 'mac'), default='windows'
+        The platform being used. Linux uses a different streamer than mac and windows. 
+    sampling_rate: int (optional), default=1000 (options: 1000 or 500)
+        The sampling rate wanted from the device. Note that 1000 Hz is 8 bit resolution and 500 Hz is 12 bit resolution
 
     Examples
     ---------
     >>> oymotion_streamer()
     """
-    oym = OyMotionStreamer(ip, port)
-    # p = Process(target=oym.start_stream, daemon=True)
-    # p.start()
-    oym.start_stream()
+    platform.lower()
+    sampling = 1000
+    res = 8
+    if sampling_rate == 500:
+        res = 12
+        sampling = 500
+
+    if platform == "windows" or platform == 'mac':
+        oym = Gforce(ip,port)
+        p = Process(target=oym_start_stream, args=(oym,sampling,), daemon=True)
+        p.start()
+        return p
+    else:
+        oym = OyMotionStreamer(ip, port, sampRate=sampling, resolution=res)
+        oym.start_stream()
     return 0
 
 def emager_streamer(ip='127.0.0.1', port=12345):
@@ -218,7 +232,7 @@ def emager_streamer(ip='127.0.0.1', port=12345):
     ----------
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
 
     Examples
@@ -237,7 +251,7 @@ def otb_syncstation_streamer(ip='localhost', port=12345):
     ----------
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
 
     Examples
@@ -257,7 +271,7 @@ def otb_muovi_plus_streamer(ip='localhost', port=12345):
     ----------
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
 
     Examples
@@ -276,7 +290,7 @@ def otb_muovi_streamer(ip='localhost', port=12345):
     ----------
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
 
     Examples
@@ -296,7 +310,7 @@ def otb_sessantaquattro_plus_streamer(ip='localhost', port=12345):
     ----------
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
 
     Examples
