@@ -191,7 +191,7 @@ class EMGClassifier:
 
         Note, that when using this optional, ramp contractions should be captured for training. 
 
-        Parameters:
+        Parameters
         -----------
         """
         self.velocity = True

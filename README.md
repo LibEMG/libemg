@@ -1,4 +1,4 @@
-<h1 align="center">LibEMG</h1>
+![LibEMG](docs/source/libemg_logo.png)
 
 The goal of this library is to provide an easy to use and feature-rich API for developing robust real-time EMG-based interactions, and performing thorough offline analysis.
 
