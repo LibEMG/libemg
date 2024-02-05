@@ -419,8 +419,7 @@ class OnlineDataHandler(DataHandler):
         (2) resolution
         (3) min val
         (4) max val
-        (5) repeating values
-        (6) number of channels
+        (5) number of channels
 
         Parameters
         ----------
@@ -430,7 +429,6 @@ class OnlineDataHandler(DataHandler):
         if not self._check_streaming():
             return
 
-        btwn_sample_time = []
         self.raw_data.reset_emg()
         st = time.time()
         print("Starting analysis " + "(" + str(analyze_time) + "s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.")
@@ -442,7 +440,7 @@ class OnlineDataHandler(DataHandler):
         print("Max Value: " + str(self._get_max_value(emg_data)))
         print("Min Value: " + str(self._get_min_value(emg_data)))
         print("Resolution: " + str(self._get_resolution(emg_data)) + " bits")
-        print("Repeating Values: " + str(self._get_repeating_values(emg_data)))
+        # print("Repeating Values: " + str(self._get_repeating_values(emg_data)))
         
         self.stop_listening()
         print("Analysis sucessfully complete. ODH process has stopped.")
@@ -654,7 +652,7 @@ class OnlineDataHandler(DataHandler):
                     if tag != 'IMU' and tag != 'EMG':
                         raw_data.add_other(tag, data)
 
-    def _check_streaming(self, timeout=10):
+    def _check_streaming(self, timeout=20):
         wt = time.time()
         while(True):
             if len(self.raw_data.get_emg()) > 0: 
