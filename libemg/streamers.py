@@ -8,6 +8,52 @@ from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
+from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
+
+def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
+                 ecg=False,
+                 emg=True, 
+                 eda=False,
+                 imu=False,
+                 ppg=False,
+                 notch_on=True, notch_freq=60,
+                 emg_fir_on = True,
+                 emg_fir=[20,450],
+                 other=False,
+                 streaming=False):
+    """The UDP streamer for the sifi armband. 
+    This function connects to the sifi bridge and streams its data over UDP. This is used
+    for the SiFi biopoint and bioarmband.
+    Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
+    Parameters
+    ----------
+    port: int (optional), default=12345
+        The desired port to stream over. 
+    ip: string (option), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    version: string (option), default = '1.2'
+        The version for the sifi streamer.
+    Examples
+    ---------
+    >>> sifibridge_streamer()
+    """
+    sb = SiFiBridgeStreamer(ip, port,
+                            version=version,
+                            notch_on=notch_on,
+                            ecg=ecg,
+                            emg=emg,
+                            eda=eda,
+                            imu=imu,
+                            ppg=ppg,
+                            notch_freq=notch_freq,
+                            emgfir_on=emg_fir_on,
+                            emg_fir = emg_fir,
+                            other=other,
+                            streaming=streaming)
+    p = Process(target=sb.start_stream, daemon=True)
+    p.start()
+    return p
+
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
     """Streams EMG from a test file over UDP.

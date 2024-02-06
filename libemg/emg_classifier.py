@@ -402,7 +402,145 @@ class EMGClassifier:
         plt.legend(loc='lower right')
         plt.show()
     
-class OnlineEMGClassifier:
+
+
+class OnlineStreamer:
+    """OnlineStreamer.
+
+    This is a base class for using algorithms (classifiers/regressors/other) in conjunction with online streamers.
+
+
+    Parameters
+    ----------
+    offline_classifier: EMGClassifier
+        An EMGClassifier object. 
+    window_size: int
+        The number of samples in a window. 
+    window_increment: int
+        The number of samples that advances before next window.
+    online_data_handler: OnlineDataHandler
+        An online data handler object.
+    features: list or None
+        A list of features that will be extracted during real-time classification. These should be the 
+        same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
+    file_path: str (optional)
+        A location that the inputs and output of the classifier will be saved to.
+    file: bool (optional)
+        A toggle for activating the saving of inputs and outputs of the classifier.
+    parameters: dict (optional)
+        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+        in the sklearn docs for the given model.
+    port: int (optional), default = 12346
+        The port used for streaming predictions over UDP.
+    ip: string (optional), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    velocity: bool (optional), default = False
+        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
+    std_out: bool (optional), default = False
+        If True, prints predictions to std_out.
+    tcp: bool (optional), default = False
+        If True, will stream predictions over TCP instead of UDP.
+    """
+
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, file_path, file, features, port, ip, std_out, tcp, output_format):
+        self.window_size = window_size
+        self.window_increment = window_increment
+        self.raw_data = online_data_handler.raw_data
+        self.filters = online_data_handler.fi
+        self.features = features
+        self.port = port
+        self.ip = ip
+        self.classifier = offline_classifier
+
+        self.output_format = output_format
+
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
+        self.files = {}
+        self.tcp = tcp
+        if not tcp:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        else:
+            print("Waiting for TCP connection...")
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.sock.bind((ip, port))
+            self.sock.listen()
+            self.conn, addr = self.sock.accept()
+            print(f"Connected by {addr}")
+
+        self.process = Process(target=self._run_helper, daemon=True,)
+    
+    def start_stream(self, block=True):
+        if block:
+            self._run_helper()
+        else:
+            self.process.start()
+
+    def get_data(self, data):
+        # Extract window and predict sample
+        window = get_windows(data, self.window_size, self.window_size)
+        # Dealing with the case for CNNs when no features are used
+        if self.features:
+            features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
+            classifier_input = self._format_data_sample(features)
+        else:
+            classifier_input = window
+        self.raw_data.adjust_increment(self.window_size, self.window_increment)
+        return window, classifier_input
+    
+    def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
+        time_stamp = time.time()
+        if self.options['std_out']:
+            print(f"{int(prediction)} {calculated_velocity} {time.time()}")
+        # Write classifier output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            row = np.array([str(time_stamp),prediction, probability])
+            writer.writerow((row, model_input[0]))
+        if self.output_format == "predictions":
+            message = str(prediction) + calculated_velocity + '\n'
+        elif self.output_format == "probabilities":
+            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+        if not self.tcp:
+            self.sock.sendto(bytes(message), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
+                    
+
+    def _format_data_sample(self, data):
+        arr = None
+        for feat in data:
+            if arr is None:
+                arr = data[feat]
+            else:
+                arr = np.hstack((arr, data[feat]))
+        return arr
+
+    def _get_data_helper(self):
+        data = np.array(self.raw_data.get_emg())
+        if self.filters is not None:
+            try:
+                data = self.filters.filter(data)
+            except:
+                pass
+        return data
+    
+    # ----- All of these are unique to each online streamer ----------
+    def run(self):
+        pass 
+
+    def stop_running(self):
+        pass
+
+    def _run_helper(self):
+        pass
+
+
+
+
+class OnlineEMGClassifier(OnlineStreamer):
     """OnlineEMGClassifier.
 
     Given a EMGClassifier and additional information, this class will stream class predictions over UDP in real-time.
@@ -439,32 +577,10 @@ class OnlineEMGClassifier:
         If True, will stream predictions over TCP instead of UDP.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False,port=12346, ip='127.0.0.1', std_out=False, tcp=False):
-        self.window_size = window_size
-        self.window_increment = window_increment
-        self.raw_data = online_data_handler.raw_data
-        self.filters = online_data_handler.fi
-        self.features = features
-        self.port = port
-        self.ip = ip
-        self.classifier = offline_classifier
-
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
-
-        self.tcp = tcp
-        if not tcp:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        else:
-            print("Waiting for TCP connection...")
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            self.sock.bind((ip, port))
-            self.sock.listen()
-            self.conn, addr = self.sock.accept()
-            print(f"Connected by {addr}")
-
-        self.process = Process(target=self._run_helper, daemon=True,)
-        # self.std_out = std_out
+                 file_path = '.', file=False,port=12346, ip='127.0.0.1', std_out=False, tcp=False,
+                 output_format="predictions"):
+        
+        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         
     def run(self, block=True):
@@ -538,9 +654,11 @@ class OnlineEMGClassifier:
                 else:
                     classifier_input = window
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                prediction, probability = self.classifier._prediction_helper(self.classifier.classifier.predict_proba(classifier_input))
+                
+                # Make prediction
+                probabilities = self.classifier.classifier.predict_proba(classifier_input)
+                prediction, probability = self.classifier._prediction_helper(probabilities)
                 prediction = prediction[0]
-                probability = probability[0]
 
                 # Check for rejection
                 if self.classifier.rejection:
@@ -560,21 +678,9 @@ class OnlineEMGClassifier:
                     # Dont check if rejected 
                     if prediction >= 0:
                         calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
-                time_stamp = time.time()
-                if self.options['std_out']:
-                    print(f"{int(prediction)} {calculated_velocity} {time.time()}")
-                # Write classifier output:
-                if self.options['file']:
-                    if not 'file_handle' in files.keys():
-                        files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
-                    writer = csv.writer(files['file_handle'])
-                    row = np.array([str(time_stamp),prediction, probability])
-                    writer.writerow((row, classifier_input[0]))
-                if not self.tcp:
-                    self.sock.sendto(bytes(str(str(prediction) + calculated_velocity), "utf-8"), (self.ip, self.port))
-                else:
-                    self.conn.sendall(str.encode(str(prediction) + calculated_velocity + '\n'))
-                    
+                
+                self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
+                
     
     def _format_data_sample(self, data):
         arr = None
