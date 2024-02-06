@@ -84,16 +84,19 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345, imu=False):
     p.start()
     return p
 
-def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
-                 ecg=False,
-                 emg=True, 
-                 eda=False,
-                 imu=False,
-                 ppg=False,
-                 notch_on=True, notch_freq=60,
-                 emg_fir_on = True,
-                 emg_fir=[20,450],
-                 other=False):
+def sifibridge_streamer(ip='127.0.0.1', 
+                        port=12345, 
+                        version="1.2",
+                        ecg=False,
+                        emg=True, 
+                        eda=False,
+                        imu=False,
+                        ppg=False,
+                        notch_on=True, 
+                        notch_freq=60,
+                        emg_fir_on = True,
+                        emg_fir=[20,450],
+                        other=False):
     """The UDP streamer for the sifi armband. 
     This function connects to the sifi bridge and streams its data over UDP. This is used
     for the SiFi biopoint and bioarmband.
@@ -110,7 +113,9 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
     ---------
     >>> sifibridge_streamer()
     """
-    sb = SiFiBridgeStreamer(ip, port,notch_on=notch_on,
+    sb = SiFiBridgeStreamer(ip, port,
+                            version=version,
+                            notch_on=notch_on,
                             ecg=ecg,
                             emg=emg,
                             eda=eda,

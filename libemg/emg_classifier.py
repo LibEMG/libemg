@@ -26,8 +26,8 @@ class EMGClassifier:
 
     Parameters
     ----------
-    velocity: bool (optional), default=False
-        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
+    random_seed: bool (optional), default=0
+        Used for any classifiers that require random seeds.
     """
     def __init__(self, random_seed=0):
         random.seed(random_seed)
