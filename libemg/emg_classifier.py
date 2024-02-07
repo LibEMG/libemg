@@ -504,7 +504,7 @@ class OnlineStreamer:
         elif self.output_format == "probabilities":
             message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
         if not self.tcp:
-            self.sock.sendto(bytes(message), (self.ip, self.port))
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
             self.conn.sendall(str.encode(message))
                     
