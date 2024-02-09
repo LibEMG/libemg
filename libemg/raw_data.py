@@ -8,6 +8,10 @@ class RawData:
         self.emg_data = []
         self.imu_data = []
         self.other_modalities = {}
+        self.classifier = None
+
+    def set_classifier(self, classifier):
+        self.classifier = classifier
 
     def get_imu(self):
         return self.imu_data
