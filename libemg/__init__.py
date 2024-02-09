@@ -9,3 +9,4 @@ from libemg import feature_selector
 from libemg import datasets
 from libemg import streamers
 from libemg import gui
+from libemg import shared_memory_manager
