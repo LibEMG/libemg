@@ -497,8 +497,10 @@ class OnlineStreamer:
             if not 'file_handle' in self.files.keys():
                 self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
             writer = csv.writer(self.files['file_handle'])
-            row = np.array([str(time_stamp),prediction, probability])
-            writer.writerow((row, model_input[0]))
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {prediction} {probability[0]} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
         if self.output_format == "predictions":
             message = str(prediction) + calculated_velocity + '\n'
         elif self.output_format == "probabilities":
