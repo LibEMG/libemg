@@ -195,6 +195,37 @@ class PlotAnimator(Animator):
         return int(distance * self.fpd)
     
     @staticmethod
+    def _normalize_to_unit_distance(x, y):
+        """Normalize coordinates to a unit circle distance.
+        
+        Parameters
+        ----------
+        x: numpy.ndarray
+            1D array of x coordinates.
+        y: numpy.ndarray
+            1D array of y coordinates.
+        
+        Returns
+        ----------
+        numpy.ndarray
+            N x 2 matrix, where N is the number of coordinates. Each row contains the normalized x and y coordinates.
+        """
+        assert x.shape == y.shape, "x and y must be the same length."
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)    # ignore divide by 0 warnings
+            # Calculate angles
+            angles = np.arctan(y / x)
+            np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
+            
+            # Normalize by angles (max distance of 1)
+            normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
+            normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
+            normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
+        
+        assert normalized_coordinates.shape == (x.shape[0], 2)
+        return normalized_coordinates
+
+    @staticmethod
     def _convert_plot_to_image(fig):
         """Convert a matplotlib Figure to a PIL.Image object.
 
@@ -486,36 +517,6 @@ class CartesianPlotAnimator(PlotAnimator):
         
         return axs
 
-    @staticmethod
-    def _normalize_to_unit_distance(x, y):
-        """Normalize coordinates to a unit circle distance.
-        
-        Parameters
-        ----------
-        x: numpy.ndarray
-            1D array of x coordinates.
-        y: numpy.ndarray
-            1D array of y coordinates.
-        
-        Returns
-        ----------
-        numpy.ndarray
-            N x 2 matrix, where N is the number of coordinates. Each row contains the normalized x and y coordinates.
-        """
-        assert x.shape == y.shape, "x and y must be the same length."
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)    # ignore divide by 0 warnings
-            # Calculate angles
-            angles = np.arctan(y / x)
-            np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
-            
-            # Normalize by angles (max distance of 1)
-            normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
-            normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
-            normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
-        
-        assert normalized_coordinates.shape == (x.shape[0], 2)
-        return normalized_coordinates
 
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
