@@ -142,8 +142,8 @@ class Animator:
 
 
 class PlotAnimator(Animator):
-    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (6, 6), dpi=80):
+    def __init__(self, output_filepath='libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False,
+                 figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object specifically for plots.
         
         Parameters
@@ -162,14 +162,17 @@ class PlotAnimator(Animator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
         super().__init__(output_filepath, fps)
         self.show_direction = show_direction
         self.show_countdown = show_countdown
         self.show_boundary = show_boundary
-        self.fpd = fps * 2  # number of frames to generate to travel a distance of 1
         self.figsize = figsize
         self.dpi = dpi
+        self.tpd = tpd
+        self.fpd = fps * self.tpd  # number of frames to generate to travel a distance of 1
     
     
     def convert_distance_to_frames(self, coordinates1, coordinates2):
@@ -191,6 +194,37 @@ class PlotAnimator(Animator):
         distance = np.linalg.norm(coordinates2 - coordinates1)  # calculate euclidean distance between two points
         return int(distance * self.fpd)
     
+    @staticmethod
+    def _normalize_to_unit_distance(x, y):
+        """Normalize coordinates to a unit circle distance.
+        
+        Parameters
+        ----------
+        x: numpy.ndarray
+            1D array of x coordinates.
+        y: numpy.ndarray
+            1D array of y coordinates.
+        
+        Returns
+        ----------
+        numpy.ndarray
+            N x 2 matrix, where N is the number of coordinates. Each row contains the normalized x and y coordinates.
+        """
+        assert x.shape == y.shape, "x and y must be the same length."
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)    # ignore divide by 0 warnings
+            # Calculate angles
+            angles = np.arctan(y / x)
+            np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
+            
+            # Normalize by angles (max distance of 1)
+            normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
+            normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
+            normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
+        
+        assert normalized_coordinates.shape == (x.shape[0], 2)
+        return normalized_coordinates
+
     @staticmethod
     def _convert_plot_to_image(fig):
         """Convert a matplotlib Figure to a PIL.Image object.
@@ -375,7 +409,7 @@ class PlotAnimator(Animator):
 
 class CartesianPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False,
-                 axis_images = None, figsize = (6, 6), dpi=80):
+                 axis_images = None, figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane.
         
         Parameters
@@ -399,8 +433,10 @@ class CartesianPlotAnimator(PlotAnimator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi, tpd)
         self.normalize_distance = normalize_distance
         self.axis_images = axis_images
     
@@ -481,41 +517,11 @@ class CartesianPlotAnimator(PlotAnimator):
         
         return axs
 
-    @staticmethod
-    def _normalize_to_unit_distance(x, y):
-        """Normalize coordinates to a unit circle distance.
-        
-        Parameters
-        ----------
-        x: numpy.ndarray
-            1D array of x coordinates.
-        y: numpy.ndarray
-            1D array of y coordinates.
-        
-        Returns
-        ----------
-        numpy.ndarray
-            N x 2 matrix, where N is the number of coordinates. Each row contains the normalized x and y coordinates.
-        """
-        assert x.shape == y.shape, "x and y must be the same length."
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)    # ignore divide by 0 warnings
-            # Calculate angles
-            angles = np.arctan(y / x)
-            np.arctan2(y, x, angles, where=np.isnan(angles))    # only replace where angles are nan
-            
-            # Normalize by angles (max distance of 1)
-            normalized_x = x * np.abs(np.cos(angles))   # absolute value so the direction of the original coordinates is not changed
-            normalized_y = y * np.abs(np.sin(angles))   # absolute value so the direction of the original coordinates is not changed
-            normalized_coordinates = np.concatenate((normalized_x.reshape(-1, 1), normalized_y.reshape(-1, 1)), axis=1)
-        
-        assert normalized_coordinates.shape == (x.shape[0], 2)
-        return normalized_coordinates
 
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
-                 plot_line = False, figsize = (6, 6), dpi=80):
+                 plot_line = False, figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a scatter plot.
         
         Parameters
@@ -541,8 +547,10 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images, figsize, dpi)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images, figsize, dpi, tpd)
         self.plot_line = plot_line
 
     
@@ -605,7 +613,7 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 class BarPlotAnimator(PlotAnimator):
     def __init__(self, bar_labels, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (6, 6), dpi=80):
+                 figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a bar plot.
         
         Parameters
@@ -633,8 +641,10 @@ class BarPlotAnimator(PlotAnimator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi, tpd)
         self.bar_labels = bar_labels
         self.bar_width = 0.4
     
