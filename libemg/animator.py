@@ -547,6 +547,8 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
         super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images, figsize, dpi, tpd)
         self.plot_line = plot_line
