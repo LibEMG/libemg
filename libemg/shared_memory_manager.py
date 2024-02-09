@@ -12,7 +12,7 @@ from multiprocessing.shared_memory import SharedMemory
 #     test1 = npsm.get_variable(args[0])
 #     print(test1)
 
-class NPSharedMemory:
+class SharedMemoryManager:
     def __init__(self):
         self.variables = {}
 
