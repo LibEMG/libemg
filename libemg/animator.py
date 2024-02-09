@@ -142,8 +142,8 @@ class Animator:
 
 
 class PlotAnimator(Animator):
-    def __init__(self, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (6, 6), dpi=80):
+    def __init__(self, output_filepath='libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False,
+                 figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object specifically for plots.
         
         Parameters
@@ -162,14 +162,17 @@ class PlotAnimator(Animator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
         super().__init__(output_filepath, fps)
         self.show_direction = show_direction
         self.show_countdown = show_countdown
         self.show_boundary = show_boundary
-        self.fpd = fps * 2  # number of frames to generate to travel a distance of 1
         self.figsize = figsize
         self.dpi = dpi
+        self.tpd = tpd
+        self.fpd = fps * self.tpd  # number of frames to generate to travel a distance of 1
     
     
     def convert_distance_to_frames(self, coordinates1, coordinates2):
