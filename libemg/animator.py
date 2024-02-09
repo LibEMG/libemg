@@ -378,7 +378,7 @@ class PlotAnimator(Animator):
 
 class CartesianPlotAnimator(PlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False,
-                 axis_images = None, figsize = (6, 6), dpi=80):
+                 axis_images = None, figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane.
         
         Parameters
@@ -402,8 +402,10 @@ class CartesianPlotAnimator(PlotAnimator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi, tpd)
         self.normalize_distance = normalize_distance
         self.axis_images = axis_images
     
@@ -518,7 +520,7 @@ class CartesianPlotAnimator(PlotAnimator):
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
     def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
-                 plot_line = False, figsize = (6, 6), dpi=80):
+                 plot_line = False, figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a scatter plot.
         
         Parameters
@@ -545,7 +547,7 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
         dpi: int (optional), default=80
             Dots per inch of figure.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images, figsize, dpi)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, normalize_distance, axis_images, figsize, dpi, tpd)
         self.plot_line = plot_line
 
     
@@ -608,7 +610,7 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 class BarPlotAnimator(PlotAnimator):
     def __init__(self, bar_labels, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (6, 6), dpi=80):
+                 figsize = (6, 6), dpi = 80, tpd = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a bar plot.
         
         Parameters
@@ -636,8 +638,10 @@ class BarPlotAnimator(PlotAnimator):
             Size of figure in inches.
         dpi: int (optional), default=80
             Dots per inch of figure.
+        tpd: int (optional), default=2
+            Time (in seconds) for icon to travel a distance of 1.
         """
-        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi)
+        super().__init__(output_filepath, fps, show_direction, show_countdown, show_boundary, figsize, dpi, tpd)
         self.bar_labels = bar_labels
         self.bar_width = 0.4
     
