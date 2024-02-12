@@ -6,6 +6,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from libemg.feature_extractor import FeatureExtractor
+from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process
 import numpy as np
 import pickle
@@ -427,6 +428,10 @@ class OnlineStreamer:
         A location that the inputs and output of the classifier will be saved to.
     file: bool (optional)
         A toggle for activating the saving of inputs and outputs of the classifier.
+    smm: bool (optional)
+        A toggle for activating the storing of inputs and outputs of the classifier in the shared memory manager.
+    smm_items: list (optional)
+        A list of lists containing the tag, size, and multiprocessing locks for shared memory.
     parameters: dict (optional)
         A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
         in the sklearn docs for the given model.
@@ -442,7 +447,18 @@ class OnlineStreamer:
         If True, will stream predictions over TCP instead of UDP.
     """
 
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, file_path, file, features, port, ip, std_out, tcp, output_format):
+    def __init__(self, 
+                 offline_classifier, 
+                 window_size, 
+                 window_increment, 
+                 online_data_handler, 
+                 file_path, file, 
+                 smm, smm_items, 
+                 features, 
+                 port, ip, 
+                 std_out, 
+                 tcp, 
+                 output_format):
         self.window_size = window_size
         self.window_increment = window_increment
         self.raw_data = online_data_handler.raw_data
@@ -455,6 +471,14 @@ class OnlineStreamer:
         self.output_format = output_format
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
+        if smm:
+            smm = SharedMemoryManager()
+            for item in smm_items:
+                smm.create_variable(*item)
+            self.options['smm'] = smm
+            self.options['smm_len'] = item[1][0]
+            self.options['smm_num'] = 0
+
         self.files = {}
         self.tcp = tcp
         if not tcp:
@@ -501,6 +525,21 @@ class OnlineStreamer:
             row = [f"{time_stamp} {prediction} {probability[0]} {feat_str}"]
             writer.writerow(row)
             self.files['file_handle'].flush()
+        if hasattr(self.options, "smm"):
+            #assumed to have "classifier_input" and "classifier_output" keys
+            # these are (1+)
+            def insert_classifier_input(data):
+                data[self.options['smm_num']%self.options['smm_len'],:] = np.array([time_stamp, model_input[0]])
+
+            def insert_classifier_output(data):
+                data[self.options['smm_num']%self.options['smm_len'],:] = np.array([time_stamp, prediction, probability[0]])
+
+            self.options['smm'].modify_variable("classifier_input",
+                                                insert_classifier_input)
+            self.options['smm'].modify_variable("classifier_output",
+                                                insert_classifier_output)
+            self.options['smm_num'] += 1
+
         if self.output_format == "predictions":
             message = str(prediction) + calculated_velocity + '\n'
         elif self.output_format == "probabilities":
@@ -579,10 +618,10 @@ class OnlineEMGClassifier(OnlineStreamer):
         If True, will stream predictions over TCP instead of UDP.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False,port=12346, ip='127.0.0.1', std_out=False, tcp=False,
+                 file_path = '.', file=False, smm=False, smm_items=None, port=12346, ip='127.0.0.1', std_out=False, tcp=False,
                  output_format="predictions"):
         
-        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, features, port, ip, std_out, tcp, output_format)
+        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         
     def run(self, block=True):
