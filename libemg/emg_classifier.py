@@ -525,15 +525,15 @@ class OnlineStreamer:
             row = [f"{time_stamp} {prediction} {probability[0]} {feat_str}"]
             writer.writerow(row)
             self.files['file_handle'].flush()
-        if hasattr(self.options, "smm"):
+        if "smm" in self.options.keys():
             #assumed to have "classifier_input" and "classifier_output" keys
             # these are (1+)
             def insert_classifier_input(data):
-                data[self.options['smm_num']%self.options['smm_len'],:] = np.array([time_stamp, model_input[0]])
-
+                data[self.options['smm_num']%self.options['smm_len'],:] = np.hstack([time_stamp, model_input[0]])
+                return data
             def insert_classifier_output(data):
-                data[self.options['smm_num']%self.options['smm_len'],:] = np.array([time_stamp, prediction, probability[0]])
-
+                data[self.options['smm_num']%self.options['smm_len'],:] = np.hstack([time_stamp, prediction, probability[0]])
+                return data
             self.options['smm'].modify_variable("classifier_input",
                                                 insert_classifier_input)
             self.options['smm'].modify_variable("classifier_output",
