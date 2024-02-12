@@ -471,13 +471,10 @@ class OnlineStreamer:
         self.output_format = output_format
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
-        if smm:
-            smm = SharedMemoryManager()
-            for item in smm_items:
-                smm.create_variable(*item)
-            self.options['smm'] = smm
-            self.options['smm_len'] = item[1][0]
-            self.options['smm_num'] = 0
+
+        self.smm = smm
+        self.smm_items = smm_items
+        
 
         self.files = {}
         self.tcp = tcp
@@ -549,6 +546,13 @@ class OnlineStreamer:
         else:
             self.conn.sendall(str.encode(message))
                     
+    def make_shared_memory(self):
+        smm = SharedMemoryManager()
+        for item in self.smm_items:
+            smm.create_variable(*item)
+        self.options['smm'] = smm
+        self.options['smm_len'] = item[1][0]
+        self.options['smm_num'] = 0
 
     def _format_data_sample(self, data):
         arr = None
@@ -675,6 +679,10 @@ class OnlineEMGClassifier(OnlineStreamer):
         self.stop_running()
     
     def _run_helper(self):
+        if self.smm:
+            self.make_shared_memory()
+        
+
         fe = FeatureExtractor()
         self.raw_data.reset_emg()
         files = {}
