@@ -33,7 +33,7 @@ class SharedMemoryManager:
 
     def find_variable(self, tag, shape, type, lock):
         try:
-            smh = SharedMemory(tag)
+            smh = SharedMemory(tag, size=int(type().itemsize * np.prod(shape)))
             # create a new numpy array that uses the shared memory
             data = np.ndarray((shape), dtype=type, buffer=smh.buf)
             self.variables[tag] = {}
@@ -49,14 +49,13 @@ class SharedMemoryManager:
 
     def get_variable(self, tag):
         assert tag in self.variables.keys()
-        # implement Lock?
         with self.variables[tag]["lock"]:
-            return self.variables[tag]["data"]
+            return self.variables[tag]["data"].copy()
 
     def modify_variable(self, tag, fn):
         assert tag in self.variables.keys()
         with self.variables[tag]["lock"]:
-            self.variables[tag]["data"] = fn(self.variables[tag]["data"])
+            self.variables[tag]["data"][:] = fn(self.variables[tag]["data"])
 
 
     def clean_up(self, parent = True):
