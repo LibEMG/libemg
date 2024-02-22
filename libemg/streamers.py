@@ -111,6 +111,7 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
     >>> sifibridge_streamer()
     """
     sb = SiFiBridgeStreamer(ip, port,notch_on=notch_on,
+                            version=version,
                             ecg=ecg,
                             emg=emg,
                             eda=eda,
