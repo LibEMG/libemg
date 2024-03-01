@@ -129,6 +129,7 @@ class SiFiBridgeStreamer:
                  eda=False,
                  imu=False,
                  ppg=False,
+                 bioz=False,
                  notch_on=True,
                  notch_freq = 60,
                  emgfir_on=True,
@@ -142,7 +143,7 @@ class SiFiBridgeStreamer:
         self.version = version
         self.ip = ip 
         self.port = port
-        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg)) + " " 
+        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg)) + "," + str(int(bioz)) + " " 
         if notch_on or emgfir_on:
             self.config += " enable_filters 1 "
             if notch_on:
