@@ -6,7 +6,11 @@ from multiprocessing import Process
 from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
-from libemg._streamers._oymotion_streamer import OyMotionStreamer
+import platform
+if platform.system() != 'Linux':
+    from libemg._streamers._oymotion_windows_streamer import Gforce, oym_start_stream
+else: 
+    from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 
@@ -183,7 +187,7 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
     return p
 
 
-def oymotion_streamer(ip='127.0.0.1', port=12345):
+def oymotion_streamer(ip='127.0.0.1', port=12345, platform='windows', sampling_rate=1000):
     """The UDP streamer for the oymotion armband. 
 
     This function connects to the oymotion and streams its data over UDP. It leverages the gforceprofile 
@@ -192,23 +196,35 @@ def oymotion_streamer(ip='127.0.0.1', port=12345):
 
     Parameters
     ----------
-    filtered: bool (optional), default=True
-        If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
     port: int (optional), default=12345
         The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
+    ip: string (optional), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
+    platform: string ('windows', 'linux', or 'mac'), default='windows'
+        The platform being used. Linux uses a different streamer than mac and windows. 
+    sampling_rate: int (optional), default=1000 (options: 1000 or 500)
+        The sampling rate wanted from the device. Note that 1000 Hz is 8 bit resolution and 500 Hz is 12 bit resolution
 
     Examples
     ---------
     >>> oymotion_streamer()
     """
-    oym = OyMotionStreamer(ip, port)
-    # p = Process(target=oym.start_stream, daemon=True)
-    # p.start()
-    oym.start_stream()
+    platform.lower()
+    sampling = 1000
+    res = 8
+    if sampling_rate == 500:
+        res = 12
+        sampling = 500
+
+    if platform == "windows" or platform == 'mac':
+        oym = Gforce(ip,port)
+        p = Process(target=oym_start_stream, args=(oym,sampling,), daemon=True)
+        p.start()
+        return p
+    else:
+        oym = OyMotionStreamer(ip, port, sampRate=sampling, resolution=res)
+        oym.start_stream()
     return 0
-    # start_stream()
 
 
 

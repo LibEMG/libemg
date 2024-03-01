@@ -705,7 +705,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
                 
                 # Make prediction
-                probabilities = self.classifier.classifier.predict_proba(classifier_input)
+                probabilities = self.raw_data.get_classifier().classifier.predict_proba(classifier_input)
                 prediction, probability = self.classifier._prediction_helper(probabilities)
                 prediction = prediction[0]
 
@@ -726,7 +726,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                     calculated_velocity = " 0"
                     # Dont check if rejected 
                     if prediction >= 0:
-                        calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
+                        calculated_velocity = " " + str(self.raw_data.get_classifier()._get_velocity(window, prediction))
                 
                 self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
                 

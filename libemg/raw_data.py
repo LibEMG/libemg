@@ -13,6 +13,9 @@ class RawData:
     def set_classifier(self, classifier):
         self.classifier = classifier
 
+    def get_classifier(self):
+        return self.classifier
+
     def get_imu(self):
         return self.imu_data
 
