@@ -20,10 +20,13 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
                  eda=False,
                  imu=False,
                  ppg=False,
-                 bioz=False,
                  notch_on=True, notch_freq=60,
                  emg_fir_on = True,
                  emg_fir=[20,450],
+                 eda_cfg = True,
+                 fc_lp = 0, # low pass eda
+                 fc_hp = 5, # high pass eda
+                 freq = 250,# eda sampling frequency
                  other=False,
                  streaming=False):
     """The UDP streamer for the sifi armband. 
@@ -50,10 +53,13 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
                             eda=eda,
                             imu=imu,
                             ppg=ppg,
-                            bioz=bioz,
                             notch_freq=notch_freq,
                             emgfir_on=emg_fir_on,
                             emg_fir = emg_fir,
+                            eda_cfg = eda_cfg,
+                            fc_lp = fc_lp, # low pass eda
+                            fc_hp = fc_hp, # high pass eda
+                            freq = freq,# eda sampling frequency
                             other=other,
                             streaming=streaming)
     p = Process(target=sb.start_stream, daemon=True)

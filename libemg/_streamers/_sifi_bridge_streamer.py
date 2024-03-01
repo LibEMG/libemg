@@ -1,14 +1,24 @@
 import time
 import os
 import requests
+from libemg.shared_memory_manager import SharedMemoryManager
+import platform
 # this is responsible for receiving the data
 class SiFiBridge:
     def __init__(self, config, version, other):
         self.version = version
-        import platform
+        self.start_pipe()
+        
+        self.config = config
+        self.other = other
+        self.emg_handlers = []
+        self.imu_handlers = []
+        self.other_handlers = []
+
+    def start_pipe(self):
         # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
         if platform.system() == 'Linux':
-            if not os.path.exists('sifi_bridge_linux'):
+            if not os.path.exists('sifi_bridge_linux'): 
                 r = requests.get('https://raw.githubusercontent.com/eeddy/libemg/sifi-bioarmband/libemg/_streamers/sifi_bridge_linux?token=GHSAT0AAAAAACDJYY4C56HYEGNCFDJGJUPGZFPYBKA')
             with open("sifi_bridge_linux", "wb") as file:
                     file.write(r.content)
@@ -17,19 +27,13 @@ class SiFiBridge:
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE)
         elif platform.system() == "Windows":
-            if not os.path.exists('sifi_bridge_windows.exe'):
+            if not os.path.exists('sifi_bridge_windows.exe'): # I'm 75% sure github doesn't let you curl .exe files
                 r = requests.get('https://raw.githubusercontent.com/eeddy/libemg/sifi-bioarmband/libemg/_streamers/sifi_bridge_windows.exe?token=GHSAT0AAAAAACDJYY4CXIP2ELDFQOWK6WLEZFP5SWA')
                 with open("sifi_bridge_windows.exe", "wb") as file:
                     file.write(r.content)
             self.proc = subprocess.Popen(['sifi_bridge_windows.exe'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE)
-        self.config = config
-        self.other = other
-        self.emg_handlers = []
-        self.imu_handlers = []
-        self.other_handlers = []
-
     def connect(self):
         connected = False
         while not connected:
@@ -101,10 +105,6 @@ class SiFiBridge:
                     ppg = np.transpose(np.vstack([data_arr_as_json['data']['b'][0:min(sizes)], data_arr_as_json['data']['g'][0:min(sizes)], data_arr_as_json['data']['r'][0:min(sizes)], data_arr_as_json['data']['ir'][0:min(sizes)]]))
                     for p in ppg:
                         self.other_handlers[0]('PPG-bio', p)
-                if "bioz" in list(data_arr_as_json["data"].keys()):
-                    bioz = data_arr_as_json['data']['bioz']
-                    for b in bioz:
-                        self.other_handlers[0]('BIOZ-bio', [b])
 
 
     def close(self):
@@ -129,11 +129,14 @@ class SiFiBridgeStreamer:
                  eda=False,
                  imu=False,
                  ppg=False,
-                 bioz=False,
                  notch_on=True,
                  notch_freq = 60,
                  emgfir_on=True,
                  emg_fir = [20, 450],
+                 eda_cfg = True,
+                 fc_lp = 0, # low pass eda
+                 fc_hp = 5, # high pass eda
+                 freq = 250,# eda sampling frequency
                  other=False,
                  streaming=False):
         # notch_on refers to EMG notch filter
@@ -143,7 +146,7 @@ class SiFiBridgeStreamer:
         self.version = version
         self.ip = ip 
         self.port = port
-        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg)) + "," + str(int(bioz)) + " " 
+        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg))
         if notch_on or emgfir_on:
             self.config += " enable_filters 1 "
             if notch_on:
@@ -156,13 +159,19 @@ class SiFiBridgeStreamer:
 
 
         else:
-            self.config += " enable_filters 0 "
+            self.config += " enable_filters 0"
+
+        if eda_cfg:
+            self.config += " eda_cfg " + str(int(fc_lp)) + "," + str(int(fc_hp)) + "," + str(int(freq))
+
         if streaming:
             self.config += " data_mode 1"
         print(self.config)
         self.config = bytes(self.config,"UTF-8")
 
+
     def start_stream(self):
+        # process is started beyond this point!
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
         b= SiFiBridge(self.config, self.version, self.other)
