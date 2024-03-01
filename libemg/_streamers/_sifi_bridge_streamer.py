@@ -100,7 +100,11 @@ class SiFiBridge:
                     sizes = [len(data_arr_as_json['data']['b']), len(data_arr_as_json['data']['g']), len(data_arr_as_json['data']['r']), len(data_arr_as_json['data']['ir'])]
                     ppg = np.transpose(np.vstack([data_arr_as_json['data']['b'][0:min(sizes)], data_arr_as_json['data']['g'][0:min(sizes)], data_arr_as_json['data']['r'][0:min(sizes)], data_arr_as_json['data']['ir'][0:min(sizes)]]))
                     for p in ppg:
-                        self.other_handlers[0]('PPG-bio', p)      
+                        self.other_handlers[0]('PPG-bio', p)
+                if "bioz" in list(data_arr_as_json["data"].keys()):
+                    bioz = data_arr_as_json['data']['bioz']
+                    for b in bioz:
+                        self.other_handlers[0]('BIOZ-bio', [b])
 
 
     def close(self):
@@ -125,6 +129,7 @@ class SiFiBridgeStreamer:
                  eda=False,
                  imu=False,
                  ppg=False,
+                 bioz=False,
                  notch_on=True,
                  notch_freq = 60,
                  emgfir_on=True,
@@ -138,7 +143,7 @@ class SiFiBridgeStreamer:
         self.version = version
         self.ip = ip 
         self.port = port
-        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg)) + " " 
+        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg)) + "," + str(int(bioz)) + " " 
         if notch_on or emgfir_on:
             self.config += " enable_filters 1 "
             if notch_on:
