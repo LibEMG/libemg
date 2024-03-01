@@ -1,7 +1,7 @@
 import dearpygui.dearpygui as dpg
 from libemg._gui._data_collection_panel import DataCollectionPanel
 from libemg._gui._data_import_panel import DataImportPanel
-from libemg._gui._visualize_livesignal_panel import VisualizeLiveSignalPanel
+from libemg._gui._visualize_live_signal_panel import VisualizeLiveSignalPanel
 import inspect
 
 class GUI:
