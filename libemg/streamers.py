@@ -2,7 +2,7 @@ import time
 import socket
 import pickle
 import numpy as np
-from multiprocessing import Process
+from multiprocessing import Process, Event
 from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
@@ -62,9 +62,10 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
                             freq = freq,# eda sampling frequency
                             other=other,
                             streaming=streaming)
-    p = Process(target=sb.start_stream, daemon=True)
-    p.start()
-    return p
+    sb.start()
+    # p = Process(target=sb.start_stream, daemon=True)
+    # p.start()
+    return sb
 
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):

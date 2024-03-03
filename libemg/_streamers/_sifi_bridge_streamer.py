@@ -3,127 +3,16 @@ import os
 import requests
 from libemg.shared_memory_manager import SharedMemoryManager
 import platform
-# this is responsible for receiving the data
-class SiFiBridge:
-    def __init__(self, config, version, other):
-        self.version = version
-        self.start_pipe()
-        
-        self.config = config
-        self.other = other
-        self.emg_handlers = []
-        self.imu_handlers = []
-        self.other_handlers = []
-
-    def start_pipe(self):
-        # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
-        if platform.system() == 'Linux':
-            if not os.path.exists('sifi_bridge_linux'): 
-                r = requests.get('https://raw.githubusercontent.com/eeddy/libemg/sifi-bioarmband/libemg/_streamers/sifi_bridge_linux?token=GHSAT0AAAAAACDJYY4C56HYEGNCFDJGJUPGZFPYBKA')
-            with open("sifi_bridge_linux", "wb") as file:
-                    file.write(r.content)
-                    print("Please run <sudo chmod +x sifi_bridge_linux> in the terminal to indicate this is an executable file! You only need to do this once.")
-            self.proc = subprocess.Popen(['sifi_bridge_linux'],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
-        elif platform.system() == "Windows":
-            if not os.path.exists('sifi_bridge_windows.exe'): # I'm 75% sure github doesn't let you curl .exe files
-                r = requests.get('https://raw.githubusercontent.com/eeddy/libemg/sifi-bioarmband/libemg/_streamers/sifi_bridge_windows.exe?token=GHSAT0AAAAAACDJYY4CXIP2ELDFQOWK6WLEZFP5SWA')
-                with open("sifi_bridge_windows.exe", "wb") as file:
-                    file.write(r.content)
-            self.proc = subprocess.Popen(['sifi_bridge_windows.exe'],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
-    def connect(self):
-        connected = False
-        while not connected:
-            name = '-c BioPoint_v' + str(self.version) + '\n'
-            self.proc.stdin.write(bytes(name, 'utf-8'))
-            self.proc.stdin.flush()
-
-            ret = self.proc.stdout.readline().decode()
-
-            dat = json.loads(ret)
-
-            if dat["connected"] == 1:
-                connected = True
-            else:
-                print("Could not connect. Retrying.")
-        # Setup channels
-        self.proc.stdin.write(self.config)
-        self.proc.stdin.flush()
-
-    def add_emg_handler(self, closure):
-        self.emg_handlers.append(closure)
-
-    def add_imu_handler(self, closure):
-        self.imu_handlers.append(closure)
-
-    def add_other_handler(self, closure):
-        self.other_handlers.append(closure)
-
-    def run(self):
-        self.proc.stdin.write(b'-cmd 1\n')
-        self.proc.stdin.flush()
-        self.proc.stdin.write(b'-cmd 0\n')
-        self.proc.stdin.flush()
-        packet = np.zeros((14,8))
-        while True:
-            data_arr_as_json = self.proc.stdout.readline().decode()
-            if data_arr_as_json == "" or data_arr_as_json.startswith("sending cmd"):
-                continue
-            data_arr_as_json = json.loads(data_arr_as_json)
-            if "data" in list(data_arr_as_json.keys()):
-                if "emg0" in list(data_arr_as_json["data"].keys()):
-                    for c in range(packet.shape[1]):
-                        packet[:,c] = data_arr_as_json['data']["emg"+str(c)]
-                    for s in range(packet.shape[0]):
-                        for h in self.emg_handlers:
-                            h(packet[s,:].tolist())
-                elif "emg" in list(data_arr_as_json["data"].keys()): # This is the biopoint emg 
-                    emg = data_arr_as_json['data']["emg"]
-                    for e in emg:
-                        if not self.other:
-                            self.emg_handlers[0]([e])
-                        else:
-                            self.other_handlers[0]('EMG-bio', [e])
-                if "acc_x" in list(data_arr_as_json["data"].keys()):
-                    accel = np.transpose(np.vstack([data_arr_as_json['data']['acc_x'], data_arr_as_json['data']['acc_y'], data_arr_as_json['data']['acc_z']]))
-                    quat = np.transpose(np.vstack([data_arr_as_json['data']['w'], data_arr_as_json['data']['x'], data_arr_as_json['data']['y'], data_arr_as_json['data']['z']]))
-                    imu = np.hstack((accel, quat))
-                    for i in imu:
-                        if not self.other:
-                            self.imu_handlers[0](i)
-                        else:
-                            self.other_handlers[0]('IMU-bio', i)
-                if "eda" in list(data_arr_as_json["data"].keys()):
-                    eda = data_arr_as_json['data']['eda']
-                    for e in eda:
-                        self.other_handlers[0]('EDA-bio', [e])
-                if "b" in list(data_arr_as_json["data"].keys()):
-                    sizes = [len(data_arr_as_json['data']['b']), len(data_arr_as_json['data']['g']), len(data_arr_as_json['data']['r']), len(data_arr_as_json['data']['ir'])]
-                    ppg = np.transpose(np.vstack([data_arr_as_json['data']['b'][0:min(sizes)], data_arr_as_json['data']['g'][0:min(sizes)], data_arr_as_json['data']['r'][0:min(sizes)], data_arr_as_json['data']['ir'][0:min(sizes)]]))
-                    for p in ppg:
-                        self.other_handlers[0]('PPG-bio', p)
-
-
-    def close(self):
-        self.proc.stdin.write(b'-cmd 1\n')
-        self.proc.stdin.flush()
-        return
-
-    def turnoff(self):
-        self.proc.stdin.write(b'-cmd 13\n')
-        self.proc.stdin.flush()
-        return
-
+from multiprocessing import Process, Event
 import subprocess
-import json
-import numpy as np
 import socket
 import pickle
-class SiFiBridgeStreamer:
-    def __init__(self, ip, port, version='1_2',
+import json
+import numpy as np
+
+class SiFiBridgeStreamer(Process):
+    def __init__(self, ip, port, 
+                 version='1_2',
                  ecg=False,
                  emg=True, 
                  eda=False,
@@ -139,65 +28,187 @@ class SiFiBridgeStreamer:
                  freq = 250,# eda sampling frequency
                  other=False,
                  streaming=False):
-        # notch_on refers to EMG notch filter
-        # notch_freq refers to frequency cutoff of notch filter
-        # 
-        self.other = other
-        self.version = version
-        self.ip = ip 
+        Process.__init__(self, daemon=True)
+        self.ip = ip
         self.port = port
-        self.config = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg))
+        self.connected = False
+        self.signal = Event()
+        self.other = other
+        self.emg_handlers = []
+        self.imu_handlers = []
+        self.other_handlers = []
+        self.prepare_config_message(ecg, emg, eda, imu, ppg, 
+                                    notch_on, notch_freq, emgfir_on, emg_fir,
+                                    eda_cfg, fc_lp, fc_hp, freq, streaming)
+        self.prepare_connect_message(version)
+
+    def prepare_config_message(self, ecg, emg, eda, imu, ppg, 
+                                    notch_on, notch_freq, emgfir_on, emg_fir,
+                                    eda_cfg, fc_lp, fc_hp, freq, streaming):
+        self.config_message = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg))
         if notch_on or emgfir_on:
-            self.config += " enable_filters 1 "
+            self.config_message += " enable_filters 1 "
             if notch_on:
-                self.config += " emg_notch " + str(notch_freq)
+                self.config_message += " emg_notch " + str(notch_freq)
             else:
-                self.config += " emg_notch 0"
+                self.config_message += " emg_notch 0"
             if emgfir_on:
-                # NOTE: notch flag should be on to do bandpass stuff
-                self.config += " emg_fir " + str(emg_fir[0]) + "," + str(emg_fir[1]) + ""
-
-
+                self.config_message += " emg_fir " + str(emg_fir[0]) + "," + str(emg_fir[1]) + ""
         else:
-            self.config += " enable_filters 0"
+            self.config_message += " enable_filters 0"
 
         if eda_cfg:
-            self.config += " eda_cfg " + str(int(fc_lp)) + "," + str(int(fc_hp)) + "," + str(int(freq))
+            self.config_message += " eda_cfg " + str(int(fc_lp)) + "," + str(int(fc_hp)) + "," + str(int(freq))
 
         if streaming:
-            self.config += " data_mode 1"
-        print(self.config)
-        self.config = bytes(self.config,"UTF-8")
+            self.config_message += " data_mode 1"
+        self.config_message += "\n"
+        self.config_message = bytes(self.config_message,"UTF-8")
 
+    def prepare_connect_message(self, version):
+        self.connect_message = '-c BioPoint_v' + str(version) + '\n'
+        self.connect_message = bytes(self.connect_message,"UTF-8")
 
-    def start_stream(self):
+    def start_pipe(self):
+        # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
+        if platform.system() == 'Linux':
+           self.proc = subprocess.Popen(['sifi_bridge_linux'],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
+        elif platform.system() == "Windows":  # need a way to get these without curling -- 
+            self.proc = subprocess.Popen(['sifi_bridge_windows.exe'],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
+            
+    def connect(self):
+        while not self.connected:
+            self.proc.stdin.write(self.connect_message)
+            self.proc.stdin.flush()
+
+            ret = self.proc.stdout.readline().decode()
+
+            dat = json.loads(ret)
+
+            if dat["connected"] == 1:
+                self.connected = True
+                print("Connected to Sifi device.")
+            else:
+                print("Could not connect. Retrying.")
+        # Setup channels
+        self.proc.stdin.write(self.config_message)
+        self.proc.stdin.flush()
+
+        self.proc.stdin.write(b'-cmd 1\n')
+        self.proc.stdin.flush()
+        self.proc.stdin.write(b'-cmd 0\n')
+        self.proc.stdin.flush()
+
+    def add_emg_handler(self, closure):
+        self.emg_handlers.append(closure)
+
+    def add_imu_handler(self, closure):
+        self.imu_handlers.append(closure)
+
+    def add_other_handler(self, closure):
+        self.other_handlers.append(closure)
+    
+    def process_packet(self, data):
+        packet = np.zeros((14,8))
+        if data == "" or data.startswith("sending cmd"):
+            return
+        data = json.loads(data)
+        if "data" in list(data.keys()):
+            if "emg0" in list(data["data"].keys()):
+                for c in range(packet.shape[1]):
+                    packet[:,c] = data['data']["emg"+str(c)]
+                for s in range(packet.shape[0]):
+                    for h in self.emg_handlers:
+                        h(packet[s,:].tolist())
+            elif "emg" in list(data["data"].keys()): # This is the biopoint emg 
+                emg = data['data']["emg"]
+                for e in emg:
+                    if not self.other:
+                        self.emg_handlers[0]([e])
+                    else:
+                        self.other_handlers[0]('EMG-bio', [e])
+            if "acc_x" in list(data["data"].keys()):
+                accel = np.transpose(np.vstack([data['data']['acc_x'], data['data']['acc_y'], data['data']['acc_z']]))
+                quat = np.transpose(np.vstack([data['data']['w'], data['data']['x'], data['data']['y'], data['data']['z']]))
+                imu = np.hstack((accel, quat))
+                for i in imu:
+                    if not self.other:
+                        self.imu_handlers[0](i)
+                    else:
+                        self.other_handlers[0]('IMU-bio', i)
+            if "eda" in list(data["data"].keys()):
+                eda = data['data']['eda']
+                for e in eda:
+                    self.other_handlers[0]('EDA-bio', [e])
+            if "b" in list(data["data"].keys()):
+                sizes = [len(data['data']['b']), len(data['data']['g']), len(data['data']['r']), len(data['data']['ir'])]
+                ppg = np.transpose(np.vstack([data['data']['b'][0:min(sizes)], data['data']['g'][0:min(sizes)], data['data']['r'][0:min(sizes)], data['data']['ir'][0:min(sizes)]]))
+                for p in ppg:
+                    self.other_handlers[0]('PPG-bio', p)
+
+    def run(self):
         # process is started beyond this point!
+        self.start_pipe()
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        
-        b= SiFiBridge(self.config, self.version, self.other)
-        b.connect()
-
         def write_emg(emg):
             data_arr = pickle.dumps(list(emg))
             sock.sendto(data_arr, (self.ip, self.port))
-        b.add_emg_handler(write_emg)
+        self.add_emg_handler(write_emg)
 
         def write_imu(imu):
             imu_list = ['IMU', imu]
             data_arr = pickle.dumps(list(imu_list))
             sock.sendto(data_arr, (self.ip, self.port))
-        b.add_imu_handler(write_imu)
+        self.add_imu_handler(write_imu)
 
         def write_other(other, data):
             other_list = [other, data]
             data_arr = pickle.dumps(list(other_list))
             sock.sendto(data_arr, (self.ip, self.port))
-        b.add_other_handler(write_other)
+        self.add_other_handler(write_other)
+        self.connect()
 
+        
         while True:
             try:
-                b.run()
+                data_from_processess = self.proc.stdout.readline().decode()
+                self.process_packet(data_from_processess)
             except Exception as e:
                 print("Error Occured: " + str(e))
                 continue
-                
+            if self.signal.is_set():
+                self.cleanup()
+                break
+        print("Process Ended")
+
+    def close(self):
+        self.proc.stdin.write(b'-cmd 1\n')
+        self.proc.stdin.flush()
+        return
+
+    def turnoff(self):
+        self.proc.stdin.write(b'-cmd 13\n')
+        self.proc.stdin.flush()
+        return
+    
+    def disconnect(self):
+        self.proc.stdin.write(b'-d\n')
+        self.proc.stdin.flush()
+        while self.connected:
+            ret = self.proc.stdout.readline().decode()
+            dat = json.loads(ret)
+            if 'connected' in dat.keys():
+                if dat["connected"] == 0:
+                    self.connected = False
+                    print("Device disconnected.")
+        return self.connected
+
+    def cleanup(self):
+        self.close()
+        time.sleep(3)
+        self.disconnect()
+    

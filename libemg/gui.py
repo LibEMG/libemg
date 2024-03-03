@@ -37,6 +37,7 @@ class GUI:
         self.file_menu_init()
 
         dpg.show_viewport()
+        dpg.set_exit_callback(self.on_window_close)
 
         if debug:
             dpg.configure_app(manual_callback_management=True)
@@ -98,3 +99,8 @@ class GUI:
 
     def fitts_law_callback(self):
         pass
+
+    def on_window_close(self):
+        print("Window is closing. Performing clean-up...")
+        if 'streamer' in self.args.keys():
+            self.args['streamer'].signal.set()
