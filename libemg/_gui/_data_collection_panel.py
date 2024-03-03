@@ -261,15 +261,27 @@ class DataCollectionPanel:
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
             dpg.set_value("__dc_progress", value = progress)        
     
-    def save_data(self, filename):
+        def save_data(self, filename):
         file_parts = filename.split('.')
+        plt.figure(figsize=(10, 8))  # Adjust the figure size as needed
+        subplot_index = 1
+
+
         if len(self.gui.online_data_handler.raw_data.get_emg()):
             data = self.gui.online_data_handler.raw_data.get_emg()
             with open(filename, "w", newline='', encoding='utf-8') as file:
                 emg_writer = csv.writer(file)
                 for row in data:
                     emg_writer.writerow(row)
+
+            # Plotting EMG data
+            plt.subplot(4, 1, subplot_index)
+            plt.plot(data)
+            plt.title('EMG Data')
+            subplot_index += 1
+
             self.gui.online_data_handler.raw_data.reset_emg()
+
         # write the other information if we have it
         if len(self.gui.online_data_handler.raw_data.get_imu()):
             filename_imu = file_parts[0] + "_IMU." + file_parts[1]
@@ -277,6 +289,14 @@ class DataCollectionPanel:
                 imu_writer = csv.writer(file)
                 for row in data:
                     imu_writer.writerow(row)
+
+            # Plotting IMU data
+            plt.subplot(4, 1, subplot_index)
+            for i in range(3):  # Loop through the first three signals
+                plt.plot([row[i] for row in data], label=f'Signal {i + 1}')
+            plt.title('IMU Data')
+            subplot_index += 1
+
             self.gui.online_data_handler.raw_data.reset_imu()
         # write the other information if we have it
         if len(self.gui.online_data_handler.raw_data.get_others()):
@@ -289,7 +309,22 @@ class DataCollectionPanel:
                     filename_modality = csv.writer(file)
                     for row in modality_data:
                         filename_modality.writerow(row)
+
+            # Plotting other data
+            for key, modality_data in others_data.items():
+                plt.subplot(4, 1, subplot_index)
+                if "IMU" in key:
+                    for i in range(3):  # Loop through the first three signals
+                        plt.plot([row[i] for row in modality_data], label=f'Signal {i + 1}')
+                else:
+                    plt.plot(modality_data)
+                plt.title(f'{key} Data')
+                subplot_index += 1
+
             self.gui.online_data_handler.raw_data.reset_others()
+
+        plt.tight_layout()
+        plt.show()
         
 
     def visualize_callback(self):
