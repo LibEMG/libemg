@@ -212,3 +212,244 @@ class SiFiBridgeStreamer(Process):
         time.sleep(3)
         self.disconnect()
     
+
+    import time
+import os
+import requests
+from libemg.shared_memory_manager import SharedMemoryManager
+import platform
+# this is responsible for receiving the data
+class SiFiBridge:
+    def __init__(self, config_message, connect_message):
+        self.connect_message = connect_message
+        self.config_message  = config_message 
+        self.start_pipe()
+        
+        self.emg_handlers = []
+        self.imu_handlers = []
+        self.ecg_handlers = []
+        self.eda_handlers = []
+        self.ppg_handlers = []
+
+    def start_pipe(self):
+        # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
+        if platform.system() == 'Linux':
+            if not os.path.exists('sifi_bridge_linux'): 
+                r = requests.get('https://raw.githubusercontent.com/eeddy/libemg/sifi-bioarmband/libemg/_streamers/sifi_bridge_linux?token=GHSAT0AAAAAACDJYY4C56HYEGNCFDJGJUPGZFPYBKA')
+            with open("sifi_bridge_linux", "wb") as file:
+                    file.write(r.content)
+                    print("Please run <sudo chmod +x sifi_bridge_linux> in the terminal to indicate this is an executable file! You only need to do this once.")
+            self.proc = subprocess.Popen(['sifi_bridge_linux'],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
+        elif platform.system() == "Windows":
+            if not os.path.exists('sifi_bridge_windows.exe'): # I'm 75% sure github doesn't let you curl .exe files
+                r = requests.get('https://raw.githubusercontent.com/eeddy/libemg/sifi-bioarmband/libemg/_streamers/sifi_bridge_windows.exe?token=GHSAT0AAAAAACDJYY4CXIP2ELDFQOWK6WLEZFP5SWA')
+                with open("sifi_bridge_windows.exe", "wb") as file:
+                    file.write(r.content)
+            self.proc = subprocess.Popen(['sifi_bridge_windows.exe'],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
+    def connect(self):
+        connected = False
+        while not connected:
+            self.proc.stdin.write(self.connect_message)
+            self.proc.stdin.flush()
+            ret = self.proc.stdout.readline().decode()
+            dat = json.loads(ret)
+
+            if dat["connected"] == 1:
+                connected = True
+                print(f"Connected to SiFi device (id:{dat['id']}, mac:{dat['mac']}).")
+            else:
+                print("Could not connect. Retrying.")
+        # Setup channels
+        self.proc.stdin.write(self.config_message)
+        self.proc.stdin.flush()
+
+    def add_emg_handler(self, closure):
+        self.emg_handlers.append(closure)
+
+    def add_imu_handler(self, closure):
+        self.imu_handlers.append(closure)
+
+    def add_eda_handler(self, closure):
+        self.eda_handlers.append(closure)
+    
+    def add_ecg_handler(self, closure):
+        self.ecg_handlers.append(closure)
+
+    def add_ppg_handler(self, closure):
+        self.ppg_handlers.append(closure)
+
+    def run(self):
+        self.proc.stdin.write(b'-cmd 1\n')
+        self.proc.stdin.flush()
+        self.proc.stdin.write(b'-cmd 0\n')
+        self.proc.stdin.flush()
+        packet = np.zeros((14,8))
+        while True:
+            data_arr_as_json = self.proc.stdout.readline().decode()
+            if data_arr_as_json == "" or data_arr_as_json.startswith("sending cmd"):
+                continue
+            data_arr_as_json = json.loads(data_arr_as_json)
+            if "data" in list(data_arr_as_json.keys()):
+                if "emg0" in list(data_arr_as_json["data"].keys()):
+                    emg = np.stack((data_arr_as_json["data"]["emg0"],
+                                     data_arr_as_json["data"]["emg1"],
+                                     data_arr_as_json["data"]["emg2"],
+                                     data_arr_as_json["data"]["emg3"],
+                                     data_arr_as_json["data"]["emg4"],
+                                     data_arr_as_json["data"]["emg5"],
+                                     data_arr_as_json["data"]["emg6"],
+                                     data_arr_as_json["data"]["emg7"]
+                                     )).T
+                    for h in self.emg_handlers:
+                        h(emg)
+                elif "emg" in list(data_arr_as_json["data"].keys()): # This is the biopoint emg 
+                    emg = data_arr_as_json['data']["emg"]
+                    for h in self.emg_handlers:
+                        self.emg_handlers(emg)
+                if "acc_x" in list(data_arr_as_json["data"].keys()):
+                    imu = np.stack((data_arr_as_json["data"]["acc_x"],
+                                    data_arr_as_json["data"]["acc_y"],
+                                    data_arr_as_json["data"]["acc_z"],
+                                    data_arr_as_json["data"]["w"],
+                                    data_arr_as_json["data"]["x"],
+                                    data_arr_as_json["data"]["y"],
+                                    data_arr_as_json["data"]["z"]
+                                    )).T
+                    for h in self.imu_handlers:
+                        self.imu_handlers(imu)
+                if "eda" in list(data_arr_as_json["data"].keys()):
+                    eda = np.array(data_arr_as_json['data']['eda'])
+                    for e in self.eda_handlers:
+                        e(eda)
+                if "b" in list(data_arr_as_json["data"].keys()):
+                    ppg = np.stack((data_arr_as_json["data"]["b"],
+                                    data_arr_as_json["data"]["g"],
+                                    data_arr_as_json["data"]["r"],
+                                    data_arr_as_json["data"]["ir"]
+                                    )).T
+                    # TODO: past code indicates sometimes the ppg channels do not all have the same number of rows.
+                    # might require a fix for ppg
+                    for p in self.ppg_handlers:
+                        p(ppg)
+
+
+    def close(self):
+        self.proc.stdin.write(b'-cmd 1\n')
+        self.proc.stdin.flush()
+        return
+
+    def turnoff(self):
+        self.proc.stdin.write(b'-cmd 13\n')
+        self.proc.stdin.flush()
+        return
+
+# smm version! these need to be merged
+# import subprocess
+# import json
+# import numpy as np
+# import socket
+# import pickle
+# class SiFiBridgeStreamer:
+#     def __init__(self,
+#                  version='1_2',
+#                  shared_memory_items = [],
+#                  ecg=False,
+#                  emg=True, 
+#                  eda=False,
+#                  imu=False,
+#                  ppg=False,
+#                  notch_on=True,
+#                  notch_freq = 60,
+#                  emgfir_on=True,
+#                  emg_fir = [20, 450],
+#                  eda_cfg = True,
+#                  fc_lp = 0, # low pass eda
+#                  fc_hp = 5, # high pass eda
+#                  freq = 250,# eda sampling frequency
+#                  streaming=False):
+#         self.prepare_config_message(ecg, emg, eda, imu, ppg, 
+#                                     notch_on, notch_freq, emgfir_on, emg_fir,
+#                                     eda_cfg, fc_lp, fc_hp, freq, streaming)
+#         self.prepare_connect_message(version)
+#         self.shared_memory_items  = shared_memory_items
+
+#     def prepare_config_message(self, ecg, emg, eda, imu, ppg, 
+#                                     notch_on, notch_freq, emgfir_on, emg_fir,
+#                                     eda_cfg, fc_lp, fc_hp, freq, streaming):
+#         self.config_message = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg))
+#         if notch_on or emgfir_on:
+#             self.config_message += " enable_filters 1 "
+#             if notch_on:
+#                 self.config_message += " emg_notch " + str(notch_freq)
+#             else:
+#                 self.config_message += " emg_notch 0"
+#             if emgfir_on:
+#                 self.config_message += " emg_fir " + str(emg_fir[0]) + "," + str(emg_fir[1]) + ""
+#         else:
+#             self.config_message += " enable_filters 0"
+
+#         if eda_cfg:
+#             self.config_message += " eda_cfg " + str(int(fc_lp)) + "," + str(int(fc_hp)) + "," + str(int(freq))
+
+#         if streaming:
+#             self.config_message += " data_mode 1"
+#         self.config_message += "\n"
+#         self.config_message = bytes(self.config_message,"UTF-8")
+
+#     def prepare_connect_message(self, version):
+#         self.connect_message = '-c BioPoint_v' + str(version) + '\n'
+#         self.connect_message = bytes(self.connect_message,"UTF-8")
+
+#     def start_stream(self):
+#         # process is started beyond this point!
+#         self.smm = SharedMemoryManager()
+#         for item in self.shared_memory_items:
+#             self.smm.create_variable(*item)
+        
+        
+#         # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+#         b= SiFiBridge(self.config_message, self.connect_message)
+#         b.connect()
+
+#         def write_emg(emg):
+#             data = self.smm.get_variable("emg")
+#             data[:] = np.vstack(np.flip(emg,0), data)[:data.shape[0],:]
+#             data_count = self.smm.get_variable("emg_count")
+#             data_count[:] = data_count + emg.shape[0]
+#         b.add_emg_handler(write_emg)
+
+#         def write_imu(imu):
+#             data = self.smm.get_variable("imu")
+#             data[:] = np.vstack(np.flip(imu,0), data)[:data.shape[0],:]
+#             data_count = self.smm.get_variable("imu_count")
+#             data_count[:] = data_count + imu.shape[0]
+#             # sock.sendto(data_arr, (self.ip, self.port))
+#         b.add_imu_handler(write_imu)
+
+#         def write_eda(eda):
+#             data = self.smm.get_variable("eda")
+#             data[:] = np.vstack(np.flip(eda,0), data)[:data.shape[0],:]
+#             data_count = self.smm.get_variable("eda_count")
+#             data_count[:] = data_count + eda.shape[0]
+#         b.add_eda_handler(write_eda)
+
+#         def write_ppg(ppg):
+#             data = self.smm.get_variable("ppg")
+#             data[:] = np.vstack(np.flip(ppg,0), data)[:data.shape[0],:]
+#             data_count = self.smm.get_variable("ppg_count")
+#             data_count[:] = data_count + ppg.shape[0]
+#         b.add_ppg_handler(write_eda)
+
+
+#         while True:
+#             try:
+#                 b.run()
+#             except Exception as e:
+#                 print("Error Occured: " + str(e))
+#                 continue
+                
