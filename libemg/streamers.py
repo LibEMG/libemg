@@ -14,12 +14,6 @@ else:
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 
-
-
-
-
-
-
 def sifibridge_streamer(version="1.2",
                  shared_memory_items = [["emg",       (7500,8), np.double],
                                         ["emg_count", (1,1),    np.int32]],
@@ -69,8 +63,6 @@ def sifibridge_streamer(version="1.2",
                             freq = freq,# eda sampling frequency
                             streaming=streaming)
     sb.start()
-    # p = Process(target=sb.start_stream, daemon=True)
-    # p.start()
     return sb, shared_memory_items
 
 
