@@ -130,7 +130,7 @@ class DataCollectionPanel:
     def gather_media(self):
         # find everything in the media folder
         files = os.listdir(self.media_folder)
-        valid_files = [file.endswith((".gif",".png",".mp4")) for file in files]
+        valid_files = [file.endswith((".gif",".png",".mp4","jpg")) for file in files]
         files = list(compress(files, valid_files))
         self.num_motions = len(files)
         collection_conf = []

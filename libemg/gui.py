@@ -3,6 +3,7 @@ from libemg._gui._data_collection_panel import DataCollectionPanel
 from libemg._gui._data_import_panel import DataImportPanel
 from libemg._gui._visualize_live_signal_panel import VisualizeLiveSignalPanel
 import inspect
+import time
 
 class GUI:
     def __init__(self, 
@@ -104,3 +105,4 @@ class GUI:
         print("Window is closing. Performing clean-up...")
         if 'streamer' in self.args.keys():
             self.args['streamer'].signal.set()
+        time.sleep(3)

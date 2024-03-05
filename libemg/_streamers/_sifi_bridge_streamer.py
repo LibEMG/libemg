@@ -3,16 +3,18 @@ import os
 import requests
 from libemg.shared_memory_manager import SharedMemoryManager
 import platform
-from multiprocessing import Process, Event
+from multiprocessing import Process, Event, Lock
 import subprocess
 import socket
 import pickle
 import json
 import numpy as np
 
+
 class SiFiBridgeStreamer(Process):
-    def __init__(self, ip, port, 
+    def __init__(self, 
                  version='1_2',
+                 shared_memory_items=[],
                  ecg=False,
                  emg=True, 
                  eda=False,
@@ -26,21 +28,25 @@ class SiFiBridgeStreamer(Process):
                  fc_lp = 0, # low pass eda
                  fc_hp = 5, # high pass eda
                  freq = 250,# eda sampling frequency
-                 other=False,
                  streaming=False):
         Process.__init__(self, daemon=True)
-        self.ip = ip
-        self.port = port
-        self.connected = False
+
+        self.connected=False
         self.signal = Event()
-        self.other = other
+        self.shared_memory_items = shared_memory_items
+
         self.emg_handlers = []
         self.imu_handlers = []
-        self.other_handlers = []
+        self.eda_handlers = []
+        self.ecg_handlers = []
+        self.ppg_handlers = []
+        
         self.prepare_config_message(ecg, emg, eda, imu, ppg, 
                                     notch_on, notch_freq, emgfir_on, emg_fir,
                                     eda_cfg, fc_lp, fc_hp, freq, streaming)
         self.prepare_connect_message(version)
+
+
 
     def prepare_config_message(self, ecg, emg, eda, imu, ppg, 
                                     notch_on, notch_freq, emgfir_on, emg_fir,
@@ -62,6 +68,8 @@ class SiFiBridgeStreamer(Process):
 
         if streaming:
             self.config_message += " data_mode 1"
+        
+        self.config_message += "  tx_power 2"
         self.config_message += "\n"
         self.config_message = bytes(self.config_message,"UTF-8")
 
@@ -109,70 +117,117 @@ class SiFiBridgeStreamer(Process):
     def add_imu_handler(self, closure):
         self.imu_handlers.append(closure)
 
-    def add_other_handler(self, closure):
-        self.other_handlers.append(closure)
+    def add_ppg_handler(self, closure):
+        self.ppg_handlers.append(closure)
     
+    def add_ecg_handler(self, closure):
+        self.ecg_handlers.append(closure)
+    
+    def add_eda_handler(self, closure):
+        self.eda_handlers.append(closure)
+
     def process_packet(self, data):
         packet = np.zeros((14,8))
         if data == "" or data.startswith("sending cmd"):
             return
         data = json.loads(data)
+        
         if "data" in list(data.keys()):
-            if "emg0" in list(data["data"].keys()):
-                for c in range(packet.shape[1]):
-                    packet[:,c] = data['data']["emg"+str(c)]
-                for s in range(packet.shape[0]):
-                    for h in self.emg_handlers:
-                        h(packet[s,:].tolist())
-            elif "emg" in list(data["data"].keys()): # This is the biopoint emg 
-                emg = data['data']["emg"]
-                for e in emg:
-                    if not self.other:
-                        self.emg_handlers[0]([e])
-                    else:
-                        self.other_handlers[0]('EMG-bio', [e])
+            if "emg0" in list(data["data"].keys()): # this is multi-channel (armband) emg
+                emg = np.stack((data["data"]["emg0"],
+                                data["data"]["emg1"],
+                                data["data"]["emg2"],
+                                data["data"]["emg3"],
+                                data["data"]["emg4"],
+                                data["data"]["emg5"],
+                                data["data"]["emg6"],
+                                data["data"]["emg7"]
+                                )).T
+                for h in self.emg_handlers:
+                    h(emg)
+                print(data['sample_rate'])
+            if "emg" in list(data["data"].keys()): # This is the biopoint emg 
+                emg = np.expand_dims(np.array(data['data']["emg"]),0).T
+                for h in self.emg_handlers:
+                    self.emg_handlers(emg) # check to see that this doesn't
             if "acc_x" in list(data["data"].keys()):
-                accel = np.transpose(np.vstack([data['data']['acc_x'], data['data']['acc_y'], data['data']['acc_z']]))
-                quat = np.transpose(np.vstack([data['data']['w'], data['data']['x'], data['data']['y'], data['data']['z']]))
-                imu = np.hstack((accel, quat))
-                for i in imu:
-                    if not self.other:
-                        self.imu_handlers[0](i)
-                    else:
-                        self.other_handlers[0]('IMU-bio', i)
+                imu = np.stack((data["data"]["acc_x"],
+                                data["data"]["acc_y"],
+                                data["data"]["acc_z"],
+                                data["data"]["w"],
+                                data["data"]["x"],
+                                data["data"]["y"],
+                                data["data"]["z"]
+                                )).T
+                for h in self.imu_handlers:
+                    h(imu)
             if "eda" in list(data["data"].keys()):
-                eda = data['data']['eda']
-                for e in eda:
-                    self.other_handlers[0]('EDA-bio', [e])
+                eda = np.expand_dims(np.array(data['data']['eda']),0).T
+                for h in self.eda_handlers:
+                    h(eda)
+            if "ecg" in list(data["data"].keys()):
+                ecg = np.stack((data["data"]["ecg"],
+                                )).T
+                for h in self.ecg_handlers:
+                    h(ecg)
             if "b" in list(data["data"].keys()):
-                sizes = [len(data['data']['b']), len(data['data']['g']), len(data['data']['r']), len(data['data']['ir'])]
-                ppg = np.transpose(np.vstack([data['data']['b'][0:min(sizes)], data['data']['g'][0:min(sizes)], data['data']['r'][0:min(sizes)], data['data']['ir'][0:min(sizes)]]))
-                for p in ppg:
-                    self.other_handlers[0]('PPG-bio', p)
-
+                if self.old_ppg_packet is None:
+                    self.old_ppg_packet = data
+                else:
+                    ppg = np.stack((data["data"]["b"]  + self.old_ppg_packet["data"]["b"],
+                                    data["data"]["g"]  + self.old_ppg_packet["data"]["g"],
+                                    data["data"]["r"]  + self.old_ppg_packet["data"]["r"],
+                                    data["data"]["ir"] + self.old_ppg_packet["data"]["ir"]
+                                    )).T
+                    self.old_ppg_packet = None
+                    for h in self.ppg_handlers:
+                        h(ppg)
+                    
     def run(self):
         # process is started beyond this point!
+        self.smm = SharedMemoryManager()
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
         self.start_pipe()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         def write_emg(emg):
-            data_arr = pickle.dumps(list(emg))
-            sock.sendto(data_arr, (self.ip, self.port))
+            # update the samples in "emg"
+            self.smm.modify_variable("emg", lambda x: np.vstack((np.flip(emg,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
         self.add_emg_handler(write_emg)
 
         def write_imu(imu):
-            imu_list = ['IMU', imu]
-            data_arr = pickle.dumps(list(imu_list))
-            sock.sendto(data_arr, (self.ip, self.port))
+            # update the samples in "imu"
+            self.smm.modify_variable("imu", lambda x: np.vstack((np.flip(imu,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("imu_count", lambda x: x + imu.shape[0])
+            # sock.sendto(data_arr, (self.ip, self.port))
         self.add_imu_handler(write_imu)
 
-        def write_other(other, data):
-            other_list = [other, data]
-            data_arr = pickle.dumps(list(other_list))
-            sock.sendto(data_arr, (self.ip, self.port))
-        self.add_other_handler(write_other)
-        self.connect()
+        def write_eda(eda):
+            # update the samples in "eda"
+            self.smm.modify_variable("eda", lambda x: np.vstack((np.flip(eda,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("eda_count", lambda x: x + eda.shape[0])
+        self.add_eda_handler(write_eda)
 
+        def write_ppg(ppg):
+            # update the samples in "ppg"
+            self.smm.modify_variable("ppg", lambda x: np.vstack((np.flip(ppg,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("ppg_count", lambda x: x + ppg.shape[0])
+        self.add_ppg_handler(write_ppg)
+
+        def write_ecg(ecg):
+            # update the samples in "ecg"
+            self.smm.modify_variable("ecg", lambda x: np.vstack((np.flip(ecg,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("ecg_count", lambda x: x + ecg.shape[0])
+        self.add_ecg_handler(write_ecg)
+
+        self.connect()
         
+        self.old_ppg_packet = None # required for now since ppg sends non-uniform packet length
         while True:
             try:
                 data_from_processess = self.proc.stdout.readline().decode()
@@ -185,7 +240,7 @@ class SiFiBridgeStreamer(Process):
                 break
         print("Process Ended")
 
-    def close(self):
+    def stop_sampling(self):
         self.proc.stdin.write(b'-cmd 1\n')
         self.proc.stdin.flush()
         return
@@ -204,11 +259,23 @@ class SiFiBridgeStreamer(Process):
             if 'connected' in dat.keys():
                 if dat["connected"] == 0:
                     self.connected = False
-                    print("Device disconnected.")
         return self.connected
 
+    def deep_sleep(self):
+        self.proc.stdin.write(b'-cmd 14\n')
+        self.proc.stdin.flush()
+
     def cleanup(self):
-        self.close()
-        time.sleep(3)
-        self.disconnect()
+        
+        self.stop_sampling()  # stop sampling
+        print("Device sampling stopped.")
+        time.sleep(1)
+        self.deep_sleep() # stops status packets
+        print("Device put to sleep.")
+        time.sleep(1)
+        self.disconnect() # disconnect
+        print("Device disconnected.")
+        time.sleep(1)
+        self.proc.kill()
+        print("SiFi bridge killed.")
     

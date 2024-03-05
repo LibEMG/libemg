@@ -21,6 +21,7 @@ from multiprocessing.managers import BaseManager
 from libemg.raw_data import RawData
 from libemg.utils import get_windows, _get_mode_windows
 from libemg.feature_extractor import FeatureExtractor
+from libemg.shared_memory_manager import SharedMemoryManager
 from scipy.signal import welch
 
 class DataHandler:
@@ -326,7 +327,7 @@ class OfflineDataHandler(DataHandler):
     def visualize():
         pass
 
-class OnlineDataHandler(DataHandler):
+class OnlineDataHandler(DataHandler, Process):
     """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
 
     This class is extensible to any device as long as the data is being streamed over UDP.
@@ -349,29 +350,26 @@ class OnlineDataHandler(DataHandler):
     max_buffer: int (optional): default = None
         The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
     """
-    def __init__(self, port=12345, ip='127.0.0.1', file_path="raw_emg.csv", file=False, timestamps=False, std_out=False, emg_arr=True, imu_arr=False, max_buffer=None,  other_arr=False):
-        self.port = port 
-        self.ip = ip
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out, 'emg_arr': emg_arr, 'imu_arr': imu_arr, 'other_arr': other_arr}
+    def __init__(self, shared_memory_items=[], file_path="", file=False, timestamps=False, std_out=False):
+        Process.__init__(self, daemon=True)
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
+        self.modalities = []
+        self.shared_memory_items = shared_memory_items
+        self.smm = SharedMemoryManager()
+        for i in self.shared_memory_items:
+            self.smm.find_variable(*i)
+            if "_count" in i[0]:
+                continue
+            self.modalities.append(i[0])
         self.timestamps = timestamps
         self.fi = None
-        self.max_buffer = max_buffer
-        if not file and not std_out and not emg_arr:
-            raise Exception("Set either file, std_out, or emg_arr parameters or this class will have no functionality.")
-
-        # Deal with threading:
-        BaseManager.register('RawData', RawData)
-        manager = BaseManager()
-        manager.start()
-        self.raw_data = manager.RawData()
-        self.listener = Process(target=self._listen_for_data_thread, args=[self.raw_data], daemon=True,)
     
     def start_listening(self):
         """Starts listening in a seperate process for data streamed over UDP. 
 
         The options (file, std_out, and emg_arr) will determine what happens with this data.
         """
-        self.listener.start()
+        self.start() # this starts self.run() in a process
 
     def stop_listening(self):
         """Terminates the process listening for data.
@@ -448,23 +446,26 @@ class OnlineDataHandler(DataHandler):
         pyplot.style.use('ggplot')
         if not self._check_streaming():
             return
-        num_channels = len(self.get_data()[0])
+        num_channels = self.smm.get_variable("emg").shape[1]
+        # num_channels = len(self.get_data()[0])
         emg_plots = []
         fig, ax = pyplot.subplots()
         fig.suptitle('Raw Data', fontsize=16)
         for i in range(0,num_channels):
             emg_plots.append(ax.plot([],[],label="CH"+str(i+1)))
+        
         fig.legend()
         
         def update(frame):
-            data = self.get_data()
+            data = self.smm.get_variable("emg")
+            inter_channel_amount = 1.5 * np.max(data)
             if len(data) > num_samples:
-                data = data[-num_samples:]
+                data = data[-num_samples:,:]
             if len(data) > 0:
-                x_data = list(range(0,len(data)))
+                x_data = list(range(0,data.shape[0]))
                 for i in range(0,num_channels):
                     y_data = data[:,i]
-                    emg_plots[i][0].set_data(x_data, y_data)
+                    emg_plots[i][0].set_data(x_data, y_data +inter_channel_amount*i)
                 fig.gca().relim()
                 fig.gca().autoscale_view()
                 if not y_axes is None:
@@ -598,55 +599,40 @@ class OnlineDataHandler(DataHandler):
 
             animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
             plt.show()
-    
-    def visualize_spectrum(self, channels, sampling_rate, num_samples=500, y_axes=None):
-        """Visualize the power spectral density of the incoming EMG data.
 
-        Parameters
-        ----------
-        channels: list
-            A list of channels to graph indexing starts at 0.
-        sampling_rate: int
-            The sampling rate of the device.
-        num_samples: int (optional), default=500
-            The number of samples to use for the power density calculation.
-        y_axes: list (optional)
-            A list of two elements consisting of the y-axes.
-        """
-        pyplot.style.use('ggplot')
-        emg_plots = []
-        fig, axs = pyplot.subplots(len(channels), 1)
-        fig.suptitle('Periodogram', fontsize=16)
-        fig.supxlabel('Frequency (Hz)')
+    def run(self):
+        # process has started beyond this point
+        # store handle for files
+        files = {}
+        # start shared memory manager to access sensor
+        self.smm = SharedMemoryManager()
+        for item in self.shared_memory_items:
+            self.smm.find_variable(*item)
+        # initialize sample count for all modalities
+        last_count = {}
+        for m in self.modalities:
+            last_count[m] = 0
+        while True:
+            timestamp = time.time()
+            for m in self.modalities:
+                new_count       = self.smm.get_variable(m+"_count")[0,0]
+                num_new_samples = new_count - last_count[m]
+                new_samples     = self.smm.get_variable(m)[:num_new_samples,:]
+                last_count[m] = new_count
 
-        if num_samples < 512:
-            nperseg = num_samples
-        elif num_samples > 2048:
-            nperseg = 1024
-        else:
-            nperseg = int(num_samples/2)
+                if num_new_samples:
+                    if self.options['file']:
+                        if not m in files.keys():
+                            files[m] = open(self.options['file_path'] + m + '.csv', "a", newline='')
+                        
+                        if self.timestamps:
+                            np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)))
+                            # check to see if they're in the right order, or if they need to be reversed again!
+                        else:
+                            np.savetxt(files[m], new_samples)
 
-        for i in range(0,len(channels)):
-            axs[i].set_ylabel("Channel " + str(channels[i]))
-            axs[i].set_xlim([0, sampling_rate/2])
-            if y_axes is not None:
-                axs[i].set_ylim(y_axes)
-            emg_plots.append(axs[i].semilogy([],[]))
 
-        def update(frame):
-            data = self.get_data()
-            if len(data) > num_samples:
-                data = data[-num_samples:]
-                for i in range(0,len(channels)):
-                    f, Pxx = welch(data[:,i], sampling_rate, nperseg=nperseg)
-                    emg_plots[i][0].set_data(f, Pxx)
 
-                    axs[i].relim()
-                    axs[i].autoscale_view()
-
-            return emg_plots,
-        animation = FuncAnimation(fig, update, interval=100)
-        pyplot.show()
 
     def _listen_for_data_thread(self, raw_data):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -693,8 +679,10 @@ class OnlineDataHandler(DataHandler):
 
     def _check_streaming(self, timeout=10):
         wt = time.time()
+        emg_count = self.smm.get_variable("emg_count")
         while(True):
-            if len(self.raw_data.get_emg()) > 0: 
+            emg_count2 = self.smm.get_variable("emg_count")
+            if emg_count != emg_count2: 
                 return True
             if time.time() - wt > timeout:
                 print("Not reading any data.... Check hardware connection.")

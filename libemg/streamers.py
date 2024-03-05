@@ -2,7 +2,7 @@ import time
 import socket
 import pickle
 import numpy as np
-from multiprocessing import Process, Event
+from multiprocessing import Process, Event, Lock
 from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
@@ -14,7 +14,15 @@ else:
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 
-def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
+
+
+
+
+
+
+def sifibridge_streamer(version="1.2",
+                 shared_memory_items = [["emg",       (7500,8), np.double],
+                                        ["emg_count", (1,1),    np.int32]],
                  ecg=False,
                  emg=True, 
                  eda=False,
@@ -27,7 +35,6 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
                  fc_lp = 0, # low pass eda
                  fc_hp = 5, # high pass eda
                  freq = 250,# eda sampling frequency
-                 other=False,
                  streaming=False):
     """The UDP streamer for the sifi armband. 
     This function connects to the sifi bridge and streams its data over UDP. This is used
@@ -35,18 +42,18 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
     Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
     Parameters
     ----------
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
     version: string (option), default = '1.2'
         The version for the sifi streamer.
+    shared_memory_items, default = []
+        The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
     Examples
     ---------
     >>> sifibridge_streamer()
     """
-    sb = SiFiBridgeStreamer(ip, port,
-                            version=version,
+    for item in shared_memory_items:
+        item.append(Lock())
+    sb = SiFiBridgeStreamer(version=version,
+                            shared_memory_items=shared_memory_items,
                             notch_on=notch_on,
                             ecg=ecg,
                             emg=emg,
@@ -60,12 +67,11 @@ def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
                             fc_lp = fc_lp, # low pass eda
                             fc_hp = fc_hp, # high pass eda
                             freq = freq,# eda sampling frequency
-                            other=other,
                             streaming=streaming)
     sb.start()
     # p = Process(target=sb.start_stream, daemon=True)
     # p.start()
-    return sb
+    return sb, shared_memory_items
 
 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
