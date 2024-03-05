@@ -145,7 +145,7 @@ class SiFiBridgeStreamer(Process):
                                 )).T
                 for h in self.emg_handlers:
                     h(emg)
-                print(data['sample_rate'])
+                # print(data['sample_rate'])
             if "emg" in list(data["data"].keys()): # This is the biopoint emg 
                 emg = np.expand_dims(np.array(data['data']["emg"]),0).T
                 for h in self.emg_handlers:
