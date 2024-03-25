@@ -16,9 +16,7 @@ from pathlib import Path
 from glob import glob
 from itertools import compress
 from datetime import datetime
-from multiprocessing import Process
-from multiprocessing.managers import BaseManager
-from libemg.raw_data import RawData
+from multiprocessing import Process, Event
 from libemg.utils import get_windows, _get_mode_windows
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
@@ -330,7 +328,7 @@ class OfflineDataHandler(DataHandler):
     def visualize():
         pass
 
-class OnlineDataHandler(DataHandler, Process):
+class OnlineDataHandler(DataHandler):
     """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
 
     This class is extensible to any device as long as the data is being streamed over UDP.
@@ -353,32 +351,46 @@ class OnlineDataHandler(DataHandler, Process):
     max_buffer: int (optional): default = None
         The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
     """
-    def __init__(self, shared_memory_items=[], file_path="", file=False, timestamps=False, std_out=False):
-        Process.__init__(self, daemon=True)
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
-        self.modalities = []
+    def __init__(self, shared_memory_items=[], file_path="", timestamps=False, std_out=False,daemon=False):
+        self.options = {'file_path': file_path, 'std_out': std_out}
         self.shared_memory_items = shared_memory_items
-        self.smm = SharedMemoryManager()
-        for i in self.shared_memory_items:
-            self.smm.find_variable(*i)
-            if "_count" in i[0]:
-                continue
-            self.modalities.append(i[0])
+        self.prepare_smm()
+        self.log_signal = Event()
+        self.visualize_signal = Event()
+        
         self.timestamps = timestamps
         self.fi = None
     
-    def start_listening(self):
-        """Starts listening in a seperate process for data streamed over UDP. 
+    def prepare_smm(self):
+        self.modalities = []
+        self.smm = SharedMemoryManager()
+        for i in self.shared_memory_items:
+            counter = 0
+            while not self.smm.find_variable(*i):
+                counter += 1
+                time.sleep(0.5)
+                if counter > 5:
+                    print(f"Not finding key {i[0]} in shared memory...waiting.")
+            if "_count" in i[0]:
+                continue
+            self.modalities.append(i[0])
 
-        The options (file, std_out, and emg_arr) will determine what happens with this data.
+    def stop_all(self):
+        """Terminates the processes spawned by the ODH.
         """
-        self.start() # this starts self.run() in a process
+        self.stop_log()
+        self.stop_visualize()
 
-    def stop_listening(self):
-        """Terminates the process listening for data.
-        """
-        self.listener.terminate()
-        
+    def stop_log(self):
+        self.log_signal.set()
+        time.sleep(0.5)
+        self.log_signal.clear()
+
+    def stop_visualize(self):
+        self.visualize_signal.set()
+        time.sleep(0.5)
+        self.visualize_signal.clear()
+
     def install_filter(self, fi):
         """Install a filter to be used on the online stream of data.
         
@@ -388,18 +400,6 @@ class OnlineDataHandler(DataHandler, Process):
             The filter object that you'd like to run on the online data.
         """
         self.fi = fi
-
-    def get_data(self):
-        data = np.array(self.raw_data.get_emg())
-        if self.fi is not None:
-            try:
-                data = self.fi.filter(data)
-            except:
-                pass
-        if self.max_buffer:
-            if len(data) > self.max_buffer:
-                self.raw_data.data = self.raw_data.adjust_increment(self.max_buffer, 0)
-        return data
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -436,7 +436,15 @@ class OnlineDataHandler(DataHandler, Process):
         self.stop_listening()
         print("Analysis sucessfully complete. ODH process has stopped.")
 
-    def visualize(self, num_samples=500, y_axes=None):
+    def visualize(self, num_samples=500, y_axes=None,block=False):
+        if block:
+            self._visualize(num_samples, y_axes)
+        else:
+            p = Process(target=self._visualize, kwargs={"num_samples":num_samples,
+                                                          "y_axes":y_axes})
+            p.start()
+
+    def _visualize(self, num_samples, y_axes):
         """Visualize the incoming raw EMG in a plot (all channels together).
 
         Parameters
@@ -446,37 +454,54 @@ class OnlineDataHandler(DataHandler, Process):
         y_axes: list (optional)
             A list of two elements consisting the bounds for the y-axis (e.g., [-1,1]).
         """
+        self.prepare_smm()
+
         pyplot.style.use('ggplot')
-        if not self._check_streaming():
-            return
-        num_channels = self.smm.get_variable("emg").shape[1]
+        while not self._check_streaming():
+            pass
+        
         # num_channels = len(self.get_data()[0])
-        emg_plots = []
-        fig, ax = pyplot.subplots()
+        plots = []
+        fig, ax = pyplot.subplots(len(self.modalities), 1,squeeze=False)
+        def on_close(event):
+            self.visualize_signal.set()
+        fig.canvas.mpl_connect('close_event', on_close)
         fig.suptitle('Raw Data', fontsize=16)
-        for i in range(0,num_channels):
-            emg_plots.append(ax.plot([],[],label="CH"+str(i+1)))
+        for i,mod in enumerate(self.modalities):
+            num_channels = self.smm.get_variable(mod).shape[1]
+            for j in range(0,num_channels):
+                plots.append(ax[i][0].plot([],[],label=mod+"_CH"+str(j+1)))
         
         fig.legend()
         
         def update(frame):
-            data = self.smm.get_variable("emg")
-            inter_channel_amount = 1.5 * np.max(data)
-            if len(data) > num_samples:
-                data = data[-num_samples:,:]
-            if len(data) > 0:
-                x_data = list(range(0,data.shape[0]))
-                for i in range(0,num_channels):
-                    y_data = data[:,i]
-                    emg_plots[i][0].set_data(x_data, y_data +inter_channel_amount*i)
-                fig.gca().relim()
-                fig.gca().autoscale_view()
-                if not y_axes is None:
-                    fig.gca().set_ylim(y_axes)
-            return emg_plots,
-
-        animation = FuncAnimation(fig, update, interval=100)
-        pyplot.show()
+            data, _ = self.get_data(N=0,filter=True)
+            line = 0
+            for i, mod in enumerate(self.modalities):
+                for j in range(data[mod].shape[1]):
+                    data[mod][:,j] = data[mod][:,j] - np.mean(data[mod][:,j])
+                inter_channel_amount = 1.5 * np.max(data[mod])
+                if len(data[mod]) > num_samples:
+                    data[mod] = data[mod][-num_samples:,:]
+                if len(data[mod]) > 0:
+                    x_data = list(range(0,data[mod].shape[0]))
+                    num_channels = data[mod].shape[1]
+                    for j in range(0,num_channels):
+                        y_data = data[mod][:,j]
+                        plots[line][0].set_data(x_data, y_data +inter_channel_amount*j)
+                        line += 1
+            for i in range(len(self.modalities)):
+                ax[i][0].relim()
+                ax[i][0].autoscale_view()
+                ax[i][0].set_title(self.modalities[i])
+            return plots,
+    
+        while True:
+            animation = FuncAnimation(fig, update, interval=100, repeat=False)
+            pyplot.show()
+            if self.visualize_signal.is_set():
+                print("ODH->visualize ended.")
+                break
 
     def visualize_channels(self, channels, num_samples=500, y_axes=None):
         """Visualize individual channels (each channel in its own plot).
@@ -490,28 +515,30 @@ class OnlineDataHandler(DataHandler, Process):
         y_axes: list (optional)
             A list of two elements consisting of the y-axes.
         """
+        self.prepare_smm()
         pyplot.style.use('ggplot')
+        while not self._check_streaming():
+            pass
         emg_plots = []
-        fig, axs = pyplot.subplots(len(channels), 1)
+        fig, ax = pyplot.subplots()
         fig.suptitle('Raw Data', fontsize=16)
         for i in range(0,len(channels)):
-            axs[i].set_ylabel("Channel " + str(channels[i]))
-            emg_plots.append(axs[i].plot([],[]))
+            emg_plots.append(ax.plot([],[],label="CH"+str(channels[i])))
 
         def update(frame):
-            data = self.get_data()
+            data = self.smm.get_variable("emg")
+            data = data[:,channels]
+            inter_channel_amount = 1.5 * np.max(data)
             if len(data) > num_samples:
-                data = data[-num_samples:]
+                data = data[-num_samples:,:]
             if len(data) > 0:
-                x_data = list(range(0,len(data)))
-                for i in range(0,len(channels)):
+                x_data = list(range(0,data.shape[0]))
+            
+                for i in range(data.shape[1]):
                     y_data = data[:,i]
-                    emg_plots[i][0].set_data(x_data, y_data)
-                
-                    axs[i].relim()
-                    axs[i].autoscale_view()
-                    if not y_axes is None:
-                        axs[i].set_ylim(y_axes)
+                    emg_plots[i][0].set_data(x_data, y_data +inter_channel_amount*i)
+                fig.gca().relim()
+                fig.gca().autoscale_view()
             return emg_plots,
 
         animation = FuncAnimation(fig, update, interval=100)
@@ -603,9 +630,42 @@ class OnlineDataHandler(DataHandler, Process):
             animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
             plt.show()
 
-    def run(self):
-        # process has started beyond this point
-        # store handle for files
+    def get_data(self, N=0, filter=True):
+        val   = {}
+        count = {}
+        for mod in self.modalities:
+            data = self.smm.get_variable(mod)
+            if filter:
+                if self.fi is not None:
+                    if mod == "emg": # TODO: enable filter for each modality
+                        data = self.fi.filter(data)
+            if N != 0:
+                val[mod]   = data[:N,:]
+            else:
+                val[mod]   = data[:,:]
+            count[mod] = self.smm.get_variable(mod+"_count")
+        return val,count
+
+    def reset(self, modality=None):
+        if modality == None:
+            modality = self.modalities
+        else:
+            modality = [modality]
+        for mod in modality:
+            self.smm.modify_variable(mod, lambda x: np.zeros_like(x))
+            self.smm.modify_variable(mod+"_count", lambda x: np.zeros_like(x))
+
+    def log_to_file(self, block=False):
+        print("ODH->log_to_file begin.")
+        if block:
+            self._log_to_file()
+            print("ODH->log_to_file ended.")
+        else:
+            p = Process(target=self._log_to_file)
+            p.start()
+
+    def _log_to_file(self):
+
         files = {}
         # start shared memory manager to access sensor
         self.smm = SharedMemoryManager()
@@ -617,70 +677,25 @@ class OnlineDataHandler(DataHandler, Process):
             last_count[m] = 0
         while True:
             timestamp = time.time()
-            for m in self.modalities:
-                new_count       = self.smm.get_variable(m+"_count")[0,0]
+            vals, counts = self.get_data(N=0, filter=False)
+            for m in vals.keys():
+                new_count       = counts[m][0,0]
                 num_new_samples = new_count - last_count[m]
-                new_samples     = self.smm.get_variable(m)[:num_new_samples,:]
+                new_samples     = vals[m][:num_new_samples,:]
                 last_count[m] = new_count
-
                 if num_new_samples:
-                    if self.options['file']:
-                        if not m in files.keys():
-                            files[m] = open(self.options['file_path'] + m + '.csv', "a", newline='')
-                        
-                        if self.timestamps:
-                            np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)))
-                            # check to see if they're in the right order, or if they need to be reversed again!
-                        else:
-                            np.savetxt(files[m], new_samples)
-
-
-
-
-    def _listen_for_data_thread(self, raw_data):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind((self.ip, self.port))
-        files = {}
-        while True:
-            data = sock.recv(4096)
-            if data:
-                data = pickle.loads(data)
-
-                # Check if IMU or EMG 
-                if type(data[0]) != str:
-                    tag = 'EMG'
-                elif data[0] == 'IMU':
-                    tag = 'IMU'
-                    data = data[1]
-                else:
-                    # We have some custom tag we need to deal with
-                    if not raw_data.check_other(data[0]):
-                        raw_data.instantialize_other(data[0])
-                    tag = data[0]
-                    data = data[1]
-
-                timestamp = time.time()
-                if self.options['std_out']:
-                    print(tag + ": " + str(data) + " " + str(timestamp))  
-                if self.options['file']:
-                    if not tag in files.keys():
-                        files[tag] = open(self.options['file_path'] + tag + '.csv', "a", newline='')
-                    writer = csv.writer(files[tag])
+                    if not m in files.keys():
+                        files[m] = open(self.options['file_path'] + m + '.csv', "a", newline='')
                     if self.timestamps:
-                        writer.writerow(np.hstack([timestamp,data]))
+                        np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)))
+                        # check to see if they're in the right order, or if they need to be reversed again!
                     else:
-                        writer.writerow(data)
-                if self.options['emg_arr']:
-                    if tag == 'EMG':
-                        raw_data.add_emg(data)
-                if self.options['imu_arr']:
-                    if tag == 'IMU':
-                        raw_data.add_imu(data)
-                if self.options['other_arr']:
-                    if tag != 'IMU' and tag != 'EMG':
-                        raw_data.add_other(tag, data)
+                        np.savetxt(files[m], new_samples)
+            if self.log_signal.is_set():
+                print("ODH->log_to_file ended.")
+                break
 
-    def _check_streaming(self, timeout=10):
+    def _check_streaming(self, timeout=15):
         wt = time.time()
         emg_count = self.smm.get_variable("emg_count")
         while(True):
