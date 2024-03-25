@@ -107,9 +107,7 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if self.gui.online_data_handler and (len(self.gui.online_data_handler.raw_data.get_emg()) > 0
-                                             or len(self.gui.online_data_handler.raw_data.get_imu()) > 0
-                                                    or len(self.gui.online_data_handler.raw_data.get_others()) > 0):
+        if self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values())):
             self.get_settings()
             dpg.delete_item("__dc_configuration_window")
             self.cleanup_window("configuration")
@@ -155,6 +153,7 @@ class DataCollectionPanel:
 
     def spawn_collection_window(self, media_list):
         # open first frame of gif
+        self.gui.online_data_handler.prepare_smm()
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
         
@@ -192,12 +191,15 @@ class DataCollectionPanel:
     def run_sgt(self, media_list):
         self.i = 0
         self.advance = True
+        self.gui.online_data_handler.reset()
         while self.i < len(media_list):
-
+            self.rep_buffer = {mod:[] for mod in self.gui.online_data_handler.modalities}
+            self.rep_count  = {mod:0 for mod in self.gui.online_data_handler.modalities}
             # do the rest
             if self.rest_time and self.i < len(media_list):
                 self.play_collection_visual(media_list[self.i], active=False)
                 media_list[self.i][0].reset()
+            self.gui.online_data_handler.reset()
             
             self.play_collection_visual(media_list[self.i], active=True)
             
@@ -246,9 +248,6 @@ class DataCollectionPanel:
         
         texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
         set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
-        self.gui.online_data_handler.raw_data.reset_emg()
-        self.gui.online_data_handler.raw_data.reset_imu()
-        self.gui.online_data_handler.raw_data.reset_others()
         # initialize motion and frame timers
         motion_timer = time.perf_counter_ns()
         while (time.perf_counter_ns() - motion_timer)/1e9 < timer_duration:
@@ -259,38 +258,26 @@ class DataCollectionPanel:
             set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
+            # grab incoming new data
+            if active:
+                vals, count = self.gui.online_data_handler.get_data()
+                for mod in self.gui.online_data_handler.modalities:
+                    new_samples = count[mod][0][0]-self.rep_count[mod]
+                    self.rep_buffer[mod] = [vals[mod][:new_samples,:]] + self.rep_buffer[mod]
+                    self.rep_count[mod]  = self.rep_count[mod] + new_samples
+
             dpg.set_value("__dc_progress", value = progress)        
     
     def save_data(self, filename):
         file_parts = filename.split('.')
-        if len(self.gui.online_data_handler.raw_data.get_emg()):
-            data = self.gui.online_data_handler.raw_data.get_emg()
-            with open(filename, "w", newline='', encoding='utf-8') as file:
-                emg_writer = csv.writer(file)
-                for row in data:
-                    emg_writer.writerow(row)
-            self.gui.online_data_handler.raw_data.reset_emg()
-        # write the other information if we have it
-        if len(self.gui.online_data_handler.raw_data.get_imu()):
-            filename_imu = file_parts[0] + "_IMU." + file_parts[1]
-            with open(filename_imu, "w", newline='', encoding='utf-8') as file:
-                imu_writer = csv.writer(file)
-                for row in data:
-                    imu_writer.writerow(row)
-            self.gui.online_data_handler.raw_data.reset_imu()
-        # write the other information if we have it
-        if len(self.gui.online_data_handler.raw_data.get_others()):
-            # for every key in dictionary
-            others_data = self.gui.online_data_handler.raw_data.get_others()
-            for key in others_data.keys():
-                modality_data = others_data[key]
-                filename_modality = file_parts[0] + "_" + key + "." + file_parts[1]
-                with open(filename_modality, "w", newline='', encoding='utf-8') as file:
-                    filename_modality = csv.writer(file)
-                    for row in modality_data:
-                        filename_modality.writerow(row)
-            self.gui.online_data_handler.raw_data.reset_others()
         
+        for mod in self.rep_buffer:
+            filename = file_parts[0] + "_" + mod + "." + file_parts[1]
+            data = np.vstack(self.rep_buffer[mod])[::-1,:]
+            with open(filename, "w", newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                for row in data:
+                    writer.writerow(row)
 
     def visualize_callback(self):
         self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
