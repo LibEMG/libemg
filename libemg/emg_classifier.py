@@ -461,8 +461,7 @@ class OnlineStreamer:
                  output_format):
         self.window_size = window_size
         self.window_increment = window_increment
-        self.raw_data = online_data_handler.raw_data
-        self.filters = online_data_handler.fi
+        self.odh = online_data_handler
         self.features = features
         self.port = port
         self.ip = ip
@@ -474,6 +473,7 @@ class OnlineStreamer:
 
         self.smm = smm
         self.smm_items = smm_items
+
         
 
         self.files = {}
@@ -546,7 +546,7 @@ class OnlineStreamer:
         else:
             self.conn.sendall(str.encode(message))
                     
-    def make_shared_memory(self):
+    def prepare_smm(self):
         smm = SharedMemoryManager()
         for item in self.smm_items:
             smm.create_variable(*item)
@@ -680,32 +680,48 @@ class OnlineEMGClassifier(OnlineStreamer):
     
     def _run_helper(self):
         if self.smm:
-            self.make_shared_memory()
+            self.prepare_smm()
         
+        self.odh.prepare_smm()
 
-        fe = FeatureExtractor()
-        self.raw_data.reset_emg()
+        if self.features is not None:
+            fe = FeatureExtractor()
+        
+        self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
+        # todo: deal with different sampling frequencies for different modalities
+        self.odh.reset()
+        
         files = {}
         while True:
-            if len(self.raw_data.get_emg()) >= self.window_size:
-                data = self._get_data_helper()
+            val, count = self.odh.get_data(N=self.window_size)
+            modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
+
+            if all(modality_ready):
+                data, count = self._get_data_helper()
+
                 # Extract window and predict sample
-                window = get_windows(data[-self.window_size:][:], self.window_size, self.window_size)
+                window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
 
                 # Dealing with the case for CNNs when no features are used
                 if self.features:
-                    features = fe.extract_features(self.features, window, self.classifier.feature_params)
-                    # If extracted features has an error - give error message
-                    if (fe.check_features(features) != 0):
-                        self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                        continue
-                    classifier_input = self._format_data_sample(features)
+                    classifier_input = None
+                    for mod in self.odh.modalities:
+                        # todo: features for each modality can be different
+                        mod_features = fe.extract_features(self.features, window[mod], self.classifier.feature_params)
+                        mod_features = self._format_data_sample(mod_features)
+                        if classifier_input is None:
+                            classifier_input = mod_features
+                        else:
+                            classifier_input = np.hstack((classifier_input, mod_features))
+                    
                 else:
                     classifier_input = window
-                self.raw_data.adjust_increment(self.window_size, self.window_increment)
+                
+                for mod in self.odh.modalities:
+                    self.expected_count[mod] += self.window_increment 
                 
                 # Make prediction
-                probabilities = self.raw_data.get_classifier().classifier.predict_proba(classifier_input)
+                probabilities = self.classifier.classifier.predict_proba(classifier_input)
                 prediction, probability = self.classifier._prediction_helper(probabilities)
                 prediction = prediction[0]
 
@@ -726,7 +742,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                     calculated_velocity = " 0"
                     # Dont check if rejected 
                     if prediction >= 0:
-                        calculated_velocity = " " + str(self.raw_data.get_classifier()._get_velocity(window, prediction))
+                        calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
                 self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
                 
@@ -741,11 +757,8 @@ class OnlineEMGClassifier(OnlineStreamer):
         return arr
 
     def _get_data_helper(self):
-        data = np.array(self.raw_data.get_emg())
-        if self.filters is not None:
-            try:
-                data = self.filters.filter(data)
-            except:
-                pass
-        return data
+        data, counts = self.odh.get_data(N=self.window_size)
+        for key in data.keys():
+            data[key] = data[key][::-1]
+        return data, counts
         
