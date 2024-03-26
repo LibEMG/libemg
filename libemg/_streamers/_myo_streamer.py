@@ -47,6 +47,7 @@ import threading
 import time
 
 import serial
+from libemg.shared_memory_manager import SharedMemoryManager
 from serial.tools.list_ports import comports
 
 def pack(fmt, *args):
@@ -201,7 +202,7 @@ class Myo(object):
 			tty = self.detect_tty()
 		if tty is None:
 			raise ValueError('Myo dongle not found!')
-
+		
 		self.bt = BT(tty)
 		self.conn = None
 		self.emg_handlers = []
@@ -511,26 +512,40 @@ class Myo(object):
 
 
 # Myostreamer begins here ------
-import socket
-import pickle
-class MyoStreamer:
-    def __init__(self, filtered, ip, port):
+import numpy as np
+from multiprocessing import Process, Event
+class MyoStreamer(Process):
+    def __init__(self, filtered, emg, imu, shared_memory_items=[]):
+        Process.__init__(self, daemon=True)
         self.filtered = filtered
-        self.ip = ip 
-        self.port = port
+        self.emg = emg
+        self.imu = imu
+        self.smm = SharedMemoryManager()
+        self.shared_memory_items = shared_memory_items
+        self.signal = Event()
 
-    def start_stream(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def run(self):
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
+
         mode = emg_mode.FILTERED
         if not self.filtered:
             mode = emg_mode.RAW
         m = Myo(mode=mode)
         m.connect()
 
-        def write_emg(emg, _):
-            data_arr = pickle.dumps(list(emg))
-            sock.sendto(data_arr, (self.ip, self.port))
-        m.add_emg_handler(write_emg)
+        if self.emg:
+            def write_emg(emg, _):
+                emg = np.array(emg)
+                self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
+                self.smm.modify_variable("emg_count", lambda x: x + 1)
+            m.add_emg_handler(write_emg)
+        if self.imu:
+            def write_imu(quat, acc, gyro):
+                imu_arr = np.array([*quat, *acc, *gyro])
+                self.smm.modify_variable("imu", lambda x: np.vstack((imu_arr, x))[:x.shape[0],:])
+                self.smm.modify_variable("imu_count", lambda x: x + 1)
+            m.add_imu_handler(write_imu)
 
         m.set_leds([128, 0, 0], [128, 0, 0])
 		# Vibrate to show that its connected
@@ -538,13 +553,10 @@ class MyoStreamer:
 		# Disable vibrations
         m.vibrate(0)
 
-        # def write_imu(quat, acc, gyro):
-        #     imu_arr = [*quat, *acc, *gyro]
-        #     sock.sendto(bytes(str(imu_arr), "utf-8"), (ip, port))
-        #     pass
-        # m.add_imu_handler(write_imu)
-        
         while True:
+            if self.signal.is_set():
+                m.disconnect()
+                break
             try:
                 m.run()
             except:

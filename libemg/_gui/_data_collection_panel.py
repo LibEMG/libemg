@@ -139,6 +139,8 @@ class DataCollectionPanel:
         collection_details["classes"] =   [f.split('.')[0] for f in files]
         collection_details["class_map"] = {index: f.split('.')[0] for index, f in enumerate(files)}
         collection_details["time"]    = datetime.now().isoformat()
+        if not os.path.exists(self.output_folder):
+            os.makedirs(self.output_folder)
         with open(self.output_folder + "collection_details.json", 'w') as f:
             json.dump(collection_details, f)
 

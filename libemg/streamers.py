@@ -3,7 +3,6 @@ import socket
 import pickle
 import numpy as np
 from multiprocessing import Process, Event, Lock
-from libemg._streamers._sifi_streamer import SiFiLabServer
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 import platform
@@ -16,7 +15,7 @@ from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 
 def sifibridge_streamer(version="1.2",
                  shared_memory_items = [["emg",       (7500,8), np.double],
-                                        ["emg_count", (1,1),    np.int32]],
+                                        ["emg_count", (1,1),    np.int32]], #TODO: Make default include everything
                  ecg=False,
                  emg=True, 
                  eda=False,
@@ -107,7 +106,11 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
         sock.sendto(data_arr, (ip, port))
         index += 1
 
-def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
+def myo_streamer(
+    shared_memory_items = None,
+    emg = True, 
+    imu = False,
+    filtered=True):
     """The UDP streamer for the myo armband. 
 
     This function connects to the Myo and streams its data over UDP. It leverages the PyoMyo 
@@ -117,45 +120,25 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345):
     ----------
     filtered: bool (optional), default=True
         If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
 
     Examples
     ---------
     >>> myo_streamer()
     """
-    myo = MyoStreamer(filtered, ip, port)
-    p = Process(target=myo.start_stream, daemon=True)
-    p.start()
-    return p
+    if shared_memory_items is None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (1000,8), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+        if imu:
+            shared_memory_items.append(["imu",       (250,10), np.double])
+            shared_memory_items.append(["imu_count", (1,1),    np.int32])
 
-def sifi_streamer(stream_port=12345, stream_ip='127.0.0.1', sifi_port=5000, sifi_ip='127.0.0.1'):
-    """The UDP streamer for the sifi cuff. 
-
-    This function connects to the Sifi cuff and streams its data over UDP. Note that you must have the Sifi UI
-    installed for this to work.
-
-    Parameters
-    ----------
-    stream_port: int (optional), default=12345
-        The desired port to stream over. 
-    stream_ip: string (option), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
-    sifi_port: int (optional), default=5000
-        The port that the SIFI cuff is streaming over.
-    sifi_ip: string (optional), default='127.0.0.1'
-        The ip that the SIFI cuff is streaming over.
-
-    Examples
-    ---------
-    >>> sifi_streamer()
-    """
-    sifi = SiFiLabServer(stream_port=stream_port, stream_ip=stream_ip, sifi_port=sifi_port, sifi_ip=sifi_ip)
-    p = Process(target=sifi.start_stream, daemon=True)
-    p.start()
-    return p
+    for item in shared_memory_items:
+        item.append(Lock())
+    myo = MyoStreamer(filtered, emg, imu, shared_memory_items)
+    myo.start()
+    return myo, shared_memory_items
 
 def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localhost',cmd_port=50040, emg_port=50043, channel_list=list(range(8))):
     """The UDP streamer for the Delsys device (Avanti/Trigno). 
