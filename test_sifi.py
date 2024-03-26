@@ -135,8 +135,10 @@ def online_test(mdl):
     odh = libemg.data_handler.OnlineDataHandler(shared_memory_items=smi,
                                                 timestamps=True)
     
-    mdl_smm_items  = [["classifier_output", (100,3), np.double],#timestamp, class prediction, confidence
-                      ["classifier_input", (100,1+32), np.double]] # timestamp, <- features ->
+    mdl_smm_items  = [["classifier_output", (100,3), np.double], #timestamp, class prediction, confidence
+                      ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+                      ["adapt_flag", (1,1), np.int32],
+                      ["active_flag", (1,1), np.int8]] 
     for item in mdl_smm_items:
         item.append(Lock())
     online_mdl = libemg.emg_classifier.OnlineEMGClassifier(mdl,
@@ -148,7 +150,16 @@ def online_test(mdl):
                                                            smm_items = mdl_smm_items,
                                                            features=["MAV","ZC","SSC","WL"],
                                                            std_out=True)
+    
+
     online_mdl.run(block=False)
+
+
+    mdl_interaction_items = online_mdl.get_interaction_items()
+    mdl_smm = libemg.shared_memory_manager.SharedMemoryManager()
+    for i in mdl_interaction_items:
+        mdl_smm.find_variable(*i)
+
     while True:
         time.sleep(10)
 

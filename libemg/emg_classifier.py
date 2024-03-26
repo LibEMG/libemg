@@ -7,7 +7,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
-from multiprocessing import Process
+from multiprocessing import Process, Lock
 import numpy as np
 import pickle
 import socket
@@ -497,17 +497,17 @@ class OnlineStreamer:
         else:
             self.process.start()
 
-    def get_data(self, data):
-        # Extract window and predict sample
-        window = get_windows(data, self.window_size, self.window_size)
-        # Dealing with the case for CNNs when no features are used
-        if self.features:
-            features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
-            classifier_input = self._format_data_sample(features)
-        else:
-            classifier_input = window
-        self.raw_data.adjust_increment(self.window_size, self.window_increment)
-        return window, classifier_input
+    # def get_data(self, data):
+    #     # Extract window and predict sample
+    #     window = get_windows(data, self.window_size, self.window_size)
+    #     # Dealing with the case for CNNs when no features are used
+    #     if self.features:
+    #         features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
+    #         classifier_input = self._format_data_sample(features)
+    #     else:
+    #         classifier_input = window
+    #     self.raw_data.adjust_increment(self.window_size, self.window_increment)
+    #     return window, classifier_input
     
     def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
         time_stamp = time.time()
@@ -526,16 +526,18 @@ class OnlineStreamer:
             #assumed to have "classifier_input" and "classifier_output" keys
             # these are (1+)
             def insert_classifier_input(data):
-                data[self.options['smm_num']%self.options['smm_len'],:] = np.hstack([time_stamp, model_input[0]])
+                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
+                data[self.options['classifier_smm_writes']%input_size,:] = np.hstack([time_stamp, model_input[0]])
                 return data
             def insert_classifier_output(data):
-                data[self.options['smm_num']%self.options['smm_len'],:] = np.hstack([time_stamp, prediction, probability[0]])
+                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
+                data[self.options['classifier_smm_writes']%output_size,:] = np.hstack([time_stamp, prediction, probability[0]])
                 return data
             self.options['smm'].modify_variable("classifier_input",
                                                 insert_classifier_input)
             self.options['smm'].modify_variable("classifier_output",
                                                 insert_classifier_output)
-            self.options['smm_num'] += 1
+            self.options['classifier_smm_writes'] += 1
 
         if self.output_format == "predictions":
             message = str(prediction) + calculated_velocity + '\n'
@@ -551,8 +553,7 @@ class OnlineStreamer:
         for item in self.smm_items:
             smm.create_variable(*item)
         self.options['smm'] = smm
-        self.options['smm_len'] = item[1][0]
-        self.options['smm_num'] = 0
+        self.options['classifier_smm_writes'] = 0
 
     def _format_data_sample(self, data):
         arr = None
@@ -564,13 +565,13 @@ class OnlineStreamer:
         return arr
 
     def _get_data_helper(self):
-        data = np.array(self.raw_data.get_emg())
-        if self.filters is not None:
-            try:
-                data = self.filters.filter(data)
-            except:
-                pass
-        return data
+        data, counts = self.odh.get_data(N=self.window_size)
+        for key in data.keys():
+            data[key] = data[key][::-1]
+        return data, counts
+    
+    def get_interaction_items(self):
+        return self.smm_items
     
     # ----- All of these are unique to each online streamer ----------
     def run(self):
@@ -622,11 +623,20 @@ class OnlineEMGClassifier(OnlineStreamer):
         If True, will stream predictions over TCP instead of UDP.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False, smm=False, smm_items=None, port=12346, ip='127.0.0.1', std_out=False, tcp=False,
+                 file_path = '.', file=False, smm=True, 
+                 smm_items=[["classifier_output", (100,3), np.double], #timestamp, class prediction, confidence
+                      ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+                      ["adapt_flag", (1,1), np.int32],
+                      ["active_flag", (1,1), np.int8]],
+                 port=12346, ip='127.0.0.1', std_out=False, tcp=False,
                  output_format="predictions"):
         
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
+        
+        
+
+        
         
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
@@ -681,6 +691,7 @@ class OnlineEMGClassifier(OnlineStreamer):
     def _run_helper(self):
         if self.smm:
             self.prepare_smm()
+            self.options['smm'].modify_variable("active_flag", lambda x:1)
         
         self.odh.prepare_smm()
 
@@ -693,6 +704,8 @@ class OnlineEMGClassifier(OnlineStreamer):
         
         files = {}
         while True:
+            if not self.options["smm"].get_variable("active_flag")[0,0]:
+                continue
             val, count = self.odh.get_data(N=self.window_size)
             modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
 
