@@ -24,7 +24,7 @@ setup(
     packages=find_packages(exclude=["*tests*"]),
     long_description_content_type="text/markdown",
     long_description=long_description,
-    install_requires=["numpy", "scipy", "scikit-learn", "pillow", "matplotlib","librosa", "wfdb", "pyserial", "PyWavelets","dearpygui"],
+    install_requires=["numpy", "scipy", "scikit-learn", "pillow", "matplotlib","librosa", "wfdb", "pyserial", "PyWavelets","dearpygui","opencv-python","dearpygui"],
     keywords=['emg','myoelectric_control','pattern_recognition', 'muscle-based input'],
     classifiers=[
         "Development Status :: 5 - Production/Stable  ",

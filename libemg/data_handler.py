@@ -27,14 +27,6 @@ class DataHandler:
         self.data = []
         pass
 
-    def _get_repeating_values(self, data):
-        repeats = 0
-        for i in range(1, len(data)):
-            if (data[i] == data[i-1]).all():
-                repeats += 1
-        return repeats
-
-
     def _get_num_channels(self, data):
         return len(data[0])
 
@@ -408,8 +400,7 @@ class OnlineDataHandler(DataHandler):
         (2) resolution
         (3) min val
         (4) max val
-        (5) repeating values
-        (6) number of channels
+        (5) number of channels
 
         Parameters
         ----------
@@ -419,21 +410,31 @@ class OnlineDataHandler(DataHandler):
         if not self._check_streaming():
             return
 
-        btwn_sample_time = []
-        self.raw_data.reset_emg()
+        self.reset()
         st = time.time()
         print("Starting analysis " + "(" + str(analyze_time) + "s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.")
+        counters = {}
+        data = {}
+        for mod in self.modalities:
+            counters[mod]=0
+            data[mod]=[]
         while(time.time() - st < analyze_time):
-            pass
-        emg_data = self.raw_data.get_emg().copy()
-        print("Sampling Rate: " + str(self._get_sampling_rate(emg_data,analyze_time)))
-        print("Num Channels: " + str(self._get_num_channels(emg_data)))
-        print("Max Value: " + str(self._get_max_value(emg_data)))
-        print("Min Value: " + str(self._get_min_value(emg_data)))
-        print("Resolution: " + str(self._get_resolution(emg_data)) + " bits")
-        print("Repeating Values: " + str(self._get_repeating_values(emg_data)))
+            vals, count = self.get_data()
+            for mod in self.modalities:
+                num_new_samples = count[mod][0][0]-counters[mod]
+                if num_new_samples > 0:
+                    data[mod] = [vals[mod][:num_new_samples,:]] + data[mod]
+                    counters[mod] += num_new_samples
+
+        for key in data.keys():
+            print('--------- ' + str(key) + ' ---------')
+            t_data = np.vstack(data[key])
+            print("Sampling Rate: " + str(self._get_sampling_rate(t_data,analyze_time)))
+            print("Num Channels: " + str(self._get_num_channels(t_data)))
+            print("Max Value: " + str(self._get_max_value(t_data)))
+            print("Min Value: " + str(self._get_min_value(t_data)))
+            print("Resolution: " + str(self._get_resolution(t_data)) + " bits")
         
-        self.stop_listening()
         print("Analysis sucessfully complete. ODH process has stopped.")
 
     def visualize(self, num_samples=500, y_axes=None,block=False):
