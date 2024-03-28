@@ -339,8 +339,8 @@ class Myo(object):
 				'''
 				emg1 = struct.unpack('<8b', pay[:8])
 				emg2 = struct.unpack('<8b', pay[8:])
-				self.on_emg(emg1, 0)
-				self.on_emg(emg2, 0)
+				emg = np.vstack((emg2, emg1))
+				self.on_emg(emg)
 			# Read IMU characteristic handle
 			elif attr == 0x1c:
 				vals = unpack('10h', pay)
@@ -498,9 +498,9 @@ class Myo(object):
 	def add_battery_handler(self, h):
 		self.battery_handlers.append(h)
 
-	def on_emg(self, emg, moving):
+	def on_emg(self, emg):
 		for h in self.emg_handlers:
-			h(emg, moving)
+			h(emg)
 
 	def on_imu(self, quat, acc, gyro):
 		for h in self.imu_handlers:
@@ -535,10 +535,10 @@ class MyoStreamer(Process):
         m.connect()
 
         if self.emg:
-            def write_emg(emg, _):
+            def write_emg(emg):
                 emg = np.array(emg)
                 self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
-                self.smm.modify_variable("emg_count", lambda x: x + 1)
+                self.smm.modify_variable("emg_count", lambda x: x + 2)
             m.add_emg_handler(write_emg)
         if self.imu:
             def write_imu(quat, acc, gyro):
