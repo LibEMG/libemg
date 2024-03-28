@@ -331,8 +331,9 @@ class EMGClassifier:
         return np.array(updated_predictions)
     
     def _get_velocity(self, window, c):
+        mod = "emg" # todo: specify another way to do this is needed
         if self.th_max_dic and self.th_min_dic:
-            velocity_output = (np.sum(np.mean(np.abs(window),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
+            velocity_output = (np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
             return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
     def _set_up_velocity_control(self, train_windows, train_labels):
@@ -527,11 +528,11 @@ class OnlineStreamer:
             # these are (1+)
             def insert_classifier_input(data):
                 input_size = self.options['smm'].variables['classifier_input']["shape"][0]
-                data[self.options['classifier_smm_writes']%input_size,:] = np.hstack([time_stamp, model_input[0]])
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
                 return data
             def insert_classifier_output(data):
                 output_size = self.options['smm'].variables['classifier_output']["shape"][0]
-                data[self.options['classifier_smm_writes']%output_size,:] = np.hstack([time_stamp, prediction, probability[0]])
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0]]), data))[:output_size,:]
                 return data
             self.options['smm'].modify_variable("classifier_input",
                                                 insert_classifier_input)
