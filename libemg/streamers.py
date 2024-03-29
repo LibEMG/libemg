@@ -13,9 +13,8 @@ else:
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 
-def sifibridge_streamer(version="1.2",
-                 shared_memory_items = [["emg",       (7500,8), np.double],
-                                        ["emg_count", (1,1),    np.int32]], #TODO: Make default include everything
+def sifibridge_streamer(version="1_1",
+                 shared_memory_items = None,
                  ecg=False,
                  emg=True, 
                  eda=False,
@@ -43,6 +42,25 @@ def sifibridge_streamer(version="1.2",
     ---------
     >>> sifibridge_streamer()
     """
+
+    if shared_memory_items is None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (3000,8), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+        if imu:
+            shared_memory_items.append(["imu",       (100,10), np.double])
+            shared_memory_items.append(["imu_count", (1,1),    np.int32])
+        if ecg:
+            shared_memory_items.append(["ecg",       (100,10), np.double])
+            shared_memory_items.append(["ecg_count", (1,1),    np.int32])
+        if eda:
+            shared_memory_items.append(["eda",       (100,10), np.double])
+            shared_memory_items.append(["eda_count", (1,1),    np.int32])
+        if ppg:
+            shared_memory_items.append(["ppg",       (100,10), np.double])
+            shared_memory_items.append(["ppg_count", (1,1),    np.int32])
+
     for item in shared_memory_items:
         item.append(Lock())
     sb = SiFiBridgeStreamer(version=version,
