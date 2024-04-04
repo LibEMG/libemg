@@ -122,7 +122,7 @@ class EMGPredictor:
         self.model = model
         self.model.fit(dataloader_dictionary, **parameters)
 
-class EMGClassifier:
+class EMGClassifier(EMGPredictor):
     """The Offline EMG Classifier. 
 
     This is the base class for any offline EMG classification. 
@@ -149,68 +149,6 @@ class EMGClassifier:
         self.feature_params = {}
 
         
-
-    def fit(self, model, feature_dictionary=None, dataloader_dictionary=None, parameters=None):
-        """The fit function for the EMG Classification class. 
-
-        This is the method called that actually optimizes model weights for the dataset. This method presents a fork for two 
-        different kind of models being trained. The first we call "statistical" models (i.e., LDA, QDA, SVM, etc.)
-        and these are interfaced with sklearn. The second we call "deep learning" models and these are designed to fit around
-        the conventional programming style of pytorch. We distinguish which of these models are being trained by passing in a
-        feature_dictionary for "statistical" models and a "dataloader_dictionary" for deep learning models.
-
-        Parameters
-        ----------
-    
-        model: string or custom classifier (must have fit, predict and predic_proba functions)
-            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
-        feature_dictionary: dict
-            A dictionary including the associated features and labels associated with a set of data. 
-            Dictionary keys should include 'training_labels' and 'training_features'.
-        dataloader_dictionary: dict
-            A dictionary including the associated dataloader objects for the dataset you'd like to train with. 
-            Dictionary keys should include 'training_dataloader', and 'validation_dataloader'.
-        parameters: dict (optional)
-            A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-            in the sklearn docs for the given model. Alternatively, these can be custom parameters in the case of custom 
-            statistical models or deep learning models.
-        """
-        # determine what sort of model we are fitting:
-        self.emg_predictor.fit(model, feature_dictionary=feature_dictionary, dataloader_dictionary=dataloader_dictionary)
-        # if feature_dictionary is not None:
-        #     if "training_features" in feature_dictionary.keys():
-        #         self._fit_statistical_model(model, feature_dictionary, parameters)
-        # if dataloader_dictionary is not None:
-        #     self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
-
-    @classmethod
-    def from_file(self, filename):
-        """Loads a classifier - rather than creates a new one.
-
-        After saving a statistical model, you can recreate it by running EMGClassifier.from_file(). By default 
-        this function loads a previously saved and pickled classifier. 
-
-        Parameters
-        ----------
-        filename: string
-            The file path of the pickled model. 
-
-        Returns
-        ----------
-        EMGClassifier
-            Returns an EMGClassifier object.
-
-        Examples
-        -----------
-        >>> classifier = EMGClassifier.from_file('lda.pickle')
-        """
-        with open(filename, 'rb') as f:
-            classifier = pickle.load(f)
-        return classifier
-
- 
     def run(self, test_data, fix_feature_errors=False, silent=False):
         """Runs the classifier on a pre-defined set of training data.
 
@@ -255,20 +193,6 @@ class EMGClassifier:
 
         # Accumulate Metrics
         return predictions, probabilities
-
-    def save(self, filename):
-        """Saves (pickles) the EMGClassifier object to a file.
-
-        Use this save function if you want to load the object later using the from_file function. Note that 
-        this currently only support statistical models (i.e., not deep learning).
-
-        Parameters
-        ----------
-        filename: string
-            The path of the outputted pickled file. 
-        """
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
 
     def add_rejection(self, threshold=0.9):
         """Adds the rejection post-processing block onto a classifier.
@@ -319,29 +243,6 @@ class EMGClassifier:
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
-
-    def _fit_statistical_model(self, model, feature_dictionary, parameters):
-        assert 'training_features' in feature_dictionary.keys()
-        assert 'training_labels'   in feature_dictionary.keys()
-        # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
-        feature_dictionary["training_features"] = self._format_data(feature_dictionary['training_features'])
-        self._set_up_classifier(model, feature_dictionary, parameters)
-        
-    def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
-        assert 'training_dataloader' in dataloader_dictionary.keys()
-        assert 'validation_dataloader'  in dataloader_dictionary.keys()
-        self.classifier = model
-        self.classifier.fit(dataloader_dictionary, **parameters)
-
-    def _format_data(self, feature_dictionary):
-        arr = None
-        for feat in feature_dictionary:
-            if arr is None:
-                arr = feature_dictionary[feat]
-            else:
-                arr = np.hstack((arr, feature_dictionary[feat]))
-        return arr
-
     def _set_up_classifier(self, model, dataset_dictionary, parameters):
         valid_models = ["LDA", "KNN", "SVM", "QDA", "RF", "NB", "GB", "MLP"]
         if isinstance(model, str):
@@ -507,7 +408,7 @@ class EMGClassifier:
         plt.show()
     
 
-class EMGRegressor:
+class EMGRegressor(EMGPredictor):
     """The Offline EMG Regressor. 
 
     This is the base class for any offline EMG regression. 
@@ -518,31 +419,6 @@ class EMGRegressor:
         self.regressor = None
         self.feature_params = {}
     
-    def fit(self, model, feature_dictionary=None, dataloader_dictionary=None, parameters=None):
-        """The fit function for the EMG Regression class. 
-
-        This method relies on the sklearn package for regression. 
-
-        Parameters
-        ----------
-        model: custom sklearn regression model. 
-            A regressor model, must include a .fit and .predict.
-        feature_dictionary: dict
-            A dictionary including the associated features and labels associated with a set of data. 
-            Dictionary keys should include 'training_labels' and 'training_features'.
-        parameters: dict (optional)
-            A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-            in the sklearn docs for the given model. Alternatively, these can be custom parameters in the case of custom 
-            statistical models or deep learning models.
-        """
-
-        if feature_dictionary is not None:
-            if "training_features" in feature_dictionary.keys():
-                self._fit_statistical_model(model, feature_dictionary, parameters)
-        if dataloader_dictionary is not None:
-            self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
-        
-
     def run(self, test_data, test_labels):
         """Runs the classifier on a pre-defined set of training data.
 
@@ -561,57 +437,6 @@ class EMGRegressor:
         # score = self.regressor.score(test_data, test_labels)
         return predictions
 
-    @classmethod
-    def from_file(self, filename):
-        """Loads a regressor - rather than creates a new one.
-
-        After saving a regression model, you can recreate it by running EMGRegressor.from_file(). By default 
-        this function loads a previously saved and pickled classifier. 
-
-        Parameters
-        ----------
-        filename: string
-            The file path of the pickled model. 
-
-        Returns
-        ----------
-        EMGClassifier
-            Returns an EMGClassifier object.
-
-        Examples
-        -----------
-        >>> classifier = EMGClassifier.from_file('lda.pickle')
-        """
-        with open(filename, 'rb') as f:
-            classifier = pickle.load(f)
-        return classifier
-
-    def save(self, filename):
-        """Saves (pickles) the EMGRegressor object to a file.
-
-        Use this save function if you want to load the object later using the from_file function. 
-
-        Parameters
-        ----------
-        filename: string
-            The path of the outputted pickled file. 
-        """
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
-    
-    def _fit_statistical_model(self, model, feature_dictionary, parameters):
-        assert 'training_features' in feature_dictionary.keys()
-        assert 'training_labels'   in feature_dictionary.keys()
-        # convert dictionary of features into np.ndarray format (Nwindow x Nfeatures)
-        feature_dictionary["training_features"] = EMGClassifier()._format_data(feature_dictionary['training_features'])
-        self.regressor = model
-        self.regressor.fit(feature_dictionary['training_features'], feature_dictionary['training_labels'])
-
-    def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
-        assert 'training_dataloader' in dataloader_dictionary.keys()
-        assert 'validation_dataloader'  in dataloader_dictionary.keys()
-        self.regressor = model
-        self.regressor.fit(dataloader_dictionary, **parameters)
 
 
 class OnlineStreamer:
