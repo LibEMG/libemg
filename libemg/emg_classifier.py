@@ -227,7 +227,6 @@ class EMGClassifier:
         assert 'validation_dataloader'  in dataloader_dictionary.keys()
         self.classifier = model
         self.classifier.fit(dataloader_dictionary, **parameters)
-        pass
 
     def _format_data(self, feature_dictionary):
         arr = None
@@ -434,10 +433,9 @@ class EMGRegressor:
 
         if feature_dictionary is not None:
             if "training_features" in feature_dictionary.keys():
-                self._fit_regressor(model, feature_dictionary, parameters)
-        # TODO: Allow for deep learning regressors
-        # if dataloader_dictionary is not None:
-        #     self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
+                self._fit_statistical_model(model, feature_dictionary, parameters)
+        if dataloader_dictionary is not None:
+            self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
         
 
     def run(self, test_data, test_labels):
@@ -496,13 +494,19 @@ class EMGRegressor:
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
     
-    def _fit_regressor(self, model, feature_dictionary, parameters):
+    def _fit_statistical_model(self, model, feature_dictionary, parameters):
         assert 'training_features' in feature_dictionary.keys()
         assert 'training_labels'   in feature_dictionary.keys()
         # convert dictionary of features into np.ndarray format (Nwindow x Nfeatures)
         feature_dictionary["training_features"] = EMGClassifier()._format_data(feature_dictionary['training_features'])
         self.regressor = model
         self.regressor.fit(feature_dictionary['training_features'], feature_dictionary['training_labels'])
+
+    def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
+        assert 'training_dataloader' in dataloader_dictionary.keys()
+        assert 'validation_dataloader'  in dataloader_dictionary.keys()
+        self.regressor = model
+        self.regressor.fit(dataloader_dictionary, **parameters)
 
 
 class OnlineStreamer:
