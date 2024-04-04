@@ -68,7 +68,7 @@ class EMGPredictor:
             statistical models or deep learning models.
         """
         if feature_dictionary is not None:
-            self._fit_statistical_model(feature_dictionary, parameters)
+            self._fit_statistical_model(feature_dictionary)
         elif dataloader_dictionary is not None:
             self._fit_deeplearning_model(dataloader_dictionary, parameters)
         else:
@@ -164,7 +164,7 @@ class EMGPredictor:
                 arr = np.hstack((arr, feature_dictionary[feat]))
         return arr
 
-    def _fit_statistical_model(self, feature_dictionary, parameters):
+    def _fit_statistical_model(self, feature_dictionary):
         assert 'training_features' in feature_dictionary.keys()
         assert 'training_labels'   in feature_dictionary.keys()
         # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
