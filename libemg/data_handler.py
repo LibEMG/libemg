@@ -458,8 +458,8 @@ class OnlineDataHandler(DataHandler):
         self.prepare_smm()
 
         pyplot.style.use('ggplot')
-        while not self._check_streaming():
-            pass
+        # while not self._check_streaming():
+        #     pass
         
         # num_channels = len(self.get_data()[0])
         plots = []
