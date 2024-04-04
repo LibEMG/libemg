@@ -450,6 +450,15 @@ class EMGRegressor(EMGPredictor):
         # score = self.regressor.score(test_data, test_labels)
         return predictions
 
+    def visualize(self, test_labels, predictions):
+        # TODO
+        ...
+
+    def add_deadband(self, threshold):
+        # TODO
+        # Add deadband around 0 so all values below that will be output as 0
+        ...
+
 
 
 class OnlineStreamer:
