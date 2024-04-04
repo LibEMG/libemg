@@ -188,7 +188,7 @@ class EMGClassifier(EMGPredictor):
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, model, model_parameters, random_seed = 0):
+    def __init__(self, model, model_parameters = None, random_seed = 0):
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
             'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
@@ -400,7 +400,7 @@ class EMGRegressor(EMGPredictor):
     This is the base class for any offline EMG regression. 
 
     """
-    def __init__(self, model, model_parameters, random_seed = 0):
+    def __init__(self, model, model_parameters = None, random_seed = 0):
         model_config = {
             'LR': (LinearRegression, {}),
             'SVM': (SVR, {"kernel": "linear"}),
