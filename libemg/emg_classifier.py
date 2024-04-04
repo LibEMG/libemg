@@ -1,10 +1,11 @@
 from collections import deque
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.neural_network import MLPClassifier
-from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier, MLPRegressor
+from sklearn.svm import SVC, SVR
 from libemg.feature_extractor import FeatureExtractor
 from multiprocessing import Process
 import numpy as np
@@ -187,7 +188,7 @@ class EMGClassifier(EMGPredictor):
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, model, model_parameters, random_seed=0):
+    def __init__(self, model, model_parameters, random_seed = 0):
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
             'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
@@ -399,8 +400,17 @@ class EMGRegressor(EMGPredictor):
     This is the base class for any offline EMG regression. 
 
     """
-    def __init__(self, random_seed=0):
-        pass
+    def __init__(self, model, model_parameters, random_seed = 0):
+        model_config = {
+            'LR': (LinearRegression, {}),
+            'SVM': (SVR, {"kernel": "linear"}),
+            'RF': (RandomForestRegressor, {"random_state": 0}),
+            'GB': (GradientBoostingRegressor, {"random_state": 0}),
+            'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
+        }
+        model = self._validate_model_parameters(model, model_parameters, model_config)
+        super().__init__(model, model_parameters, random_seed=random_seed)
+
     
     def run(self, test_data, test_labels):
         """Runs the classifier on a pre-defined set of training data.
