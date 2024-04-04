@@ -35,6 +35,8 @@ class EMGPredictor:
         """
         self.model = model
         self.model_parameters = model_parameters
+        # default for feature parameters
+        self.feature_params = {}
         random.seed(random_seed)
 
     def fit(self, feature_dictionary = None, dataloader_dictionary = None, parameters = None):
@@ -116,6 +118,19 @@ class EMGPredictor:
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
+    def install_feature_parameters(self, feature_params):
+        """Installs the feature parameters for the classifier.
+
+        This function is used to install the feature parameters for the classifier. This is necessary for the classifier
+        to know how to extract features from the raw data. This is used primarily by the OnlineEMGClassifier class.
+
+        Parameters
+        ----------
+        feature_params: dict
+            A dictionary containing the feature parameters. 
+        """
+        self.feature_params = feature_params
+
     @staticmethod
     def _validate_model_parameters(model, model_parameters, model_config):
         if not isinstance(model, str):
@@ -194,8 +209,6 @@ class EMGClassifier(EMGPredictor):
         self.th_min_dic = None 
         self.th_max_dic = None 
 
-        # default for feature parameters
-        self.feature_params = {}
 
         
     def run(self, test_data, fix_feature_errors=False, silent=False):
@@ -276,18 +289,6 @@ class EMGClassifier(EMGPredictor):
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
 
 
-    def install_feature_parameters(self, feature_params):
-        """Installs the feature parameters for the classifier.
-
-        This function is used to install the feature parameters for the classifier. This is necessary for the classifier
-        to know how to extract features from the raw data. This is used primarily by the OnlineEMGClassifier class.
-
-        Parameters
-        ----------
-        feature_params: dict
-            A dictionary containing the feature parameters. 
-        """
-        self.feature_params = feature_params
     
     '''
     ---------------------- Private Helper Functions ----------------------
@@ -399,8 +400,7 @@ class EMGRegressor(EMGPredictor):
 
     """
     def __init__(self, random_seed=0):
-        random.seed(random_seed)
-        self.feature_params = {}
+        pass
     
     def run(self, test_data, test_labels):
         """Runs the classifier on a pre-defined set of training data.
