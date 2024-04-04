@@ -26,12 +26,11 @@ class EMGPredictor:
 
         Parameters
         ----------
-    
-        model: string or custom classifier (must have fit, predict and predic_proba functions)
-            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
-        random_seed: int
+        model: custom model (must have fit, predict and predict_proba functions)
+            Object that will be used to fit and provide predictions.
+        model_parameters: dictionary, default=None
+            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+        random_seed: int, default=0
             Constant value to control randomization seed.
         """
         self.model = model
@@ -179,16 +178,22 @@ class EMGPredictor:
 
 
 class EMGClassifier(EMGPredictor):
-    """The Offline EMG Classifier. 
-
-    This is the base class for any offline EMG classification. 
-
-    Parameters
-    ----------
-    velocity: bool (optional), default=False
-        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
-    """
     def __init__(self, model, model_parameters = None, random_seed = 0):
+        """The Offline EMG Classifier. 
+
+        This is the base class for any offline EMG classification. 
+
+        Parameters
+        ----------
+        model: string or custom classifier (must have fit, predict and predic_proba functions)
+            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
+            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+        model_parameters: dictionary, default=None
+            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+        random_seed: int, default=0
+            Constant value to control randomization seed.
+        """
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
             'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
@@ -401,6 +406,21 @@ class EMGRegressor(EMGPredictor):
 
     """
     def __init__(self, model, model_parameters = None, random_seed = 0):
+        """The Offline EMG Regressor. 
+
+        This is the base class for any offline EMG regression. 
+
+        Parameters
+        ----------
+        model: string or custom regressor (must have fit and predict functions)
+            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM', 'RF' (Random Forest),  
+            'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+        model_parameters: dictionary, default=None
+            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+        random_seed: int, default=0
+            Constant value to control randomization seed.
+        """
         model_config = {
             'LR': (LinearRegression, {}),
             'SVM': (SVR, {"kernel": "linear"}),
