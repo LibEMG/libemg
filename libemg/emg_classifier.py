@@ -1,6 +1,6 @@
 from collections import deque
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
@@ -20,10 +20,24 @@ from scipy import stats
 from libemg.utils import get_windows
 
 class EMGPredictor:
-    def __init__(self, random_seed = 0) -> None:
+    def __init__(self, model, model_parameters = None, random_seed = 0) -> None:
+        """Base class for EMG prediction.
+
+        Parameters
+        ----------
+    
+        model: string or custom classifier (must have fit, predict and predic_proba functions)
+            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
+            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+        random_seed: int
+            Constant value to control randomization seed.
+        """
+        self.model = model
+        self.model_parameters = model_parameters
         random.seed(random_seed)
 
-    def fit(self, model, feature_dictionary = None, dataloader_dictionary = None, parameters = None):
+    def fit(self, feature_dictionary = None, dataloader_dictionary = None, parameters = None):
         """The fit function for the EMG Prediction class. 
 
         This is the method called that actually optimizes model weights for the dataset. This method presents a fork for two 
@@ -51,9 +65,9 @@ class EMGPredictor:
             statistical models or deep learning models.
         """
         if feature_dictionary is not None:
-            self._fit_statistical_model(model, feature_dictionary, parameters)
+            self._fit_statistical_model(feature_dictionary, parameters)
         elif dataloader_dictionary is not None:
-            self._fit_deeplearning_model(model, dataloader_dictionary, parameters)
+            self._fit_deeplearning_model(dataloader_dictionary, parameters)
         else:
             raise ValueError("Incorrect combination of values passed to fit method. A feature dictionary is needed for statistical models and a dataloader dictionary is needed for deep models.")
 
@@ -101,7 +115,31 @@ class EMGPredictor:
         """
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
-    def _format_data(self, feature_dictionary):
+
+    @staticmethod
+    def _validate_model_parameters(model, model_parameters, model_config):
+        if not isinstance(model, str):
+            # Custom model
+            return model
+        valid_models = list(model_config.keys())
+        assert model in valid_models, f"Please pass in one of the approved models: {valid_models}."
+        
+        model_reference, default_parameters = model_config[model]
+        valid_parameters = default_parameters
+
+        if model_parameters is not None:
+            signature = list(inspect.signature(model_reference).parameters.keys())
+            for p in model_parameters:
+                if p in signature:
+                    valid_parameters[p] = model_parameters[p]
+                else:
+                    print(str(p) + "is an invalid parameter.")
+
+        valid_model = model_reference(**valid_parameters)
+        return valid_model
+
+    @staticmethod
+    def _format_data(feature_dictionary):
         arr = None
         for feat in feature_dictionary:
             if arr is None:
@@ -109,18 +147,20 @@ class EMGPredictor:
             else:
                 arr = np.hstack((arr, feature_dictionary[feat]))
         return arr
-    def _fit_statistical_model(self, model, feature_dictionary, parameters):
+
+    def _fit_statistical_model(self, feature_dictionary, parameters):
         assert 'training_features' in feature_dictionary.keys()
         assert 'training_labels'   in feature_dictionary.keys()
         # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
         feature_dictionary["training_features"] = self._format_data(feature_dictionary['training_features'])
-        self._set_up_classifier(model, feature_dictionary, parameters)
+        # self._set_up_classifier(model, feature_dictionary, parameters)
+        self.model.fit(feature_dictionary['training_features'], feature_dictionary['training_labels'])
         
-    def _fit_deeplearning_model(self, model, dataloader_dictionary, parameters):
+    def _fit_deeplearning_model(self, dataloader_dictionary, parameters):
         assert 'training_dataloader' in dataloader_dictionary.keys()
         assert 'validation_dataloader'  in dataloader_dictionary.keys()
-        self.model = model
         self.model.fit(dataloader_dictionary, **parameters)
+
 
 class EMGClassifier(EMGPredictor):
     """The Offline EMG Classifier. 
@@ -132,11 +172,20 @@ class EMGClassifier(EMGPredictor):
     velocity: bool (optional), default=False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     """
-    def __init__(self, random_seed=0):
-        random.seed(random_seed)
-        self.emg_predictor = EMGPredictor(random_seed=random_seed)
-        
-        self.classifier = None
+    def __init__(self, model, model_parameters, random_seed=0):
+        model_config = {
+            'LDA': (LinearDiscriminantAnalysis, {}),
+            'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
+            'SVM': (SVC, {"kernel": "linear", "probability": True, "random_state": 0}),
+            'QDA': (QuadraticDiscriminantAnalysis, {}),
+            'RF': (RandomForestClassifier, {"random_state": 0}),
+            'NB': (GaussianNB, {}),
+            'GB': (GradientBoostingClassifier, {"random_state": 0}),
+            'MLP': (MLPClassifier, {"random_state": 0, "hidden_layer_sizes": 126})
+        }
+        model = self._validate_model_parameters(model, model_parameters, model_config)
+        super().__init__(model, model_parameters, random_seed=random_seed)
+
         self.velocity = False
         self.majority_vote = None
         self.rejection = False
@@ -176,7 +225,7 @@ class EMGClassifier(EMGPredictor):
             if FeatureExtractor().check_features(test_data, silent):
                 test_data = np.nan_to_num(test_data, neginf=0, nan=0, posinf=0) 
         
-        prob_predictions = self.classifier.predict_proba(test_data)
+        prob_predictions = self.predict_proba(test_data)
             
         # Default
         predictions, probabilities = self._prediction_helper(prob_predictions)
@@ -243,71 +292,6 @@ class EMGClassifier(EMGPredictor):
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
-    def _set_up_classifier(self, model, dataset_dictionary, parameters):
-        valid_models = ["LDA", "KNN", "SVM", "QDA", "RF", "NB", "GB", "MLP"]
-        if isinstance(model, str):
-            assert model in valid_models
-            valid_parameters = self._validate_parameters(model, parameters)
-
-        # Set up classifier based on input
-        if model == "LDA":
-            self.classifier = LinearDiscriminantAnalysis(**valid_parameters)
-        elif model == "KNN":
-            self.classifier = KNeighborsClassifier(**valid_parameters)
-        elif model == "SVM":
-            self.classifier = SVC(**valid_parameters)
-        elif model == "QDA":
-            self.classifier = QuadraticDiscriminantAnalysis(**valid_parameters)
-        elif model == "RF":
-            self.classifier = RandomForestClassifier(**valid_parameters)
-        elif model == "NB":
-            self.classifier = GaussianNB(**valid_parameters)
-        elif model == "GB":
-            self.classifier = GradientBoostingClassifier(**valid_parameters)
-        elif model == "MLP":
-            self.classifier = MLPClassifier(**valid_parameters)
-        elif not model is None:
-            # Assume a custom classifier has been passed in
-            self.classifier = model
-        # Fit the model to the data set
-        self.classifier.fit(dataset_dictionary['training_features'],dataset_dictionary['training_labels'])
-
-    def _validate_parameters(self, model, parameters):
-        default_parameters = {
-            'LDA': {}, 
-            'KNN': {"n_neighbors": 5}, 
-            'SVM': {"kernel": "linear", "probability": True, "random_state": 0},
-            'QDA': {},
-            'RF': {"random_state": 0},
-            'NB': {},
-            'GB': {"random_state": 0},
-            'MLP': {"random_state": 0, "hidden_layer_sizes": 126}
-        }
-
-        valid_parameters = default_parameters[model]
-
-        if parameters is None:
-            return valid_parameters
-
-        dic = {'LDA': LinearDiscriminantAnalysis, 
-               'KNN': KNeighborsClassifier, 
-               'SVM': SVC, 
-               'QDA': QuadraticDiscriminantAnalysis,
-               'RF': RandomForestClassifier,
-               'NB': GaussianNB,
-               'GB': GradientBoostingClassifier,
-               'MLP': MLPClassifier
-        }
-
-        signature = list(inspect.signature(dic[model]).parameters.keys())
-        for p in parameters:
-            if p in signature:
-                valid_parameters[p] = parameters[p]
-            else:
-                print(str(p) + "is an invalid parameter.")
-        return valid_parameters
-            
-    
     def _prediction_helper(self, predictions):
         probabilities = [] 
         prediction_vals = []
@@ -416,7 +400,6 @@ class EMGRegressor(EMGPredictor):
     """
     def __init__(self, random_seed=0):
         random.seed(random_seed)
-        self.regressor = None
         self.feature_params = {}
     
     def run(self, test_data, test_labels):
@@ -432,8 +415,8 @@ class EMGRegressor(EMGPredictor):
             A list of predictions, based on the passed in testing features.
         """
         if type(test_data) == dict:
-            test_data = EMGClassifier()._format_data(test_data)
-        predictions = self.regressor.predict(test_data)
+            test_data = self._format_data(test_data)
+        predictions = self.predict(test_data)
         # score = self.regressor.score(test_data, test_labels)
         return predictions
 
