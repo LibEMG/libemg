@@ -438,12 +438,12 @@ class EMGRegressor(EMGPredictor):
 
     
     def run(self, test_data, test_labels):
-        """Runs the classifier on a pre-defined set of training data.
+        """Runs the regressor on a pre-defined set of training data.
 
         Parameters
         ----------
         test_data: list
-            A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
+            A dictionary, np.ndarray of inputs appropriate for the model of the EMGRegressor.
         Returns
         ----------
         list
