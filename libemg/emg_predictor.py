@@ -456,13 +456,11 @@ class EMGRegressor(EMGPredictor):
         return predictions
 
     def visualize(self, test_labels, predictions):
-        # TODO
-        ...
+        raise NotImplementedError("This method has not yet been implemented.")
 
     def add_deadband(self, threshold):
-        # TODO
         # Add deadband around 0 so all values below that will be output as 0
-        ...
+        raise NotImplementedError("This method has not yet been implemented.")
 
 
 
