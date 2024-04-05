@@ -39,7 +39,7 @@ class EMGPredictor:
         self.feature_params = {}
         random.seed(random_seed)
 
-    def fit(self, feature_dictionary = None, dataloader_dictionary = None, parameters = None):
+    def fit(self, feature_dictionary = None, dataloader_dictionary = None, training_parameters = None):
         """The fit function for the EMG Prediction class. 
 
         This is the method called that actually optimizes model weights for the dataset. This method presents a fork for two 
@@ -61,15 +61,14 @@ class EMGPredictor:
         dataloader_dictionary: dict
             A dictionary including the associated dataloader objects for the dataset you'd like to train with. 
             Dictionary keys should include 'training_dataloader', and 'validation_dataloader'.
-        parameters: dict (optional)
-            A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-            in the sklearn docs for the given model. Alternatively, these can be custom parameters in the case of custom 
-            statistical models or deep learning models.
+        training_parameters: dict (optional)
+            Training parameters passed to the fit() method of deep learning models (e.g., learning rate, num_epochs). Is not used
+            for statistical models.
         """
         if feature_dictionary is not None:
             self._fit_statistical_model(feature_dictionary)
         elif dataloader_dictionary is not None:
-            self._fit_deeplearning_model(dataloader_dictionary, parameters)
+            self._fit_deeplearning_model(dataloader_dictionary, training_parameters)
         else:
             raise ValueError("Incorrect combination of values passed to fit method. A feature dictionary is needed for statistical models and a dataloader dictionary is needed for deep models.")
 
