@@ -65,6 +65,9 @@ class EMGPredictor:
             Training parameters passed to the fit() method of deep learning models (e.g., learning rate, num_epochs). Is not used
             for statistical models.
         """
+        if training_parameters is None:
+            # Convert to empty dictionary for compatibility with unpacking keywords
+            training_parameters = {}
         if feature_dictionary is not None:
             self._fit_statistical_model(feature_dictionary)
         elif dataloader_dictionary is not None:
