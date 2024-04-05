@@ -1,5 +1,5 @@
 from libemg import feature_extractor
-from libemg import emg_classifier
+from libemg import emg_predictor
 from libemg import data_handler
 from libemg import utils
 from libemg import screen_guided_training
