@@ -60,8 +60,8 @@ feature_dic = {
         'training_labels': train_labels
 }
 
-reg = libemg.emg_classifier.EMGRegressor()
-reg.fit(MultiOutputRegressor(GradientBoostingRegressor()), feature_dic)
+reg = libemg.emg_predictor.EMGRegressor(MultiOutputRegressor(GradientBoostingRegressor()))
+reg.fit(feature_dic)
 predictions = reg.run(features, train_labels)
 score = r2_score(train_labels[:,0], predictions[:,0])
 print(score)

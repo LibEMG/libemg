@@ -122,7 +122,7 @@ from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
 from libemg.streamers import myo_streamer
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier
+from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier
 ```
 
 To listen for decisions streamed over a port, an OnlineDataHandler is required. This data handler maintains a real-time EMG data buffer and is required for training and classification.
@@ -195,8 +195,8 @@ data_set['training_labels'] = train_metadata['classes']
 Step 4 involves setting up the EMGClassifier for the OnlineClassifier. An LDA model was chosen since it is known to work well and is reliable. Note that other models could be used here if desired.
 ```Python
 # Step 4: Create the EMG Classifier
-o_classifier = EMGClassifier()
-o_classifier.fit(model="LDA", feature_dictionary=data_set)
+o_classifier = EMGClassifier("LDA")
+o_classifier.fit(feature_dictionary=data_set)
 ```
 
 Finally, in step 5 an online EMG classifier is trained and begins streaming predictions. By default these predictions are streamed at `port:12346` and `ip:'127.0.0.1'`. 

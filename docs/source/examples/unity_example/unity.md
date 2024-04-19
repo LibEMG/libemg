@@ -68,7 +68,7 @@ from libemg.screen_guided_training import ScreenGuidedTraining
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier 
+from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier 
 from libemg.streamers import myo_streamer
 ```
 
@@ -130,8 +130,8 @@ Next, we have to create an offline EMG classifier. We have opted for an SVM mode
 
 ```Python
 # Step 4: Create the EMG classifier
-o_classifier = EMGClassifier()
-o_classifier.fit(model="SVM", feature_dictionary=data_set)
+o_classifier = EMGClassifier("SVM")
+o_classifier.fit(feature_dictionary=data_set)
 o_classifier.add_velocity(train_windows, train_metadata['classes'])
 o_classifier.add_majority_vote(5)
 o_classifier.add_rejection(0.9)

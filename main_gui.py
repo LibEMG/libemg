@@ -130,11 +130,11 @@ class GUI:
         windows, metadata  = self.extract_windows(offlinedatahandler)
         features = self.extract_features(windows)
         # we need to make an offline classifier to pass to the online classifier
-        offlineclassifier = libemg.emg_classifier.EMGClassifier()
+        offlineclassifier = libemg.emg_predictor.EMGClassifier('LDA')
         feature_dictionary = {"training_features": features,
                               "training_labels"  : metadata["classes"]}
-        offlineclassifier.fit("LDA", feature_dictionary=feature_dictionary)
-        self.onlineclassifier = libemg.emg_classifier.OnlineEMGClassifier(offlineclassifier,
+        offlineclassifier.fit(feature_dictionary=feature_dictionary)
+        self.onlineclassifier = libemg.emg_predictor.OnlineEMGClassifier(offlineclassifier,
                                                                           WINDOW_SIZE,
                                                                           WINDOW_INC,
                                                                           self.odh,
@@ -214,8 +214,8 @@ class GUI:
             'training_labels': train_labels
         }
 
-        reg = libemg.emg_classifier.EMGRegressor()
-        reg.fit(ElasticNet(), feature_dic)
+        reg = libemg.emg_predictor.EMGRegressor(ElasticNet())
+        reg.fit(feature_dic)
         predictions = reg.run(fe.extract_features(FEATURES, test_windows), test_labels)
         dof1_r2 = metrics.r2_score(test_metadata["regression0"], predictions[:,0])
         print(dof1_r2)
@@ -223,7 +223,7 @@ class GUI:
         print(dof2_r2)
 
 
-        online_classifier = libemg.emg_classifier.OnlineEMGRegressor(reg, WINDOW_SIZE, WINDOW_INC, self.odh, FEATURES, std_out=True)
+        online_classifier = libemg.emg_predictor.OnlineEMGRegressor(reg, WINDOW_SIZE, WINDOW_INC, self.odh, FEATURES, std_out=True)
         online_classifier.run(block=True)
 
 

@@ -6,7 +6,7 @@ from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
 from libemg.utils import make_regex, get_windows
 from libemg.streamers import mock_emg_stream
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import EMGClassifier, OnlineEMGClassifier
+from libemg.emg_predictor import EMGClassifier, OnlineEMGClassifier
 
 """
 By default these tests are marked @slow - and they do not work in the CI
@@ -44,8 +44,8 @@ def test_emg_classifier():
     data_set['training_labels'] = metadata['classes']
     testing_features = fe.extract_feature_group('HTD', test_windows)
 
-    off_class = EMGClassifier()
-    off_class.fit("LDA", data_set.copy())
+    off_class = EMGClassifier('LDA')
+    off_class.fit(data_set.copy())
     offline_preds, _ = off_class.run(test_data=testing_features)
 
     online_data_handler = OnlineDataHandler(emg_arr=True)

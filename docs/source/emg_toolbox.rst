@@ -20,7 +20,7 @@ Feature Selection
 
 Classification
 ------------------------------
-.. automodule:: libemg.emg_classifier
+.. automodule:: libemg.emg_predictor
    :members:
 
 Offline Evaluation Metrics
