@@ -16,7 +16,7 @@ from libemg._streamers._leap_streamer import LeapStreamer
 
 
 def leap_streamer(shared_memory_items=None,
-                  arm_basis = False,
+                  arm_basis = True,
                   arm_width = False,
                   hand_direction = False,
                   elbow = False,
