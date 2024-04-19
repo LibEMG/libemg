@@ -187,7 +187,7 @@ class EMGClassifier:
         """
         self.majority_vote = num_samples
 
-    def add_velocity(self, train_windows, train_labels):
+    def add_velocity(self, train_windows, train_labels, velocity_handle = None):
         """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
 
         Note, that when using this optional, ramp contractions should be captured for training. 
@@ -195,6 +195,7 @@ class EMGClassifier:
         Parameters:
         -----------
         """
+        self.velocity_handle = velocity_handle
         self.velocity = True
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
 
@@ -332,8 +333,13 @@ class EMGClassifier:
     
     def _get_velocity(self, window, c):
         mod = "emg" # todo: specify another way to do this is needed
+        
         if self.th_max_dic and self.th_min_dic:
-            velocity_output = (np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
+            if self.velocity_handle is None:
+                velocity_metric = np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0)
+            else:
+                velocity_metric = self.velocity_handle(window[mod])
+            velocity_output = (velocity_metric - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
             return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
     def _set_up_velocity_control(self, train_windows, train_labels):
@@ -344,14 +350,18 @@ class EMGClassifier:
         for c in classes:
             indices = np.where(train_labels == c)[0]
             c_windows = train_windows[indices]
-            mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
-            mav_tr_max = np.max(mav_tr)
-            mav_tr_min = np.min(mav_tr)
+            if self.velocity_handle is None:
+                velocity_metric = np.sum(np.mean(np.abs(c_windows),2), axis=1)
+            else:
+                velocity_metric = self.velocity_handle(c_windows)
+            # mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
+            tr_max = np.max(velocity_metric)
+            tr_min = np.min(velocity_metric)
             # Calculate THmin 
-            th_min = ((1-(10/100)) * mav_tr_min) + (0.1 * mav_tr_max)
+            th_min = ((1-(10/100)) * tr_min) + (0.1 * tr_max)
             th_min_dic[c] = th_min 
             # Calculate THmax
-            th_max = ((1-(70/100)) * mav_tr_min) + (0.7 * mav_tr_max)
+            th_max = ((1-(70/100)) * tr_min) + (0.7 * tr_max)
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
 
@@ -634,7 +644,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
-        
+        self.smi = smm_items
         
 
         
@@ -693,6 +703,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         if self.smm:
             self.prepare_smm()
             self.options['smm'].modify_variable("active_flag", lambda x:1)
+            self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
         
         self.odh.prepare_smm()
 
@@ -707,6 +718,11 @@ class OnlineEMGClassifier(OnlineStreamer):
         while True:
             if not self.options["smm"].get_variable("active_flag")[0,0]:
                 continue
+
+            if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
+                self.load_emg_classifier(self.options["smm"].get_variable("adapt_flag")[0][0])
+                self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+
             val, count = self.odh.get_data(N=self.window_size)
             modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
 
@@ -760,6 +776,10 @@ class OnlineEMGClassifier(OnlineStreamer):
                 
                 self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
                 
+    def load_emg_classifier(self, number):
+        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
+            self.classifier = pickle.load(handle)
+            print(f"Loaded model #{number}.")
     
     def _format_data_sample(self, data):
         arr = None
