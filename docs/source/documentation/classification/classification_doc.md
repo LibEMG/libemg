@@ -15,7 +15,6 @@ parameters = {
     'random_state': 5,
     'max_leaf_nodes': 10
 }
-classifier = EMGClassifier('RF')
 classifier.fit(data_set, parameters=parameters)
 ```
 
