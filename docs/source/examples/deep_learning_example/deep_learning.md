@@ -254,8 +254,8 @@ With these things defined, we can finally interface the CNN model with LibEMG. W
 ```Python
     # Now that we've made the custom classifier object, libEMG knows how to 
     # interpret it when passed in the dataloader_dictionary. Everything happens behind the scenes.
-    classifier = EMGClassifier()
-    classifier.fit(model, dataloader_dictionary=dataloader_dictionary, parameters=dl_dictionary)
+    classifier = EMGClassifier(model)
+    classifier.fit(dataloader_dictionary=dataloader_dictionary, parameters=dl_dictionary)
 ```
 
 After the classifier has been trained, we can use this EMGClassifier object the same way we always have done, despite now using a neural network.

@@ -35,7 +35,7 @@ from libemg.screen_guided_training import ScreenGuidedTraining
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier
+from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier
 ```
 Similarly to previous examples, we decided to create a simple menu to (1) leverage the training module and (2) enable the use of different classifiers. To do this, we have included two buttons in `menu.py`. When the "accumulate training data button" is clicked, we leverage the training UI module. For this example, we want five reps (3 training - 2 testing), and we point it to the "classes" folder as it contains images for each class.
 
@@ -103,8 +103,8 @@ Finally, we create the `EMGClassifier` and the `OnlineEMGClassifier` using the d
 
 ```Python
 # Step 4: Create the EMG Classifier
-o_classifier = EMGClassifier()
-o_classifier.fit(model=self.model_str.get(), feature_dictionary=data_set)
+o_classifier = EMGClassifier(self.model_str.get())
+o_classifier.fit(feature_dictionary=data_set)
 
 # Step 5: Create online EMG classifier and start classifying.
 self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)

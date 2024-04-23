@@ -8,7 +8,7 @@ This simple offline analysis serves as a starting point to understand the offlin
 The very first step involves importing the modules needed. In general, each of LibEMG's modules has its own import. Make sure that you have successfully installed libemg through pip.
 ```Python
 from libemg.datasets import OneSubjectMyoDataset
-from libemg.emg_classifier import EMGClassifier
+from libemg.emg_predictor import EMGClassifier
 from libemg.feature_extractor import FeatureExtractor
 from libemg.offline_metrics import OfflineMetrics
 import matplotlib.pyplot as plt
@@ -62,10 +62,10 @@ classifiers = ["LDA","SVM","KNN","RF","QDA"]
 
 # Extract metrics for each classifier
 for classifier in classifiers:
-    model = EMGClassifier()
+    model = EMGClassifier(classifier)
 
     # Fit and run the classifier
-    model.fit(classifier, data_set.copy())
+    model.fit(data_set.copy())
     preds, probs = model.run(test_features)
 
     # Null label is 2 since it is the no movement class
