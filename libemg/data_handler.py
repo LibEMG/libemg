@@ -483,7 +483,7 @@ class OnlineDataHandler(DataHandler):
                     data[mod][:,j] = data[mod][:,j] - np.mean(data[mod][:,j])
                 inter_channel_amount = 1.5 * np.max(data[mod])
                 if len(data[mod]) > num_samples:
-                    data[mod] = data[mod][-num_samples:,:]
+                    data[mod] = data[mod][:num_samples,:]
                 if len(data[mod]) > 0:
                     x_data = list(range(0,data[mod].shape[0]))
                     num_channels = data[mod].shape[1]
@@ -531,7 +531,7 @@ class OnlineDataHandler(DataHandler):
             data = data[:,channels]
             inter_channel_amount = 1.5 * np.max(data)
             if len(data) > num_samples:
-                data = data[-num_samples:,:]
+                data = data[:num_samples,:]
             if len(data) > 0:
                 x_data = list(range(0,data.shape[0]))
             
