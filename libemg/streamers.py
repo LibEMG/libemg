@@ -388,16 +388,15 @@ def oymotion_streamer(ip='127.0.0.1', port=12345, platform='windows', sampling_r
 
 
 def emager_streamer(shared_memory_items = None):
-    """The UDP streamer for the emager armband. 
+    """The streamer for the emager armband. 
 
-    This function connects to the emager cuff and streams its data over UDP.
+    This function connects to the emager cuff and streams its data over a serial port and access it via shared memory.
 
     Parameters
     ----------
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
+    shared_memory_items: list, default=12345
+        The shared memory items used to access specific tags in shared memory (e.g., emg and emg_count). If None is passed,
+        defaults values are created and used to create the streamer.
 
     Examples
     ---------
