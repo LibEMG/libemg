@@ -51,10 +51,6 @@ class EMGPredictor:
         Parameters
         ----------
     
-        model: string or custom classifier (must have fit, predict and predic_proba functions)
-            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
         feature_dictionary: dict
             A dictionary including the associated features and labels associated with a set of data. 
             Dictionary keys should include 'training_labels' and 'training_features'.
