@@ -159,6 +159,9 @@ class EMGPredictor:
 
     @staticmethod
     def _format_data(feature_dictionary):
+        if isinstance(feature_dictionary, np.ndarray):
+            # Passed in array - return instead of looping through each row
+            return feature_dictionary
         arr = None
         for feat in feature_dictionary:
             if arr is None:
