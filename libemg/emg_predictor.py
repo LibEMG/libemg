@@ -98,13 +98,13 @@ class EMGPredictor:
 
     def predict(self, data):
         try:
-            self.model.predict(data)
+            return self.model.predict(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict() method. Please ensure model has a valid predict() method.") from e
 
     def predict_proba(self, data):
         try:
-            self.model.predict_proba(data)
+            return self.model.predict_proba(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict_proba() method. Please ensure model has a valid predict_proba() method.") from e
 
