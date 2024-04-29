@@ -7,7 +7,7 @@ from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 import platform
 if platform.system() != 'Linux':
-    from libemg._streamers._oymotion_windows_streamer import Gforce, oym_start_stream
+    from libemg._streamers._oymotion_windows_streamer import Gforce
 else: 
     from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
@@ -346,7 +346,7 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
     return p
 
 
-def oymotion_streamer(ip='127.0.0.1', port=12345, platform='windows', sampling_rate=1000):
+def oymotion_streamer(shared_memory_items=None, sampling_rate=1000, emg=True,imu=False):
     """The UDP streamer for the oymotion armband. 
 
     This function connects to the oymotion and streams its data over UDP. It leverages the gforceprofile 
@@ -368,22 +368,37 @@ def oymotion_streamer(ip='127.0.0.1', port=12345, platform='windows', sampling_r
     ---------
     >>> oymotion_streamer()
     """
-    platform.lower()
-    sampling = 1000
-    res = 8
-    if sampling_rate == 500:
+    
+    if sampling_rate == 1000:
+        res = 8
+    elif sampling_rate == 500:
         res = 12
-        sampling = 500
-
-    if platform == "windows" or platform == 'mac':
-        oym = Gforce(ip,port)
-        p = Process(target=oym_start_stream, args=(oym,sampling,), daemon=True)
-        p.start()
-        return p
     else:
-        oym = OyMotionStreamer(ip, port, sampRate=sampling, resolution=res)
-        oym.start_stream()
-    return 0
+        raise Exception("Invalid sampling frequency provided.")
+
+    if shared_memory_items == None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (sampling_rate*2,8), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+        if imu:
+            shared_memory_items.append(["imu",       (100,10), np.double])
+            shared_memory_items.append(["imu_count", (1,1),    np.int32])
+    for item in shared_memory_items:
+        item.append(Lock())
+
+    operating_system = platform.system().lower()
+
+    # I'm only addressing this atm.
+    if operating_system == "windows" or operating_system == 'mac':
+        oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
+        oym.start()
+    else:
+        # This has not been updated to the new memory manager methods.
+        # oym = OyMotionStreamer(ip, port, sampRate=sampling, resolution=res)
+        # oym.start_stream()
+        raise Exception("Oymotion Streamer is not implemented for Linux.")
+    return oym, shared_memory_items
 
 
 
