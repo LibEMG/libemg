@@ -65,7 +65,7 @@ class OfflineDataHandler(DataHandler):
         super().__init__()
     
 
-    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal'):
+    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal', skiprows=0):
         """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
         specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
 
@@ -107,12 +107,14 @@ class OfflineDataHandler(DataHandler):
                 # The key is the emg key that is in the mrdf file
                 file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
-                file_data = np.genfromtxt(f,delimiter=delimiter)
+                file_data = np.genfromtxt(f,delimiter=delimiter, skip_header=skiprows)
             # collect the data from the file
             if "data_column" in dictionary_keys:
                 self.data.append(file_data[:, filename_dic["data_column"]])
             else:
                 self.data.append(file_data)
+            if len(self.data[-1].shape) == 1:
+                self.data[-1] = np.expand_dims(self.data[-1], 1)
             # also collect the metadata from the filename
             for k in keys:
                 if k + "_regex" in dictionary_keys:
