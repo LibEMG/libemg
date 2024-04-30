@@ -77,6 +77,8 @@ class OfflineDataHandler(DataHandler):
             dictionary containing the values of the metadata and the regex or columns associated with that metadata.
         delimiter: char
             How the columns of the files are separated in the .txt or .csv files.
+        skiprows: int
+            The number of rows in the CSV file to skip (from the top).
         """
         # you can insert custom member variables that will be collected from the filename using the dictionary
         # this gives at least a tiny bit of flexibility around what is recorded aside from the data
