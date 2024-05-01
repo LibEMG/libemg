@@ -65,7 +65,7 @@ class OfflineDataHandler(DataHandler):
         super().__init__()
     
 
-    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal'):
+    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal', skiprows=0):
         """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
         specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
 
@@ -77,6 +77,8 @@ class OfflineDataHandler(DataHandler):
             dictionary containing the values of the metadata and the regex or columns associated with that metadata.
         delimiter: char
             How the columns of the files are separated in the .txt or .csv files.
+        skiprows: int
+            The number of rows in the CSV file to skip (from the top).
         """
         # you can insert custom member variables that will be collected from the filename using the dictionary
         # this gives at least a tiny bit of flexibility around what is recorded aside from the data
@@ -107,12 +109,14 @@ class OfflineDataHandler(DataHandler):
                 # The key is the emg key that is in the mrdf file
                 file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
-                file_data = np.genfromtxt(f,delimiter=delimiter)
+                file_data = np.genfromtxt(f,delimiter=delimiter, skip_header=skiprows)
             # collect the data from the file
             if "data_column" in dictionary_keys:
                 self.data.append(file_data[:, filename_dic["data_column"]])
             else:
                 self.data.append(file_data)
+            if len(self.data[-1].shape) == 1:
+                self.data[-1] = np.expand_dims(self.data[-1], 1)
             # also collect the metadata from the filename
             for k in keys:
                 if k + "_regex" in dictionary_keys:
