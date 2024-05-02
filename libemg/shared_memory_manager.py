@@ -71,11 +71,6 @@ class SharedMemoryManager:
             result.append([k, self.variables[k]["shape"], self.variables[k]["type"]])
         return result
 
-    def cleanup(self):
-        for k in self.variables.keys():
-            self.variables[k]['smh'].close()
-            self.variables[k]['smh'].unlink()
-
 
 
 # if __name__ == "__main__":
