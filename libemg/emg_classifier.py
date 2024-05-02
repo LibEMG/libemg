@@ -187,7 +187,9 @@ class EMGClassifier:
         """
         self.majority_vote = num_samples
 
-    def add_velocity(self, train_windows, train_labels, velocity_handle = None):
+    def add_velocity(self, train_windows, train_labels,
+                     velocity_metric_handle = None,
+                     velocity_mapping_handle = None):
         """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
 
         Note, that when using this optional, ramp contractions should be captured for training. 
@@ -195,8 +197,10 @@ class EMGClassifier:
         Parameters:
         -----------
         """
-        self.velocity_handle = velocity_handle
+        self.velocity_metric_handle = velocity_metric_handle
+        self.velocity_mapping_handle = velocity_mapping_handle
         self.velocity = True
+
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
 
 
@@ -339,7 +343,10 @@ class EMGClassifier:
                 velocity_metric = np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0)
             else:
                 velocity_metric = self.velocity_handle(window[mod])
+            
             velocity_output = (velocity_metric - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
+            if self.velocity_mapping_handle:
+                velocity_output = self.velocity_mapping_handle(velocity_output)
             return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
     def _set_up_velocity_control(self, train_windows, train_labels):
@@ -350,10 +357,10 @@ class EMGClassifier:
         for c in classes:
             indices = np.where(train_labels == c)[0]
             c_windows = train_windows[indices]
-            if self.velocity_handle is None:
+            if self.velocity_metric_handle is None:
                 velocity_metric = np.sum(np.mean(np.abs(c_windows),2), axis=1)
             else:
-                velocity_metric = self.velocity_handle(c_windows)
+                velocity_metric = self.velocity_metric_handle(c_windows)
             # mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
             tr_max = np.max(velocity_metric)
             tr_min = np.min(velocity_metric)
