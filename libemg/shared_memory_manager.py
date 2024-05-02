@@ -58,7 +58,7 @@ class SharedMemoryManager:
             self.variables[tag]["data"][:] = fn(self.variables[tag]["data"])
 
 
-    def clean_up(self, parent = True):
+    def cleanup(self, parent = True):
         for k in self.variables.keys():
             self.variables[k]["smh"].close()
             if parent:
