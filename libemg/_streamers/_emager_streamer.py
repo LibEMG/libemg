@@ -1,6 +1,7 @@
 import serial # pyserial
 import numpy as np
-import time
+from multiprocessing import Process
+from libemg.shared_memory_manager import SharedMemoryManager
 
 def reorder(data, mask, match_result):
     '''
@@ -43,7 +44,6 @@ class Emager:
         self.emg_handlers = []
 
     def connect(self):
-        # TODO: automatically find KitProg3 USB-UART com port
         self.ser.open()
         return
 
@@ -82,24 +82,24 @@ class Emager:
         return
 
 # Myostreamer begins here ------
-import socket
-import pickle
-class EmagerStreamer:
-    def __init__(self, ip, port):
-        self.ip = ip 
-        self.port = port
+class EmagerStreamer(Process):
+    def __init__(self, shared_memory_items):
+        super().__init__(daemon=True)
+        self.smm = SharedMemoryManager()
+        self.shared_memory_items = shared_memory_items
 
-    def start_stream(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-       
-
+    def run(self):
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
         
         e = Emager(1500000)
         e.connect()
 
         def write_emg(emg):
-            data_arr = pickle.dumps(list(emg))
-            sock.sendto(data_arr, (self.ip, self.port))
+            emg = np.array(emg)
+            self.smm.modify_variable('emg', lambda x: np.vstack((emg, x))[:x.shape[0], :])
+            self.smm.modify_variable('emg_count', lambda x: x + 1)
+            
         e.add_emg_handler(write_emg)
 
         while True:
@@ -108,3 +108,4 @@ class EmagerStreamer:
             except:
                 print("Error Occured.")
                 # quit() 
+

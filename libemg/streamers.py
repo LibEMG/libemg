@@ -402,23 +402,30 @@ def oymotion_streamer(shared_memory_items=None, sampling_rate=1000, emg=True,imu
 
 
 
-def emager_streamer(ip='127.0.0.1', port=12345):
-    """The UDP streamer for the emager armband. 
+def emager_streamer(shared_memory_items = None):
+    """The streamer for the emager armband. 
 
-    This function connects to the emager cuff and streams its data over UDP.
+    This function connects to the emager cuff and streams its data over a serial port and access it via shared memory.
 
     Parameters
     ----------
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string (option), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
+    shared_memory_items: list, default=12345
+        The shared memory items used to access specific tags in shared memory (e.g., emg and emg_count). If None is passed,
+        defaults values are created and used to create the streamer.
 
     Examples
     ---------
     >>> emager_streamer()
     """
-    ema = EmagerStreamer(ip, port)
-    p = Process(target=ema.start_stream, daemon=True)
-    p.start()
-    return p
+    if shared_memory_items is None:
+        # Create defaults
+        shared_memory_items = []
+        shared_memory_items.append(['emg', (2000, 64), np.double])  # buffer size doesn't have a huge effect - pretty much as long as it's bigger than window size
+        shared_memory_items.append(['emg_count', (1, 1), np.int32])
+
+    for item in shared_memory_items:
+        item.append(Lock())
+    ema = EmagerStreamer(shared_memory_items)
+    ema.start()
+    return ema, shared_memory_items
+
