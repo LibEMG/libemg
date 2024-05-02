@@ -339,10 +339,10 @@ class EMGClassifier:
         mod = "emg" # todo: specify another way to do this is needed
         
         if self.th_max_dic and self.th_min_dic:
-            if self.velocity_handle is None:
+            if self.velocity_metric_handle is None:
                 velocity_metric = np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0)
             else:
-                velocity_metric = self.velocity_handle(window[mod])
+                velocity_metric = self.velocity_metric_handle(window[mod])
             
             velocity_output = (velocity_metric - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
             if self.velocity_mapping_handle:
