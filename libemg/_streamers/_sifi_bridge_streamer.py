@@ -278,4 +278,6 @@ class SiFiBridgeStreamer(Process):
         time.sleep(1)
         self.proc.kill()
         print("SiFi bridge killed.")
+        self.smm.cleanup()
+        print("SiFi SMM cleanedup.")
     
