@@ -657,7 +657,6 @@ class Gforce(Process):
                 break
             try:
                 for e in await q.get():
-                    print(e)
                     emg = np.expand_dims(np.array(e),0)
                     self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
                     self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
