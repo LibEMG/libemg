@@ -87,7 +87,7 @@ class OfflineDataHandler(DataHandler):
         
     
 
-    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal'):
+    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal', labels_filename = None):
         """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
         specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
 
@@ -102,6 +102,16 @@ class OfflineDataHandler(DataHandler):
         """
         # you can insert custom member variables that will be collected from the filename using the dictionary
         # this gives at least a tiny bit of flexibility around what is recorded aside from the data
+        def get_matching_files(file_patterns, regex_keys):
+            files = []
+            for pattern in file_patterns:
+                files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
+            files = [Path(f).as_posix() for f in files]
+            
+            # check files meet all regex
+            self._check_file_regex(files, regex_keys)
+            return files
+
         dictionary_keys = filename_dic.keys()
         keys = [k for k in dictionary_keys if not (k.endswith("_regex") or k.endswith("_column"))]
         for k in keys:
@@ -113,18 +123,11 @@ class OfflineDataHandler(DataHandler):
             print("Invalid dataset directory: " + folder_location)
                 
         # get all files in directory
-        files = [y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.csv'))]
-        files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.txt'))])
-        files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], '*.hea'))])
+        data_regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
+        data_filenames = get_matching_files(['*.csv', '*.txt', '*.hea'], data_regex_keys)
 
-        # Convert all file paths to unix style
-        files = [Path(f).as_posix() for f in files]
 
-        # check files meet all regex
-        regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
-        self._check_file_regex(files, regex_keys)
-
-        for f in files:
+        for f in data_filenames:
             if '.hea' in f:
                 # The key is the emg key that is in the mrdf file
                 file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
@@ -155,6 +158,34 @@ class OfflineDataHandler(DataHandler):
                         # we can put a check here later
                         metadata_column = np.expand_dims(column,1)
                     setattr(self, k, getattr(self,k)+[metadata_column])
+
+        if labels_filename is not None:
+            assert not hasattr(self, 'labels'), 'Cannot have a field named labels because get_data() uses this to store labels.'
+            self.labels = []
+            labels_regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith('_regex') and filename_dic[k].count('/') == 2]   # each directory should have 1 labels file, so only look at keys that are directory names and not for specific files
+            labels_filenames = get_matching_files([labels_filename], labels_regex_keys)
+            for filename in labels_filenames:
+                labels = np.loadtxt(filename, delimiter=',')
+                # get length of column (for reshape)
+                num_labels_samples = labels.shape[0]
+                # get # dofs to zoom only on 0th axis
+                num_dofs = labels.shape[1]
+
+                # get data files for this labels file
+                labels_data_files = [self.data[idx] for idx, data_filename in enumerate(data_filenames) if Path(data_filename).parent.absolute() == Path(filename).parent.absolute()]
+                for file in labels_data_files:
+                    # get length of that file
+                    num_data_samples = file.shape[0]
+                    # find the factor we need to reshape class field to match
+                    zoom_rate = num_data_samples / num_labels_samples
+                    zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(num_dofs)]    # only zoom the 0th axis
+                    # reshaped_field = np.expand_dims(zoom(labels, zoom=zoom_rate),1)
+                    reshaped_field = zoom(labels, zoom=zoom_factor)
+                    # add reshaped field to odh
+                    setattr(self, 'labels', getattr(self, 'labels')+[reshaped_field])
+
+            self.extra_attributes = self.extra_attributes + ['labels']
+            
     
     def add_regression_labels(self, file_location, colnames):
         """TODO: add docs
