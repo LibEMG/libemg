@@ -420,9 +420,9 @@ class EMGRegressor(EMGPredictor):
         Parameters
         ----------
         model: string or custom regressor (must have fit and predict functions)
-            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM', 'RF' (Random Forest),  
+            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM' (Support Vector Machine), 'RF' (Random Forest),  
             'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+            models with no hyperparameter tuning and may not be optimal. Pass in custom regressors or parameters for more control.
         model_parameters: dictionary, default=None
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
