@@ -96,13 +96,13 @@ class EMGPredictor:
             model = pickle.load(f)
         return model
 
-    def predict(self, data):
+    def _predict(self, data):
         try:
             return self.model.predict(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict() method. Please ensure model has a valid predict() method.") from e
 
-    def predict_proba(self, data):
+    def _predict_proba(self, data):
         try:
             return self.model.predict_proba(data)
         except AttributeError as e:
@@ -251,7 +251,7 @@ class EMGClassifier(EMGPredictor):
             if FeatureExtractor().check_features(test_data, silent):
                 test_data = np.nan_to_num(test_data, neginf=0, nan=0, posinf=0) 
         
-        prob_predictions = self.predict_proba(test_data)
+        prob_predictions = self._predict_proba(test_data)
             
         # Default
         predictions, probabilities = self._prediction_helper(prob_predictions)
@@ -456,7 +456,7 @@ class EMGRegressor(EMGPredictor):
         """
         if type(test_data) == dict:
             test_data = self._format_data(test_data)
-        predictions = self.predict(test_data)
+        predictions = self._predict(test_data)
 
         # Set values within deadband to 0
         deadband_mask = np.abs(predictions) < self.deadband_threshold
