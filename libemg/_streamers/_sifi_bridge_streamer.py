@@ -9,7 +9,7 @@ from platform import system
 
 # this is responsible for receiving the data
 class SiFiBridge:
-    def __init__(self, config, version, other, bridge_version: str | None = None):
+    def __init__(self, config, version, other, bridge_version: str | None = "0.6.0"):
         self.version = version
 
         pltfm = system()
