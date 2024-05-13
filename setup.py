@@ -4,17 +4,17 @@ import codecs
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-with codecs.open(os.path.join(here,"README.md"), encoding="utf-8") as fh:
+with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
 # To release:
 # python setup.py sdist
 # python -m twine upload --repository testpypi dist/* --verbose  <------ testpypi
-# 
+#
 
-VERSION = '0.0.3'
-DESCRIPTION = 'LibEMG - Myoelectric Control Library'
-LONG_DESCRIPTION = 'A library for designing and exploring real-time and offline myoelectric control systems.'
+VERSION = "0.0.3"
+DESCRIPTION = "LibEMG - Myoelectric Control Library"
+LONG_DESCRIPTION = "A library for designing and exploring real-time and offline myoelectric control systems."
 
 setup(
     name="libemg",
@@ -24,16 +24,33 @@ setup(
     packages=find_packages(exclude=["*tests*"]),
     long_description_content_type="text/markdown",
     long_description=long_description,
-    install_requires=["numpy", "scipy", "scikit-learn", "pillow", "matplotlib","librosa", "wfdb", "pyserial", "PyWavelets"],
-    keywords=['emg','myoelectric_control','pattern_recognition', 'muscle-based input'],
+    install_requires=[
+        "numpy",
+        "scipy",
+        "scikit-learn",
+        "pillow",
+        "matplotlib",
+        "librosa",
+        "wfdb",
+        "pyserial",
+        "PyWavelets",
+        "requests",
+        "semantic-version",
+    ],
+    keywords=[
+        "emg",
+        "myoelectric_control",
+        "pattern_recognition",
+        "muscle-based input",
+    ],
     classifiers=[
         "Development Status :: 5 - Production/Stable  ",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
         "Operating System :: Unix",
         "Operating System :: MacOS :: MacOS X",
-        "Operating System :: Microsoft :: Windows"
-    ]
+        "Operating System :: Microsoft :: Windows",
+    ],
 )
 
 

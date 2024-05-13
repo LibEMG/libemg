@@ -1,7 +1,9 @@
-import time
+from multiprocessing import Value
 import os
 import requests
 import shutil
+import json
+from semantic_version import Version
 from platform import system
 
 
@@ -11,15 +13,37 @@ class SiFiBridge:
         self.version = version
 
         pltfm = system()
-        # Set platform-specific paths. Default to windows
-        bridge_version = "0.7.15"
-        executable = f"sifi_bridge-{bridge_version}" + (
+        executable = f"sifi_bridge%s-{pltfm.lower()}" + (
             ".exe" if pltfm == "Windows" else ""
         )
 
+        if bridge_version is None:
+            # Find the latest upstream version
+            try:
+                releases = requests.get(
+                    "https://api.github.com/repos/sifilabs/sifi-bridge-pub/releases",
+                    timeout=5,
+                ).json()
+                bridge_version = str(
+                    max([Version(release["tag_name"]) for release in releases])
+                )
+            except Exception:
+                # Probably some network error, so try to find an existing version
+                # Expected to find sifi_bridge-V.V.V-platform in the current directory
+                for file in os.listdir():
+                    if not file.startswith("sifi_bridge"):
+                        continue
+                    bridge_version = file.split("-")[1].replace(".exe", "")
+                if bridge_version is None:
+                    raise ValueError(
+                        "Could not fetch from upstream nor find a version of sifi_bridge to use in the current directory."
+                    )
+
+        executable = executable % ("-" + bridge_version)
+
         if executable not in os.listdir():
-            arch = None
             ext = ".zip" if pltfm == "Windows" else ".tar.gz"
+            arch = None
             if pltfm == "Linux":
                 arch = "x86_64-unknown-linux-gnu"
                 print(
@@ -30,8 +54,30 @@ class SiFiBridge:
             elif pltfm == "Windows":
                 arch = "x86_64-pc-windows-gnu"
 
+            # Get Github releases
+            releases = requests.get(
+                "https://api.github.com/repos/sifilabs/sifi-bridge-pub/releases",
+                timeout=5,
+            ).json()
+
+            # Extract the release matching the requested version
+            release_idx = [release["tag_name"] for release in releases].index(
+                bridge_version
+            )
+            assets = releases[release_idx]["assets"]
+
+            # Find the asset that matches the architecture
+            archive_url = None
+            for asset in assets:
+                asset_name = asset["name"]
+                if arch not in asset_name:
+                    continue
+                archive_url = asset["browser_download_url"]
+            if not archive_url:
+                ValueError(f"No upstream version found for {executable}")
+            print(f"Fetching sifi_bridge from {archive_url}")
+
             # Fetch and write to disk as a zip file
-            archive_url = f"https://github.com/SiFiLabs/sifi-bridge-pub/releases/download/{bridge_version}/sifi_bridge-{bridge_version}-{arch}{ext}"
             r = requests.get(archive_url)
             zip_path = "sifi_bridge" + ext
             with open(zip_path, "wb") as file:
@@ -45,10 +91,8 @@ class SiFiBridge:
                 if not file.startswith("sifi_bridge"):
                     continue
                 shutil.move(extracted_path + file, f"./{executable}")
-            # shutil.rmtree(extracted_path)
-        else:
-            # TODO check if the version is correct
-            pass
+            shutil.rmtree(extracted_path)
+
         self.proc = subprocess.Popen(
             ["./" + executable],
             stdin=subprocess.PIPE,
