@@ -185,7 +185,7 @@ class EMGPredictor:
 
 
 class EMGClassifier(EMGPredictor):
-    def __init__(self, model, model_parameters = None, random_seed = 0):
+    def __init__(self, model, model_parameters = None, random_seed = 0, rejection_threshold = False):
         """The Offline EMG Classifier. 
 
         This is the base class for any offline EMG classification. 
@@ -441,13 +441,6 @@ class EMGRegressor(EMGPredictor):
         self.deadband_threshold = deadband_threshold
         super().__init__(model, model_parameters, random_seed=random_seed)
 
-    def predict(self, data):
-        predictions = super().predict(data)
-
-        # Set values within deadband to 0
-        deadband_mask = np.abs(predictions) < self.deadband_threshold
-        predictions[deadband_mask] = 0.
-        return predictions
     
     def run(self, test_data, test_labels):
         """Runs the regressor on a pre-defined set of training data.
@@ -464,6 +457,10 @@ class EMGRegressor(EMGPredictor):
         if type(test_data) == dict:
             test_data = self._format_data(test_data)
         predictions = self.predict(test_data)
+
+        # Set values within deadband to 0
+        deadband_mask = np.abs(predictions) < self.deadband_threshold
+        predictions[deadband_mask] = 0.
 
         return predictions
 
