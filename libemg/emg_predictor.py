@@ -21,7 +21,7 @@ from scipy import stats
 from libemg.utils import get_windows
 
 class EMGPredictor:
-    def __init__(self, model, model_parameters = None, random_seed = 0) -> None:
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
         """Base class for EMG prediction.
 
         Parameters
@@ -32,11 +32,17 @@ class EMGPredictor:
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
         """
         self.model = model
         self.model_parameters = model_parameters
         # default for feature parameters
         self.feature_params = {}
+        self.fix_feature_errors = fix_feature_errors
+        self.silent = silent
         random.seed(random_seed)
 
     def fit(self, feature_dictionary = None, dataloader_dictionary = None, training_parameters = None):
@@ -157,17 +163,21 @@ class EMGPredictor:
         valid_model = model_reference(**valid_parameters)
         return valid_model
 
-    @staticmethod
-    def _format_data(feature_dictionary):
-        if isinstance(feature_dictionary, np.ndarray):
-            # Passed in array - return instead of looping through each row
-            return feature_dictionary
-        arr = None
-        for feat in feature_dictionary:
-            if arr is None:
-                arr = feature_dictionary[feat]
-            else:
-                arr = np.hstack((arr, feature_dictionary[feat]))
+    def _format_data(self, feature_dictionary):
+        if not isinstance(feature_dictionary, np.ndarray):
+            # Loop through each element and stack
+            arr = None
+            for feat in feature_dictionary:
+                if arr is None:
+                    arr = feature_dictionary[feat]
+                else:
+                    arr = np.hstack((arr, feature_dictionary[feat]))
+        else:
+            arr = feature_dictionary
+
+        if self.fix_feature_errors:
+            if FeatureExtractor().check_features(arr, self.silent):
+                arr = np.nan_to_num(arr, neginf=0, nan=0, posinf=0) 
         return arr
 
     def _fit_statistical_model(self, feature_dictionary):
@@ -185,7 +195,7 @@ class EMGPredictor:
 
 
 class EMGClassifier(EMGPredictor):
-    def __init__(self, model, model_parameters = None, random_seed = 0, rejection_threshold = False):
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False):
         """The Offline EMG Classifier. 
 
         This is the base class for any offline EMG classification. 
@@ -200,6 +210,10 @@ class EMGClassifier(EMGPredictor):
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
         """
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
@@ -212,7 +226,7 @@ class EMGClassifier(EMGPredictor):
             'MLP': (MLPClassifier, {"random_state": 0, "hidden_layer_sizes": 126})
         }
         model = self._validate_model_parameters(model, model_parameters, model_config)
-        super().__init__(model, model_parameters, random_seed=random_seed)
+        super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
         self.velocity = False
         self.majority_vote = None
@@ -224,17 +238,13 @@ class EMGClassifier(EMGPredictor):
 
 
         
-    def run(self, test_data, fix_feature_errors=False, silent=False):
+    def run(self, test_data):
         """Runs the classifier on a pre-defined set of training data.
 
         Parameters
         ----------
         test_data: list
             A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
-        fix_feature_errors: bool (default=False)
-            If True, the classifier will update any feature erros (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
 
         Returns
         ----------
@@ -243,13 +253,7 @@ class EMGClassifier(EMGPredictor):
         list
             A list of the probabilities (for each prediction), based on the passed in testing features.
         """
-        if type(test_data) == dict:
-            test_data = self._format_data(test_data)
-        
-        # Remove any faulty values from test_data (these may have occured from feature extraction e.g., NANs)
-        if fix_feature_errors:
-            if FeatureExtractor().check_features(test_data, silent):
-                test_data = np.nan_to_num(test_data, neginf=0, nan=0, posinf=0) 
+        test_data = self._format_data(test_data)
         
         prob_predictions = self._predict_proba(test_data)
             
@@ -412,7 +416,7 @@ class EMGRegressor(EMGPredictor):
     This is the base class for any offline EMG regression. 
 
     """
-    def __init__(self, model, model_parameters = None, random_seed = 0, deadband_threshold = 0.):
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False, deadband_threshold = 0.):
         """The Offline EMG Regressor. 
 
         This is the base class for any offline EMG regression. 
@@ -427,6 +431,10 @@ class EMGRegressor(EMGPredictor):
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
         deadband_threshold: float, default=0.0
             Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
         """
@@ -439,10 +447,10 @@ class EMGRegressor(EMGPredictor):
         }
         model = self._validate_model_parameters(model, model_parameters, model_config)
         self.deadband_threshold = deadband_threshold
-        super().__init__(model, model_parameters, random_seed=random_seed)
+        super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
     
-    def run(self, test_data, test_labels):
+    def run(self, test_data):
         """Runs the regressor on a pre-defined set of training data.
 
         Parameters
@@ -454,8 +462,7 @@ class EMGRegressor(EMGPredictor):
         list
             A list of predictions, based on the passed in testing features.
         """
-        if type(test_data) == dict:
-            test_data = self._format_data(test_data)
+        test_data = self._format_data(test_data)
         predictions = self._predict(test_data)
 
         # Set values within deadband to 0
