@@ -412,7 +412,7 @@ class EMGRegressor(EMGPredictor):
     This is the base class for any offline EMG regression. 
 
     """
-    def __init__(self, model, model_parameters = None, random_seed = 0):
+    def __init__(self, model, model_parameters = None, random_seed = 0, deadband_threshold = 0.):
         """The Offline EMG Regressor. 
 
         This is the base class for any offline EMG regression. 
@@ -427,6 +427,8 @@ class EMGRegressor(EMGPredictor):
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        deadband_threshold: float, default=0.0
+            Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
         """
         model_config = {
             'LR': (LinearRegression, {}),
@@ -436,6 +438,7 @@ class EMGRegressor(EMGPredictor):
             'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
         }
         model = self._validate_model_parameters(model, model_parameters, model_config)
+        self.deadband_threshold = deadband_threshold
         super().__init__(model, model_parameters, random_seed=random_seed)
 
     
@@ -454,15 +457,25 @@ class EMGRegressor(EMGPredictor):
         if type(test_data) == dict:
             test_data = self._format_data(test_data)
         predictions = self.predict(test_data)
-        # score = self.regressor.score(test_data, test_labels)
+
+        # Set values within deadband to 0
+        deadband_mask = np.abs(predictions) < self.deadband_threshold
+        predictions[deadband_mask] = 0.
+
         return predictions
 
     def visualize(self, test_labels, predictions):
         raise NotImplementedError("This method has not yet been implemented.")
 
     def add_deadband(self, threshold):
-        # Add deadband around 0 so all values below that will be output as 0
-        raise NotImplementedError("This method has not yet been implemented.")
+        """Add a deadband around regressor predictions that will instead be output as 0.
+
+        Parameters
+        ----------
+        threshold: float
+            Deadband threshold. All output predictions from -threshold to +threshold will instead output 0.
+        """
+        self.deadband_threshold = threshold
 
 
 
