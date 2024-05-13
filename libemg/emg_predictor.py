@@ -441,6 +441,13 @@ class EMGRegressor(EMGPredictor):
         self.deadband_threshold = deadband_threshold
         super().__init__(model, model_parameters, random_seed=random_seed)
 
+    def predict(self, data):
+        predictions = super().predict(data)
+
+        # Set values within deadband to 0
+        deadband_mask = np.abs(predictions) < self.deadband_threshold
+        predictions[deadband_mask] = 0.
+        return predictions
     
     def run(self, test_data, test_labels):
         """Runs the regressor on a pre-defined set of training data.
@@ -457,10 +464,6 @@ class EMGRegressor(EMGPredictor):
         if type(test_data) == dict:
             test_data = self._format_data(test_data)
         predictions = self.predict(test_data)
-
-        # Set values within deadband to 0
-        deadband_mask = np.abs(predictions) < self.deadband_threshold
-        predictions[deadband_mask] = 0.
 
         return predictions
 
