@@ -180,9 +180,9 @@ class OfflineDataHandler(DataHandler):
                     zoom_rate = num_data_samples / num_labels_samples
                     zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(num_dofs)]    # only zoom the 0th axis
                     # reshaped_field = np.expand_dims(zoom(labels, zoom=zoom_rate),1)
-                    reshaped_field = zoom(labels, zoom=zoom_factor)
+                    zoomed_labels = zoom(labels, zoom=zoom_factor)
                     # add reshaped field to odh
-                    setattr(self, 'labels', getattr(self, 'labels')+[reshaped_field])
+                    self.labels.append([zoomed_labels])
 
             self.extra_attributes = self.extra_attributes + ['labels']
             
