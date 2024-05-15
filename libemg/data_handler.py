@@ -24,18 +24,6 @@ from libemg.raw_data import RawData
 from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows
 from libemg.feature_extractor import FeatureExtractor
 
-class FilePackager:
-    def __init__(self):
-        pass
-
-class MetadataGrabber:
-    def __init__(self, files) -> None:
-        # Takes in a list of files and a method for grabbing metadata from them?
-        self.files = files
-
-
-class FileFilter:
-
 
 class DataHandler:
     def __init__(self):
