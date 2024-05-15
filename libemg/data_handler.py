@@ -24,6 +24,19 @@ from libemg.raw_data import RawData
 from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows
 from libemg.feature_extractor import FeatureExtractor
 
+class FilePackager:
+    def __init__(self):
+        pass
+
+class MetadataGrabber:
+    def __init__(self, files) -> None:
+        # Takes in a list of files and a method for grabbing metadata from them?
+        self.files = files
+
+
+class FileFilter:
+
+
 class DataHandler:
     def __init__(self):
         self.data = []
@@ -182,7 +195,7 @@ class OfflineDataHandler(DataHandler):
                     # reshaped_field = np.expand_dims(zoom(labels, zoom=zoom_rate),1)
                     zoomed_labels = zoom(labels, zoom=zoom_factor)
                     # add reshaped field to odh
-                    self.labels.append([zoomed_labels])
+                    self.labels.append(zoomed_labels)
 
             self.extra_attributes = self.extra_attributes + ['labels']
             
