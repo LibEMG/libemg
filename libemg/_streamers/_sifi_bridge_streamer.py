@@ -126,6 +126,7 @@ class SiFiBridge:
         # Setup channels
         self.proc.stdin.write(self.config)
         self.proc.stdin.flush()
+        print("Connected and sent configs to bridge.")
 
     def add_emg_handler(self, closure):
         self.emg_handlers.append(closure)
@@ -288,7 +289,7 @@ class SiFiBridgeStreamer:
 
         self.config = re.sub(r"\s+", " ", self.config)
         print(self.config)
-        self.config = bytes(self.config, "UTF-8")
+        self.config = bytes(self.config + "\n", "UTF-8")
 
     def start_stream(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
