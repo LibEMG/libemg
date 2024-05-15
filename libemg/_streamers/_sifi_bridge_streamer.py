@@ -5,6 +5,7 @@ import shutil
 import json
 from semantic_version import Version
 from platform import system
+import re
 
 
 # this is responsible for receiving the data
@@ -285,6 +286,7 @@ class SiFiBridgeStreamer:
         else:
             self.config += " enable_filters 0 "
 
+        self.config = re.sub(r"\s+", " ", self.config)
         print(self.config)
         self.config = bytes(self.config, "UTF-8")
 
