@@ -167,6 +167,8 @@ class OfflineDataHandler(DataHandler):
             current_value = getattr(self, name)
             setattr(self, name, current_value + [value])
 
+        if not os.path.isdir(folder_location):
+            raise ValueError(f"Folder location {folder_location} is not a directory.")
         self.extra_attributes = []
         # Fetch data files
         all_files = []
