@@ -159,135 +159,50 @@ class OfflineDataHandler(DataHandler):
         return new_odh
         
     
+    def get_data(self, folder_location, file_fetchers, file_packagers, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
+        def append_to_attribute(name, value):
+            if not hasattr(self, name):
+                setattr(self, name, [])
+                self.extra_attributes.append(name)
+            current_value = getattr(self, name)
+            setattr(self, name, current_value + [value])
 
-    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal', labels_filename = None):
-        """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
-        specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
+        self.extra_attributes = []
+        # Fetch data files
+        all_files = []
+        for pattern in ['*.csv', '*.txt', '*.hea']:
+            all_files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
+        all_files = [Path(f).as_posix() for f in all_files]
+        data_files = copy.deepcopy(all_files)
+        for file_filter in file_fetchers:
+            data_files = file_filter(data_files)
+        print(f"{len(data_files)} data files fetched out of {len(all_files)} files.")
 
-        Parameters
-        ----------
-        folder_location: str
-            Location of the dataset relative to current file path
-        filename_dic: dict
-            dictionary containing the values of the metadata and the regex or columns associated with that metadata.
-        delimiter: char
-            How the columns of the files are separated in the .txt or .csv files.
-        """
-        # you can insert custom member variables that will be collected from the filename using the dictionary
-        # this gives at least a tiny bit of flexibility around what is recorded aside from the data
-        def get_matching_files(file_patterns, regex_keys):
-            files = []
-            for pattern in file_patterns:
-                files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
-            files = [Path(f).as_posix() for f in files]
-            
-            # check files meet all regex
-            self._check_file_regex(files, regex_keys)
-            return files
-
-        dictionary_keys = filename_dic.keys()
-        keys = [k for k in dictionary_keys if not (k.endswith("_regex") or k.endswith("_column"))]
-        for k in keys:
-            if not hasattr(self, k):
-                setattr(self, k, [])
-        self.extra_attributes = keys
-
-        if not os.path.isdir(folder_location):
-            print("Invalid dataset directory: " + folder_location)
-                
-        # get all files in directory
-        data_regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
-        data_filenames = get_matching_files(['*.csv', '*.txt', '*.hea'], data_regex_keys)
-
-
-        for f in data_filenames:
-            if '.hea' in f:
+        # Read data from files
+        for file in data_files:
+            if '.hea' in file:
                 # The key is the emg key that is in the mrdf file
-                file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
+                file_data = (wfdb.rdrecord(file.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
-                file_data = np.genfromtxt(f,delimiter=delimiter)
+                file_data = np.genfromtxt(file,delimiter=delimiter)
                 if len(file_data.shape) == 1:
                     # some devices may have one channel -> make sure it interprets it as a 2d array
                     file_data = np.expand_dims(file_data, 1)
-            # collect the data from the file
-            if "data_column" in dictionary_keys:
-                self.data.append(file_data[:, filename_dic["data_column"]])
+            if data_column is not None:
+                # collect the data from the file
+                self.data.append(file_data[:, data_column])
             else:
                 self.data.append(file_data)
-            # also collect the metadata from the filename
-            for k in keys:
-                if k + "_regex" in dictionary_keys:
-                    k_val = re.findall(filename_dic[k+"_regex"],f)[0]
-                    k_id  = filename_dic[k].index(k_val)
-                    metadata_column = k_id * np.ones((file_data.shape[0],1), dtype=int)
-                    setattr(self, k, getattr(self,k)+[metadata_column])
-                elif k + "_column" in dictionary_keys:
-                    column = file_data[:,filename_dic[k+"_column"]]
-                    if type(filename_dic[k]) == list:
-                        k_id = np.array([filename_dic[k].index(i) for i in column])
-                        metadata_column = np.expand_dims(k_id, axis=1)
-                    else:
-                        # if a tuple is passed in (range of values)
-                        # we can put a check here later
-                        metadata_column = np.expand_dims(column,1)
-                    setattr(self, k, getattr(self,k)+[metadata_column])
+            # Grab metadata from filenames
+            for file_fetcher in file_fetchers:
+                metadata = file_fetcher.get_metadata(file, file_data)
+                append_to_attribute(file_fetcher.description, metadata)
+            # Grab metadata from packaged files
+            for file_packager in file_packagers:
+                packaged_data = file_packager.get_packaged_data(file, file_data, all_files)
+                append_to_attribute(file_packager.file_fetcher.description, packaged_data)
 
-        if labels_filename is not None:
-            assert not hasattr(self, 'labels'), 'Cannot have a field named labels because get_data() uses this to store labels.'
-            self.labels = []
-            labels_regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith('_regex') and filename_dic[k].count('/') == 2]   # each directory should have 1 labels file, so only look at keys that are directory names and not for specific files
-            labels_filenames = get_matching_files([labels_filename], labels_regex_keys)
-            for filename in labels_filenames:
-                labels = np.loadtxt(filename, delimiter=',')
-                # get length of column (for reshape)
-                num_labels_samples = labels.shape[0]
-                # get # dofs to zoom only on 0th axis
-                num_dofs = labels.shape[1]
-
-                # get data files for this labels file
-                labels_data_files = [self.data[idx] for idx, data_filename in enumerate(data_filenames) if Path(data_filename).parent.absolute() == Path(filename).parent.absolute()]
-                for file in labels_data_files:
-                    # get length of that file
-                    num_data_samples = file.shape[0]
-                    # find the factor we need to reshape class field to match
-                    zoom_rate = num_data_samples / num_labels_samples
-                    zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(num_dofs)]    # only zoom the 0th axis
-                    # reshaped_field = np.expand_dims(zoom(labels, zoom=zoom_rate),1)
-                    zoomed_labels = zoom(labels, zoom=zoom_factor)
-                    # add reshaped field to odh
-                    self.labels.append(zoomed_labels)
-
-            self.extra_attributes = self.extra_attributes + ['labels']
             
-    
-    def add_regression_labels(self, file_location, colnames):
-        """TODO: add docs
-        """
-        # load the data in from file
-        class_file = np.loadtxt(file_location, delimiter=",")
-        num_files = len(self.data)
-        assert num_files > 0
-        # if field doesn't exists initialize it as empty list
-        for field in colnames:
-            if not hasattr(self, field):
-                setattr(self, field, [])
-        # for each field -- fill it in 
-        for f, field in enumerate(colnames):
-            # get column from class file
-            field_values = class_file[:,f]
-            # get length of column (for reshape)
-            field_len = len(field_values)
-            # for every file of data we have
-            for file in range(num_files):
-                # get length of that file
-                file_len = self.data[file].shape[0]
-                # find the factor we need to reshape class field to match
-                zoom_rate = file_len / field_len
-                reshaped_field = np.expand_dims(zoom(field_values, zoom=zoom_rate),1)
-                # add reshaped field to odh
-                setattr(self, field, getattr(self,field)+[reshaped_field])
-        self.extra_attributes = self.extra_attributes + colnames
-
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
 
