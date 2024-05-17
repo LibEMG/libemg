@@ -42,9 +42,9 @@ class FileFetcher(ABC):
 class Regex(FileFetcher):
     # Could just have the make_regex function return a function handle instead, but then we can't use the description for grabbing metadata
     def __init__(self, left_bound, right_bound, values, description) -> None:
+        super().__init__(description)
         self.values = values
         self.pattern = make_regex(left_bound, right_bound, values)
-        self.description = description
 
     def __call__(self, files):
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
@@ -59,9 +59,8 @@ class Regex(FileFetcher):
 
 
 class FilePackager:
-    def __init__(self, description, file_fetcher, package_function, align_method = 'zoom', load = None):
+    def __init__(self, file_fetcher, package_function, align_method = 'zoom', load = None):
         self.file_fetcher = file_fetcher
-        self.description = description
         self.package_function = package_function
         self.align_method = align_method
         self.load = load
@@ -71,7 +70,7 @@ class FilePackager:
         packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, file)]
         if len(packaged_files) != 1:
             # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
-            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {file} when trying to package {self.description} file. Please check filter and package functions.")
+            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {file} when trying to package {self.file_fetcher.description} file (1 file should be found). Please check filter and package functions.")
         packaged_file = packaged_files[0]
 
         if callable(self.load):
