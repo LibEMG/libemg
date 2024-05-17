@@ -25,6 +25,7 @@ from libemg.raw_data import RawData
 from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows, make_regex
 from libemg.feature_extractor import FeatureExtractor
 
+
 class FileFetcher(ABC):
     def __init__(self, description):
         self.description = description
@@ -54,6 +55,47 @@ class Regex(FileFetcher):
         id = self.values.index(val)
         metadata = id * np.ones((file_data.shape[0], 1), dtype=int)
         return metadata
+
+
+class FilePackager:
+    def __init__(self, description, file_fetcher, package_function, align_method = 'zoom', load = None):
+        self.file_fetcher = file_fetcher
+        self.description = description
+        self.package_function = package_function
+        self.align_method = align_method
+        self.load = load
+
+    def get_packaged_data(self, file, file_data, all_files):
+        potential_files = self.file_fetcher(all_files)
+        packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, file)]
+        if len(packaged_files) != 1:
+            # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
+            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {file} when trying to package {self.description} file. Please check filter and package functions.")
+        packaged_file = packaged_files[0]
+
+        if callable(self.load):
+            # Passed in a custom loading function
+            return self.load(packaged_file)
+
+        if packaged_file.suffix == '.txt':
+            packaged_file_data = np.loadtxt(packaged_file, delimiter=',')
+        elif packaged_file.suffix == '.csv':
+            packaged_file_data = pd.read_csv(packaged_file)
+            packaged_file_data = packaged_file_data.to_numpy()
+        else:
+            raise ValueError("Unsupported filetype when loading packaged files - expected filetypes are .csv and .txt. Pass in a callable loading function to load files of other types.")
+
+        # Align with EMG data
+        if self.align_method == 'zoom':
+            zoom_rate = file_data.shape[0] / packaged_file_data.shape[0]
+            zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(packaged_file_data.shape[1])]  # only align the 0th axis (samples)
+            packaged_file_data = zoom(packaged_file_data, zoom=zoom_factor)
+        elif callable(self.align_method):
+            packaged_file_data = self.align_method(packaged_file_data)
+        else:
+            raise ValueError('Unexpected value for align_method. Please pass in a callable or a supported string (e.g., zoom).')
+        return packaged_file_data
+
 
 class DataHandler:
     def __init__(self):
