@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import numpy as np
 import os
 import re
@@ -21,9 +22,38 @@ from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from libemg.raw_data import RawData
-from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows
+from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows, make_regex
 from libemg.feature_extractor import FeatureExtractor
 
+class FileFetcher(ABC):
+    def __init__(self, description):
+        self.description = description
+
+    @abstractmethod
+    def __call__(self, files):
+        raise NotImplementedError('The __call__ method must be implemented.')
+
+    @abstractmethod
+    def get_metadata(self, filename, file_data):
+        raise NotImplementedError('The get_metadata method must be implemented.')
+
+class Regex(FileFetcher):
+    # Could just have the make_regex function return a function handle instead, but then we can't use the description for grabbing metadata
+    def __init__(self, left_bound, right_bound, values, description) -> None:
+        self.values = values
+        self.pattern = make_regex(left_bound, right_bound, values)
+        self.description = description
+
+    def __call__(self, files):
+        matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
+        return matching_files
+
+    def get_metadata(self, filename, file_data):
+        # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
+        val = re.findall(self.pattern, filename)[0]
+        id = self.values.index(val)
+        metadata = id * np.ones((file_data.shape[0], 1), dtype=int)
+        return metadata
 
 class DataHandler:
     def __init__(self):
