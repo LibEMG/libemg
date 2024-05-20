@@ -134,9 +134,8 @@ class FilePackager(MetadataFetcher):
 
         if callable(self.load):
             # Passed in a custom loading function
-            return self.load(packaged_file)
-
-        if packaged_file.suffix == '.txt':
+            packaged_file_data = self.load(packaged_file)
+        elif packaged_file.suffix == '.txt':
             packaged_file_data = np.loadtxt(packaged_file, delimiter=',')
         elif packaged_file.suffix == '.csv':
             packaged_file_data = pd.read_csv(packaged_file)
@@ -150,7 +149,7 @@ class FilePackager(MetadataFetcher):
             zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(packaged_file_data.shape[1])]  # only align the 0th axis (samples)
             packaged_file_data = zoom(packaged_file_data, zoom=zoom_factor)
         elif callable(self.align_method):
-            packaged_file_data = self.align_method(packaged_file_data)
+            packaged_file_data = self.align_method(packaged_file_data, file_data)
         else:
             raise ValueError('Unexpected value for align_method. Please pass in a callable or a supported string (e.g., zoom).')
         return packaged_file_data
