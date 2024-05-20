@@ -26,17 +26,46 @@ from libemg.feature_extractor import FeatureExtractor
 
 
 class RegexFilter:
-    def __init__(self, left_bound, right_bound, values, description) -> None:
+    def __init__(self, left_bound, right_bound, values, description):
+        """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
+
+        Parameters
+        ----------
+        left_bound: str
+            The left bound of the regex.
+        right_bound: str
+            The right bound of the regex.
+        values: list
+            The values between the two regexes.
+        description : str
+            Description of filter - used to name the metadata field.
+        """
         # Could add parameter to disable grabbing metadata for certain patterns
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
 
     def get_matching_files(self, files):
+        """Filter out files that don't match the regex pattern and return the matching files.
+
+        Parameters
+        ----------
+        files : list
+            List of potential files that need to be filtered.
+        """
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
         return matching_files
 
     def get_metadata(self, filename, file_data):
+        """Get metadata from the filename.
+
+        Parameters
+        ----------
+        filename : str
+            Name of file.
+        file_data : np.ndarray
+            Data within file.
+        """
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
         val = re.findall(self.pattern, filename)[0]
         idx = self.values.index(val)
@@ -45,28 +74,62 @@ class RegexFilter:
 
 
 class MetadataFetcher(ABC):
-    def __init__(self, description) -> None:
+    def __init__(self, description):
+        """Describes a type of metadata and implements a method to fetch it.
+
+        Parameters
+        ----------
+        description : str
+            Description of metadata.
+        """
         self.description = description
 
     @abstractmethod
-    def __call__(self, file, file_data, all_files):
+    def __call__(self, filename, file_data, all_files):
+        """Fetch metadata.
+
+        Parameters
+        ----------
+        filename : str
+            Name of data file.
+        file_data : np.ndarray
+            Data within file.
+        all_files : list
+            List of filenames containing all files within data directory.
+        """
         raise NotImplementedError("Must implement __call__ method.")
 
 
 class FilePackager(MetadataFetcher):
     def __init__(self, regex_filter, package_function, align_method = 'zoom', load = None):
+        """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
+        that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
+
+        Parameters
+        ----------
+        regex_filter : RegexFilter
+            Used to find the type of metadata files.
+        package_function : callable
+            Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
+            Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
+        align_method : str or callable
+            Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
+            pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata. Defaults to 'zoom'.
+        load : callable or None
+            Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported). Defaults to None.
+        """
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
         self.package_function = package_function
         self.align_method = align_method
         self.load = load
 
-    def __call__(self, file, file_data, all_files):
+    def __call__(self, filename, file_data, all_files):
         potential_files = self.regex_filter.get_matching_files(all_files)
-        packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, file)]
+        packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, filename)]
         if len(packaged_files) != 1:
             # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
-            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {file} when trying to package {self.regex_filter.description} file (1 file should be found). Please check filter and package functions.")
+            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {filename} when trying to package {self.regex_filter.description} file (1 file should be found). Please check filter and package functions.")
         packaged_file = packaged_files[0]
 
         if callable(self.load):
@@ -95,11 +158,22 @@ class FilePackager(MetadataFetcher):
 
 class ColumnFetcher(MetadataFetcher):
     def __init__(self, description, column_idx, values):
+        """Fetch metadata from columns within data file.
+
+        Parameters
+        ----------
+        description : str
+            Description of metadata.
+        column_idx : int
+            Index of metadata column in data file.
+        values : list
+            List of potential values within metadata column.
+        """
         super().__init__(description)
         self.column_idx = column_idx
         self.values = values
 
-    def __call__(self, file, file_data, all_files):
+    def __call__(self, filename, file_data, all_files):
         column_data = file_data[:, self.column_idx]
         if isinstance(self.values, list):
             metadata_indices = np.array([self.values.index(i) for i in column_data])
@@ -174,6 +248,32 @@ class OfflineDataHandler(DataHandler):
         return new_odh
         
     def get_data(self, folder_location, regex_filters, metadata_fetchers, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
+        """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
+        RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
+        sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
+
+        Parameters
+        ----------
+        folder_location : str
+            Location of the dataset relative to the current file path.
+        regex_filters : list
+            List of RegexFilters used to filter data files to the desired set of files. Metadata for each RegexFilter
+            will be pulled from the filename and stored as a field.
+        metadata_fetchers : list
+            List of MetadataFetchers used to associate metadata with each data file (e.g., FilePackager). If the provided MetadataFetchers do not suit your needs,
+            you may inherit from the MetadataFetcher class to create your own.
+        delimiter : str
+            Specifies how columns are separated in .txt or .csv data files. Defaults to ','.
+        mrdf_key : str
+            Key in mrdf file associated with EMG data. Defaults to 'p_signal'.
+        data_column : list or None
+            List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data. Defaults to None.
+
+        Raises
+        ------
+        ValueError:
+            Raises ValueError is folder_location is not a valid directory.
+        """
         def append_to_attribute(name, value):
             if not hasattr(self, name):
                 setattr(self, name, [])
