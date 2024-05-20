@@ -18,8 +18,6 @@ from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
 from glob import glob
-from itertools import compress
-from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from libemg.raw_data import RawData
@@ -27,50 +25,47 @@ from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows, make_r
 from libemg.feature_extractor import FeatureExtractor
 
 
-class FileFetcher(ABC):
-    def __init__(self, description):
+class RegexFilter:
+    def __init__(self, left_bound, right_bound, values, description) -> None:
+        # Could add parameter to disable grabbing metadata for certain patterns
+        self.pattern = make_regex(left_bound, right_bound, values)
+        self.values = values
         self.description = description
 
-    @abstractmethod
-    def __call__(self, files):
-        raise NotImplementedError('The __call__ method must be implemented.')
-
-    @abstractmethod
-    def get_metadata(self, filename, file_data):
-        raise NotImplementedError('The get_metadata method must be implemented.')
-
-class Regex(FileFetcher):
-    # Could just have the make_regex function return a function handle instead, but then we can't use the description for grabbing metadata
-    def __init__(self, left_bound, right_bound, values, description) -> None:
-        super().__init__(description)
-        self.values = values
-        self.pattern = make_regex(left_bound, right_bound, values)
-
-    def __call__(self, files):
+    def get_matching_files(self, files):
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
         return matching_files
 
     def get_metadata(self, filename, file_data):
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
         val = re.findall(self.pattern, filename)[0]
-        id = self.values.index(val)
-        metadata = id * np.ones((file_data.shape[0], 1), dtype=int)
+        idx = self.values.index(val)
+        metadata = idx * np.ones((file_data.shape[0], 1), dtype=int)
         return metadata
 
 
-class FilePackager:
-    def __init__(self, file_fetcher, package_function, align_method = 'zoom', load = None):
-        self.file_fetcher = file_fetcher
+class MetadataFetcher(ABC):
+    def __init__(self, description) -> None:
+        self.description = description
+
+    def __call__(self, file, file_data, all_files):
+        raise NotImplementedError("Must implement __call__ method.")
+
+
+class FilePackager(MetadataFetcher):
+    def __init__(self, regex_filter, package_function, align_method = 'zoom', load = None):
+        super().__init__(regex_filter.description)
+        self.regex_filter = regex_filter
         self.package_function = package_function
         self.align_method = align_method
         self.load = load
 
-    def get_packaged_data(self, file, file_data, all_files):
-        potential_files = self.file_fetcher(all_files)
+    def __call__(self, file, file_data, all_files):
+        potential_files = self.regex_filter.get_matching_files(all_files)
         packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, file)]
         if len(packaged_files) != 1:
             # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
-            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {file} when trying to package {self.file_fetcher.description} file (1 file should be found). Please check filter and package functions.")
+            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {file} when trying to package {self.regex_filter.description} file (1 file should be found). Please check filter and package functions.")
         packaged_file = packaged_files[0]
 
         if callable(self.load):
@@ -158,8 +153,7 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    
-    def get_data(self, folder_location, file_fetchers, file_packagers, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
+    def get_data(self, folder_location, regex_filters, metadata_fetchers, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
         def append_to_attribute(name, value):
             if not hasattr(self, name):
                 setattr(self, name, [])
@@ -176,8 +170,8 @@ class OfflineDataHandler(DataHandler):
             all_files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
         all_files = [Path(f).as_posix() for f in all_files]
         data_files = copy.deepcopy(all_files)
-        for file_filter in file_fetchers:
-            data_files = file_filter(data_files)
+        for regex_filter in regex_filters:
+            data_files = regex_filter.get_matching_files(data_files)
         print(f"{len(data_files)} data files fetched out of {len(all_files)} files.")
 
         # Read data from files
@@ -195,15 +189,16 @@ class OfflineDataHandler(DataHandler):
                 self.data.append(file_data[:, data_column])
             else:
                 self.data.append(file_data)
-            # Grab metadata from filenames
-            for file_fetcher in file_fetchers:
-                metadata = file_fetcher.get_metadata(file, file_data)
-                append_to_attribute(file_fetcher.description, metadata)
-            # Grab metadata from packaged files
-            for file_packager in file_packagers:
-                packaged_data = file_packager.get_packaged_data(file, file_data, all_files)
-                append_to_attribute(file_packager.file_fetcher.description, packaged_data)
 
+            # Fetch metadata from filename
+            for regex_filter in regex_filters:
+                metadata = regex_filter.get_metadata(file, file_data)
+                append_to_attribute(regex_filter.description, metadata)
+
+            # Fetch remaining metadata
+            for metadata_fetcher in metadata_fetchers:
+                packaged_data = metadata_fetcher(file, file_data, all_files)
+                append_to_attribute(metadata_fetcher.description, packaged_data)
             
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
