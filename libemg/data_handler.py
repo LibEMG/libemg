@@ -92,6 +92,25 @@ class FilePackager(MetadataFetcher):
         return packaged_file_data
 
 
+class ColumnFetcher(MetadataFetcher):
+    def __init__(self, description, column_idx, values):
+        super().__init__(description)
+        self.column_idx = column_idx
+        self.values = values
+
+    def __call__(self, file, file_data, all_files):
+        column_data = file_data[:, self.column_idx]
+        if isinstance(self.values, list):
+            metadata_indices = np.array([self.values.index(i) for i in column_data])
+            metadata_column = np.expand_dims(metadata_indices, axis=1)
+        else:
+            # if a tuple is passed in (range of values)
+            # we can put a check here later
+            metadata_column = np.expand_dims(column_data, axis=1)
+
+        return metadata_column
+
+
 class DataHandler:
     def __init__(self):
         self.data = []
