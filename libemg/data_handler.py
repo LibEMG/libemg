@@ -48,6 +48,7 @@ class MetadataFetcher(ABC):
     def __init__(self, description) -> None:
         self.description = description
 
+    @abstractmethod
     def __call__(self, file, file_data, all_files):
         raise NotImplementedError("Must implement __call__ method.")
 
