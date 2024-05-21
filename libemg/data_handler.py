@@ -246,7 +246,7 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location, regex_filters, metadata_fetchers, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
+    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
@@ -258,9 +258,10 @@ class OfflineDataHandler(DataHandler):
         regex_filters : list
             List of RegexFilters used to filter data files to the desired set of files. Metadata for each RegexFilter
             will be pulled from the filename and stored as a field.
-        metadata_fetchers : list
+        metadata_fetchers : list or None
             List of MetadataFetchers used to associate metadata with each data file (e.g., FilePackager). If the provided MetadataFetchers do not suit your needs,
-            you may inherit from the MetadataFetcher class to create your own.
+            you may inherit from the MetadataFetcher class to create your own. If None is passed, no extra metadata is fetched (other than from filenames via regex).
+            Defaults to None.
         delimiter : str
             Specifies how columns are separated in .txt or .csv data files. Defaults to ','.
         mrdf_key : str
@@ -282,6 +283,9 @@ class OfflineDataHandler(DataHandler):
 
         if not os.path.isdir(folder_location):
             raise ValueError(f"Folder location {folder_location} is not a directory.")
+
+        if metadata_fetchers is None:
+            metadata_fetchers = []
         self.extra_attributes = []
         # Fetch data files
         all_files = []
