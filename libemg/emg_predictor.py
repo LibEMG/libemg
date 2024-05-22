@@ -14,6 +14,8 @@ import socket
 import random
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
 import time
 import inspect
 from scipy import stats
@@ -472,7 +474,30 @@ class EMGRegressor(EMGPredictor):
         return predictions
 
     def visualize(self, test_labels, predictions):
-        raise NotImplementedError("This method has not yet been implemented.")
+        assert len(predictions) > 0, 'Empty list passed in for predictions to visualize.'
+
+        # Formatting
+        plt.style.use('ggplot')
+        fig, axs = plt.subplots(nrows=test_labels.shape[1], ncols=1, sharex=True, layout='constrained')
+        fig.suptitle('Decision Stream')
+        fig.supxlabel('Prediction Index')
+        fig.supylabel('Model Output')
+
+        marker_size = 5
+        pred_color = 'black'
+        label_color = 'blue'
+        x = np.arange(test_labels.shape[0])
+        handles = [mpatches.Patch(color=label_color, label='Labels'), mlines.Line2D([], [], color=pred_color, marker='o', markersize=marker_size, linestyle='None', label='Predictions')]
+        for dof_idx, ax in enumerate(axs):
+            ax.set_title(f"DOF {dof_idx}")
+            ax.set_ylim((-1.05, 1.05))
+            ax.xaxis.grid(False)
+            ax.fill_between(x, test_labels[:, dof_idx], alpha=0.5, color=label_color)
+            ax.scatter(x, predictions[:, dof_idx], color=pred_color, s=marker_size)
+
+        fig.legend(handles=handles, loc='upper right')
+        plt.show()
+        
 
     def add_deadband(self, threshold):
         """Add a deadband around regressor predictions that will instead be output as 0.
@@ -845,3 +870,7 @@ class OnlineEMGRegressor(OnlineStreamer):
                 window, classifier_input = self.get_data(data)
                 prediction = np.array(self.classifier.regressor.predict(classifier_input)).squeeze()
                 self.write_output(prediction, "")
+
+    def visualize(self, max_len = 50):
+        # Make a line plot showing the current point on the DOF
+        raise NotImplementedError('The OnlineEMGRegressor.visualize() method has not been implemented yet.')
