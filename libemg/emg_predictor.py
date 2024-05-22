@@ -880,6 +880,12 @@ class OnlineEMGRegressor(OnlineStreamer):
                 prediction = np.array(self.classifier.regressor.predict(classifier_input)).squeeze()
                 self.write_output(prediction, "")
 
+    def analyze_regressor(self, analyze_time):
+        # Analyze latency of regressor
+        raise NotImplementedError('The OnlineEMGRegressor.analyze_regressor() method has not been implemented yet.')
+
     def visualize(self, max_len = 50):
         # Make a line plot showing the current point on the DOF
+        # Waiting until shared memory changes are implemented before implementing this
         raise NotImplementedError('The OnlineEMGRegressor.visualize() method has not been implemented yet.')
+
