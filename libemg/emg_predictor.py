@@ -474,6 +474,15 @@ class EMGRegressor(EMGPredictor):
         return predictions
 
     def visualize(self, test_labels, predictions):
+        """Visualize the decision stream of the regressor on test data.
+
+        You can call this visualize function to get a visual output of what the decision stream looks like.
+
+        :param test_labels: np.ndarray
+        :type test_labels: N x M array, where N = # samples and M = # DOFs, containing the labels for the test data.
+        :param predictions: np.ndarray
+        :type predictions: N x M array, where N = # samples and M = # DOFs, containing the predictions for the test data.
+        """
         assert len(predictions) > 0, 'Empty list passed in for predictions to visualize.'
 
         # Formatting
