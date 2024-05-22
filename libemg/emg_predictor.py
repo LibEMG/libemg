@@ -14,6 +14,8 @@ import socket
 import random
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
 import time
 import inspect
 from scipy import stats
@@ -21,7 +23,7 @@ from scipy import stats
 from libemg.utils import get_windows
 
 class EMGPredictor:
-    def __init__(self, model, model_parameters = None, random_seed = 0) -> None:
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
         """Base class for EMG prediction.
 
         Parameters
@@ -32,11 +34,17 @@ class EMGPredictor:
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
         """
         self.model = model
         self.model_parameters = model_parameters
         # default for feature parameters
         self.feature_params = {}
+        self.fix_feature_errors = fix_feature_errors
+        self.silent = silent
         random.seed(random_seed)
 
     def fit(self, feature_dictionary = None, dataloader_dictionary = None, training_parameters = None):
@@ -51,10 +59,6 @@ class EMGPredictor:
         Parameters
         ----------
     
-        model: string or custom classifier (must have fit, predict and predic_proba functions)
-            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
         feature_dictionary: dict
             A dictionary including the associated features and labels associated with a set of data. 
             Dictionary keys should include 'training_labels' and 'training_features'.
@@ -100,15 +104,15 @@ class EMGPredictor:
             model = pickle.load(f)
         return model
 
-    def predict(self, data):
+    def _predict(self, data):
         try:
-            self.model.predict(data)
+            return self.model.predict(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict() method. Please ensure model has a valid predict() method.") from e
 
-    def predict_proba(self, data):
+    def _predict_proba(self, data):
         try:
-            self.model.predict_proba(data)
+            return self.model.predict_proba(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict_proba() method. Please ensure model has a valid predict_proba() method.") from e
 
@@ -161,14 +165,21 @@ class EMGPredictor:
         valid_model = model_reference(**valid_parameters)
         return valid_model
 
-    @staticmethod
-    def _format_data(feature_dictionary):
-        arr = None
-        for feat in feature_dictionary:
-            if arr is None:
-                arr = feature_dictionary[feat]
-            else:
-                arr = np.hstack((arr, feature_dictionary[feat]))
+    def _format_data(self, feature_dictionary):
+        if not isinstance(feature_dictionary, np.ndarray):
+            # Loop through each element and stack
+            arr = None
+            for feat in feature_dictionary:
+                if arr is None:
+                    arr = feature_dictionary[feat]
+                else:
+                    arr = np.hstack((arr, feature_dictionary[feat]))
+        else:
+            arr = feature_dictionary
+
+        if self.fix_feature_errors:
+            if FeatureExtractor().check_features(arr, self.silent):
+                arr = np.nan_to_num(arr, neginf=0, nan=0, posinf=0) 
         return arr
 
     def _fit_statistical_model(self, feature_dictionary):
@@ -186,7 +197,7 @@ class EMGPredictor:
 
 
 class EMGClassifier(EMGPredictor):
-    def __init__(self, model, model_parameters = None, random_seed = 0):
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False):
         """The Offline EMG Classifier. 
 
         This is the base class for any offline EMG classification. 
@@ -201,6 +212,10 @@ class EMGClassifier(EMGPredictor):
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
         """
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
@@ -213,7 +228,7 @@ class EMGClassifier(EMGPredictor):
             'MLP': (MLPClassifier, {"random_state": 0, "hidden_layer_sizes": 126})
         }
         model = self._validate_model_parameters(model, model_parameters, model_config)
-        super().__init__(model, model_parameters, random_seed=random_seed)
+        super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
         self.velocity = False
         self.majority_vote = None
@@ -225,17 +240,13 @@ class EMGClassifier(EMGPredictor):
 
 
         
-    def run(self, test_data, fix_feature_errors=False, silent=False):
+    def run(self, test_data):
         """Runs the classifier on a pre-defined set of training data.
 
         Parameters
         ----------
         test_data: list
             A dictionary, np.ndarray of inputs appropriate for the model of the EMGClassifier.
-        fix_feature_errors: bool (default=False)
-            If True, the classifier will update any feature erros (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
 
         Returns
         ----------
@@ -244,15 +255,9 @@ class EMGClassifier(EMGPredictor):
         list
             A list of the probabilities (for each prediction), based on the passed in testing features.
         """
-        if type(test_data) == dict:
-            test_data = self._format_data(test_data)
+        test_data = self._format_data(test_data)
         
-        # Remove any faulty values from test_data (these may have occured from feature extraction e.g., NANs)
-        if fix_feature_errors:
-            if FeatureExtractor().check_features(test_data, silent):
-                test_data = np.nan_to_num(test_data, neginf=0, nan=0, posinf=0) 
-        
-        prob_predictions = self.predict_proba(test_data)
+        prob_predictions = self._predict_proba(test_data)
             
         # Default
         predictions, probabilities = self._prediction_helper(prob_predictions)
@@ -413,7 +418,7 @@ class EMGRegressor(EMGPredictor):
     This is the base class for any offline EMG regression. 
 
     """
-    def __init__(self, model, model_parameters = None, random_seed = 0):
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False, deadband_threshold = 0.):
         """The Offline EMG Regressor. 
 
         This is the base class for any offline EMG regression. 
@@ -421,13 +426,19 @@ class EMGRegressor(EMGPredictor):
         Parameters
         ----------
         model: string or custom regressor (must have fit and predict functions)
-            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM', 'RF' (Random Forest),  
+            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM' (Support Vector Machine), 'RF' (Random Forest),  
             'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+            models with no hyperparameter tuning and may not be optimal. Pass in custom regressors or parameters for more control.
         model_parameters: dictionary, default=None
             Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
         random_seed: int, default=0
             Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
+        deadband_threshold: float, default=0.0
+            Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
         """
         model_config = {
             'LR': (LinearRegression, {}),
@@ -437,10 +448,11 @@ class EMGRegressor(EMGPredictor):
             'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
         }
         model = self._validate_model_parameters(model, model_parameters, model_config)
-        super().__init__(model, model_parameters, random_seed=random_seed)
+        self.deadband_threshold = deadband_threshold
+        super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
     
-    def run(self, test_data, test_labels):
+    def run(self, test_data):
         """Runs the regressor on a pre-defined set of training data.
 
         Parameters
@@ -452,18 +464,59 @@ class EMGRegressor(EMGPredictor):
         list
             A list of predictions, based on the passed in testing features.
         """
-        if type(test_data) == dict:
-            test_data = self._format_data(test_data)
-        predictions = self.predict(test_data)
-        # score = self.regressor.score(test_data, test_labels)
+        test_data = self._format_data(test_data)
+        predictions = self._predict(test_data)
+
+        # Set values within deadband to 0
+        deadband_mask = np.abs(predictions) < self.deadband_threshold
+        predictions[deadband_mask] = 0.
+
         return predictions
 
     def visualize(self, test_labels, predictions):
-        raise NotImplementedError("This method has not yet been implemented.")
+        """Visualize the decision stream of the regressor on test data.
+
+        You can call this visualize function to get a visual output of what the decision stream looks like.
+
+        :param test_labels: np.ndarray
+        :type test_labels: N x M array, where N = # samples and M = # DOFs, containing the labels for the test data.
+        :param predictions: np.ndarray
+        :type predictions: N x M array, where N = # samples and M = # DOFs, containing the predictions for the test data.
+        """
+        assert len(predictions) > 0, 'Empty list passed in for predictions to visualize.'
+
+        # Formatting
+        plt.style.use('ggplot')
+        fig, axs = plt.subplots(nrows=test_labels.shape[1], ncols=1, sharex=True, layout='constrained')
+        fig.suptitle('Decision Stream')
+        fig.supxlabel('Prediction Index')
+        fig.supylabel('Model Output')
+
+        marker_size = 5
+        pred_color = 'black'
+        label_color = 'blue'
+        x = np.arange(test_labels.shape[0])
+        handles = [mpatches.Patch(color=label_color, label='Labels'), mlines.Line2D([], [], color=pred_color, marker='o', markersize=marker_size, linestyle='None', label='Predictions')]
+        for dof_idx, ax in enumerate(axs):
+            ax.set_title(f"DOF {dof_idx}")
+            ax.set_ylim((-1.05, 1.05))
+            ax.xaxis.grid(False)
+            ax.fill_between(x, test_labels[:, dof_idx], alpha=0.5, color=label_color)
+            ax.scatter(x, predictions[:, dof_idx], color=pred_color, s=marker_size)
+
+        fig.legend(handles=handles, loc='upper right')
+        plt.show()
+        
 
     def add_deadband(self, threshold):
-        # Add deadband around 0 so all values below that will be output as 0
-        raise NotImplementedError("This method has not yet been implemented.")
+        """Add a deadband around regressor predictions that will instead be output as 0.
+
+        Parameters
+        ----------
+        threshold: float
+            Deadband threshold. All output predictions from -threshold to +threshold will instead output 0.
+        """
+        self.deadband_threshold = threshold
 
 
 
@@ -826,3 +879,13 @@ class OnlineEMGRegressor(OnlineStreamer):
                 window, classifier_input = self.get_data(data)
                 prediction = np.array(self.classifier.regressor.predict(classifier_input)).squeeze()
                 self.write_output(prediction, "")
+
+    def analyze_regressor(self, analyze_time):
+        # Analyze latency of regressor
+        raise NotImplementedError('The OnlineEMGRegressor.analyze_regressor() method has not been implemented yet.')
+
+    def visualize(self, max_len = 50):
+        # Make a line plot showing the current point on the DOF
+        # Waiting until shared memory changes are implemented before implementing this
+        raise NotImplementedError('The OnlineEMGRegressor.visualize() method has not been implemented yet.')
+
