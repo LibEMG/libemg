@@ -37,7 +37,7 @@ class RegexFilter:
             The right bound of the regex.
         values: list
             The values between the two regexes.
-        description : str
+        description: str
             Description of filter - used to name the metadata field.
         """
         # Could add parameter to disable grabbing metadata for certain patterns
@@ -50,7 +50,7 @@ class RegexFilter:
 
         Parameters
         ----------
-        files : list
+        files: list
             List of potential files that need to be filtered.
         """
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
@@ -61,9 +61,9 @@ class RegexFilter:
 
         Parameters
         ----------
-        filename : str
+        filename: str
             Name of file.
-        file_data : np.ndarray
+        file_data: np.ndarray
             Data within file.
         """
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
@@ -79,7 +79,7 @@ class MetadataFetcher(ABC):
 
         Parameters
         ----------
-        description : str
+        description: str
             Description of metadata.
         """
         self.description = description
@@ -90,11 +90,11 @@ class MetadataFetcher(ABC):
 
         Parameters
         ----------
-        filename : str
+        filename: str
             Name of data file.
-        file_data : np.ndarray
+        file_data: np.ndarray
             Data within file.
-        all_files : list
+        all_files: list
             List of filenames containing all files within data directory.
         """
         raise NotImplementedError("Must implement __call__ method.")
@@ -107,15 +107,15 @@ class FilePackager(MetadataFetcher):
 
         Parameters
         ----------
-        regex_filter : RegexFilter
+        regex_filter: RegexFilter
             Used to find the type of metadata files.
-        package_function : callable
+        package_function: callable
             Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
             Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
-        align_method : str or callable
+        align_method: str or callable
             Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
             pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata. Defaults to 'zoom'.
-        load : callable or None
+        load: callable or None
             Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported). Defaults to None.
         """
         super().__init__(regex_filter.description)
@@ -161,11 +161,11 @@ class ColumnFetcher(MetadataFetcher):
 
         Parameters
         ----------
-        description : str
+        description: str
             Description of metadata.
-        column_idx : int
+        column_idx: int
             Index of metadata column in data file.
-        values : list
+        values: list
             List of potential values within metadata column.
         """
         super().__init__(description)
@@ -253,20 +253,20 @@ class OfflineDataHandler(DataHandler):
 
         Parameters
         ----------
-        folder_location : str
+        folder_location: str
             Location of the dataset relative to the current file path.
-        regex_filters : list
+        regex_filters: list
             List of RegexFilters used to filter data files to the desired set of files. Metadata for each RegexFilter
             will be pulled from the filename and stored as a field.
-        metadata_fetchers : list or None
+        metadata_fetchers: list or None
             List of MetadataFetchers used to associate metadata with each data file (e.g., FilePackager). If the provided MetadataFetchers do not suit your needs,
             you may inherit from the MetadataFetcher class to create your own. If None is passed, no extra metadata is fetched (other than from filenames via regex).
             Defaults to None.
-        delimiter : str
+        delimiter: str
             Specifies how columns are separated in .txt or .csv data files. Defaults to ','.
-        mrdf_key : str
+        mrdf_key: str
             Key in mrdf file associated with EMG data. Defaults to 'p_signal'.
-        data_column : list or None
+        data_column: list or None
             List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data. Defaults to None.
 
         Raises
