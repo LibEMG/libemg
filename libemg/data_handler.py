@@ -495,37 +495,6 @@ class OfflineDataHandler(DataHandler):
             #     setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
     
-    def _check_file_regex(self, files, regex_keys):
-        """Function that verifies that the list of files in the dataset folder agree with the metadata regex in the dictionary. It is assumed that
-        if the filename does not match the regex there is either a mistake is creating the regex or those files are not intended to be loaded. The
-        number of files that were excluded are printed to the console, and the excluded files are removed from the files variable (list passed by
-        reference so any changes in the function scope will persist outside the function scope)
-
-        Parameters
-        ----------
-        files: list
-            A list containing the path (str) of all the files found in the dataset folder that end in .csv or .txt
-        regex_keys: list
-            A list containing the dictionary keys passed during the dataset loading process that indicate metadata to be extracted
-            from the path.
-            
-        Returns
-        ----------
-        None
-        """
-        num_files = len(files)
-        removed_files = []
-        for f in files:
-            violations = 0
-            for k in regex_keys:
-                # regex failed to return a value
-                if len(re.findall(k,f)) == 0:
-                    violations += 1
-            if violations:
-                removed_files.append(f)
-        [files.remove(rf) for rf in removed_files]
-        print(f"{len(removed_files)} of {num_files} files violated regex and were excluded")
-    
     def visualize():
         pass
 
