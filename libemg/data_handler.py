@@ -168,33 +168,37 @@ class FilePackager(MetadataFetcher):
 
 
 class ColumnFetcher(MetadataFetcher):
-    def __init__(self, description, column_idx, values):
+    def __init__(self, description, column_mask, values = None):
         """Fetch metadata from columns within data file.
 
         Parameters
         ----------
         description: str
             Description of metadata.
-        column_idx: int
-            Index of metadata column in data file.
-        values: list
-            List of potential values within metadata column.
+        column_mask: list or int
+            Integers corresponding to indices of columns that should be fetched.
+        values: list or None
+            List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
+            Defaults to None.
         """
         super().__init__(description)
-        self.column_idx = column_idx
+        self.column_mask = column_mask
         self.values = values
 
     def __call__(self, filename, file_data, all_files):
-        column_data = file_data[:, self.column_idx]
+        column_data = file_data[:, self.column_mask]
         if isinstance(self.values, list):
-            metadata_indices = np.array([self.values.index(i) for i in column_data])
-            metadata_column = np.expand_dims(metadata_indices, axis=1)
+            metadata = np.array([self.values.index(i) for i in column_data])
         else:
             # if a tuple is passed in (range of values)
             # we can put a check here later
-            metadata_column = np.expand_dims(column_data, axis=1)
+            metadata = column_data
 
-        return metadata_column
+        if metadata.ndim == 1:
+            # Ensure that output is always 2D array
+            metadata = np.expand_dims(column_data, axis=1)
+
+        return metadata
 
 
 class DataHandler:
