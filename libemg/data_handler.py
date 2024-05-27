@@ -101,7 +101,7 @@ class MetadataFetcher(ABC):
 
 
 class FilePackager(MetadataFetcher):
-    def __init__(self, regex_filter, package_function, align_method = 'zoom', load = None):
+    def __init__(self, regex_filter, package_function, align_method = 'zoom', load = None, column_mask = None):
         """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
         that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
 
@@ -117,12 +117,15 @@ class FilePackager(MetadataFetcher):
             pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata. Defaults to 'zoom'.
         load: callable or None
             Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported). Defaults to None.
+        column_mask: list or None
+            List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted. Defaults to None.
         """
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
         self.package_function = package_function
         self.align_method = align_method
         self.load = load
+        self.column_mask = column_mask
 
     def __call__(self, filename, file_data, all_files):
         potential_files = self.regex_filter.get_matching_files(all_files)
@@ -152,6 +155,15 @@ class FilePackager(MetadataFetcher):
             packaged_file_data = self.align_method(packaged_file_data, file_data)
         else:
             raise ValueError('Unexpected value for align_method. Please pass in a callable or a supported string (e.g., zoom).')
+
+        if self.column_mask is not None:
+            # Only grab data at specified columns
+            packaged_file_data = packaged_file_data[:, self.column_mask]
+
+        if packaged_file_data.ndim == 1:
+            # Ensure 2D array
+            packaged_file_data = np.expand_dims(packaged_file_data, axis=1)
+
         return packaged_file_data
 
 
