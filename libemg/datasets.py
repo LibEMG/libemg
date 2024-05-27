@@ -3,7 +3,7 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from libemg.data_handler import OfflineDataHandler
+from libemg.data_handler import OfflineDataHandler, RegexFilter
 from libemg.utils import make_regex
 from glob import glob
 from os import walk
@@ -51,22 +51,14 @@ class _3DCDataset(Dataset):
                                                       reps_values = ["0","1","2","3"],
                                                       classes_values = [str(i) for i in range(11)]):
         if format == OfflineDataHandler:
-            sets_regex = make_regex(left_bound = "/", right_bound="/EMG", values = sets_values)
-            classes_regex = make_regex(left_bound = "_", right_bound=".txt", values = classes_values)
-            reps_regex = make_regex(left_bound = "EMG_gesture_", right_bound="_", values = reps_values)
-            subjects_regex = make_regex(left_bound="Participant", right_bound="/",values=subjects_values)
-            dic = {
-                "sets": sets_values,
-                "sets_regex": sets_regex,
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/", right_bound="/EMG", values = sets_values, description='sets'),
+                RegexFilter(left_bound = "_", right_bound=".txt", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "EMG_gesture_", right_bound="_", values = reps_values, description='reps'),
+                RegexFilter(left_bound="Participant", right_bound="/",values=subjects_values, description='subjects')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 class Ninapro(Dataset):
@@ -156,19 +148,13 @@ class NinaproDB8(Ninapro):
                                                       classes_values = [str(i) for i in range(9)]):
         
         if format == OfflineDataHandler:
-            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
-            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
-            subjects_regex = make_regex(left_bound="DB8_s", right_bound="/",values=subjects_values)
-            dic = {
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+                RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 class NinaproDB2(Ninapro):
@@ -182,19 +168,13 @@ class NinaproDB2(Ninapro):
                                                       classes_values = [str(i) for i in range(50)]):
         
         if format == OfflineDataHandler:
-            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
-            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
-            subjects_regex = make_regex(left_bound="DB2_s", right_bound="/",values=subjects_values)
-            dic = {
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+                RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 # given a directory, return a list of files in that directory matching a format
@@ -227,21 +207,15 @@ class OneSubjectMyoDataset(Dataset):
     def prepare_data(self, format=OfflineDataHandler):
         if format == OfflineDataHandler:
             sets_values = ["1","2","3","4","5","6"]
-            sets_regex = make_regex(left_bound = "/trial_", right_bound="/", values = sets_values)
             classes_values = ["0","1","2","3","4"]
-            classes_regex = make_regex(left_bound = "C_", right_bound=".csv", values = classes_values)
             reps_values = ["0","1"]
-            reps_regex = make_regex(left_bound = "R_", right_bound="_", values = reps_values)
-            dic = {
-                "sets": sets_values,
-                "sets_regex": sets_regex,
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/trial_", right_bound="/", values = sets_values, description='sets'),
+                RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 # class GRABMyo(Dataset):
