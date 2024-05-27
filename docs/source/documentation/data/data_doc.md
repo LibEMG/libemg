@@ -170,23 +170,15 @@ One overhead for most EMG projects is interfacing with a particular dataset sinc
 <summary><b>Example Code</b></summary>
 
 ```Python
+from libemg.data_handler import OfflineDataHandler, RegexFilter
 dataset_folder = 'dataset'
-sets_values = ["training", "testing"]
-sets_regex = make_regex(left_bound = "dataset/", right_bound="/", values = sets_values)
-classes_values = ["0","1","2","3","4"]
-classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
-reps_values = ["0","1","2","3"]
-reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-dic = {
-    "sets": sets_values,
-    "sets_regex": sets_regex,
-    "reps": reps_values,
-    "reps_regex": reps_regex,
-    "classes": classes_values,
-    "classes_regex": classes_regex
-}
+regex_filters = [
+    RegexFilter(left_bound = "dataset/", right_bound="/", values = sets_values, description='sets'),
+    RegexFilter(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values, description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+]
 odh = OfflineDataHandler()
-odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
+odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
 
 # Extract training data:
 train_odh = odh.isolate_data(key="sets", values=[0])

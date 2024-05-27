@@ -118,7 +118,7 @@ Now that we have shown how to leverage EMG predictions to replace traditional ke
 First, the required imports from libemg:
 ```Python
 from libemg.screen_guided_training import ScreenGuidedTraining
-from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
+from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
 from libemg.streamers import myo_streamer
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
@@ -161,18 +161,13 @@ After acquiring the offline training data, creating an online classifier is simp
 # Step 1: Parse offline training data
 dataset_folder = 'data/'
 classes_values = ["0","1","2","3","4"]
-classes_regex = make_regex(left_bound = "_C_", right_bound=".csv", values = classes_values)
 reps_values = ["0", "1", "2"]
-reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-dic = {
-    "reps": reps_values,
-    "reps_regex": reps_regex,
-    "classes": classes_values,
-    "classes_regex": classes_regex
-}
-
+regex_filters = [
+    RegexFilter(left_bound = "_C_", right_bound=".csv", values = classes_values, description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+]
 odh = OfflineDataHandler()
-odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
+odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
 train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
