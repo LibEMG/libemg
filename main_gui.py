@@ -5,6 +5,8 @@ import os
 from sklearn.linear_model import ElasticNet
 import sklearn.metrics as metrics
 
+from libemg.data_handler import RegexFilter
+
 SUBJECT_NUMBER = 100
 WINDOW_SIZE = 350
 WINDOW_INC  = 98
@@ -153,16 +155,12 @@ class GUI:
     def get_data(self):
         classes_values = [str(i) for i in range(10)] # will only grab classes 0,1,2,3,4 currently
         reps_values    = [str(i) for i in range(4)] # will only grab reps 0,1,2 currently
-        classes_regex  = libemg.utils.make_regex(left_bound="_C_",right_bound=".csv", values=classes_values)
-        reps_regex     = libemg.utils.make_regex(left_bound="/R_", right_bound="_C_", values=reps_values)
-        dic = {
-            "classes": classes_values,
-            "classes_regex": classes_regex,
-            "reps": reps_values,
-            "reps_regex": reps_regex
-        }
+        regex_filters = [
+            RegexFilter(left_bound="_C_",right_bound=".csv", values=classes_values, description='classes'),
+            RegexFilter(left_bound="/R_", right_bound="_C_", values=reps_values, description='reps')
+        ]
         offlinedatahandler = libemg.data_handler.OfflineDataHandler()
-        offlinedatahandler.get_data(folder_location=self.save_directory, filename_dic = dic, delimiter=',')
+        offlinedatahandler.get_data(folder_location=self.save_directory, regex_filters=regex_filters, delimiter=',')
         return offlinedatahandler
     
     def extract_windows(self, offlinedatahandler):
@@ -177,17 +175,12 @@ class GUI:
 
     def regression_stuff(self):
         offdh = libemg.data_handler.OfflineDataHandler()
-        dataset_dic = {
-            "reps": ["0","1","2","3","4"],
-            "reps_regex": libemg.utils.make_regex(left_bound="R_",
-                                    right_bound="_C_",
-                                    values = ["0","1","2","3","4"])
-        }
-        offdh.get_data(folder_location=self.save_directory,
-                    filename_dic = dataset_dic,
-                    delimiter=",")
-        offdh.add_regression_labels(file_location="animation/class_file.txt",
-                                    colnames = ["timestamp", "hand","regression0", "regression1"])
+        regex_filters = [
+            RegexFilter(left_bound="R_", right_bound="_C_", values = ["0","1","2","3","4"], description='reps')
+        ]
+        offdh.get_data(folder_location=self.save_directory, regex_filters=regex_filters, delimiter=",")
+        # offdh.add_regression_labels(file_location="animation/class_file.txt",
+        #                             colnames = ["timestamp", "hand","regression0", "regression1"])
         metadata_operations = {
             "timestamp": np.mean,
             "hand": [np.int64, np.bincount, np.argmax],
