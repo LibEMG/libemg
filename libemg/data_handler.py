@@ -262,7 +262,7 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', data_column = None):
+    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', skiprows = 0, data_column = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
@@ -282,13 +282,15 @@ class OfflineDataHandler(DataHandler):
             Specifies how columns are separated in .txt or .csv data files. Defaults to ','.
         mrdf_key: str
             Key in mrdf file associated with EMG data. Defaults to 'p_signal'.
+        skip_rows: int
+            The number of rows to skip in the file (e.g., .csv or .txt) starting from the top row. Defaults to 0.
         data_column: list or None
             List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data. Defaults to None.
 
         Raises
         ------
         ValueError:
-            Raises ValueError is folder_location is not a valid directory.
+            Raises ValueError if folder_location is not a valid directory.
         """
         def append_to_attribute(name, value):
             if not hasattr(self, name):
@@ -319,7 +321,7 @@ class OfflineDataHandler(DataHandler):
                 # The key is the emg key that is in the mrdf file
                 file_data = (wfdb.rdrecord(file.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
-                file_data = np.genfromtxt(file,delimiter=delimiter)
+                file_data = np.genfromtxt(file,delimiter=delimiter, skip_header=skiprows)
                 if len(file_data.shape) == 1:
                     # some devices may have one channel -> make sure it interprets it as a 2d array
                     file_data = np.expand_dims(file_data, 1)
