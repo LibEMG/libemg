@@ -338,8 +338,8 @@ class OfflineDataHandler(DataHandler):
 
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
-                packaged_data = metadata_fetcher(file, file_data, all_files)
-                append_to_attribute(metadata_fetcher.description, packaged_data)
+                metadata = metadata_fetcher(file, file_data, all_files)
+                append_to_attribute(metadata_fetcher.description, metadata)
             
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
