@@ -186,17 +186,14 @@ class ColumnFetcher(MetadataFetcher):
         self.values = values
 
     def __call__(self, filename, file_data, all_files):
-        column_data = file_data[:, self.column_mask]
+        metadata = file_data[:, self.column_mask]
         if isinstance(self.values, list):
-            metadata = np.array([self.values.index(i) for i in column_data])
-        else:
-            # if a tuple is passed in (range of values)
-            # we can put a check here later
-            metadata = column_data
+            # Convert to indices of provided values
+            metadata = np.array([self.values.index(i) for i in metadata])
 
         if metadata.ndim == 1:
             # Ensure that output is always 2D array
-            metadata = np.expand_dims(column_data, axis=1)
+            metadata = np.expand_dims(metadata, axis=1)
 
         return metadata
 
