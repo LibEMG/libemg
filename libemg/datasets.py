@@ -3,10 +3,12 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from libemg.data_handler import OfflineDataHandler, RegexFilter
+from libemg.data_handler import ColumnFetcher, MetadataFetcher, OfflineDataHandler, RegexFilter
 from libemg.utils import make_regex
 from glob import glob
 from os import walk
+from pathlib import Path
+from datetime import datetime
 # this assumes you have git downloaded (not pygit, but the command line program git)
 
 class Dataset:
@@ -191,6 +193,7 @@ def find_all_files_of_type_recursively(dir, terminator):
                 file_list += find_all_files_of_type_recursively(dir+file+'/',terminator)
     return file_list
 
+
 class OneSubjectMyoDataset(Dataset):
     def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
         Dataset.__init__(self, save_dir, redownload)
@@ -217,6 +220,57 @@ class OneSubjectMyoDataset(Dataset):
             odh = OfflineDataHandler()
             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
+
+
+class _SessionFetcher(MetadataFetcher):
+    def __init__(self):
+        super().__init__('sessions')
+
+    def __call__(self, filename, file_data, all_files):
+        def split_filename(f):
+            # Split date and name into separate variables
+            date_idx = f.find('2018')
+            date = datetime.strptime(Path(f[date_idx:]).stem, '%Y-%m-%d-%H-%M-%S-%f')
+            description = f[:date_idx]
+            return date, description
+
+        data_file_date, data_file_description = split_filename(filename)
+
+        # Grab the other file of a different date. Return the index of which session it is
+        same_subject_files = [f for f in all_files if data_file_description in f]
+        file_dates = [split_filename(subject_filename)[0] for subject_filename in same_subject_files]
+        file_dates.sort()
+        session_idx = file_dates.index(data_file_date)
+        return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
+
+
+class PutEMGForceDataset(Dataset):
+    def __init__(self, save_dir = '.', dataset_name = 'PutEMGForceDataset', data_filetype = None):
+        # TODO: Implement downloading dataset using .sh or .py file
+        super().__init__(save_dir)
+        self.dataset_name = dataset_name
+        self.dataset_folder = os.path.join(self.save_dir, self.dataset_name)
+        if data_filetype is None:
+            data_filetype = ['repeats_short', 'repeats_long', 'sequential']
+        elif not isinstance(data_filetype, list):
+            data_filetype = [data_filetype]
+        self.data_filetype = data_filetype
+
+    def prepare_data(self, format=OfflineDataHandler):
+        if format == OfflineDataHandler:
+            regex_filters = [
+                RegexFilter(left_bound='/emg_force-', right_bound='-', values=[str(idx).zfill(2) for idx in range(60)], description='subjects'),
+                RegexFilter(left_bound='-', right_bound='-', values=self.data_filetype, description='data_filetype'),
+            ]
+            metadata_fetchers = [
+                _SessionFetcher(),
+                ColumnFetcher('forces', list(range(25, 35))),
+                ColumnFetcher('trajectories', list(range(36, 40)))
+            ]
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=',', skiprows=1, data_column=list(range(1, 25)))
+            return odh
+            
 
 # class GRABMyo(Dataset):
 #     def __init__(self, save_dir='.', redownload=False, subjects=list(range(1,44)), sessions=list(range(1,4)), dataset_name="GRABMyo"):
