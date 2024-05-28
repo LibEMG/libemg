@@ -52,6 +52,11 @@ class RegexFilter:
         ----------
         files: list
             List of potential files that need to be filtered.
+
+        Returns
+        ----------
+        matching_files: list
+            List of files that match regex pattern.
         """
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
         return matching_files
@@ -65,6 +70,11 @@ class RegexFilter:
             Name of file.
         file_data: np.ndarray
             Data within file.
+
+        Returns
+        ----------
+        metadata: np.ndarray
+            Array containing the index of the value found in the filename relative to the list of potential values.
         """
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
         val = re.findall(self.pattern, filename)[0]
@@ -86,7 +96,7 @@ class MetadataFetcher(ABC):
 
     @abstractmethod
     def __call__(self, filename, file_data, all_files):
-        """Fetch metadata.
+        """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
 
         Parameters
         ----------
@@ -96,6 +106,11 @@ class MetadataFetcher(ABC):
             Data within file.
         all_files: list
             List of filenames containing all files within data directory.
+
+        Returns
+        ----------
+        metadata: np.ndarray
+            Array containing the metadata corresponding to the provided file.
         """
         raise NotImplementedError("Must implement __call__ method.")
 
