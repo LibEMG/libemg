@@ -246,6 +246,17 @@ class _SessionFetcher(MetadataFetcher):
 
 class PutEMGForceDataset(Dataset):
     def __init__(self, save_dir = '.', dataset_name = 'PutEMGForceDataset', data_filetype = None):
+        """Dataset wrapper for putEMG-Force dataset. Used for regression of finger forces.
+
+        Parameters
+        ----------
+        save_dir : str, default='.'
+            Base data directory.
+        dataset_name : str, default='PutEMGForceDataset'
+            Name of dataset. Looks for dataset in filepath created by appending save_dir and dataset_name.
+        data_filetype : list or None, default=None
+            Type of data file to use. Accepted values are 'repeats_long', 'repeats_short', 'sequential', or any combination of those. If None is passed, all will be used.
+        """
         # TODO: Implement downloading dataset using .sh or .py file
         super().__init__(save_dir)
         self.dataset_name = dataset_name
