@@ -127,13 +127,13 @@ class FilePackager(MetadataFetcher):
         package_function: callable
             Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
             Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
-        align_method: str or callable
+        align_method: str or callable, default='zoom'
             Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
-            pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata. Defaults to 'zoom'.
-        load: callable or None
-            Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported). Defaults to None.
-        column_mask: list or None
-            List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted. Defaults to None.
+            pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
+        load: callable or None, default=None
+            Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
+        column_mask: list or None, default=None
+            List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
         """
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
@@ -192,9 +192,8 @@ class ColumnFetcher(MetadataFetcher):
             Description of metadata.
         column_mask: list or int
             Integers corresponding to indices of columns that should be fetched.
-        values: list or None
+        values: list or None, default=None
             List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
-            Defaults to None.
         """
         super().__init__(description)
         self.column_mask = column_mask
@@ -286,18 +285,17 @@ class OfflineDataHandler(DataHandler):
         regex_filters: list
             List of RegexFilters used to filter data files to the desired set of files. Metadata for each RegexFilter
             will be pulled from the filename and stored as a field.
-        metadata_fetchers: list or None
+        metadata_fetchers: list or None, default=None
             List of MetadataFetchers used to associate metadata with each data file (e.g., FilePackager). If the provided MetadataFetchers do not suit your needs,
             you may inherit from the MetadataFetcher class to create your own. If None is passed, no extra metadata is fetched (other than from filenames via regex).
-            Defaults to None.
-        delimiter: str
-            Specifies how columns are separated in .txt or .csv data files. Defaults to ','.
-        mrdf_key: str
-            Key in mrdf file associated with EMG data. Defaults to 'p_signal'.
-        skip_rows: int
-            The number of rows to skip in the file (e.g., .csv or .txt) starting from the top row. Defaults to 0.
-        data_column: list or None
-            List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data. Defaults to None.
+        delimiter: str, default=','
+            Specifies how columns are separated in .txt or .csv data files.
+        mrdf_key: str, default='p_signal'
+            Key in mrdf file associated with EMG data.
+        skip_rows: int, default=0
+            The number of rows to skip in the file (e.g., .csv or .txt) starting from the top row.
+        data_column: list or None, default=None
+            List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data.
 
         Raises
         ------
