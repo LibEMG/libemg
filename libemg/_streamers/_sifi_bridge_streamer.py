@@ -10,7 +10,7 @@ import re
 
 # this is responsible for receiving the data
 class SiFiBridge:
-    def __init__(self, config, version, other, bridge_version: str | None = "0.6.0"):
+    def __init__(self, config, version, other, bridge_version: str | None = "0.6.1"):
         self.version = version
 
         pltfm = system()
