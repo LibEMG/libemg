@@ -267,10 +267,12 @@ class PutEMGForceDataset(Dataset):
             data_filetype = [data_filetype]
         self.data_filetype = data_filetype
 
-    def prepare_data(self, format=OfflineDataHandler):
+    def prepare_data(self, format=OfflineDataHandler, subjects = None):
+        if subjects is None:
+            subjects = [str(idx).zfill(2) for idx in range(60)] 
         if format == OfflineDataHandler:
             regex_filters = [
-                RegexFilter(left_bound='/emg_force-', right_bound='-', values=[str(idx).zfill(2) for idx in range(60)], description='subjects'),
+                RegexFilter(left_bound='/emg_force-', right_bound='-', values=subjects, description='subjects'),
                 RegexFilter(left_bound='-', right_bound='-', values=self.data_filetype, description='data_filetype'),
             ]
             metadata_fetchers = [
