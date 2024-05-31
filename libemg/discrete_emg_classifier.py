@@ -47,18 +47,18 @@ class OnlineEMGDiscreteClassifier:
 
     def _run_helper(self):
         print("Running Classifier")
-        gesture_mapping = ['No Gesture', 'Fist', 'Wave In', 'Wave Out', 'Open', 'Double Tap']
+        # gesture_mapping = ['No Gesture', 'Fist', 'Wave In', 'Wave Out', 'Open', 'Double Tap']
         fe = FeatureExtractor()
         self.raw_data.reset_emg()
         while True:
             # Lets base everything off of EMG 
-            if len(self.raw_data.get_emg()) >= 40:
-                emg_data = np.array([self.raw_data.get_emg()[-40:]])
-                window = get_windows(emg_data[-40:][:], 40, 40)
-                features = fe.extract_features(['WENG'], window, feature_dic={'WENG_fs': 200}, array=True)
-                preds = self.classifier.predict([features])
-                self.raw_data.adjust_increment(40, 20)
-                print(gesture_mapping[preds[0]])
+            if len(self.raw_data.get_emg()) >= 260:
+                emg_data = np.array([self.raw_data.get_emg()[-260:]])
+                features = self.get_features(fe, emg_data, 5, 5, ['RMS'])
+                preds = self.classifier.predict(features, None)
+                print(preds)
+                self.raw_data.adjust_increment(260, 20)
+                # print(gesture_mapping[preds[0]])
 
             # if len(self.raw_data.get_emg()) >= 40: # Defaulting to 300 samples for the myo armband
             #     emg_data = np.array([self.raw_data.get_emg()[-200:]])
