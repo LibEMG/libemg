@@ -298,7 +298,7 @@ class PutEMGForceDataset(Dataset):
             data_filetype = [data_filetype]
         self.data_filetype = data_filetype
 
-    def prepare_data(self, format=OfflineDataHandler, subjects = None):
+    def prepare_data(self, format=OfflineDataHandler, subjects = None, sessions = None, reps = None):
         if subjects is None:
             subjects = [str(idx).zfill(2) for idx in range(60)] 
         if format == OfflineDataHandler:
@@ -314,6 +314,10 @@ class PutEMGForceDataset(Dataset):
             ]
             odh = OfflineDataHandler()
             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=',', skiprows=1, data_column=list(range(1, 25)))
+            if sessions is not None:
+                odh = odh.isolate_data('sessions', sessions)
+            if reps is not None:
+                odh = odh.isolate_data('reps', reps)
             return odh
             
 
