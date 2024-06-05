@@ -259,7 +259,7 @@ class _RepFetcher(ColumnFetcher):
 
 
         # Populate metadata array
-        metadata = np.empty((column_data.shape[0], 1))
+        metadata = np.empty((column_data.shape[0], 1), dtype=np.int16)
         rep_counters = [0 for _ in range(5)]    # 5 different press types
         previous_rep_start = 0
         for idx, rep_start in enumerate(unique_rep_end_row_mask):
