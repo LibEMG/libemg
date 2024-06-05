@@ -292,7 +292,7 @@ class OfflineDataHandler(DataHandler):
             Specifies how columns are separated in .txt or .csv data files.
         mrdf_key: str, default='p_signal'
             Key in mrdf file associated with EMG data.
-        skip_rows: int, default=0
+        skiprows: int, default=0
             The number of rows to skip in the file (e.g., .csv or .txt) starting from the top row.
         data_column: list or None, default=None
             List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data.
