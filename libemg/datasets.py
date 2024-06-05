@@ -298,9 +298,15 @@ class PutEMGForceDataset(Dataset):
             data_filetype = [data_filetype]
         self.data_filetype = data_filetype
 
-    def prepare_data(self, format=OfflineDataHandler, subjects = None, sessions = None, reps = None):
+    def prepare_data(self, format=OfflineDataHandler, subjects = None, sessions = None, reps = None, labels = 'forces'):
         if subjects is None:
             subjects = [str(idx).zfill(2) for idx in range(60)] 
+        if labels == 'forces':
+            label_fetcher = ColumnFetcher('labels', list(range(25, 35)))
+        elif labels == 'trajectories':
+            label_fetcher = ColumnFetcher('labels', list(range(36, 40)))
+        else:
+            raise ValueError(f"Expected either 'forces' or trajectories' for labels parameter, but received {labels}.")
         if format == OfflineDataHandler:
             regex_filters = [
                 RegexFilter(left_bound='/emg_force-', right_bound='-', values=subjects, description='subjects'),
@@ -308,8 +314,7 @@ class PutEMGForceDataset(Dataset):
             ]
             metadata_fetchers = [
                 _SessionFetcher(),
-                ColumnFetcher('forces', list(range(25, 35))),
-                ColumnFetcher('trajectories', list(range(36, 40))),
+                label_fetcher,
                 _RepFetcher('reps', list(range(36, 40)))
             ]
             odh = OfflineDataHandler()
