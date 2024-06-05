@@ -244,6 +244,37 @@ class _SessionFetcher(MetadataFetcher):
         return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
 
 
+class _RepFetcher(ColumnFetcher):
+    def __call__(self, filename, file_data, all_files):
+        column_data = super().__call__(filename, file_data, all_files)
+        
+        # Get rep transitions
+        diff = np.diff(column_data, axis=0)
+        rep_end_row_mask, rep_end_col_mask = np.nonzero((diff < 0) & (column_data[1:] == 0))
+        unique_rep_end_row_mask = np.unique(rep_end_row_mask)  # remove duplicate start indices (for combined movements)
+        # rest_end_row_mask = np.nonzero(np.diff(np.nonzero(column_data == 0)[0]) > 1)[0]
+        # rest_end_row_mask = np.nonzero(np.diff(np.nonzero(np.all(column_data == 0, axis=1))[0]) > 1)[0]
+        # unique_rep_end_row_mask = np.concatenate((unique_rep_end_row_mask, rest_end_row_mask))
+        # unique_rep_end_row_mask = np.sort(unique_rep_end_row_mask)
+
+
+        # Populate metadata array
+        metadata = np.empty(column_data.shape[0])
+        rep_counters = [0 for _ in range(5)]    # 5 different press types
+        previous_rep_start = 0
+        for idx, rep_start in enumerate(unique_rep_end_row_mask):
+            movement_idx = 4 if np.sum(rep_end_row_mask == rep_start) > 1 else rep_end_col_mask[idx]    # if multiple columns are nonzero then it's a combined movement
+            rep = rep_counters[movement_idx]
+            metadata[previous_rep_start:rep_start] = rep
+            rep_counters[movement_idx] += 1
+            previous_rep_start = rep_start
+
+        # Fill in final samples
+        metadata[rep_start:] = rep
+
+        return metadata
+
+
 class PutEMGForceDataset(Dataset):
     def __init__(self, save_dir = '.', dataset_name = 'PutEMGForceDataset', data_filetype = None):
         """Dataset wrapper for putEMG-Force dataset. Used for regression of finger forces.
@@ -278,7 +309,8 @@ class PutEMGForceDataset(Dataset):
             metadata_fetchers = [
                 _SessionFetcher(),
                 ColumnFetcher('forces', list(range(25, 35))),
-                ColumnFetcher('trajectories', list(range(36, 40)))
+                ColumnFetcher('trajectories', list(range(36, 40))),
+                _RepFetcher('reps', list(range(36, 40)))
             ]
             odh = OfflineDataHandler()
             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=',', skiprows=1, data_column=list(range(1, 25)))
