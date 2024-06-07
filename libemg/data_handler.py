@@ -61,26 +61,23 @@ class RegexFilter:
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
         return matching_files
 
-    def get_metadata(self, filename, file_data):
+    def get_metadata(self, filename):
         """Get metadata from the filename.
 
         Parameters
         ----------
         filename: str
             Name of file.
-        file_data: np.ndarray
-            Data within file.
 
         Returns
         ----------
-        metadata: np.ndarray
-            Array containing the index of the value found in the filename relative to the list of potential values.
+        metadata_idx: int
+            Index of value (relative to list of values passed in).
         """
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
         val = re.findall(self.pattern, filename)[0]
         idx = self.values.index(val)
-        metadata = idx * np.ones((file_data.shape[0], 1), dtype=int)
-        return metadata
+        return idx
 
 
 class MetadataFetcher(ABC):
@@ -204,10 +201,6 @@ class ColumnFetcher(MetadataFetcher):
         if isinstance(self.values, list):
             # Convert to indices of provided values
             metadata = np.array([self.values.index(i) for i in metadata])
-
-        if metadata.ndim == 1:
-            # Ensure that output is always 2D array
-            metadata = np.expand_dims(metadata, axis=1)
 
         return metadata
 
@@ -343,12 +336,16 @@ class OfflineDataHandler(DataHandler):
 
             # Fetch metadata from filename
             for regex_filter in regex_filters:
-                metadata = regex_filter.get_metadata(file, file_data)
+                metadata_idx = regex_filter.get_metadata(file)
+                metadata = metadata_idx * np.ones((file_data.shape[0], 1), dtype=int)
                 append_to_attribute(regex_filter.description, metadata)
 
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
                 metadata = metadata_fetcher(file, file_data, all_files)
+                if metadata.ndim == 1:
+                    # Ensure that output is always 2D array
+                    metadata = np.expand_dims(metadata, axis=1)
                 append_to_attribute(metadata_fetcher.description, metadata)
             
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
