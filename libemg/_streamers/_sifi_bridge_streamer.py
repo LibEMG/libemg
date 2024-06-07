@@ -259,35 +259,23 @@ class SiFiBridgeStreamer:
         self.version = version
         self.ip = ip
         self.port = port
-        self.config = (
-            "-s ch "
-            + str(int(ecg))
-            + ","
-            + str(int(emg))
-            + ","
-            + str(int(eda))
-            + ","
-            + str(int(imu))
-            + ","
-            + str(int(ppg))
-            + " "
+        self.config = "-s ch %s,%s,%s,%s,%s " % (
+            str(int(ecg)),
+            str(int(emg)),
+            str(int(eda)),
+            str(int(imu)),
+            str(int(ppg)),
         )
         if notch_on or emgfir_on:
-            self.config += " enable_filters 1 "
+            self.config += "enable_filters 1 "
+            emg_cfg = "emg_cfg %s,%s,%s "
+            emg_notch = "0"
             if notch_on:
-                self.config += " emg_notch " + str(notch_freq)
-            else:
-                self.config += " emg_notch 0"
-            if emgfir_on:
-                # NOTE: notch flag should be on to do bandpass stuff
-                self.config += (
-                    " emg_fir " + str(emg_fir[0]) + "," + str(emg_fir[1]) + ""
-                )
-
+                emg_notch = str(notch_freq)
+            self.config += emg_cfg % (emg_fir[1], emg_fir[0], emg_notch)
         else:
-            self.config += " enable_filters 0 "
+            self.config += "enable_filters 0 "
 
-        self.config = re.sub(r"\s+", " ", self.config)
         print(self.config)
         self.config = bytes(self.config + "\n", "UTF-8")
 
