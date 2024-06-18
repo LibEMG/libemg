@@ -331,14 +331,15 @@ class OfflineDataHandler(DataHandler):
                 if len(file_data.shape) == 1:
                     # some devices may have one channel -> make sure it interprets it as a 2d array
                     file_data = np.expand_dims(file_data, 1)
-            if data_column is not None:
-                # collect the data from the file
-                file_data = file_data[:, data_column]
             
             if downsampling_factor is not None:
                 file_data = decimate(file_data, downsampling_factor, axis=0)
 
-            self.data.append(file_data)
+            if data_column is not None:
+                # collect the data from the file
+                self.data.append(file_data[:, data_column])
+            else:
+                self.data.append(file_data)
 
             # Fetch metadata from filename
             for regex_filter in regex_filters:
