@@ -374,7 +374,7 @@ class OnlineDataHandler(DataHandler):
         BaseManager.register('RawData', RawData)
         manager = BaseManager()
         manager.start()
-        self.raw_data = manager.RawData()
+        self.raw_data: RawData = manager.RawData()
         self.listener = Process(target=self._listen_for_data_thread, args=[self.raw_data], daemon=True,)
     
     def start_listening(self):

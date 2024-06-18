@@ -84,7 +84,7 @@ def myo_streamer(filtered=True, ip='127.0.0.1', port=12345, imu=False):
     p.start()
     return p
 
-def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1.2",
+def sifibridge_streamer(ip='127.0.0.1', port=12345, version="1_3",
                  ecg=False,
                  emg=True, 
                  eda=False,
