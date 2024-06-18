@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
+from scipy.signal import decimate
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
@@ -266,7 +267,7 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', skiprows = 0, data_column = None):
+    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', skiprows = 0, data_column = None, downsampling_factor = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
@@ -289,6 +290,8 @@ class OfflineDataHandler(DataHandler):
             The number of rows to skip in the file (e.g., .csv or .txt) starting from the top row.
         data_column: list or None, default=None
             List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data.
+        downsampling_factor: int or None, default=None
+            Factor to downsample by. Signal is first filtered and then downsampled. See scipy.signal.decimate for more details (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html#scipy-signal-decimate).
 
         Raises
         ------
@@ -330,9 +333,12 @@ class OfflineDataHandler(DataHandler):
                     file_data = np.expand_dims(file_data, 1)
             if data_column is not None:
                 # collect the data from the file
-                self.data.append(file_data[:, data_column])
-            else:
-                self.data.append(file_data)
+                file_data = file_data[:, data_column]
+            
+            if downsampling_factor is not None:
+                file_data = decimate(file_data, downsampling_factor, axis=0)
+
+            self.data.append(file_data)
 
             # Fetch metadata from filename
             for regex_filter in regex_filters:
