@@ -309,18 +309,24 @@ def myo_streamer(
     myo.start()
     return myo, shared_memory_items
 
-def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localhost',cmd_port=50040, emg_port=50043, channel_list=list(range(8))):
-    """The UDP streamer for the Delsys device (Avanti/Trigno). 
+def delsys_streamer(shared_memory_items = None,
+                    emg = True, 
+                    imu = False,
+                    delsys_ip='localhost',
+                    cmd_port=50040, 
+                    emg_port=50043, 
+                    channel_list=list(range(8)),
+                    timeout=10):
+    """The streamer for the Delsys device (Avanti/Trigno). 
 
     This function connects to the Delsys and streams its data over UDP. Note that you must have the Delsys Control Utility
     installed for this to work.
 
     Parameters
     ----------
-    stream_port: int (optional), default=12345
-        The desired port to stream over. 
-    stream_ip: string (option), default = 'localhost'
-        The ip used for streaming predictions over UDP.
+    shared_memory_items : list
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
     cmd_port: int (optional), default=50040.
         The port that commands are sent to the Delsys system (ie., the start command and the stop command.)
     delsys_port: int (optional), default=50043. 
@@ -329,21 +335,33 @@ def delsys_streamer(stream_ip='localhost', stream_port=12345, delsys_ip='localho
         The ip that the Delsys is streaming over.
     channel_list: list, default=[0,1,2,3,4,5,6,7].
         The channels (i.e., electrodes) that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
-
+    timeout : int
+        Timeout for commands sent to Delsys.
     Examples
     ---------
     >>> delsys_streamer()
     """
-    delsys = DelsysEMGStreamer(stream_ip = stream_ip,
-                            stream_port = stream_port,
-                            recv_ip=delsys_ip,
-                            cmd_port=cmd_port,
-                            data_port=emg_port,
-                            total_channels=channel_list,
-                            timeout=10)
-    p = Process(target=delsys.start_stream, daemon=True)
-    p.start()
-    return p
+    if shared_memory_items is None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (3000,len(channel_list)), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+        if imu:
+            shared_memory_items.append(["imu",       (500,3), np.double])
+            shared_memory_items.append(["imu_count", (1,1),    np.int32])
+    for item in shared_memory_items:
+        item.append(Lock())
+    
+    delsys = DelsysEMGStreamer(shared_memory_items=shared_memory_items,
+                                emg=emg,
+                                imu=imu,
+                                recv_ip=delsys_ip,
+                                cmd_port=cmd_port,
+                                data_port=emg_port,
+                                channel_list=channel_list,
+                                timeout=timeout)
+    delsys.start()
+    return delsys, shared_memory_items
 
 
 def oymotion_streamer(shared_memory_items=None, sampling_rate=1000, emg=True,imu=False):
