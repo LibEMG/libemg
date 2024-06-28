@@ -272,6 +272,7 @@ class OfflineDataHandler(DataHandler):
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
 
+
         Parameters
         ----------
         folder_location: str
