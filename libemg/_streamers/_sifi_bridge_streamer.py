@@ -1,34 +1,83 @@
-import time
 import os
 import requests
 from libemg.shared_memory_manager import SharedMemoryManager
-import platform
 from multiprocessing import Process, Event, Lock
 import subprocess
-import socket
-import pickle
 import json
 import numpy as np
+import shutil
+import json
+from semantic_version import Version
+from collections.abc import Callable
+from platform import system
 
 
 class SiFiBridgeStreamer(Process):
+    """
+    SiFi Labs Hardware Streamer.
+
+    This streamer works with the SiFi Bioarmband and the SiFi Biopoint.
+    It is capable of streaming from all modalities the device provides.
+
+    Parameters
+    ----------
+    
+    version : str
+        The version of the devie ('1_1 for bioarmband, 1_2 or 1_3 for biopoint).
+    shared_memory_items : list
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype, Lock()].
+    ecg : bool
+        Turn ECG modality on or off.
+    emg : bool
+        Turn EMG modality on or off.
+    eda : bool
+        Turn EDA modality on or off.
+    imu : bool
+        Turn IMU modality on or off.
+    ppg : bool
+        Turn PPG modality on or off
+    notch_on : bool
+        Turn on-system EMG notch filtering on or off.
+    notch_freq : int
+        Specify the frequency of the on-system notch filter.
+    emgfir_on : bool
+        Turn on-system EMG bandpass filter on or off.
+    emg_fir : list
+        The cutoff frequencies of the on-system bandpass filter.
+    eda_cfg : bool
+        Turn EDA into high sampling frequency mode (Bioimpedance at high frequency).
+    fc_lp : int
+        Bioimpedance bandpass low cutoff frequency.
+    fc_hp : int
+        Bioimpedance bandpass upper cutoff frequency.
+    freq : int
+        EDA/Bioimpedance sampling frequency.
+    streaming : bool
+        Reduce latency by joining packets of different modalities together.
+    bridge_version : str
+        Version of sifi bridge to use for PIPE.
+    
+    """
     def __init__(self, 
-                 version='1_2',
-                 shared_memory_items=[],
-                 ecg=False,
-                 emg=True, 
-                 eda=False,
-                 imu=False,
-                 ppg=False,
-                 notch_on=True,
-                 notch_freq = 60,
-                 emgfir_on=True,
-                 emg_fir = [20, 450],
-                 eda_cfg = True,
-                 fc_lp = 0, # low pass eda
-                 fc_hp = 5, # high pass eda
-                 freq = 250,# eda sampling frequency
-                 streaming=False):
+                 version:              str  = '1_2',
+                 shared_memory_items:  list = [],
+                 ecg:                  bool = False,
+                 emg:                  bool = True, 
+                 eda:                  bool = False,
+                 imu:                  bool = False,
+                 ppg:                  bool = False,
+                 notch_on:             bool = True,
+                 notch_freq:           int  = 60,
+                 emgfir_on:            bool = True,
+                 emg_fir:              list = [20, 450],
+                 eda_cfg:              bool = True,
+                 fc_lp:                int  = 0, # low pass eda
+                 fc_hp:                int  = 5, # high pass eda
+                 freq:                 int  = 250,# eda sampling frequency
+                 streaming:            bool = False,
+                 bridge_version:       str | None = None):
+        
         Process.__init__(self, daemon=True)
 
         self.connected=False
@@ -45,12 +94,25 @@ class SiFiBridgeStreamer(Process):
                                     notch_on, notch_freq, emgfir_on, emg_fir,
                                     eda_cfg, fc_lp, fc_hp, freq, streaming)
         self.prepare_connect_message(version)
+        self.prepare_executable(bridge_version)
+        
 
 
-
-    def prepare_config_message(self, ecg, emg, eda, imu, ppg, 
-                                    notch_on, notch_freq, emgfir_on, emg_fir,
-                                    eda_cfg, fc_lp, fc_hp, freq, streaming):
+    def prepare_config_message(self, 
+                               ecg:                  bool = False,
+                               emg:                  bool = True, 
+                               eda:                  bool = False,
+                               imu:                  bool = False,
+                               ppg:                  bool = False,
+                               notch_on:             bool = True,
+                               notch_freq:           int  = 60,
+                               emgfir_on:            bool = True,
+                               emg_fir:              list = [20, 450],
+                               eda_cfg:              bool = True,
+                               fc_lp:                int  = 0, # low pass eda
+                               fc_hp:                int  = 5, # high pass eda
+                               freq:                 int  = 250,# eda sampling frequency
+                               streaming:            bool = False,):
         self.config_message = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg))
         if notch_on or emgfir_on:
             self.config_message += " enable_filters 1 "
@@ -73,20 +135,105 @@ class SiFiBridgeStreamer(Process):
         self.config_message += "\n"
         self.config_message = bytes(self.config_message,"UTF-8")
 
-    def prepare_connect_message(self, version):
+    def prepare_connect_message(self, 
+                                version: str):
         self.connect_message = '-c BioPoint_v' + str(version) + '\n'
         self.connect_message = bytes(self.connect_message,"UTF-8")
+    
+    def prepare_executable(self,
+                           bridge_version: str):
+        pltfm = system()
+        self.executable = f"sifi_bridge%s-{pltfm.lower()}" + (
+            ".exe" if pltfm == "Windows" else ""
+        )
+        if bridge_version is None:
+            # Find the latest upstream version
+            try:
+                releases = requests.get(
+                    "https://api.github.com/repos/sifilabs/sifi-bridge-pub/releases",
+                    timeout=5,
+                ).json()
+                bridge_version = str(
+                    max([Version(release["tag_name"]) for release in releases])
+                )
+            except Exception:
+                # Probably some network error, so try to find an existing version
+                # Expected to find sifi_bridge-V.V.V-platform in the current directory
+                for file in os.listdir():
+                    if not file.startswith("sifi_bridge"):
+                        continue
+                    bridge_version = file.split("-")[1].replace(".exe", "")
+                if bridge_version is None:
+                    raise ValueError(
+                        "Could not fetch from upstream nor find a version of sifi_bridge to use in the current directory."
+                    )
+
+        self.executable = self.executable % ("-" + bridge_version)
+
+        if self.executable not in os.listdir():
+            ext = ".zip" if pltfm == "Windows" else ".tar.gz"
+            arch = None
+            if pltfm == "Linux":
+                arch = "x86_64-unknown-linux-gnu"
+                print(
+                    "Please run <chmod +x sifi_bridge> in the terminal to indicate this is an executable file! You only need to do this once."
+                )
+            elif pltfm == "Darwin":
+                arch = "aarch64-apple-darwin"
+            elif pltfm == "Windows":
+                arch = "x86_64-pc-windows-gnu"
+
+            # Get Github releases
+            releases = requests.get(
+                "https://api.github.com/repos/sifilabs/sifi-bridge-pub/releases",
+                timeout=5,
+            ).json()
+
+            # Extract the release matching the requested version
+            release_idx = [release["tag_name"] for release in releases].index(
+                bridge_version
+            )
+            assets = releases[release_idx]["assets"]
+
+            # Find the asset that matches the architecture
+            archive_url = None
+            for asset in assets:
+                asset_name = asset["name"]
+                if arch not in asset_name:
+                    continue
+                archive_url = asset["browser_download_url"]
+            if not archive_url:
+                ValueError(f"No upstream version found for {self.executable}")
+            print(f"Fetching sifi_bridge from {archive_url}")
+
+            # Fetch and write to disk as a zip file
+            r = requests.get(archive_url)
+            zip_path = "sifi_bridge" + ext
+            with open(zip_path, "wb") as file:
+                file.write(r.content)
+
+            # Unpack & delete the archive
+            shutil.unpack_archive(zip_path, "./")
+            os.remove(zip_path)
+            extracted_path = f"sifi_bridge-{bridge_version}-{arch}/"
+            for file in os.listdir(extracted_path):
+                if not file.startswith("sifi_bridge"):
+                    continue
+                shutil.move(extracted_path + file, f"./{self.executable}")
+            shutil.rmtree(extracted_path)
+
+        
 
     def start_pipe(self):
         # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
-        if platform.system() == 'Linux':
-           self.proc = subprocess.Popen(['sifi_bridge_linux'],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
-        elif platform.system() == "Windows":  # need a way to get these without curling -- 
-            self.proc = subprocess.Popen(['sifi_bridge_windows.exe'],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
+        self.proc = subprocess.Popen(
+            ["./" + self.executable],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+
+        assert self.proc is not None
+
             
     def connect(self):
         while not self.connected:
@@ -111,22 +258,28 @@ class SiFiBridgeStreamer(Process):
         self.proc.stdin.write(b'-cmd 0\n')
         self.proc.stdin.flush()
 
-    def add_emg_handler(self, closure):
+    def add_emg_handler(self, 
+                        closure: Callable):
         self.emg_handlers.append(closure)
 
-    def add_imu_handler(self, closure):
+    def add_imu_handler(self,
+                        closure: Callable):
         self.imu_handlers.append(closure)
 
-    def add_ppg_handler(self, closure):
+    def add_ppg_handler(self,
+                        closure: Callable):
         self.ppg_handlers.append(closure)
     
-    def add_ecg_handler(self, closure):
+    def add_ecg_handler(self,
+                        closure: Callable):
         self.ecg_handlers.append(closure)
     
-    def add_eda_handler(self, closure):
+    def add_eda_handler(self,
+                        closure: Callable):
         self.eda_handlers.append(closure)
 
-    def process_packet(self, data):
+    def process_packet(self,
+                       data: str):
         packet = np.zeros((14,8))
         if data == "" or data.startswith("sending cmd"):
             return
@@ -233,12 +386,12 @@ class SiFiBridgeStreamer(Process):
                 data_from_processess = self.proc.stdout.readline().decode()
                 self.process_packet(data_from_processess)
             except Exception as e:
-                print("Error Occured: " + str(e))
+                print("Error Occurred: " + str(e))
                 continue
             if self.signal.is_set():
                 self.cleanup()
                 break
-        print("Process Ended")
+        print("LibEMG -> SiFiBridgeStreamer (process ended).")
 
     def stop_sampling(self):
         self.proc.stdin.write(b'-cmd 1\n')
@@ -268,16 +421,19 @@ class SiFiBridgeStreamer(Process):
     def cleanup(self):
         
         self.stop_sampling()  # stop sampling
-        print("Device sampling stopped.")
-        time.sleep(1)
+        print("LibEMG -> SiFiBridgeStreamer (sampling stopped).")
         self.deep_sleep() # stops status packets
-        print("Device put to sleep.")
-        time.sleep(1)
+        print("LibEMG -> SiFiBridgeStreamer (device sleeped).")
         self.disconnect() # disconnect
-        print("Device disconnected.")
-        time.sleep(1)
+        print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
         self.proc.kill()
-        print("SiFi bridge killed.")
+        print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
         self.smm.cleanup()
-        print("SiFi SMM cleanedup.")
-    
+        print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
+
+    def __del__(self):
+        self.proc.stdin.write(b"-d -q\n")
+        print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
+        print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
+        self.smm.cleanup()
+        print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
