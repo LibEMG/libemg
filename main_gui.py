@@ -5,6 +5,8 @@ import os
 from sklearn.linear_model import ElasticNet
 import sklearn.metrics as metrics
 
+from libemg.data_handler import FilePackager, RegexFilter
+
 SUBJECT_NUMBER = 100
 WINDOW_SIZE = 350
 WINDOW_INC  = 98
@@ -153,16 +155,12 @@ class GUI:
     def get_data(self):
         classes_values = [str(i) for i in range(10)] # will only grab classes 0,1,2,3,4 currently
         reps_values    = [str(i) for i in range(4)] # will only grab reps 0,1,2 currently
-        classes_regex  = libemg.utils.make_regex(left_bound="_C_",right_bound=".csv", values=classes_values)
-        reps_regex     = libemg.utils.make_regex(left_bound="/R_", right_bound="_C_", values=reps_values)
-        dic = {
-            "classes": classes_values,
-            "classes_regex": classes_regex,
-            "reps": reps_values,
-            "reps_regex": reps_regex
-        }
+        regex_filters = [
+            RegexFilter(left_bound="_C_",right_bound=".csv", values=classes_values, description='classes'),
+            RegexFilter(left_bound="/R_", right_bound="_C_", values=reps_values, description='reps')
+        ]
         offlinedatahandler = libemg.data_handler.OfflineDataHandler()
-        offlinedatahandler.get_data(folder_location=self.save_directory, filename_dic = dic, delimiter=',')
+        offlinedatahandler.get_data(folder_location=self.save_directory, regex_filters=regex_filters, delimiter=',')
         return offlinedatahandler
     
     def extract_windows(self, offlinedatahandler):
@@ -176,35 +174,33 @@ class GUI:
     
 
     def regression_stuff(self):
+        # May need to be tested with changes to get_data()
         offdh = libemg.data_handler.OfflineDataHandler()
-        dataset_dic = {
-            "reps": ["0","1","2","3","4"],
-            "reps_regex": libemg.utils.make_regex(left_bound="R_",
-                                    right_bound="_C_",
-                                    values = ["0","1","2","3","4"])
-        }
-        offdh.get_data(folder_location=self.save_directory,
-                    filename_dic = dataset_dic,
-                    delimiter=",")
-        offdh.add_regression_labels(file_location="animation/class_file.txt",
-                                    colnames = ["timestamp", "hand","regression0", "regression1"])
+        regex_filters = [
+            RegexFilter(left_bound="R_", right_bound="_C_", values = ["0","1","2","3","4"], description='reps')
+        ]
+        metadata_fetchers = [
+            FilePackager(RegexFilter(left_bound='animation/', right_bound='.txt', values=['animation'], description='labels'), lambda x, y: True, column_mask=[2, 3])
+        ]
+        offdh.get_data(folder_location=self.save_directory, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=",")
+        # metadata_operations = {
+        #     "timestamp": np.mean,
+        #     "hand": [np.int64, np.bincount, np.argmax],
+        #     "regression0": np.mean,
+        #     "regression1": np.mean
+        # }
         metadata_operations = {
-            "timestamp": np.mean,
-            "hand": [np.int64, np.bincount, np.argmax],
-            "regression0": np.mean,
-            "regression1": np.mean
+            'labels': np.mean
         }
 
         # Isolate data
         train_odh = offdh.isolate_data("reps", [0,1,2])
         train_windows, train_metadata = train_odh.parse_windows(WINDOW_SIZE,WINDOW_INC, metadata_operations)
-        train_labels = np.hstack((np.expand_dims(train_metadata["regression0"],axis=1), 
-                                    np.expand_dims(train_metadata["regression1"],axis=1)))
+        train_labels = train_metadata['labels']
 
         test_odh = offdh.isolate_data("reps", [3,4])
         test_windows, test_metadata = test_odh.parse_windows(WINDOW_SIZE,WINDOW_INC, metadata_operations)
-        test_labels = np.hstack((np.expand_dims(test_metadata["regression0"],axis=1), 
-                                    np.expand_dims(test_metadata["regression1"],axis=1)))
+        test_labels = test_metadata['labels']
 
         
         fe = libemg.feature_extractor.FeatureExtractor()

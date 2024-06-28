@@ -1,4 +1,6 @@
+from abc import ABC, abstractmethod
 import numpy as np
+import pandas as pd
 import os
 import re
 import socket
@@ -12,17 +14,197 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from sklearn.decomposition import PCA
 from scipy.ndimage import zoom
+from scipy.signal import decimate
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
 from glob import glob
-from itertools import compress
-from datetime import datetime
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
 from libemg.raw_data import RawData
-from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows
+from libemg.utils import get_windows, _get_mode_windows, _get_fn_windows, make_regex
 from libemg.feature_extractor import FeatureExtractor
+
+
+class RegexFilter:
+    def __init__(self, left_bound, right_bound, values, description):
+        """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
+
+        Parameters
+        ----------
+        left_bound: str
+            The left bound of the regex.
+        right_bound: str
+            The right bound of the regex.
+        values: list
+            The values between the two regexes.
+        description: str
+            Description of filter - used to name the metadata field.
+        """
+        # Could add parameter to disable grabbing metadata for certain patterns
+        self.pattern = make_regex(left_bound, right_bound, values)
+        self.values = values
+        self.description = description
+
+    def get_matching_files(self, files):
+        """Filter out files that don't match the regex pattern and return the matching files.
+
+        Parameters
+        ----------
+        files: list
+            List of potential files that need to be filtered.
+
+        Returns
+        ----------
+        matching_files: list
+            List of files that match regex pattern.
+        """
+        matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
+        return matching_files
+
+    def get_metadata(self, filename):
+        """Get metadata from the filename.
+
+        Parameters
+        ----------
+        filename: str
+            Name of file.
+
+        Returns
+        ----------
+        metadata_idx: int
+            Index of value (relative to list of values passed in).
+        """
+        # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
+        val = re.findall(self.pattern, filename)[0]
+        idx = self.values.index(val)
+        return idx
+
+
+class MetadataFetcher(ABC):
+    def __init__(self, description):
+        """Describes a type of metadata and implements a method to fetch it.
+
+        Parameters
+        ----------
+        description: str
+            Description of metadata.
+        """
+        self.description = description
+
+    @abstractmethod
+    def __call__(self, filename, file_data, all_files):
+        """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
+
+        Parameters
+        ----------
+        filename: str
+            Name of data file.
+        file_data: np.ndarray
+            Data within file.
+        all_files: list
+            List of filenames containing all files within data directory.
+
+        Returns
+        ----------
+        metadata: np.ndarray
+            Array containing the metadata corresponding to the provided file.
+        """
+        raise NotImplementedError("Must implement __call__ method.")
+
+
+class FilePackager(MetadataFetcher):
+    def __init__(self, regex_filter, package_function, align_method = 'zoom', load = None, column_mask = None):
+        """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
+        that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
+
+        Parameters
+        ----------
+        regex_filter: RegexFilter
+            Used to find the type of metadata files.
+        package_function: callable
+            Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
+            Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
+        align_method: str or callable, default='zoom'
+            Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
+            pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
+        load: callable or None, default=None
+            Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
+        column_mask: list or None, default=None
+            List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
+        """
+        super().__init__(regex_filter.description)
+        self.regex_filter = regex_filter
+        self.package_function = package_function
+        self.align_method = align_method
+        self.load = load
+        self.column_mask = column_mask
+
+    def __call__(self, filename, file_data, all_files):
+        potential_files = self.regex_filter.get_matching_files(all_files)
+        packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, filename)]
+        if len(packaged_files) != 1:
+            # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
+            raise ValueError(f"Found {len(packaged_files)} files to be packaged with {filename} when trying to package {self.regex_filter.description} file (1 file should be found). Please check filter and package functions.")
+        packaged_file = packaged_files[0]
+
+        if callable(self.load):
+            # Passed in a custom loading function
+            packaged_file_data = self.load(packaged_file)
+        elif packaged_file.suffix == '.txt':
+            packaged_file_data = np.loadtxt(packaged_file, delimiter=',')
+        elif packaged_file.suffix == '.csv':
+            packaged_file_data = pd.read_csv(packaged_file)
+            packaged_file_data = packaged_file_data.to_numpy()
+        else:
+            raise ValueError("Unsupported filetype when loading packaged files - expected filetypes are .csv and .txt. Pass in a callable loading function to load files of other types.")
+
+        # Align with EMG data
+        if self.align_method == 'zoom':
+            zoom_rate = file_data.shape[0] / packaged_file_data.shape[0]
+            zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(packaged_file_data.shape[1])]  # only align the 0th axis (samples)
+            packaged_file_data = zoom(packaged_file_data, zoom=zoom_factor)
+        elif callable(self.align_method):
+            packaged_file_data = self.align_method(packaged_file_data, file_data)
+        else:
+            raise ValueError('Unexpected value for align_method. Please pass in a callable or a supported string (e.g., zoom).')
+
+        if self.column_mask is not None:
+            # Only grab data at specified columns
+            packaged_file_data = packaged_file_data[:, self.column_mask]
+
+        if packaged_file_data.ndim == 1:
+            # Ensure 2D array
+            packaged_file_data = np.expand_dims(packaged_file_data, axis=1)
+
+        return packaged_file_data
+
+
+class ColumnFetcher(MetadataFetcher):
+    def __init__(self, description, column_mask, values = None):
+        """Fetch metadata from columns within data file.
+
+        Parameters
+        ----------
+        description: str
+            Description of metadata.
+        column_mask: list or int
+            Integers corresponding to indices of columns that should be fetched.
+        values: list or None, default=None
+            List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
+        """
+        super().__init__(description)
+        self.column_mask = column_mask
+        self.values = values
+
+    def __call__(self, filename, file_data, all_files):
+        metadata = file_data[:, self.column_mask]
+        if isinstance(self.values, list):
+            # Convert to indices of provided values
+            metadata = np.array([self.values.index(i) for i in metadata])
+
+        return metadata
+
 
 class DataHandler:
     def __init__(self):
@@ -85,136 +267,95 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    
+    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', skiprows = 0, data_column = None, downsampling_factor = None):
+        """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
+        RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
+        sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
 
-    def get_data(self, folder_location="", filename_dic={}, delimiter=",", mrdf_key='p_signal', labels_filename = None):
-        """Method to collect data from a folder into the OfflineDataHandler object. Metadata can be collected either from the filename
-        specifying <tag>_regex keys in the filename_dic, or from within the .csv or .txt files specifying <tag>_columns in the filename_dic.
 
         Parameters
         ----------
         folder_location: str
-            Location of the dataset relative to current file path
-        filename_dic: dict
-            dictionary containing the values of the metadata and the regex or columns associated with that metadata.
-        delimiter: char
-            How the columns of the files are separated in the .txt or .csv files.
-        """
-        # you can insert custom member variables that will be collected from the filename using the dictionary
-        # this gives at least a tiny bit of flexibility around what is recorded aside from the data
-        def get_matching_files(file_patterns, regex_keys):
-            files = []
-            for pattern in file_patterns:
-                files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
-            files = [Path(f).as_posix() for f in files]
-            
-            # check files meet all regex
-            self._check_file_regex(files, regex_keys)
-            return files
+            Location of the dataset relative to the current file path.
+        regex_filters: list
+            List of RegexFilters used to filter data files to the desired set of files. Metadata for each RegexFilter
+            will be pulled from the filename and stored as a field.
+        metadata_fetchers: list or None, default=None
+            List of MetadataFetchers used to associate metadata with each data file (e.g., FilePackager). If the provided MetadataFetchers do not suit your needs,
+            you may inherit from the MetadataFetcher class to create your own. If None is passed, no extra metadata is fetched (other than from filenames via regex).
+        delimiter: str, default=','
+            Specifies how columns are separated in .txt or .csv data files.
+        mrdf_key: str, default='p_signal'
+            Key in mrdf file associated with EMG data.
+        skiprows: int, default=0
+            The number of rows to skip in the file (e.g., .csv or .txt) starting from the top row.
+        data_column: list or None, default=None
+            List of indices representing columns of data in data file. If a list is passed in, only the data at these columns will be stored as EMG data.
+        downsampling_factor: int or None, default=None
+            Factor to downsample by. Signal is first filtered and then downsampled. See scipy.signal.decimate for more details (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.decimate.html#scipy-signal-decimate).
 
-        dictionary_keys = filename_dic.keys()
-        keys = [k for k in dictionary_keys if not (k.endswith("_regex") or k.endswith("_column"))]
-        for k in keys:
-            if not hasattr(self, k):
-                setattr(self, k, [])
-        self.extra_attributes = keys
+        Raises
+        ------
+        ValueError:
+            Raises ValueError if folder_location is not a valid directory.
+        """
+        def append_to_attribute(name, value):
+            if not hasattr(self, name):
+                setattr(self, name, [])
+                self.extra_attributes.append(name)
+            current_value = getattr(self, name)
+            setattr(self, name, current_value + [value])
 
         if not os.path.isdir(folder_location):
-            print("Invalid dataset directory: " + folder_location)
-                
-        # get all files in directory
-        data_regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith("_regex")]
-        data_filenames = get_matching_files(['*.csv', '*.txt', '*.hea'], data_regex_keys)
+            raise ValueError(f"Folder location {folder_location} is not a directory.")
 
+        if metadata_fetchers is None:
+            metadata_fetchers = []
+        self.extra_attributes = []
+        # Fetch data files
+        all_files = []
+        for pattern in ['*.csv', '*.txt', '*.hea']:
+            all_files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
+        all_files = [Path(f).as_posix() for f in all_files]
+        data_files = copy.deepcopy(all_files)
+        for regex_filter in regex_filters:
+            data_files = regex_filter.get_matching_files(data_files)
+        print(f"{len(data_files)} data files fetched out of {len(all_files)} files.")
 
-        for f in data_filenames:
-            if '.hea' in f:
+        # Read data from files
+        for file in data_files:
+            if '.hea' in file:
                 # The key is the emg key that is in the mrdf file
-                file_data = (wfdb.rdrecord(f.replace('.hea',''))).__getattribute__(mrdf_key)
+                file_data = (wfdb.rdrecord(file.replace('.hea',''))).__getattribute__(mrdf_key)
             else:
-                file_data = np.genfromtxt(f,delimiter=delimiter)
+                file_data = np.genfromtxt(file,delimiter=delimiter, skip_header=skiprows)
                 if len(file_data.shape) == 1:
                     # some devices may have one channel -> make sure it interprets it as a 2d array
                     file_data = np.expand_dims(file_data, 1)
-            # collect the data from the file
-            if "data_column" in dictionary_keys:
-                self.data.append(file_data[:, filename_dic["data_column"]])
+            
+            if downsampling_factor is not None:
+                file_data = decimate(file_data, downsampling_factor, axis=0)
+
+            if data_column is not None:
+                # collect the data from the file
+                self.data.append(file_data[:, data_column])
             else:
                 self.data.append(file_data)
-            # also collect the metadata from the filename
-            for k in keys:
-                if k + "_regex" in dictionary_keys:
-                    k_val = re.findall(filename_dic[k+"_regex"],f)[0]
-                    k_id  = filename_dic[k].index(k_val)
-                    metadata_column = k_id * np.ones((file_data.shape[0],1), dtype=int)
-                    setattr(self, k, getattr(self,k)+[metadata_column])
-                elif k + "_column" in dictionary_keys:
-                    column = file_data[:,filename_dic[k+"_column"]]
-                    if type(filename_dic[k]) == list:
-                        k_id = np.array([filename_dic[k].index(i) for i in column])
-                        metadata_column = np.expand_dims(k_id, axis=1)
-                    else:
-                        # if a tuple is passed in (range of values)
-                        # we can put a check here later
-                        metadata_column = np.expand_dims(column,1)
-                    setattr(self, k, getattr(self,k)+[metadata_column])
 
-        if labels_filename is not None:
-            assert not hasattr(self, 'labels'), 'Cannot have a field named labels because get_data() uses this to store labels.'
-            self.labels = []
-            labels_regex_keys = [filename_dic[k] for k in dictionary_keys if k.endswith('_regex') and filename_dic[k].count('/') == 2]   # each directory should have 1 labels file, so only look at keys that are directory names and not for specific files
-            labels_filenames = get_matching_files([labels_filename], labels_regex_keys)
-            for filename in labels_filenames:
-                labels = np.loadtxt(filename, delimiter=',')
-                # get length of column (for reshape)
-                num_labels_samples = labels.shape[0]
-                # get # dofs to zoom only on 0th axis
-                num_dofs = labels.shape[1]
+            # Fetch metadata from filename
+            for regex_filter in regex_filters:
+                metadata_idx = regex_filter.get_metadata(file)
+                metadata = metadata_idx * np.ones((file_data.shape[0], 1), dtype=int)
+                append_to_attribute(regex_filter.description, metadata)
 
-                # get data files for this labels file
-                labels_data_files = [self.data[idx] for idx, data_filename in enumerate(data_filenames) if Path(data_filename).parent.absolute() == Path(filename).parent.absolute()]
-                for file in labels_data_files:
-                    # get length of that file
-                    num_data_samples = file.shape[0]
-                    # find the factor we need to reshape class field to match
-                    zoom_rate = num_data_samples / num_labels_samples
-                    zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(num_dofs)]    # only zoom the 0th axis
-                    # reshaped_field = np.expand_dims(zoom(labels, zoom=zoom_rate),1)
-                    reshaped_field = zoom(labels, zoom=zoom_factor)
-                    # add reshaped field to odh
-                    setattr(self, 'labels', getattr(self, 'labels')+[reshaped_field])
-
-            self.extra_attributes = self.extra_attributes + ['labels']
+            # Fetch remaining metadata
+            for metadata_fetcher in metadata_fetchers:
+                metadata = metadata_fetcher(file, file_data, all_files)
+                if metadata.ndim == 1:
+                    # Ensure that output is always 2D array
+                    metadata = np.expand_dims(metadata, axis=1)
+                append_to_attribute(metadata_fetcher.description, metadata)
             
-    
-    def add_regression_labels(self, file_location, colnames):
-        """TODO: add docs
-        """
-        # load the data in from file
-        class_file = np.loadtxt(file_location, delimiter=",")
-        num_files = len(self.data)
-        assert num_files > 0
-        # if field doesn't exists initialize it as empty list
-        for field in colnames:
-            if not hasattr(self, field):
-                setattr(self, field, [])
-        # for each field -- fill it in 
-        for f, field in enumerate(colnames):
-            # get column from class file
-            field_values = class_file[:,f]
-            # get length of column (for reshape)
-            field_len = len(field_values)
-            # for every file of data we have
-            for file in range(num_files):
-                # get length of that file
-                file_len = self.data[file].shape[0]
-                # find the factor we need to reshape class field to match
-                zoom_rate = file_len / field_len
-                reshaped_field = np.expand_dims(zoom(field_values, zoom=zoom_rate),1)
-                # add reshaped field to odh
-                setattr(self, field, getattr(self,field)+[reshaped_field])
-        self.extra_attributes = self.extra_attributes + colnames
-
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
 
@@ -386,37 +527,6 @@ class OfflineDataHandler(DataHandler):
             # for k in self.extra_attributes:
             #     setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
         return new_odh
-    
-    def _check_file_regex(self, files, regex_keys):
-        """Function that verifies that the list of files in the dataset folder agree with the metadata regex in the dictionary. It is assumed that
-        if the filename does not match the regex there is either a mistake is creating the regex or those files are not intended to be loaded. The
-        number of files that were excluded are printed to the console, and the excluded files are removed from the files variable (list passed by
-        reference so any changes in the function scope will persist outside the function scope)
-
-        Parameters
-        ----------
-        files: list
-            A list containing the path (str) of all the files found in the dataset folder that end in .csv or .txt
-        regex_keys: list
-            A list containing the dictionary keys passed during the dataset loading process that indicate metadata to be extracted
-            from the path.
-            
-        Returns
-        ----------
-        None
-        """
-        num_files = len(files)
-        removed_files = []
-        for f in files:
-            violations = 0
-            for k in regex_keys:
-                # regex failed to return a value
-                if len(re.findall(k,f)) == 0:
-                    violations += 1
-            if violations:
-                removed_files.append(f)
-        [files.remove(rf) for rf in removed_files]
-        print(f"{len(removed_files)} of {num_files} files violated regex and were excluded")
     
     def visualize():
         pass

@@ -94,6 +94,8 @@ class Emager:
                         h(samples)
             else:
                 continue
+
+        # TODO: Modify output so it orders based on the channels (using channelMap) so converting to heatmap is easier and we can remove the remap_raw_to_spatial function
     
     def clear_buffer(self):
         '''
