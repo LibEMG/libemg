@@ -1,5 +1,5 @@
 import asyncio
-import websockets
+from websockets import client
 import json
 from multiprocessing import Process, Event, Lock
 from libemg.shared_memory_manager import SharedMemoryManager
@@ -28,7 +28,7 @@ class LeapStreamer(Process):
 
 
     async def start_stream(self):
-        self.ws_client = await websockets.client.connect(self.uri)
+        self.ws_client = await client.connect(self.uri)
         async for message in self.ws_client:
             message = message.strip()
             if ("serviceVersion" in message) or ("event" in message):
