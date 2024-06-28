@@ -267,7 +267,8 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location, regex_filters, metadata_fetchers = None, delimiter = ',', mrdf_key = 'p_signal', skiprows = 0, data_column = None, downsampling_factor = None):
+    def get_data(self, folder_location: str, regex_filters: list[RegexFilter], metadata_fetchers: list[MetadataFetcher] | None = None, delimiter: str = ',',
+                 mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: list[int] | None = None, downsampling_factor: int = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
