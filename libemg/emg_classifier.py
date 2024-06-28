@@ -13,6 +13,7 @@ import pickle
 import socket
 import random
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import time
 import inspect
 from scipy import stats
@@ -553,7 +554,7 @@ class OnlineStreamer:
                 return data
             def insert_classifier_output(data):
                 output_size = self.options['smm'].variables['classifier_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], printed_velocity]), data))[:output_size,:]
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
                 return data
             self.options['smm'].modify_variable("classifier_input",
                                                 insert_classifier_input)
@@ -646,7 +647,7 @@ class OnlineEMGClassifier(OnlineStreamer):
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file=False, smm=True, 
-                 smm_items=[["classifier_output", (100,3), np.double], #timestamp, class prediction, confidence
+                 smm_items=[["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
                       ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
                       ["adapt_flag", (1,1), np.int32],
                       ["active_flag", (1,1), np.int8]],
@@ -800,6 +801,67 @@ class OnlineEMGClassifier(OnlineStreamer):
             else:
                 arr = np.hstack((arr, data[feat]))
         return arr
+
+    def visualize(self, max_len=50, legend=None):
+        """Produces a live plot of classifier decisions -- Note this consumes the decisions.
+        Do not use this alongside the actual control operation of libemg. Online classifier has to
+        be running in "probabilties" output mode for this plot.
+
+        Parameters
+        ----------
+        max_len: (int) (optional) 
+            number of decisions to visualize
+        legend: (list) (optional)
+            The legend to display on the plot
+        """
+        plt.style.use("ggplot")
+        figure, ax = plt.subplots()
+        figure.suptitle("Live Classifier Output", fontsize=16)
+        plot_handle = ax.scatter([],[],c=[])
+        
+
+        # make a new socket that subscribes to the libemg events
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        sock.bind(('127.0.0.1', 12346))
+        num_classes = len(self.classifier.classifier.classes_)
+        cmap = cm.get_cmap('turbo', num_classes)
+
+        if legend is not None:
+            for i in range(num_classes):
+                plt.plot(i, label=legend[i], color=cmap.colors[i])
+            ax.legend()
+            legend_handles, legend_labels = ax.get_legend_handles_labels()
+        decision_horizon_classes = []
+        decision_horizon_probabilities = []
+        timestamps = []
+        start_time = time.time()
+        while True:
+            data, _ = sock.recvfrom(1024)
+            data = str(data.decode("utf-8"))
+            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
+            max_prob = np.max(probabilities)
+            prediction = np.argmax(probabilities)
+            decision_horizon_classes.append(prediction)
+            decision_horizon_probabilities.append(max_prob)
+            timestamps.append(float(data.split(" ")[-1]) - start_time)
+
+            decision_horizon_classes = decision_horizon_classes[-max_len:]
+            decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
+            timestamps = timestamps[-max_len:]
+
+            if plt.fignum_exists(figure.number):
+                plt.cla()
+                ax.scatter(timestamps, decision_horizon_probabilities,c=cmap.colors[decision_horizon_classes])
+                plt.ylim([0,1.5])
+                ax.set_xlabel("Time (s)")
+                ax.set_ylabel("Probability")
+                ax.set_ylim([0, 1.5])
+                if legend is not None:
+                    ax.legend(handles=legend_handles, labels=legend_labels)
+                plt.draw()
+                plt.pause(0.01)
+            else:
+                return
 
     def _get_data_helper(self):
         data, counts = self.odh.get_data(N=self.window_size)
