@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Callable
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import os
 import re
@@ -27,7 +29,7 @@ from libemg.feature_extractor import FeatureExtractor
 
 
 class RegexFilter:
-    def __init__(self, left_bound, right_bound, values, description):
+    def __init__(self, left_bound: str, right_bound: str, values: list, description: str):
         """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
         Parameters
@@ -41,12 +43,11 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field.
         """
-        # Could add parameter to disable grabbing metadata for certain patterns
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
 
-    def get_matching_files(self, files):
+    def get_matching_files(self, files: list[str]):
         """Filter out files that don't match the regex pattern and return the matching files.
 
         Parameters
@@ -62,7 +63,7 @@ class RegexFilter:
         matching_files = [file for file in files if len(re.findall(self.pattern, file)) != 0]
         return matching_files
 
-    def get_metadata(self, filename):
+    def get_metadata(self, filename: str):
         """Get metadata from the filename.
 
         Parameters
@@ -82,7 +83,7 @@ class RegexFilter:
 
 
 class MetadataFetcher(ABC):
-    def __init__(self, description):
+    def __init__(self, description: str):
         """Describes a type of metadata and implements a method to fetch it.
 
         Parameters
@@ -93,7 +94,7 @@ class MetadataFetcher(ABC):
         self.description = description
 
     @abstractmethod
-    def __call__(self, filename, file_data, all_files):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: list[str]):
         """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
 
         Parameters
@@ -114,7 +115,7 @@ class MetadataFetcher(ABC):
 
 
 class FilePackager(MetadataFetcher):
-    def __init__(self, regex_filter, package_function, align_method = 'zoom', load = None, column_mask = None):
+    def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool], align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load = None, column_mask = None):
         """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
         that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
 
@@ -140,7 +141,7 @@ class FilePackager(MetadataFetcher):
         self.load = load
         self.column_mask = column_mask
 
-    def __call__(self, filename, file_data, all_files):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: list[str]):
         potential_files = self.regex_filter.get_matching_files(all_files)
         packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, filename)]
         if len(packaged_files) != 1:
@@ -181,7 +182,7 @@ class FilePackager(MetadataFetcher):
 
 
 class ColumnFetcher(MetadataFetcher):
-    def __init__(self, description, column_mask, values = None):
+    def __init__(self, description: str, column_mask: list[int] | int, values: list | None = None):
         """Fetch metadata from columns within data file.
 
         Parameters
@@ -197,7 +198,7 @@ class ColumnFetcher(MetadataFetcher):
         self.column_mask = column_mask
         self.values = values
 
-    def __call__(self, filename, file_data, all_files):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: list[str]):
         metadata = file_data[:, self.column_mask]
         if isinstance(self.values, list):
             # Convert to indices of provided values
@@ -268,7 +269,7 @@ class OfflineDataHandler(DataHandler):
         return new_odh
         
     def get_data(self, folder_location: str, regex_filters: list[RegexFilter], metadata_fetchers: list[MetadataFetcher] | None = None, delimiter: str = ',',
-                 mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: list[int] | None = None, downsampling_factor: int = None):
+                 mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: list[int] | None = None, downsampling_factor: int | None = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
