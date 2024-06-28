@@ -1,31 +1,30 @@
 import socket
 import struct
-import numpy
+import numpy as np
 import pickle
+from libemg.shared_memory_manager import SharedMemoryManager
+from multiprocessing import Process, Event, Lock
 
-
-"""
-Some credit for the Trigno conenction goes to 
-github: https://github.com/axopy
-name: Kenneth Lyons
-"""
-
-class DelsysEMGStreamer:
+class DelsysEMGStreamer(Process):
     """
     Delsys Trigno wireless EMG system.
 
     Requires the Trigno Control Utility to be running.
 
-    Parameters
     ----------
-    host : str
-        IP address the TCU server is running on.
+    shared_memory_items : list
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype, Lock()].
+    emg : bool
+        Enable EMG streaming
+    imu : bool
+        Enable IMU streaming
+    recv_ip : str
+        The ip address the device is connected to (likely 'localhost').
     cmd_port : int
         Port of TCU command messages.
     data_port : int
         Port of TCU data access.
-    rate : int
-        Sampling rate of the data source.
     total_channels : int
         Total number of channels supported by the device.
     timeout : float
@@ -47,23 +46,36 @@ class DelsysEMGStreamer:
     BYTES_PER_CHANNEL = 4
     CMD_TERM = '\r\n\r\n'
 
-    def __init__(self, stream_ip='localhost', stream_port='12345', recv_ip='localhost', cmd_port=50040, data_port=50043, total_channels=list(range(8)), timeout=10):
+    def __init__(self, 
+                 shared_memory_items:   list = [],
+                 emg=True,
+                 imu=False,
+                 recv_ip:               str = 'localhost', 
+                 cmd_port:              str = 50040, 
+                 data_port:             str = 50043, 
+                 channel_list:        str = list(range(8)), 
+                 timeout:               int = 10):
         """
-        Note: data_port 50043 refers to the current port that EMG data is being streamed to. For older devices, the EMG data_port may be 50041 (e.g., the Delsys Trigno)"""
+        Note: data_port 50043 refers to the current port that EMG data is being streamed to. For older devices, the EMG data_port may be 50041 (e.g., the Delsys Trigno)
+        """
+        Process.__init__(self, daemon=True)
+
+        self.connected = False
+        self.signal = Event()
+        self.shared_memory_items = shared_memory_items
+
+        self.emg_handlers = []
+        self.imu_handlers = []
+
         self.host = recv_ip
         self.cmd_port = cmd_port
         self.data_port = data_port
-        self.total_channels = total_channels
+        self.channel_list = channel_list
         self.timeout = timeout
-        self.stream_ip = stream_ip
-        self.stream_port = stream_port
 
         self._min_recv_size = 16 * self.BYTES_PER_CHANNEL
 
-        self._initialize()
-        self.start()
-    def _initialize(self):
-
+    def connect(self):
         # create command socket and consume the servers initial response
         self._comm_socket = socket.create_connection(
             (self.host, self.cmd_port), self.timeout)
@@ -74,50 +86,64 @@ class DelsysEMGStreamer:
             (self.host, self.data_port), self.timeout)
         self._data_socket.setblocking(1)
 
-    def start(self):
-        """
-        Tell the device to begin streaming data.
-
-        You should call ``read()`` soon after this, though the device typically
-        takes about two seconds to send back the first batch of data.
-        """
         self._send_cmd('START')
 
-    def read(self):
-        """
-        Request a sample of data from the device.
+    def add_emg_handler(self, h):
+        self.emg_handlers.append(h)
+    
+    def add_imu_handler(self, h):
+        self.imu_handlers.append(h)
 
-        This is a blocking method, meaning it returns only once the requested
-        number of samples are available.
+    def run(self):
+        self.smm = SharedMemoryManager()
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
 
-        Parameters
-        ----------
-        num_samples : int
-            Number of samples to read per channel.
+        def write_emg(emg):
+            # update the samples in "emg"
+            self.smm.modify_variable("emg", lambda x: np.vstack((np.flip(emg,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+        self.add_emg_handler(write_emg)
 
-        Returns
-        -------
-        data : ndarray, shape=(total_channels, num_samples)
-            Data read from the device. Each channel is a row and each column
-            is a point in time.
-        """
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        def write_imu(imu):
+            # update the samples in "imu"
+            self.smm.modify_variable("imu", lambda x: np.vstack((np.flip(imu,0), x))[:x.shape[0],:])
+            # update the number of samples retrieved
+            self.smm.modify_variable("imu_count", lambda x: x + imu.shape[0])
+            # sock.sendto(data_arr, (self.ip, self.port))
+        self.add_imu_handler(write_imu)
+
+        self.connect()
 
         while True:
-            packet = self._data_socket.recv(self._min_recv_size)
-            data = numpy.asarray(struct.unpack('<'+'f'*16, packet))
-            data = data[self.total_channels]
-            data_arr = pickle.dumps(data)
-            self.sock.sendto(data_arr, (self.stream_ip, self.stream_port))
+            try:
+                packet = self._data_socket.recv(self._min_recv_size)
+                data = np.asarray(struct.unpack('<'+'f'*16, packet))
+                data = data[self.channel_list]
+                if len(data.shape)==1:
+                    data = data[:, None]
+                for e in self.emg_handlers:
+                    e(data)
+                A = 1
 
-    def stop(self):
-        """Tell the device to stop streaming data."""
+            except Exception as e:
+                print("Error Occurred: " + str(e))
+                continue
+
+            if self.signal.is_set():
+                self.cleanup()
+                break
+        print("LibEMG -> DelsysStreamer (process ended).")
+        
+    def cleanup(self):
         self._send_cmd('STOP')
+        print("LibEMG -> DelsysStreamer (streaming stopped).")
+        self._comm_socket.close()
+        print("LibEMG -> DelsysStreamer (comm socket closed).")
+        
 
-    def reset(self):
-        """Restart the connection to the Trigno Control Utility server."""
-        self._initialize()
-
+    
     def __del__(self):
         try:
             self._comm_socket.close()
@@ -140,5 +166,4 @@ class DelsysEMGStreamer:
         if 'OK' not in s:
             print("warning: TrignoDaq command failed: {}".format(s))
 
-    def start_stream(self):
-        self.read()
+    
