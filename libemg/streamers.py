@@ -315,6 +315,7 @@ def delsys_streamer(shared_memory_items = None,
                     delsys_ip='localhost',
                     cmd_port=50040, 
                     emg_port=50043, 
+                    aux_port=50044,
                     channel_list=list(range(8)),
                     timeout=10):
     """The streamer for the Delsys device (Avanti/Trigno). 
@@ -327,12 +328,14 @@ def delsys_streamer(shared_memory_items = None,
     shared_memory_items : list
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
-    cmd_port: int (optional), default=50040.
-        The port that commands are sent to the Delsys system (ie., the start command and the stop command.)
-    delsys_port: int (optional), default=50043. 
-        The port that the Delsys is streaming over. Note this value reflects the EMG data port for the Delsys Avanti system. For the Trigno system (legacy), the port is 50041.
     delsys_ip: string (optional), default='localhost'
         The ip that the Delsys is streaming over.
+    cmd_port: int (optional), default=50040.
+        The port that commands are sent to the Delsys system (ie., the start command and the stop command.)
+    emg_port: int (optional), default=50043. 
+        The port that the Delsys is streaming over. Note this value reflects the EMG data port for the Delsys Avanti system. For the Trigno system (legacy), the port is 50041.
+    aux_port: int (optional), default=50044.
+        The port that the Delsys is streaming IMU data over.
     channel_list: list, default=[0,1,2,3,4,5,6,7].
         The channels (i.e., electrodes) that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
     timeout : int
@@ -347,7 +350,7 @@ def delsys_streamer(shared_memory_items = None,
             shared_memory_items.append(["emg",       (3000,len(channel_list)), np.double])
             shared_memory_items.append(["emg_count", (1,1),    np.int32])
         if imu:
-            shared_memory_items.append(["imu",       (500,3), np.double])
+            shared_memory_items.append(["imu",       (500,6), np.double])
             shared_memory_items.append(["imu_count", (1,1),    np.int32])
     for item in shared_memory_items:
         item.append(Lock())
@@ -358,6 +361,7 @@ def delsys_streamer(shared_memory_items = None,
                                 recv_ip=delsys_ip,
                                 cmd_port=cmd_port,
                                 data_port=emg_port,
+                                aux_port=aux_port,
                                 channel_list=channel_list,
                                 timeout=timeout)
     delsys.start()
