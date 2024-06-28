@@ -814,6 +814,8 @@ class OnlineEMGClassifier(OnlineStreamer):
         legend: (list) (optional)
             The legend to display on the plot
         """
+        #### NOT CURRENTLY WORKING
+        assert 1==0, "Method not ready"
         plt.style.use("ggplot")
         figure, ax = plt.subplots()
         figure.suptitle("Live Classifier Output", fontsize=16)
