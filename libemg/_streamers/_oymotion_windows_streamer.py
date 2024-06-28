@@ -635,7 +635,7 @@ class Gforce(Process):
         if not req.has_res:
             return None
 
-        return await asyncio.wait_for(q.get(), 3)
+        return await asyncio.wait_for(q.get(), 5)
 
     def run(self):
         asyncio.run(self.start_stream())
