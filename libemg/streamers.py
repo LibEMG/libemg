@@ -15,154 +15,6 @@ from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 
 
-def leap_streamer(shared_memory_items=None,
-                  arm_basis = True,
-                  arm_width = False,
-                  hand_direction = False,
-                  elbow = False,
-                  grab_angle = False,
-                  grab_strength = False,
-                  palm_normal = True,
-                  palm_position = True,
-                  palm_velocity = True,
-                  palm_width = False,
-                  pinch_distance = False,
-                  pinch_strength = False,
-                  handedness = True,
-                  hand_r = False,
-                  hand_s = False,
-                  sphere_center = True,
-                  sphere_radius = True,
-                  wrist = True,
-                  finger_bases = True,
-                  btip_position = False,
-                  carp_position = False,
-                  dip_position = False,
-                  finger_direction = True,
-                  finger_extended = False,
-                  finger_length = False,
-                  mcp_position = False,
-                  pip_position = False,
-                  stabilized_tip_position=False,
-                  tip_position=True,
-                  tip_velocity=False,
-                  tool=False,
-                  touch_distance = True,
-                  touch_zone = True,
-                  finger_width=False):
-    if shared_memory_items is None:
-        shared_memory_items = []
-        # leap is 115 FPS -> 115 Hz normally.
-        if arm_basis:
-            shared_memory_items.append(["arm_basis",       (230,11), np.double])
-            shared_memory_items.append(["arm_basis_count", (1,1),    np.int32])
-        if arm_width:
-            shared_memory_items.append(["arm_width",       (230,3), np.double])
-            shared_memory_items.append(["arm_width_count", (1,1),    np.int32])
-        if hand_direction:
-            shared_memory_items.append(["hand_direction",       (230,5), np.double])
-            shared_memory_items.append(["hand_direction_count", (1,1),    np.int32])
-        if elbow:
-            shared_memory_items.append(["elbow",       (230,5), np.double])
-            shared_memory_items.append(["elbow_count", (1,1),    np.int32])
-        if grab_angle:
-            shared_memory_items.append(["grab_angle",       (230,3), np.double])
-            shared_memory_items.append(["grab_angle_count", (1,1),    np.int32])
-        if grab_strength:
-            shared_memory_items.append(["grab_strength",       (230,3), np.double])
-            shared_memory_items.append(["grab_strength_count", (1,1),    np.int32])
-        if palm_normal:
-            shared_memory_items.append(["palm_normal",       (230,5), np.double])
-            shared_memory_items.append(["palm_normal_count", (1,1),    np.int32])
-        if palm_position:
-            shared_memory_items.append(["palm_position",       (230,5), np.double])
-            shared_memory_items.append(["palm_position_count", (1,1),    np.int32])
-        if palm_velocity:
-            shared_memory_items.append(["palm_velocity",       (230,5), np.double])
-            shared_memory_items.append(["palm_velocity_count", (1,1),    np.int32])
-        if palm_width:
-            shared_memory_items.append(["palm_width",       (230,3), np.double])
-            shared_memory_items.append(["palm_width_count", (1,1),    np.int32])    
-        if pinch_distance:
-            shared_memory_items.append(["pinch_distance",       (230,3), np.double])
-            shared_memory_items.append(["pinch_distance_count", (1,1),    np.int32]) 
-        if pinch_strength:
-            shared_memory_items.append(["pinch_strength",       (230,3), np.double])
-            shared_memory_items.append(["pinch_strength_count", (1,1),    np.int32]) 
-        if handedness:
-            shared_memory_items.append(["handedness",       (230,3), np.double])
-            shared_memory_items.append(["handedness_count", (1,1),    np.int32]) 
-        if hand_r:
-            shared_memory_items.append(["hand_r",       (230,5), np.double])
-            shared_memory_items.append(["hand_r_count", (1,1),    np.int32]) 
-        if hand_s:
-            shared_memory_items.append(["hand_s",       (230,3), np.double])
-            shared_memory_items.append(["hand_s_count", (1,1),    np.int32])
-        if sphere_center:
-            shared_memory_items.append(["sphere_center",       (230,5), np.double])
-            shared_memory_items.append(["sphere_center_count", (1,1),    np.int32])
-        if sphere_radius:
-            shared_memory_items.append(["sphere_radius",       (230,3), np.double])
-            shared_memory_items.append(["sphere_radius_count", (1,1),    np.int32])
-        if wrist:
-            shared_memory_items.append(["wrist",       (230,5), np.double])
-            shared_memory_items.append(["wrist_count", (1,1),    np.int32])
-        if finger_bases:
-            shared_memory_items.append(["finger_bases",       (230,38), np.double])
-            shared_memory_items.append(["finger_bases_count", (1,1),    np.int32])
-        if btip_position:
-            shared_memory_items.append(["btip_position",       (230,5), np.double])
-            shared_memory_items.append(["btip_position_count", (1,1),    np.int32])
-        if carp_position:
-            shared_memory_items.append(["carp_position",       (230,5), np.double])
-            shared_memory_items.append(["carp_position_count", (1,1),    np.int32])
-        if dip_position:
-            shared_memory_items.append(["dip_position",       (230,5), np.double])
-            shared_memory_items.append(["dip_position_count", (1,1),    np.int32])
-        if finger_direction:
-            shared_memory_items.append(["finger_direction",       (230,5), np.double])
-            shared_memory_items.append(["finger_direction_count", (1,1),    np.int32])
-        if finger_extended:
-            shared_memory_items.append(["finger_extended",       (230,3), np.double])
-            shared_memory_items.append(["finger_extended_count", (1,1),    np.int32])
-        if finger_length:
-            shared_memory_items.append(["finger_length",       (230,3), np.double])
-            shared_memory_items.append(["finger_length_count", (1,1),    np.int32])
-        if mcp_position:
-            shared_memory_items.append(["mcp_position",       (230,5), np.double])
-            shared_memory_items.append(["mcp_position_count", (1,1),    np.int32])
-        if pip_position:
-            shared_memory_items.append(["pip_position",       (230,5), np.double])
-            shared_memory_items.append(["pip_position_count", (1,1),    np.int32])
-        if stabilized_tip_position:
-            shared_memory_items.append(["stabilized_tip_position",       (230,5), np.double])
-            shared_memory_items.append(["stabilized_tip_position_count", (1,1),    np.int32])
-        if tip_position:
-            shared_memory_items.append(["tip_position",       (230,5), np.double])
-            shared_memory_items.append(["tip_position_count", (1,1),    np.int32])
-        if tip_velocity:
-            shared_memory_items.append(["tip_velocity",       (230,5), np.double])
-            shared_memory_items.append(["tip_velocity_count", (1,1),    np.int32])
-        if tool:
-            shared_memory_items.append(["tool",       (230,3), np.double])
-            shared_memory_items.append(["tool_count", (1,1),    np.int32])
-        if touch_distance:
-            shared_memory_items.append(["touch_distance",       (230,3), np.double])
-            shared_memory_items.append(["touch_distance_count", (1,1),    np.int32])
-        if touch_zone:
-            shared_memory_items.append(["touch_zone",       (230,3), np.double])
-            shared_memory_items.append(["touch_zone_count", (1,1),    np.int32])
-        if finger_width:
-            shared_memory_items.append(['finger_width', (230,3), np.double])
-            shared_memory_items.append(['finger_width_count', (1,1), np.int32])
-
-    for item in shared_memory_items:
-        item.append(Lock())
-    
-    ls = LeapStreamer(shared_memory_items)
-    ls.start()
-    return ls, shared_memory_items
-
 
 def sifibridge_streamer(version="1_1",
                  shared_memory_items = None,
@@ -276,18 +128,25 @@ def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
         index += 1
 
 def myo_streamer(
-    shared_memory_items = None,
-    emg = True, 
-    imu = False,
-    filtered=True):
-    """The UDP streamer for the myo armband. 
+    shared_memory_items : list | None = None,
+    emg                 : bool = True, 
+    imu                 : bool = False,
+    filtered            : bool=True):
+    """The streamer for the myo armband. 
 
-    This function connects to the Myo and streams its data over UDP. It leverages the PyoMyo 
+    This function connects to the Myo. It leverages the PyoMyo 
     library. Note: this version requires the blue dongle to be plugged in.
 
     Parameters
     ----------
-    filtered: bool (optional), default=True
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
+    emg : bool (optional)
+        Specifies whether EMG data should be forwarded to shared memory.
+    imu : bool (optional)
+        Specifies whether IMU data should be forwarded to shared memory.
+    filtered : bool (optional), default=True
         If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
 
     Examples
@@ -309,15 +168,15 @@ def myo_streamer(
     myo.start()
     return myo, shared_memory_items
 
-def delsys_streamer(shared_memory_items = None,
-                    emg = True, 
-                    imu = False,
-                    delsys_ip='localhost',
-                    cmd_port=50040, 
-                    emg_port=50043, 
-                    aux_port=50044,
-                    channel_list=list(range(8)),
-                    timeout=10):
+def delsys_streamer(shared_memory_items : list | None = None,
+                    emg                 : bool = True, 
+                    imu                 : bool = False,
+                    delsys_ip           : str = 'localhost',
+                    cmd_port            : int = 50040, 
+                    emg_port            : int = 50043, 
+                    aux_port            : int = 50044,
+                    channel_list        : list = list(range(8)),
+                    timeout             : int = 10):
     """The streamer for the Delsys device (Avanti/Trigno). 
 
     This function connects to the Delsys and streams its data over UDP. Note that you must have the Delsys Control Utility
@@ -325,7 +184,7 @@ def delsys_streamer(shared_memory_items = None,
 
     Parameters
     ----------
-    shared_memory_items : list
+    shared_memory_items : list (optional)
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
     delsys_ip: string (optional), default='localhost'
@@ -368,24 +227,27 @@ def delsys_streamer(shared_memory_items = None,
     return delsys, shared_memory_items
 
 
-def oymotion_streamer(shared_memory_items=None, sampling_rate=1000, emg=True,imu=False):
-    """The UDP streamer for the oymotion armband. 
+def oymotion_streamer(shared_memory_items : list | None = None,
+                      sampling_rate       : int = 1000,
+                      emg                 : bool = True,
+                      imu                 : bool = False):
+    """The streamer for the oymotion armband. 
 
-    This function connects to the oymotion and streams its data over UDP. It leverages the gforceprofile 
+    This function connects to the oymotion and streams its data. It leverages the gforceprofile 
     library. Note: this version requires the dongle to be plugged in. Note, you should run this with sudo
-    and using sudo -E python to preserve your environment.
+    and using sudo -E python to preserve your environment in Linux.
 
     Parameters
     ----------
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string (optional), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
-    platform: string ('windows', 'linux', or 'mac'), default='windows'
-        The platform being used. Linux uses a different streamer than mac and windows. 
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
     sampling_rate: int (optional), default=1000 (options: 1000 or 500)
         The sampling rate wanted from the device. Note that 1000 Hz is 8 bit resolution and 500 Hz is 12 bit resolution
-
+    emg : bool (optional),
+        Detemines whether EMG data will be forwarded
+    imu : bool (optional),
+        Determines whether IMU data will be forwarded
     Examples
     ---------
     >>> oymotion_streamer()
@@ -431,9 +293,9 @@ def emager_streamer(shared_memory_items = None):
 
     Parameters
     ----------
-    shared_memory_items: list, default=12345
-        The shared memory items used to access specific tags in shared memory (e.g., emg and emg_count). If None is passed,
-        defaults values are created and used to create the streamer.
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
 
     Examples
     ---------
@@ -451,3 +313,151 @@ def emager_streamer(shared_memory_items = None):
     ema.start()
     return ema, shared_memory_items
 
+
+def leap_streamer(shared_memory_items : list | None =None,
+                  arm_basis : bool = True,
+                  arm_width : bool = False,
+                  hand_direction : bool = False,
+                  elbow : bool = False,
+                  grab_angle : bool = False,
+                  grab_strength : bool = False,
+                  palm_normal : bool = True,
+                  palm_position : bool = True,
+                  palm_velocity : bool = True,
+                  palm_width : bool = False,
+                  pinch_distance : bool = False,
+                  pinch_strength : bool = False,
+                  handedness : bool = True,
+                  hand_r : bool = False,
+                  hand_s : bool = False,
+                  sphere_center : bool = True,
+                  sphere_radius : bool = True,
+                  wrist : bool = True,
+                  finger_bases : bool = True,
+                  btip_position : bool = False,
+                  carp_position : bool = False,
+                  dip_position : bool = False,
+                  finger_direction : bool = True,
+                  finger_extended : bool = False,
+                  finger_length : bool = False,
+                  mcp_position : bool = False,
+                  pip_position : bool = False,
+                  stabilized_tip_position : bool = False,
+                  tip_position : bool = True,
+                  tip_velocity : bool = False,
+                  tool : bool = False,
+                  touch_distance : bool = True,
+                  touch_zone : bool = True,
+                  finger_width : bool = False):
+    if shared_memory_items is None:
+        shared_memory_items = []
+        # leap is 115 FPS -> 115 Hz normally.
+        if arm_basis:
+            shared_memory_items.append(["arm_basis",       (230,11), np.double])
+            shared_memory_items.append(["arm_basis_count", (1,1),    np.int32])
+        if arm_width:
+            shared_memory_items.append(["arm_width",       (230,3), np.double])
+            shared_memory_items.append(["arm_width_count", (1,1),    np.int32])
+        if hand_direction:
+            shared_memory_items.append(["hand_direction",       (230,5), np.double])
+            shared_memory_items.append(["hand_direction_count", (1,1),    np.int32])
+        if elbow:
+            shared_memory_items.append(["elbow",       (230,5), np.double])
+            shared_memory_items.append(["elbow_count", (1,1),    np.int32])
+        if grab_angle:
+            shared_memory_items.append(["grab_angle",       (230,3), np.double])
+            shared_memory_items.append(["grab_angle_count", (1,1),    np.int32])
+        if grab_strength:
+            shared_memory_items.append(["grab_strength",       (230,3), np.double])
+            shared_memory_items.append(["grab_strength_count", (1,1),    np.int32])
+        if palm_normal:
+            shared_memory_items.append(["palm_normal",       (230,5), np.double])
+            shared_memory_items.append(["palm_normal_count", (1,1),    np.int32])
+        if palm_position:
+            shared_memory_items.append(["palm_position",       (230,5), np.double])
+            shared_memory_items.append(["palm_position_count", (1,1),    np.int32])
+        if palm_velocity:
+            shared_memory_items.append(["palm_velocity",       (230,5), np.double])
+            shared_memory_items.append(["palm_velocity_count", (1,1),    np.int32])
+        if palm_width:
+            shared_memory_items.append(["palm_width",       (230,3), np.double])
+            shared_memory_items.append(["palm_width_count", (1,1),    np.int32])    
+        if pinch_distance:
+            shared_memory_items.append(["pinch_distance",       (230,3), np.double])
+            shared_memory_items.append(["pinch_distance_count", (1,1),    np.int32]) 
+        if pinch_strength:
+            shared_memory_items.append(["pinch_strength",       (230,3), np.double])
+            shared_memory_items.append(["pinch_strength_count", (1,1),    np.int32]) 
+        if handedness:
+            shared_memory_items.append(["handedness",       (230,3), np.double])
+            shared_memory_items.append(["handedness_count", (1,1),    np.int32]) 
+        if hand_r:
+            shared_memory_items.append(["hand_r",       (230,5), np.double])
+            shared_memory_items.append(["hand_r_count", (1,1),    np.int32]) 
+        if hand_s:
+            shared_memory_items.append(["hand_s",       (230,3), np.double])
+            shared_memory_items.append(["hand_s_count", (1,1),    np.int32])
+        if sphere_center:
+            shared_memory_items.append(["sphere_center",       (230,5), np.double])
+            shared_memory_items.append(["sphere_center_count", (1,1),    np.int32])
+        if sphere_radius:
+            shared_memory_items.append(["sphere_radius",       (230,3), np.double])
+            shared_memory_items.append(["sphere_radius_count", (1,1),    np.int32])
+        if wrist:
+            shared_memory_items.append(["wrist",       (230,5), np.double])
+            shared_memory_items.append(["wrist_count", (1,1),    np.int32])
+        if finger_bases:
+            shared_memory_items.append(["finger_bases",       (230,38), np.double])
+            shared_memory_items.append(["finger_bases_count", (1,1),    np.int32])
+        if btip_position:
+            shared_memory_items.append(["btip_position",       (230,5), np.double])
+            shared_memory_items.append(["btip_position_count", (1,1),    np.int32])
+        if carp_position:
+            shared_memory_items.append(["carp_position",       (230,5), np.double])
+            shared_memory_items.append(["carp_position_count", (1,1),    np.int32])
+        if dip_position:
+            shared_memory_items.append(["dip_position",       (230,5), np.double])
+            shared_memory_items.append(["dip_position_count", (1,1),    np.int32])
+        if finger_direction:
+            shared_memory_items.append(["finger_direction",       (230,5), np.double])
+            shared_memory_items.append(["finger_direction_count", (1,1),    np.int32])
+        if finger_extended:
+            shared_memory_items.append(["finger_extended",       (230,3), np.double])
+            shared_memory_items.append(["finger_extended_count", (1,1),    np.int32])
+        if finger_length:
+            shared_memory_items.append(["finger_length",       (230,3), np.double])
+            shared_memory_items.append(["finger_length_count", (1,1),    np.int32])
+        if mcp_position:
+            shared_memory_items.append(["mcp_position",       (230,5), np.double])
+            shared_memory_items.append(["mcp_position_count", (1,1),    np.int32])
+        if pip_position:
+            shared_memory_items.append(["pip_position",       (230,5), np.double])
+            shared_memory_items.append(["pip_position_count", (1,1),    np.int32])
+        if stabilized_tip_position:
+            shared_memory_items.append(["stabilized_tip_position",       (230,5), np.double])
+            shared_memory_items.append(["stabilized_tip_position_count", (1,1),    np.int32])
+        if tip_position:
+            shared_memory_items.append(["tip_position",       (230,5), np.double])
+            shared_memory_items.append(["tip_position_count", (1,1),    np.int32])
+        if tip_velocity:
+            shared_memory_items.append(["tip_velocity",       (230,5), np.double])
+            shared_memory_items.append(["tip_velocity_count", (1,1),    np.int32])
+        if tool:
+            shared_memory_items.append(["tool",       (230,3), np.double])
+            shared_memory_items.append(["tool_count", (1,1),    np.int32])
+        if touch_distance:
+            shared_memory_items.append(["touch_distance",       (230,3), np.double])
+            shared_memory_items.append(["touch_distance_count", (1,1),    np.int32])
+        if touch_zone:
+            shared_memory_items.append(["touch_zone",       (230,3), np.double])
+            shared_memory_items.append(["touch_zone_count", (1,1),    np.int32])
+        if finger_width:
+            shared_memory_items.append(['finger_width', (230,3), np.double])
+            shared_memory_items.append(['finger_width_count', (1,1), np.int32])
+
+    for item in shared_memory_items:
+        item.append(Lock())
+    
+    ls = LeapStreamer(shared_memory_items)
+    ls.start()
+    return ls, shared_memory_items
