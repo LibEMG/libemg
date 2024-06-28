@@ -529,15 +529,19 @@ class OnlineStreamer:
     
     def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
         time_stamp = time.time()
+        if calculated_velocity == "":
+            printed_velocity = "-1"
+        else:
+            printed_velocity = float(calculated_velocity)
         if self.options['std_out']:
-            print(f"{int(prediction)} {calculated_velocity} {time.time()}")
+            print(f"{int(prediction)} {printed_velocity} {time.time()}")
         # Write classifier output:
         if self.options['file']:
             if not 'file_handle' in self.files.keys():
                 self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
             writer = csv.writer(self.files['file_handle'])
             feat_str = str(model_input[0]).replace('\n','')[1:-1]
-            row = [f"{time_stamp} {prediction} {probability[0]} {feat_str}"]
+            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
             writer.writerow(row)
             self.files['file_handle'].flush()
         if "smm" in self.options.keys():
@@ -549,7 +553,7 @@ class OnlineStreamer:
                 return data
             def insert_classifier_output(data):
                 output_size = self.options['smm'].variables['classifier_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0]]), data))[:output_size,:]
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], printed_velocity]), data))[:output_size,:]
                 return data
             self.options['smm'].modify_variable("classifier_input",
                                                 insert_classifier_input)
