@@ -31,3 +31,8 @@ libemg/__init__.pyc
 test_myo.py
 test_pca.py
 libemg/_gui/__pycache__/*
+media/*
+*.exe
+test_*.py
+*.csv
+.vscode/*
