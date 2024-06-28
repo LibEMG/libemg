@@ -1,16 +1,19 @@
 import os
+from typing import Callable
 import warnings
 
 import numpy as np
+import numpy.typing as npt
 from PIL import Image, UnidentifiedImageError
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
 import cv2
 
 
 class Animator:
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24):
+    def __init__(self, output_filepath: str = 'libemg.gif', fps: int = 24):
         """Animator object for creating .gif files from a list of images.
         
         Parameters
@@ -26,7 +29,7 @@ class Animator:
         _, video_format = os.path.splitext(output_filepath) # set format to file extension
         self.video_format = video_format
     
-    def convert_time_to_frames(self, duration_seconds):
+    def convert_time_to_frames(self, duration_seconds: float):
         """Calculate the number of frames from the desired duration.
         
         Parameters
@@ -41,7 +44,7 @@ class Animator:
         """
         return duration_seconds * self.fps
     
-    def save_mp4(self, frames):
+    def save_mp4(self, frames: list[Image.Image]):
         """Save a .mp4 video file from a list of images.
 
 
@@ -59,7 +62,7 @@ class Animator:
             video.write(bgr_img)
         video.release()
     
-    def save_video(self, frames):
+    def save_video(self, frames: list[Image.Image]):
         """Save a video file from a list of images.
 
 
@@ -78,7 +81,7 @@ class Animator:
             # Unrecognized format
             raise ValueError(f'Unrecognized format {format}.')
         
-    def save_gif(self, frames):
+    def save_gif(self, frames: list[Image.Image]):
         """Save a .gif video file from a list of images.
 
 
@@ -96,8 +99,8 @@ class Animator:
             loop=0  # infinite loop
         )
     
-    def save_video_from_directory(self, directory_path, match_filename_function = None, 
-                                  delete_images = False):
+    def save_video_from_directory(self, directory_path: str, match_filename_function: Callable[[str], bool] | None = None, 
+                                  delete_images: bool = False):
         """Save a video file from image files in a specified directory. Accepts all image types that can be read using
         PIL.Image.open(). Appends images in alphabetical order.
 
@@ -142,8 +145,8 @@ class Animator:
 
 
 class PlotAnimator(Animator):
-    def __init__(self, output_filepath='libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (6, 6), dpi = 80, tpd = 2):
+    def __init__(self, output_filepath: str ='libemg.gif', fps: int = 24, show_direction: bool = False, show_countdown: bool = False, show_boundary: bool = False,
+                 figsize: tuple[int, int] = (6, 6), dpi: int = 80, tpd: int = 2):
         """Animator object specifically for plots.
         
         Parameters
@@ -175,7 +178,7 @@ class PlotAnimator(Animator):
         self.fpd = fps * self.tpd  # number of frames to generate to travel a distance of 1
     
     
-    def convert_distance_to_frames(self, coordinates1, coordinates2):
+    def convert_distance_to_frames(self, coordinates1: npt.NDArray[np.float_], coordinates2: npt.NDArray[np.float_]):
         """Calculate the number of frames needed to move from coordinates1 to coordinates2.
         
         Parameters
@@ -195,7 +198,7 @@ class PlotAnimator(Animator):
         return int(distance * self.fpd)
     
     @staticmethod
-    def _normalize_to_unit_distance(x, y):
+    def _normalize_to_unit_distance(x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]):
         """Normalize coordinates to a unit circle distance.
         
         Parameters
@@ -226,7 +229,7 @@ class PlotAnimator(Animator):
         return normalized_coordinates
 
     @staticmethod
-    def _convert_plot_to_image(fig):
+    def _convert_plot_to_image(fig: Figure):
         """Convert a matplotlib Figure to a PIL.Image object.
 
         Parameters
@@ -254,7 +257,7 @@ class PlotAnimator(Animator):
         ax = plt.gca()
         return fig, ax
     
-    def _preprocess_coordinates(self, coordinates):
+    def _preprocess_coordinates(self, coordinates: npt.NDArray[np.float_]):
         """Modify coordinates before plotting (e.g., normalization).
         
         Parameters
@@ -269,18 +272,19 @@ class PlotAnimator(Animator):
         """Plot boundary to axis."""
         pass    # going to be different for each implementation, so don't implement it here
 
-    def _show_countdown(self, coordinates, text):
+    def _show_countdown(self, coordinates: npt.NDArray[np.float_], text: str):
         """Show a countdown based on the current coordinates and frame index.
         
         Parameters
         ----------
         coordinates: numpy.ndarray
-            1 x M matrix, where N is the number of frames and M is the number of DOFs. Order is x-axis, y-axis, and third DOF (either rotation or target radius).
-            Each row contains the value for x position, y position, and / or third DOF depending on how many DOFs are passed in.
+            2 item array. The first element is the x-coordinate and the second element is the y-coordinate.
+        text: str
+            Text to show.
         """
         plt.text(coordinates[0], coordinates[1], text, fontweight='bold', c='red', ha='center', va='center')
     
-    def _show_direction(self, coordinates, alpha = 1.0):
+    def _show_direction(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0):
         """Show the direction of the next part of the movement.
         
         Parameters
@@ -294,7 +298,7 @@ class PlotAnimator(Animator):
         self.plot_icon(coordinates, alpha=alpha, colour='green')
 
     
-    def plot_icon(self, coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
         """Plot target / icon on axis.
         
         Parameters
@@ -309,7 +313,7 @@ class PlotAnimator(Animator):
         plt.plot(coordinates[0], coordinates[1], alpha=alpha, c=colour)
     
     
-    def save_plot_video(self, coordinates, title = '', xlabel = '', ylabel = '', save_coordinates = False, verbose = False):
+    def save_plot_video(self, coordinates: npt.NDArray[np.float_], title: str = '', xlabel: str = '', ylabel: str = '', save_coordinates: bool = False, verbose: bool = False):
         """Save a video file of an icon moving around a 2D plane.
         
         Parameters
@@ -408,8 +412,8 @@ class PlotAnimator(Animator):
 
 
 class CartesianPlotAnimator(PlotAnimator):
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False,
-                 axis_images = None, figsize = (6, 6), dpi = 80, tpd = 2):
+    def __init__(self, output_filepath: str = 'libemg.gif', fps: int = 24, show_direction: bool = False, show_countdown: bool = False, show_boundary: bool = False, normalize_distance: bool = False,
+                 axis_images: dict[str, Image.Image] | None = None, figsize: tuple[int, int] = (6, 6), dpi: int = 80, tpd: int = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane.
         
         Parameters
@@ -470,7 +474,7 @@ class CartesianPlotAnimator(PlotAnimator):
         ax.set(xlim=axis_limits, ylim=axis_limits)
         return fig, ax
     
-    def _preprocess_coordinates(self, coordinates):
+    def _preprocess_coordinates(self, coordinates: npt.NDArray[np.float_]):
         coordinates = super()._preprocess_coordinates(coordinates)
 
         if self.normalize_distance:
@@ -482,13 +486,13 @@ class CartesianPlotAnimator(PlotAnimator):
         an = np.linspace(0, 2 * np.pi, 100)
         plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
     
-    def _show_countdown(self, coordinates, text):
+    def _show_countdown(self, coordinates: npt.NDArray[np.float_], text: str):
         x = coordinates[0]
         y = coordinates[1] - 0.2
         return super()._show_countdown((x, y), text)
     
     @staticmethod
-    def _add_image_label_axes(fig):
+    def _add_image_label_axes(fig: Figure):
         """Add axes to a matplotlib Figure for displaying images in the top, right, bottom, and left of the Figure. 
         
         Parameters
@@ -520,8 +524,8 @@ class CartesianPlotAnimator(PlotAnimator):
 
 
 class ScatterPlotAnimator(CartesianPlotAnimator):
-    def __init__(self, output_filepath = 'libemg.gif', fps = 24, show_direction = False, show_countdown = False, show_boundary = False, normalize_distance = False, axis_images = None, 
-                 plot_line = False, figsize = (6, 6), dpi = 80, tpd = 2):
+    def __init__(self, output_filepath: str = 'libemg.gif', fps: int = 24, show_direction: bool = False, show_countdown: bool = False, show_boundary: bool = False, normalize_distance: bool = False, 
+                 axis_images: dict[str, Image.Image] | None = None, plot_line: bool = False, figsize: tuple[int, int] = (6, 6), dpi: int = 80, tpd: int = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a scatter plot.
         
         Parameters
@@ -554,10 +558,10 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
         self.plot_line = plot_line
 
     
-    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
         # Parse coordinates
-        x = frame_coordinates[0]
-        y = frame_coordinates[1]
+        x = coordinates[0]
+        y = coordinates[1]
         # Dot properties
         size = 50
         plt.scatter(x, y, s=size, c=colour, alpha=alpha)
@@ -568,11 +572,11 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
 
 
 class ArrowPlotAnimator(CartesianPlotAnimator):
-    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
         # Parse coordinates
-        x_tail = frame_coordinates[0]
-        y_tail = frame_coordinates[1]
-        angle = frame_coordinates[2]
+        x_tail = coordinates[0]
+        y_tail = coordinates[1]
+        angle = coordinates[2]
 
         # Map from [-1, 1] to degrees
         angle_degrees = np.interp(angle, [-1, 1], [0, 360])
@@ -589,15 +593,15 @@ class ArrowPlotAnimator(CartesianPlotAnimator):
 
 class TargetPlotAnimator(CartesianPlotAnimator):
     @staticmethod
-    def _plot_circle(xy, radius, edgecolor, facecolor, alpha = 1.0):
+    def _plot_circle(xy: tuple[float, float], radius: float, edgecolor: str, facecolor: str, alpha: float = 1.0):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
         plt.gca().add_patch(circle)
     
-    def plot_icon(self, frame_coordinates, alpha = 1.0, colour = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
         # Parse coordinates
-        x = frame_coordinates[0]
-        y = frame_coordinates[1]
-        z = frame_coordinates[2]
+        x = coordinates[0]
+        y = coordinates[1]
+        z = coordinates[2]
 
         min_radius = 0.05
         max_radius = 0.2
@@ -612,8 +616,8 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 
 class BarPlotAnimator(PlotAnimator):
-    def __init__(self, bar_labels, output_filepath='libemg.gif', fps=24, show_direction = False, show_countdown = False, show_boundary = False,
-                 figsize = (6, 6), dpi = 80, tpd = 2):
+    def __init__(self, bar_labels: list[str], output_filepath: str = 'libemg.gif', fps: int = 24, show_direction: bool = False, show_countdown: bool = False, show_boundary: bool = False,
+                 figsize: tuple[int, int] = (6, 6), dpi: int = 80, tpd: int = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a bar plot.
         
         Parameters
@@ -654,13 +658,13 @@ class BarPlotAnimator(PlotAnimator):
         ax.set(ylim=axis_limits)
         return fig, ax
     
-    def _plot_border(self, coordinates, edgecolor='black'):
+    def _plot_border(self, coordinates: npt.NDArray[np.float_], edgecolor: str = 'black'):
         plt.bar(self.bar_labels, coordinates, color='none', edgecolor=edgecolor, linewidth=2, width=self.bar_width)
     
-    def _show_direction(self, coordinates, alpha = 1):
+    def _show_direction(self, coordinates: npt.NDArray[np.float_], alpha: float = 1):
         self._plot_border(coordinates, edgecolor='green')
         
-    def _show_countdown(self, coordinates, text):
+    def _show_countdown(self, coordinates: npt.NDArray[np.float_], text: str):
         adjustment = 0.05
         for label, dof_value in zip(self.bar_labels, coordinates):
             modifier = -adjustment if dof_value < 0 else adjustment
@@ -670,8 +674,8 @@ class BarPlotAnimator(PlotAnimator):
         self._plot_border(-1)
         self._plot_border(1)
     
-    def plot_icon(self, frame_coordinates, alpha=1, colour='black'):
-        plt.bar(self.bar_labels, frame_coordinates, alpha=alpha, color=colour, width=self.bar_width)
+    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1, colour: str = 'black'):
+        plt.bar(self.bar_labels, coordinates, alpha=alpha, color=colour, width=self.bar_width)
 
         axis_limits = plt.gca().get_ylim()
         for label in self.bar_labels:
