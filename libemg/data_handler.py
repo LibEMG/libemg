@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Sequence
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -29,7 +29,7 @@ from libemg.feature_extractor import FeatureExtractor
 
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: list, description: str):
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence, description: str):
         """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
         Parameters
@@ -47,7 +47,7 @@ class RegexFilter:
         self.values = values
         self.description = description
 
-    def get_matching_files(self, files: list[str]):
+    def get_matching_files(self, files: Sequence[str]):
         """Filter out files that don't match the regex pattern and return the matching files.
 
         Parameters
@@ -94,7 +94,7 @@ class MetadataFetcher(ABC):
         self.description = description
 
     @abstractmethod
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: list[str]):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
         """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
 
         Parameters
@@ -141,7 +141,7 @@ class FilePackager(MetadataFetcher):
         self.load = load
         self.column_mask = column_mask
 
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: list[str]):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
         potential_files = self.regex_filter.get_matching_files(all_files)
         packaged_files = [Path(potential_file) for potential_file in potential_files if self.package_function(potential_file, filename)]
         if len(packaged_files) != 1:
@@ -182,7 +182,7 @@ class FilePackager(MetadataFetcher):
 
 
 class ColumnFetcher(MetadataFetcher):
-    def __init__(self, description: str, column_mask: list[int] | int, values: list | None = None):
+    def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         """Fetch metadata from columns within data file.
 
         Parameters
@@ -198,7 +198,7 @@ class ColumnFetcher(MetadataFetcher):
         self.column_mask = column_mask
         self.values = values
 
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: list[str]):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
         metadata = file_data[:, self.column_mask]
         if isinstance(self.values, list):
             # Convert to indices of provided values
@@ -268,8 +268,8 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location: str, regex_filters: list[RegexFilter], metadata_fetchers: list[MetadataFetcher] | None = None, delimiter: str = ',',
-                 mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: list[int] | None = None, downsampling_factor: int | None = None):
+    def get_data(self, folder_location: str, regex_filters: Sequence[RegexFilter], metadata_fetchers: Sequence[MetadataFetcher] | None = None, delimiter: str = ',',
+                 mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: Sequence[int] | None = None, downsampling_factor: int | None = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
         sources of metadata via passed in MetadataFetchers, which will associate metadata with each data file.
