@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, Sequence
 import warnings
 
 import numpy as np
@@ -44,7 +44,7 @@ class Animator:
         """
         return duration_seconds * self.fps
     
-    def save_mp4(self, frames: list[Image.Image]):
+    def save_mp4(self, frames: Sequence[Image.Image]):
         """Save a .mp4 video file from a list of images.
 
 
@@ -62,7 +62,7 @@ class Animator:
             video.write(bgr_img)
         video.release()
     
-    def save_video(self, frames: list[Image.Image]):
+    def save_video(self, frames: Sequence[Image.Image]):
         """Save a video file from a list of images.
 
 
@@ -81,7 +81,7 @@ class Animator:
             # Unrecognized format
             raise ValueError(f'Unrecognized format {format}.')
         
-    def save_gif(self, frames: list[Image.Image]):
+    def save_gif(self, frames: Sequence[Image.Image]):
         """Save a .gif video file from a list of images.
 
 
@@ -616,7 +616,7 @@ class TargetPlotAnimator(CartesianPlotAnimator):
 
 
 class BarPlotAnimator(PlotAnimator):
-    def __init__(self, bar_labels: list[str], output_filepath: str = 'libemg.gif', fps: int = 24, show_direction: bool = False, show_countdown: bool = False, show_boundary: bool = False,
+    def __init__(self, bar_labels: Sequence[str], output_filepath: str = 'libemg.gif', fps: int = 24, show_direction: bool = False, show_countdown: bool = False, show_boundary: bool = False,
                  figsize: tuple[int, int] = (6, 6), dpi: int = 80, tpd: int = 2):
         """Animator object for creating video files from a list of coordinates on a cartesian plane shown as a bar plot.
         
