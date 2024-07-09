@@ -1,16 +1,5 @@
 import numpy as np
 from multiprocessing.shared_memory import SharedMemory
-# from multiprocessing import Process, Lock
-
-# def task(args):
-#     npsm = NPSharedMemory()
-#     npsm.find_variable(*args)
-#     test1 = npsm.get_variable(args[0])
-#     print(test1)
-#     # npsm.find_variable("test1", (100,10), np.double)
-#     npsm.modify_variable(args[0], lambda x: x+45)
-#     test1 = npsm.get_variable(args[0])
-#     print(test1)
 
 class SharedMemoryManager:
     def __init__(self):
@@ -70,21 +59,3 @@ class SharedMemoryManager:
         for k in self.variables.keys():
             result.append([k, self.variables[k]["shape"], self.variables[k]["type"]])
         return result
-
-
-
-# if __name__ == "__main__":
-#     npsm = NPSharedMemory()
-#     args = ["test1", (100,10), np.double, Lock()]
-
-#     npsm.create_variable(*args)
-#     # npsm.create_variable("test2", (1,10), np.double)
-#     # npsm.create_variable("test3", (10,10), np.double)
-#     # npsm.create_variable("test4", (100,1), np.double)
-#     # npsm.create_variable("test5", (100,100), np.double)
-    
-#     process = Process(target=task, args=(args,))
-#     process.start()
-#     process.join()
-#     npsm.clean_up()
-    
