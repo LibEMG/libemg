@@ -122,7 +122,8 @@ def test_get_feature_list(fe):
                                     "WENG",
                                     "WV",
                                     "WWL",
-                                    "WENT"]
+                                    "WENT",
+                                    "MEAN"]
 
 def test_all_features_normal(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')

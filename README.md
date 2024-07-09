@@ -1,4 +1,4 @@
-<h1 align="center">LibEMG</h1>
+![LibEMG](docs/source/libemg_logo.png)
 
 The goal of this library is to provide an easy to use and feature-rich API for developing robust real-time EMG-based interactions, and performing thorough offline analysis.
 
@@ -9,6 +9,9 @@ All documentation can be found at: [Library Documentation](https://libemg.github
 
 ## Install 
 `pip install libemg`
+
+## Questions
+Check out our discord server if you have questions, comments, or feature requests: [https://discord.gg/NeqTTXmM4F](https://discord.gg/6D9rPMThxu)
 
 ## Citing
 We ask that if you leverage this library for any research-related purposes please cite the following publication:
