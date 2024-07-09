@@ -3,6 +3,7 @@ import os
 import json
 import libemg
 import numpy as np
+from libemg.data_handler import RegexFilter
 
 class DataImportPanel:
     def __init__(self, 
@@ -84,13 +85,11 @@ class DataImportPanel:
             validation_text += "Import not available -- check data folder."
         else:
             offline_data_handler = libemg.data_handler.OfflineDataHandler()
-            offline_data_handler.get_data(dpg.get_value(item="__di_data_folder"),
-                                          {"classes":       [str(i) for i in range(self.collection_details["num_motions"])],
-                                           "classes_regex": libemg.utils.make_regex("C_", "_R_",[str(i) for i in range(self.collection_details["num_motions"])]),
-                                           "reps":          [str(i) for i in range(self.collection_details["num_reps"])],
-                                           "reps_regex":    libemg.utils.make_regex("_R_",".csv", [str(i) for i in range(self.collection_details["num_reps"])])
-                                           }
-                                         )
+            regex_filters = [
+                RegexFilter("C_", "_R_",[str(i) for i in range(self.collection_details["num_motions"])], description='classes'),
+                RegexFilter("_R_",".csv", [str(i) for i in range(self.collection_details["num_reps"])], description='reps')
+            ]
+            offline_data_handler.get_data(dpg.get_value(item="__di_data_folder"), regex_filters=regex_filters)
             self.gui.offline_data_handlers.append(offline_data_handler)
             self.gui.offline_data_aliases.append(dpg.get_value("__di_data_alias"))
             validation_text += "Import successful"
