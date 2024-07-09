@@ -216,16 +216,29 @@ def _match_nus_uuid(_device: BLEDevice, adv: AdvertisementData):
         return True
     return False
 
+from multiprocessing import Process, Event
+from libemg.shared_memory_manager import SharedMemoryManager
+import numpy as np
+class Gforce(Process):
+    def __init__(self, sampling_rate=1000, res=8, emg=True, imu=False, shared_memory_items=[]):
+        Process.__init__(self, daemon=True)
+        self.emg = emg
+        self.imu = imu
+        self.sampling_rate = sampling_rate
+        self.res = res
+        self.emg_conf = EmgRawDataConfig()
+        if self.sampling_rate == 500:
+            self.emg_conf = EmgRawDataConfig(fs = SamplingRate.HZ_500, resolution=SampleResolution.BITS_12)
+        
+        self.shared_memory_items = shared_memory_items
+        self.smm = SharedMemoryManager()
+        self.signal = Event()
 
-class Gforce:
-    def __init__(self, ip, port):
-        self.client = None
+        self.client = None # bluetooth client
         self.cmd_char = None
         self.data_char = None
         self.responses: Dict[Command, Queue] = {}
         self.resolution = SampleResolution.BITS_12
-        self.ip = ip
-        self.port = port
 
         self.packet_id = 0
         self.data_packet = []
@@ -622,29 +635,38 @@ class Gforce:
         if not req.has_res:
             return None
 
-        return await asyncio.wait_for(q.get(), 3)
+        return await asyncio.wait_for(q.get(), 5)
 
+    def run(self):
+        asyncio.run(self.start_stream())
 
-async def start_stream(gforce,sampling):
-    import socket
-    import pickle
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    async def start_stream(self):
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
+        await self.connect()
+        await self.set_emg_raw_data_config(self.emg_conf)
+        await self.set_subscription(
+            DataSubscription.EMG_RAW
+        )
+        print("Connected to Oymotion Cuff!")
 
-    await gforce.connect()
-    emg_conf = EmgRawDataConfig()
-    if sampling == 500:
-        emg_conf = EmgRawDataConfig(fs = SamplingRate.HZ_500, resolution=SampleResolution.BITS_12)
-    await gforce.set_emg_raw_data_config(emg_conf)
-    await gforce.set_subscription(
-        DataSubscription.EMG_RAW
-    )
-    print("Connected to Oymotion Cuff!")
+        q = await self.start_streaming()
+        while True:
+            if self.signal.is_set():
+                self.cleanup()
+                break
+            try:
+                for e in await q.get():
+                    emg = np.expand_dims(np.array(e),0)
+                    self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
+                    self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+                    
+            except:
+                print("Worker Stopped.")
+                quit()
 
-    q = await gforce.start_streaming()
-    while True:
-        for e in await q.get():
-            data_arr = pickle.dumps(list(e))
-            sock.sendto(data_arr, (gforce.ip, gforce.port))
-
-def oym_start_stream(gforce, sampling):
-    asyncio.run(start_stream(gforce, sampling))
+    def cleanup(self):
+        self.disconnect()
+        print("Oymotion has disconnected.")
+    # def oym_start_stream(gforce, sampling):
+    #     asyncio.run(start_stream(gforce, sampling))

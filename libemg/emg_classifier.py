@@ -6,7 +6,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from libemg.feature_extractor import FeatureExtractor
-from multiprocessing import Process
+from libemg.shared_memory_manager import SharedMemoryManager
+from multiprocessing import Process, Lock
 import numpy as np
 import pickle
 import socket
@@ -16,6 +17,7 @@ import matplotlib.cm as cm
 import time
 import inspect
 from scipy import stats
+import csv
 
 from libemg.utils import get_windows
 
@@ -186,7 +188,9 @@ class EMGClassifier:
         """
         self.majority_vote = num_samples
 
-    def add_velocity(self, train_windows, train_labels):
+    def add_velocity(self, train_windows, train_labels,
+                     velocity_metric_handle = None,
+                     velocity_mapping_handle = None):
         """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
 
         Note, that when using this optional, ramp contractions should be captured for training. 
@@ -194,7 +198,10 @@ class EMGClassifier:
         Parameters
         -----------
         """
+        self.velocity_metric_handle = velocity_metric_handle
+        self.velocity_mapping_handle = velocity_mapping_handle
         self.velocity = True
+
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
 
 
@@ -330,8 +337,21 @@ class EMGClassifier:
         return np.array(updated_predictions)
     
     def _get_velocity(self, window, c):
+        mod = "emg" # todo: specify another way to do this is needed
+        
         if self.th_max_dic and self.th_min_dic:
+<<<<<<< HEAD
             velocity_output = (np.sum(np.mean(np.abs(window),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
+=======
+            if self.velocity_metric_handle is None:
+                velocity_metric = np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0)
+            else:
+                velocity_metric = self.velocity_metric_handle(window[mod])
+            
+            velocity_output = (velocity_metric - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
+            if self.velocity_mapping_handle:
+                velocity_output = self.velocity_mapping_handle(velocity_output)
+>>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
             return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
     def _set_up_velocity_control(self, train_windows, train_labels):
@@ -342,14 +362,18 @@ class EMGClassifier:
         for c in classes:
             indices = np.where(train_labels == c)[0]
             c_windows = train_windows[indices]
-            mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
-            mav_tr_max = np.max(mav_tr)
-            mav_tr_min = np.min(mav_tr)
+            if self.velocity_metric_handle is None:
+                velocity_metric = np.sum(np.mean(np.abs(c_windows),2), axis=1)
+            else:
+                velocity_metric = self.velocity_metric_handle(c_windows)
+            # mav_tr = np.sum(np.mean(np.abs(c_windows),2), axis=1)
+            tr_max = np.max(velocity_metric)
+            tr_min = np.min(velocity_metric)
             # Calculate THmin 
-            th_min = ((1-(10/100)) * mav_tr_min) + (0.1 * mav_tr_max)
+            th_min = ((1-(10/100)) * tr_min) + (0.1 * tr_max)
             th_min_dic[c] = th_min 
             # Calculate THmax
-            th_max = ((1-(70/100)) * mav_tr_min) + (0.7 * mav_tr_max)
+            th_max = ((1-(70/100)) * tr_min) + (0.7 * tr_max)
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
 
@@ -402,7 +426,194 @@ class EMGClassifier:
         plt.legend(loc='lower right')
         plt.show()
     
-class OnlineEMGClassifier:
+
+
+class OnlineStreamer:
+    """OnlineStreamer.
+
+    This is a base class for using algorithms (classifiers/regressors/other) in conjunction with online streamers.
+
+
+    Parameters
+    ----------
+    offline_classifier: EMGClassifier
+        An EMGClassifier object. 
+    window_size: int
+        The number of samples in a window. 
+    window_increment: int
+        The number of samples that advances before next window.
+    online_data_handler: OnlineDataHandler
+        An online data handler object.
+    features: list or None
+        A list of features that will be extracted during real-time classification. These should be the 
+        same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
+    file_path: str (optional)
+        A location that the inputs and output of the classifier will be saved to.
+    file: bool (optional)
+        A toggle for activating the saving of inputs and outputs of the classifier.
+    smm: bool (optional)
+        A toggle for activating the storing of inputs and outputs of the classifier in the shared memory manager.
+    smm_items: list (optional)
+        A list of lists containing the tag, size, and multiprocessing locks for shared memory.
+    parameters: dict (optional)
+        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
+        in the sklearn docs for the given model.
+    port: int (optional), default = 12346
+        The port used for streaming predictions over UDP.
+    ip: string (optional), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    velocity: bool (optional), default = False
+        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
+    std_out: bool (optional), default = False
+        If True, prints predictions to std_out.
+    tcp: bool (optional), default = False
+        If True, will stream predictions over TCP instead of UDP.
+    """
+
+    def __init__(self, 
+                 offline_classifier, 
+                 window_size, 
+                 window_increment, 
+                 online_data_handler, 
+                 file_path, file, 
+                 smm, smm_items, 
+                 features, 
+                 port, ip, 
+                 std_out, 
+                 tcp, 
+                 output_format):
+        self.window_size = window_size
+        self.window_increment = window_increment
+        self.odh = online_data_handler
+        self.features = features
+        self.port = port
+        self.ip = ip
+        self.classifier = offline_classifier
+
+        self.output_format = output_format
+
+        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
+
+        self.smm = smm
+        self.smm_items = smm_items
+
+        
+
+        self.files = {}
+        self.tcp = tcp
+        if not tcp:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        else:
+            print("Waiting for TCP connection...")
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.sock.bind((ip, port))
+            self.sock.listen()
+            self.conn, addr = self.sock.accept()
+            print(f"Connected by {addr}")
+
+        self.process = Process(target=self._run_helper, daemon=True,)
+    
+    def start_stream(self, block=True):
+        if block:
+            self._run_helper()
+        else:
+            self.process.start()
+
+    # def get_data(self, data):
+    #     # Extract window and predict sample
+    #     window = get_windows(data, self.window_size, self.window_size)
+    #     # Dealing with the case for CNNs when no features are used
+    #     if self.features:
+    #         features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
+    #         classifier_input = self._format_data_sample(features)
+    #     else:
+    #         classifier_input = window
+    #     self.raw_data.adjust_increment(self.window_size, self.window_increment)
+    #     return window, classifier_input
+    
+    def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
+        time_stamp = time.time()
+        if calculated_velocity == "":
+            printed_velocity = "-1"
+        else:
+            printed_velocity = float(calculated_velocity)
+        if self.options['std_out']:
+            print(f"{int(prediction)} {printed_velocity} {time.time()}")
+        # Write classifier output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
+        if "smm" in self.options.keys():
+            #assumed to have "classifier_input" and "classifier_output" keys
+            # these are (1+)
+            def insert_classifier_input(data):
+                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
+                return data
+            def insert_classifier_output(data):
+                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
+                return data
+            self.options['smm'].modify_variable("classifier_input",
+                                                insert_classifier_input)
+            self.options['smm'].modify_variable("classifier_output",
+                                                insert_classifier_output)
+            self.options['classifier_smm_writes'] += 1
+
+        if self.output_format == "predictions":
+            message = str(prediction) + calculated_velocity + '\n'
+        elif self.output_format == "probabilities":
+            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+        if not self.tcp:
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
+                    
+    def prepare_smm(self):
+        smm = SharedMemoryManager()
+        for item in self.smm_items:
+            smm.create_variable(*item)
+        self.options['smm'] = smm
+        self.options['classifier_smm_writes'] = 0
+
+    def _format_data_sample(self, data):
+        arr = None
+        for feat in data:
+            if arr is None:
+                arr = data[feat]
+            else:
+                arr = np.hstack((arr, data[feat]))
+        return arr
+
+    def _get_data_helper(self):
+        data, counts = self.odh.get_data(N=self.window_size)
+        for key in data.keys():
+            data[key] = data[key][::-1]
+        return data, counts
+    
+    def get_interaction_items(self):
+        return self.smm_items
+    
+    # ----- All of these are unique to each online streamer ----------
+    def run(self):
+        pass 
+
+    def stop_running(self):
+        pass
+
+    def _run_helper(self):
+        pass
+
+
+
+
+class OnlineEMGClassifier(OnlineStreamer):
     """OnlineEMGClassifier.
 
     Given a EMGClassifier and additional information, this class will stream class predictions over UDP in real-time.
@@ -420,6 +631,10 @@ class OnlineEMGClassifier:
     features: list or None
         A list of features that will be extracted during real-time classification. These should be the 
         same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
+    file_path: str (optional)
+        A location that the inputs and output of the classifier will be saved to.
+    file: bool (optional)
+        A toggle for activating the saving of inputs and outputs of the classifier.
     parameters: dict (optional)
         A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
         in the sklearn docs for the given model.
@@ -438,6 +653,7 @@ class OnlineEMGClassifier:
     channels: list (optional), default=None 
         If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
     """
+<<<<<<< HEAD
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False, output_format="predictions", channels=None):
         self.window_size = window_size
         self.window_increment = window_increment
@@ -464,7 +680,23 @@ class OnlineEMGClassifier:
 
         self.process = Process(target=self._run_helper, daemon=True,)
         self.std_out = std_out
+=======
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
+                 file_path = '.', file=False, smm=True, 
+                 smm_items=[["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                      ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+                      ["adapt_flag", (1,1), np.int32],
+                      ["active_flag", (1,1), np.int8]],
+                 port=12346, ip='127.0.0.1', std_out=False, tcp=False,
+                 output_format="predictions"):
+        
+        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
+>>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
+        self.smi = smm_items
+        
+
+        
         
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
@@ -516,6 +748,7 @@ class OnlineEMGClassifier:
         print("Total Number of Predictions: " + str(len(times) + 1))
         self.stop_running()
     
+<<<<<<< HEAD
     def visualize(self, max_len=50, legend=None):
         """Produces a live plot of classifier decisions -- Note this consumes the decisions.
         Do not use this alongside the actual control operation of libemg. Online classifier has to
@@ -601,10 +834,63 @@ class OnlineEMGClassifier:
                 else:
                     classifier_input = window
                 self.raw_data.adjust_increment(self.window_size, self.window_increment)
+=======
+    def _run_helper(self):
+        if self.smm:
+            self.prepare_smm()
+            self.options['smm'].modify_variable("active_flag", lambda x:1)
+            self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+        
+        self.odh.prepare_smm()
+
+        if self.features is not None:
+            fe = FeatureExtractor()
+        
+        self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
+        # todo: deal with different sampling frequencies for different modalities
+        self.odh.reset()
+        
+        files = {}
+        while True:
+            if not self.options["smm"].get_variable("active_flag")[0,0]:
+                continue
+
+            if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
+                self.load_emg_classifier(self.options["smm"].get_variable("adapt_flag")[0][0])
+                self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+
+            val, count = self.odh.get_data(N=self.window_size)
+            modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
+
+            if all(modality_ready):
+                data, count = self._get_data_helper()
+
+                # Extract window and predict sample
+                window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
+
+                # Dealing with the case for CNNs when no features are used
+                if self.features:
+                    classifier_input = None
+                    for mod in self.odh.modalities:
+                        # todo: features for each modality can be different
+                        mod_features = fe.extract_features(self.features, window[mod], self.classifier.feature_params)
+                        mod_features = self._format_data_sample(mod_features)
+                        if classifier_input is None:
+                            classifier_input = mod_features
+                        else:
+                            classifier_input = np.hstack((classifier_input, mod_features))
+                    
+                else:
+                    classifier_input = window
+                
+                for mod in self.odh.modalities:
+                    self.expected_count[mod] += self.window_increment 
+                
+                # Make prediction
+>>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
                 probabilities = self.classifier.classifier.predict_proba(classifier_input)
                 prediction, probability = self.classifier._prediction_helper(probabilities)
                 prediction = prediction[0]
-                probability = probability[0]
 
                 # Check for rejection
                 if self.classifier.rejection:
@@ -625,6 +911,7 @@ class OnlineEMGClassifier:
                     if prediction >= 0:
                         calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
+<<<<<<< HEAD
                 time_stamp = time.time()
                 # Write classifier output:
                 if not self.tcp:
@@ -642,6 +929,14 @@ class OnlineEMGClassifier:
                 
                 if self.std_out:
                     print(message)
+=======
+                self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
+                
+    def load_emg_classifier(self, number):
+        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
+            self.classifier = pickle.load(handle)
+            print(f"Loaded model #{number}.")
+>>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
     
 
 
@@ -654,7 +949,71 @@ class OnlineEMGClassifier:
                 arr = np.hstack((arr, data[feat]))
         return arr
 
+    def visualize(self, max_len=50, legend=None):
+        """Produces a live plot of classifier decisions -- Note this consumes the decisions.
+        Do not use this alongside the actual control operation of libemg. Online classifier has to
+        be running in "probabilties" output mode for this plot.
+
+        Parameters
+        ----------
+        max_len: (int) (optional) 
+            number of decisions to visualize
+        legend: (list) (optional)
+            The legend to display on the plot
+        """
+        #### NOT CURRENTLY WORKING
+        assert 1==0, "Method not ready"
+        plt.style.use("ggplot")
+        figure, ax = plt.subplots()
+        figure.suptitle("Live Classifier Output", fontsize=16)
+        plot_handle = ax.scatter([],[],c=[])
+        
+
+        # make a new socket that subscribes to the libemg events
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        sock.bind(('127.0.0.1', 12346))
+        num_classes = len(self.classifier.classifier.classes_)
+        cmap = cm.get_cmap('turbo', num_classes)
+
+        if legend is not None:
+            for i in range(num_classes):
+                plt.plot(i, label=legend[i], color=cmap.colors[i])
+            ax.legend()
+            legend_handles, legend_labels = ax.get_legend_handles_labels()
+        decision_horizon_classes = []
+        decision_horizon_probabilities = []
+        timestamps = []
+        start_time = time.time()
+        while True:
+            data, _ = sock.recvfrom(1024)
+            data = str(data.decode("utf-8"))
+            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
+            max_prob = np.max(probabilities)
+            prediction = np.argmax(probabilities)
+            decision_horizon_classes.append(prediction)
+            decision_horizon_probabilities.append(max_prob)
+            timestamps.append(float(data.split(" ")[-1]) - start_time)
+
+            decision_horizon_classes = decision_horizon_classes[-max_len:]
+            decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
+            timestamps = timestamps[-max_len:]
+
+            if plt.fignum_exists(figure.number):
+                plt.cla()
+                ax.scatter(timestamps, decision_horizon_probabilities,c=cmap.colors[decision_horizon_classes])
+                plt.ylim([0,1.5])
+                ax.set_xlabel("Time (s)")
+                ax.set_ylabel("Probability")
+                ax.set_ylim([0, 1.5])
+                if legend is not None:
+                    ax.legend(handles=legend_handles, labels=legend_labels)
+                plt.draw()
+                plt.pause(0.01)
+            else:
+                return
+
     def _get_data_helper(self):
+<<<<<<< HEAD
         data = np.array(self.raw_data.get_emg())
         if self.filters is not None:
             try:
@@ -664,3 +1023,10 @@ class OnlineEMGClassifier:
         return data
     
     
+=======
+        data, counts = self.odh.get_data(N=self.window_size)
+        for key in data.keys():
+            data[key] = data[key][::-1]
+        return data, counts
+        
+>>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)

@@ -67,12 +67,9 @@ class OyMotionStreamer():
 
 ## BEGIN HARDWARE SPECIFIC CONFIG
 import platform
-try:
+if platform.system() == 'Linux':
     from bluepy import btle
     from bluepy.btle import DefaultDelegate, Scanner, Peripheral
-except:
-    if platform.system() == 'Linux':
-        print("Install Bluepy to use oymotion.")
 from datetime import datetime, timedelta
 import struct
 from enum import Enum
@@ -290,7 +287,7 @@ class CommandCallbackTableEntry():
         self._timeoutTime = _timeoutTime
         self._cb = _cb
 
-try:
+if platform.system() == 'Linux':
     class MyDelegate(btle.DefaultDelegate):
         def __init__(self, gforce):
             super().__init__()
@@ -316,8 +313,6 @@ try:
             if cHandle == self.gforce.notifyCharacteristic.getHandle():
                 self.gforce.handleDataNotification(data, self.gforce.onData)
             # self.gforce.lock.release()
-except:
-    pass
 
 
 class GForceProfile():
