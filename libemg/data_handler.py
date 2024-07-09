@@ -317,8 +317,13 @@ class OfflineDataHandler(DataHandler):
         [files.remove(rf) for rf in removed_files]
         print(f"{len(removed_files)} of {num_files} files violated regex and were excluded")
     
-    def visualize():
+    def visualize(self):
         pass
+
+    def start_listening(self):
+        print("LibEMG>v1.0 no longer requires offline_data_handler.start_listening().\nThis is deprecated.")
+        pass
+
 
 class OnlineDataHandler(DataHandler):
     """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
