@@ -36,6 +36,7 @@ setup(
         "PyWavelets",
         "requests",
         "semantic-version",
+        "websockets",
     ],
     keywords=[
         "emg",

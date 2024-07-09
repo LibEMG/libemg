@@ -324,10 +324,6 @@ class OfflineDataHandler(DataHandler):
     def visualize(self):
         pass
 
-    def start_listening(self):
-        print("LibEMG>v1.0 no longer requires offline_data_handler.start_listening().\nThis is deprecated.")
-        pass
-
 
 class OnlineDataHandler(DataHandler):
     """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
@@ -719,3 +715,7 @@ class OnlineDataHandler(DataHandler):
             if time.time() - wt > timeout:
                 print("Not reading any data.... Check hardware connection.")
                 return False
+            
+    def start_listening(self):
+        print("LibEMG>v1.0 no longer requires offline_data_handler.start_listening().\nThis is deprecated.")
+        pass

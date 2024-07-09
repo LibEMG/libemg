@@ -547,18 +547,11 @@ class MyoStreamer(Process):
                 self.smm.modify_variable("imu_count", lambda x: x + 1)
             m.add_imu_handler(write_imu)
 
-		if self.imu:
-			def write_imu(quat, acc, gyro):
-				imu_arr = ['IMU', [*quat, *acc, *gyro]]
-				data_arr = pickle.dumps(imu_arr)
-				sock.sendto(data_arr, (self.ip, self.port))
-			m.add_imu_handler(write_imu)
-
-		m.set_leds([0, 128, 0], [0, 128, 0])
+        m.set_leds([128, 0, 0], [128, 0, 0])
 		# Vibrate to show that its connected
-		m.vibrate(3)
+        m.vibrate(3)
 		# Disable vibrations
-		m.vibrate(0)
+        m.vibrate(0)
 
         while True:
             if self.signal.is_set():

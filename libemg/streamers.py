@@ -7,7 +7,7 @@ from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 if platform.system() != 'Linux':
-    from libemg._streamers._oymotion_windows_streamer import Gforce, oym_start_stream
+    from libemg._streamers._oymotion_windows_streamer import Gforce
 else: 
     from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer

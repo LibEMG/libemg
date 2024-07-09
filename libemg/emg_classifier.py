@@ -572,6 +572,9 @@ class OnlineStreamer:
             self.conn.sendall(str.encode(message))
                     
     def prepare_smm(self):
+        for i in self.smi:
+            if len(i) == 3:
+                i.append(Lock())
         smm = SharedMemoryManager()
         for item in self.smm_items:
             smm.create_variable(*item)
@@ -658,6 +661,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
                  output_format="predictions"):
         
+        
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         self.smi = smm_items
@@ -732,12 +736,13 @@ class OnlineEMGClassifier(OnlineStreamer):
         
         files = {}
         while True:
-            if not self.options["smm"].get_variable("active_flag")[0,0]:
-                continue
+            if self.smm:
+                if not self.options["smm"].get_variable("active_flag")[0,0]:
+                    continue
 
-            if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
-                self.load_emg_classifier(self.options["smm"].get_variable("adapt_flag")[0][0])
-                self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+                if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
+                    self.load_emg_classifier(self.options["smm"].get_variable("adapt_flag")[0][0])
+                    self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
 
             val, count = self.odh.get_data(N=self.window_size)
             modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
@@ -758,10 +763,10 @@ class OnlineEMGClassifier(OnlineStreamer):
                         if classifier_input is None:
                             classifier_input = mod_features
                         else:
-                            classifier_input = np.hstack((classifier_input, mod_features))
+                            classifier_input = np.hstack((classifier_input, mod_features)) 
                     
                 else:
-                    classifier_input = window
+                    classifier_input = window[list(window.keys())[0]] #TODO: Change this
                 
                 for mod in self.odh.modalities:
                     self.expected_count[mod] += self.window_increment 
