@@ -1488,6 +1488,20 @@ class FeatureExtractor:
         features = np.hstack([-np.sum(i*np.log(i), axis=2) for i in prob])
         return features
 
+    def getMEANfeat(self, windows):
+        """Extract mean of signal (MEAN) feature.
+        
+        Parameters
+        ----------
+        windows: list 
+            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
+        Returns
+        ----------
+        list
+            The computed features associated with each window. 
+        """
+        return np.mean(windows, -1)
+
     def visualize(self, feature_dic):
         """Visualize a set of features.
         

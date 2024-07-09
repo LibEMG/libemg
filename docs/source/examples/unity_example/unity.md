@@ -65,10 +65,10 @@ Once the initial game worked with simple keyboard controls, we implemented the E
 
 ```Python
 from libemg.screen_guided_training import ScreenGuidedTraining
-from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
+from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier 
+from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier 
 from libemg.streamers import myo_streamer
 ```
 
@@ -96,18 +96,14 @@ The first step involves processing the accumulated training data into an `Offlin
 # Step 1: Parse offline training data
 dataset_folder = 'data/'
 classes_values = ["0","1","2","3"]
-classes_regex = make_regex(left_bound = "_C_", right_bound=".csv", values = classes_values)
 reps_values = ["0", "1", "2"]
-reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-dic = {
-    "reps": reps_values,
-    "reps_regex": reps_regex,
-    "classes": classes_values,
-    "classes_regex": classes_regex
-}
+regex_filters = [
+    RegexFilter(left_bound = "_C_", right_bound=".csv", values = classes_values, description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+]
 
 odh = OfflineDataHandler()
-odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
+odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
 train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
@@ -130,8 +126,8 @@ Next, we have to create an offline EMG classifier. We have opted for an SVM mode
 
 ```Python
 # Step 4: Create the EMG classifier
-o_classifier = EMGClassifier()
-o_classifier.fit(model="SVM", feature_dictionary=data_set)
+o_classifier = EMGClassifier("SVM")
+o_classifier.fit(feature_dictionary=data_set)
 o_classifier.add_velocity(train_windows, train_metadata['classes'])
 o_classifier.add_majority_vote(5)
 o_classifier.add_rejection(0.9)

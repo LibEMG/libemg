@@ -2,10 +2,12 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from libemg.data_handler import OfflineDataHandler
+from libemg.data_handler import ColumnFetcher, MetadataFetcher, OfflineDataHandler, RegexFilter
 from libemg.utils import make_regex
 from glob import glob
 from os import walk
+from pathlib import Path
+from datetime import datetime
 # this assumes you have git downloaded (not pygit, but the command line program git)
 
 class Dataset:
@@ -50,22 +52,14 @@ class _3DCDataset(Dataset):
                                                       reps_values = ["0","1","2","3"],
                                                       classes_values = [str(i) for i in range(11)]):
         if format == OfflineDataHandler:
-            sets_regex = make_regex(left_bound = "/", right_bound="/EMG", values = sets_values)
-            classes_regex = make_regex(left_bound = "_", right_bound=".txt", values = classes_values)
-            reps_regex = make_regex(left_bound = "EMG_gesture_", right_bound="_", values = reps_values)
-            subjects_regex = make_regex(left_bound="Participant", right_bound="/",values=subjects_values)
-            dic = {
-                "sets": sets_values,
-                "sets_regex": sets_regex,
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/", right_bound="/EMG", values = sets_values, description='sets'),
+                RegexFilter(left_bound = "_", right_bound=".txt", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "EMG_gesture_", right_bound="_", values = reps_values, description='reps'),
+                RegexFilter(left_bound="Participant", right_bound="/",values=subjects_values, description='subjects')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 class Ninapro(Dataset):
@@ -155,19 +149,13 @@ class NinaproDB8(Ninapro):
                                                       classes_values = [str(i) for i in range(9)]):
         
         if format == OfflineDataHandler:
-            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
-            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
-            subjects_regex = make_regex(left_bound="DB8_s", right_bound="/",values=subjects_values)
-            dic = {
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+                RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 class NinaproDB2(Ninapro):
@@ -181,19 +169,13 @@ class NinaproDB2(Ninapro):
                                                       classes_values = [str(i) for i in range(50)]):
         
         if format == OfflineDataHandler:
-            classes_regex = make_regex(left_bound = "/C", right_bound="R", values = classes_values)
-            reps_regex = make_regex(left_bound = "R", right_bound=".csv", values = reps_values)
-            subjects_regex = make_regex(left_bound="DB2_s", right_bound="/",values=subjects_values)
-            dic = {
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-                "subjects": subjects_values,
-                "subjects_regex": subjects_regex
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+                RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 
 # given a directory, return a list of files in that directory matching a format
@@ -209,6 +191,7 @@ def find_all_files_of_type_recursively(dir, terminator):
             if os.path.isdir(dir+file):
                 file_list += find_all_files_of_type_recursively(dir+file+'/',terminator)
     return file_list
+
 
 class OneSubjectMyoDataset(Dataset):
     def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
@@ -226,22 +209,126 @@ class OneSubjectMyoDataset(Dataset):
     def prepare_data(self, format=OfflineDataHandler):
         if format == OfflineDataHandler:
             sets_values = ["1","2","3","4","5","6"]
-            sets_regex = make_regex(left_bound = "/trial_", right_bound="/", values = sets_values)
             classes_values = ["0","1","2","3","4"]
-            classes_regex = make_regex(left_bound = "C_", right_bound=".csv", values = classes_values)
             reps_values = ["0","1"]
-            reps_regex = make_regex(left_bound = "R_", right_bound="_", values = reps_values)
-            dic = {
-                "sets": sets_values,
-                "sets_regex": sets_regex,
-                "reps": reps_values,
-                "reps_regex": reps_regex,
-                "classes": classes_values,
-                "classes_regex": classes_regex,
-            }
+            regex_filters = [
+                RegexFilter(left_bound = "/trial_", right_bound="/", values = sets_values, description='sets'),
+                RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes'),
+                RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps')
+            ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
+
+
+class _SessionFetcher(MetadataFetcher):
+    def __init__(self):
+        super().__init__('sessions')
+
+    def __call__(self, filename, file_data, all_files):
+        def split_filename(f):
+            # Split date and name into separate variables
+            date_idx = f.find('2018')
+            date = datetime.strptime(Path(f[date_idx:]).stem, '%Y-%m-%d-%H-%M-%S-%f')
+            description = f[:date_idx]
+            return date, description
+
+        data_file_date, data_file_description = split_filename(filename)
+
+        # Grab the other file of a different date. Return the index of which session it is
+        same_subject_files = [f for f in all_files if data_file_description in f]
+        file_dates = [split_filename(subject_filename)[0] for subject_filename in same_subject_files]
+        file_dates.sort()
+        session_idx = file_dates.index(data_file_date)
+        return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
+
+
+class _RepFetcher(ColumnFetcher):
+    def __call__(self, filename, file_data, all_files):
+        column_data = super().__call__(filename, file_data, all_files)
+        
+        # Get rep transitions
+        diff = np.diff(column_data, axis=0)
+        rep_end_row_mask, rep_end_col_mask = np.nonzero((diff < 0) & (column_data[1:] == 0))
+        unique_rep_end_row_mask = np.unique(rep_end_row_mask)  # remove duplicate start indices (for combined movements)
+        # rest_end_row_mask = np.nonzero(np.diff(np.nonzero(column_data == 0)[0]) > 1)[0]
+        # rest_end_row_mask = np.nonzero(np.diff(np.nonzero(np.all(column_data == 0, axis=1))[0]) > 1)[0]
+        # unique_rep_end_row_mask = np.concatenate((unique_rep_end_row_mask, rest_end_row_mask))
+        # unique_rep_end_row_mask = np.sort(unique_rep_end_row_mask)
+
+
+        # Populate metadata array
+        metadata = np.empty((column_data.shape[0], 1), dtype=np.int16)
+        rep_counters = [0 for _ in range(5)]    # 5 different press types
+        previous_rep_start = 0
+        for idx, rep_start in enumerate(unique_rep_end_row_mask):
+            movement_idx = 4 if np.sum(rep_end_row_mask == rep_start) > 1 else rep_end_col_mask[idx]    # if multiple columns are nonzero then it's a combined movement
+            rep = rep_counters[movement_idx]
+            metadata[previous_rep_start:rep_start] = rep
+            rep_counters[movement_idx] += 1
+            previous_rep_start = rep_start
+
+        # Fill in final samples
+        metadata[rep_start:] = rep
+
+        return metadata
+
+
+class PutEMGForceDataset(Dataset):
+    def __init__(self, save_dir = '.', dataset_name = 'PutEMGForceDataset', data_filetype = None):
+        """Dataset wrapper for putEMG-Force dataset. Used for regression of finger forces.
+
+        Parameters
+        ----------
+        save_dir : str, default='.'
+            Base data directory.
+        dataset_name : str, default='PutEMGForceDataset'
+            Name of dataset. Looks for dataset in filepath created by appending save_dir and dataset_name.
+        data_filetype : list or None, default=None
+            Type of data file to use. Accepted values are 'repeats_long', 'repeats_short', 'sequential', or any combination of those. If None is passed, all will be used.
+        """
+        # TODO: Implement downloading dataset using .sh or .py file
+        super().__init__(save_dir)
+        self.dataset_name = dataset_name
+        self.dataset_folder = os.path.join(self.save_dir, self.dataset_name)
+        if data_filetype is None:
+            data_filetype = ['repeats_short', 'repeats_long', 'sequential']
+        elif not isinstance(data_filetype, list):
+            data_filetype = [data_filetype]
+        self.data_filetype = data_filetype
+
+    def prepare_data(self, format=OfflineDataHandler, subjects = None, sessions = None, reps = None, labels = 'forces', label_dof_mask = None):
+        if subjects is None:
+            subjects = [str(idx).zfill(2) for idx in range(60)] 
+
+        if labels == 'forces':
+            column_mask = np.arange(25, 35)
+        elif labels == 'trajectories':
+            column_mask = np.arange(36, 40)
+        else:
+            raise ValueError(f"Expected either 'forces' or trajectories' for labels parameter, but received {labels}.")
+
+        if label_dof_mask is not None:
+            column_mask = column_mask[label_dof_mask]
+
+        if format == OfflineDataHandler:
+            regex_filters = [
+                RegexFilter(left_bound='/emg_force-', right_bound='-', values=subjects, description='subjects'),
+                RegexFilter(left_bound='-', right_bound='-', values=self.data_filetype, description='data_filetype'),
+            ]
+            metadata_fetchers = [
+                _SessionFetcher(),
+                ColumnFetcher('labels', column_mask),
+                _RepFetcher('reps', list(range(36, 40)))
+            ]
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=',', skiprows=1, data_column=list(range(1, 25)))
+            if sessions is not None:
+                odh = odh.isolate_data('sessions', sessions)
+            if reps is not None:
+                odh = odh.isolate_data('reps', reps)
+            return odh
+            
 
 # class GRABMyo(Dataset):
 #     def __init__(self, save_dir='.', redownload=False, subjects=list(range(1,44)), sessions=list(range(1,4)), dataset_name="GRABMyo"):

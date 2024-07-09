@@ -23,4 +23,9 @@ dearpygui
 # For oymotion - only on linx
 bluepy
 PyWavelets==1.4.1
+# for new sgt
+dearpygui
+json
+opencv-python
+datetime
 websockets==8.1

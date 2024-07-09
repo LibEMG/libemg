@@ -46,7 +46,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from libemg.datasets import _3DCDataset
-from libemg.emg_classifier import EMGClassifier
+from libemg.emg_predictor import EMGClassifier
 from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import make_regex
 from libemg.data_handler import OfflineDataHandler
@@ -108,8 +108,8 @@ if __name__ == "__main__":
             data_set['training_labels'] = train_metadata["classes"]
 
             # setup the classifier
-            classifier = EMGClassifier()
-            classifier.fit(model,feature_dictionary=data_set.copy())
+            classifier = EMGClassifier(model)
+            classifier.fit(feature_dictionary=data_set.copy())
 
             # running the classifier analyzes the test data we already passed it
             preds,probs = classifier.run(test_features, test_metadata['classes'])

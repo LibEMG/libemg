@@ -54,7 +54,7 @@ for s in subjects: # subjects = range(10) of possible range(12)
     test_windows,  test_metadata  = test_odh.parse_windows(window_size, window_increment)
 ```
 
-Now, we can nest another loop that extracts individual feature and feature sets from these prepared windows. Once the features are extracted we can prepare the feature dictionary (a standard format for the libemg.emg_classifier.EMGClassifier object that indicates you want to use handcrafted features).
+Now, we can nest another loop that extracts individual feature and feature sets from these prepared windows. Once the features are extracted we can prepare the feature dictionary (a standard format for the libemg.emg_predictor.EMGClassifier object that indicates you want to use handcrafted features).
 ```Python
 for f in range(len(feature_list)+len(feature_group_list)):
     if f < len(feature_list):
@@ -73,8 +73,8 @@ for f in range(len(feature_list)+len(feature_group_list)):
 
 Finally, with these features prepared we can train a classifier and determine the classification accuracy:
 ```Python
-clf = libemg.emg_classifier.EMGClassifier()
-clf.fit("LDA", feature_dictionary.copy())
+clf = libemg.emg_predictor.EMGClassifier('LDA')
+clf.fit(feature_dictionary.copy())
 preds = clf.run(test_features, test_metadata["classes"])
 results[s,f] = om.extract_offline_metrics(["CA"], test_metadata["classes"], preds[0])["CA"] * 100
 print("Subject: {}, Feature: {}, Accuracy: {}".format(s+1, feature, results[s,f]))

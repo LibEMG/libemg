@@ -66,13 +66,13 @@ Now we can finally begin iterating through assessing the accuracy of these test 
         }
         train_features = fe.extract_features(["WAMP"], train_windows, dic)
         valid_features = fe.extract_features(["WAMP"], valid_windows, dic)
-        model = libemg.emg_classifier.EMGClassifier()
+        model = libemg.emg_predictor.EMGClassifier("LDA")
         feature_dictionary = {"training_features": train_features,
                               "training_labels":   train_metadata["classes"]}
         try:
             # If we use a try block, we don't need to worry about non-invertable matrices
             # The results would just stay 0 as initialized.
-            model.fit(model="LDA", feature_dictionary = feature_dictionary)
+            model.fit(feature_dictionary = feature_dictionary)
             predictions, probabilties = model.run(valid_features)
             threshold_results[tp] = om.get_CA(valid_metadata["classes"], predictions) * 100
         finally:
@@ -109,8 +109,8 @@ From this figure, we have found that the best threshold value is 92. We can now 
     test_features  = fe.extract_features(["WAMP"], test_windows, dic)
     feature_dictionary = {"training_features": train_features,
                           "training_labels":   train_metadata["classes"]}
-    model = libemg.emg_classifier.EMGClassifier()
-    model.fit(model="LDA", feature_dictionary = feature_dictionary)
+    model = libemg.emg_predictor.EMGClassifier("LDA")
+    model.fit(, feature_dictionary = feature_dictionary)
     predictions, probabilties = model.run(test_features)
     test_accuracy = om.get_CA(test_metadata["classes"], predictions) * 100 
 

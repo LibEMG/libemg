@@ -6,6 +6,7 @@ sifi_bridge_windows.exe
 libemg.egg-info/*
 token.txt
 .pytest_cache/*
+.vscode/*
 tests/__pycache__/*
 .coverage
 build/*

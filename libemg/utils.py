@@ -1,4 +1,11 @@
+import os
+
 import numpy as np
+from PIL import Image, UnidentifiedImageError
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.patches import Circle
+
 
 def get_windows(data, window_size, window_increment):
     """Extracts windows from a given set of data.
@@ -42,6 +49,18 @@ def _get_mode_windows(data, window_size, window_increment):
     mode_of_windows = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=2, arr=windows.astype(np.int64))
     
     return mode_of_windows.squeeze()
+
+def _get_fn_windows(data, window_size, window_increment, fn):
+    windows = get_windows(data, window_size, window_increment)
+    # we want to apply the function along the final dimension
+    
+    if type(fn) is list:
+        fn_of_windows = windows
+        for i in fn:
+            fn_of_windows = np.apply_along_axis(lambda x: i(x), axis=2, arr=fn_of_windows)
+    else:
+        fn_of_windows = np.apply_along_axis(lambda x: fn(x), axis=2, arr=windows)
+    return fn_of_windows.squeeze()
 
 def make_regex(left_bound, right_bound, values=[]):
     """Regex creation helper for the data handler.
