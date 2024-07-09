@@ -340,9 +340,6 @@ class EMGClassifier:
         mod = "emg" # todo: specify another way to do this is needed
         
         if self.th_max_dic and self.th_min_dic:
-<<<<<<< HEAD
-            velocity_output = (np.sum(np.mean(np.abs(window),2)[0], axis=0) - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
-=======
             if self.velocity_metric_handle is None:
                 velocity_metric = np.sum(np.mean(np.abs(window[mod]),2)[0], axis=0)
             else:
@@ -351,7 +348,6 @@ class EMGClassifier:
             velocity_output = (velocity_metric - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
             if self.velocity_mapping_handle:
                 velocity_output = self.velocity_mapping_handle(velocity_output)
->>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
             return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
     def _set_up_velocity_control(self, train_windows, train_labels):
@@ -653,34 +649,6 @@ class OnlineEMGClassifier(OnlineStreamer):
     channels: list (optional), default=None 
         If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
     """
-<<<<<<< HEAD
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False, output_format="predictions", channels=None):
-        self.window_size = window_size
-        self.window_increment = window_increment
-        self.raw_data = online_data_handler.raw_data
-        self.filters = online_data_handler.fi
-        self.features = features
-        self.port = port
-        self.ip = ip
-        self.classifier = offline_classifier
-        self.output_format = output_format
-        self.channels = channels
-
-        self.tcp = tcp
-        if not tcp:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        else:
-            print("Waiting for TCP connection...")
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            self.sock.bind((ip, port))
-            self.sock.listen()
-            self.conn, addr = self.sock.accept()
-            print(f"Connected by {addr}")
-
-        self.process = Process(target=self._run_helper, daemon=True,)
-        self.std_out = std_out
-=======
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file=False, smm=True, 
                  smm_items=[["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
@@ -691,7 +659,6 @@ class OnlineEMGClassifier(OnlineStreamer):
                  output_format="predictions"):
         
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
->>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         self.smi = smm_items
         
@@ -748,93 +715,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         print("Total Number of Predictions: " + str(len(times) + 1))
         self.stop_running()
     
-<<<<<<< HEAD
-    def visualize(self, max_len=50, legend=None):
-        """Produces a live plot of classifier decisions -- Note this consumes the decisions.
-        Do not use this alongside the actual control operation of libemg. Online classifier has to
-        be running in "probabilties" output mode for this plot.
-
-        Parameters
-        ----------
-        max_len: (int) (optional) 
-            number of decisions to visualize
-        legend: (list) (optional)
-            The legend to display on the plot
-        """
-        plt.style.use("ggplot")
-        figure, ax = plt.subplots()
-        figure.suptitle("Live Classifier Output", fontsize=16)
-        plot_handle = ax.scatter([],[],c=[])
-        
-
-        # make a new socket that subscribes to the libemg events
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.classifier.classifier.classes_)
-        cmap = cm.get_cmap('turbo', num_classes)
-
-        if legend is not None:
-            for i in range(num_classes):
-                plt.plot(i, label=legend[i], color=cmap.colors[i])
-            ax.legend()
-            legend_handles, legend_labels = ax.get_legend_handles_labels()
-        decision_horizon_classes = []
-        decision_horizon_probabilities = []
-        timestamps = []
-        start_time = time.time()
-        while True:
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode("utf-8"))
-            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
-            max_prob = np.max(probabilities)
-            prediction = np.argmax(probabilities)
-            decision_horizon_classes.append(prediction)
-            decision_horizon_probabilities.append(max_prob)
-            timestamps.append(float(data.split(" ")[-1]) - start_time)
-
-            decision_horizon_classes = decision_horizon_classes[-max_len:]
-            decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
-            timestamps = timestamps[-max_len:]
-
-            if plt.fignum_exists(figure.number):
-                plt.cla()
-                ax.scatter(timestamps, decision_horizon_probabilities,c=cmap.colors[decision_horizon_classes])
-                plt.ylim([0,1.5])
-                ax.set_xlabel("Time (s)")
-                ax.set_ylabel("Probability")
-                ax.set_ylim([0, 1.5])
-                if legend is not None:
-                    ax.legend(handles=legend_handles, labels=legend_labels)
-                plt.draw()
-                plt.pause(0.0001)
-            else:
-                return
-
-
-    def _run_helper(self):
-        fe = FeatureExtractor()
-        self.raw_data.reset_emg()
-        while True:
-            if len(self.raw_data.get_emg()) >= self.window_size:
-                data = self._get_data_helper()
-                if self.channels is not None:
-                    data = data[:,self.channels]
-
-                # Extract window and predict sample
-                window = get_windows(data[-self.window_size:][:], self.window_size, self.window_size)
-
-                # Dealing with the case for CNNs when no features are used
-                if self.features:
-                    features = fe.extract_features(self.features, window, self.classifier.feature_params)
-                    # If extracted features has an error - give error message
-                    if (fe.check_features(features) != 0):
-                        self.raw_data.adjust_increment(self.window_size, self.window_increment)
-                        continue
-                    classifier_input = self._format_data_sample(features)
-                else:
-                    classifier_input = window
-                self.raw_data.adjust_increment(self.window_size, self.window_increment)
-=======
     def _run_helper(self):
         if self.smm:
             self.prepare_smm()
@@ -887,7 +767,6 @@ class OnlineEMGClassifier(OnlineStreamer):
                     self.expected_count[mod] += self.window_increment 
                 
                 # Make prediction
->>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
                 probabilities = self.classifier.classifier.predict_proba(classifier_input)
                 prediction, probability = self.classifier._prediction_helper(probabilities)
                 prediction = prediction[0]
@@ -911,32 +790,12 @@ class OnlineEMGClassifier(OnlineStreamer):
                     if prediction >= 0:
                         calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
                 
-<<<<<<< HEAD
-                time_stamp = time.time()
-                # Write classifier output:
-                if not self.tcp:
-                    if self.output_format == "predictions":
-                        message = str(str(prediction) + calculated_velocity + " " + str(time_stamp))
-                    elif self.output_format == "probabilities":
-                        message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-                    self.sock.sendto(bytes(message, "utf-8"), (self.ip, self.port))
-                else:
-                    if self.output_format == "predictions":
-                        message = str(prediction) + calculated_velocity + '\n'
-                    elif self.output_format == "probabilities":
-                        message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-                    self.conn.sendall(str.encode(message))
-                
-                if self.std_out:
-                    print(message)
-=======
                 self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
                 
     def load_emg_classifier(self, number):
         with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
             self.classifier = pickle.load(handle)
             print(f"Loaded model #{number}.")
->>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
     
 
 
@@ -1013,20 +872,8 @@ class OnlineEMGClassifier(OnlineStreamer):
                 return
 
     def _get_data_helper(self):
-<<<<<<< HEAD
-        data = np.array(self.raw_data.get_emg())
-        if self.filters is not None:
-            try:
-                data = self.filters.filter(data)
-            except:
-                pass
-        return data
-    
-    
-=======
         data, counts = self.odh.get_data(N=self.window_size)
         for key in data.keys():
             data[key] = data[key][::-1]
         return data, counts
         
->>>>>>> f8acddb (parent 08191427c0388b114fca7cf8c6d8da1c00fd86df)
