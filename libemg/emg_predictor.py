@@ -774,14 +774,15 @@ class OnlineEMGClassifier(OnlineStreamer):
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file=False, smm=True, 
-                 smm_items=[["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                      ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
-                      ["adapt_flag", (1,1), np.int32],
-                      ["active_flag", (1,1), np.int8]],
+                 smm_items= None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
                  output_format="predictions"):
         
-        
+        if smm_items is None:
+            smm_items = [["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                        ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+                        ["adapt_flag", (1,1), np.int32],
+                        ["active_flag", (1,1), np.int8]]
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
