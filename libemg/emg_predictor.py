@@ -1023,8 +1023,11 @@ class OnlineEMGRegressor(OnlineStreamer):
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
     """
-    def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False):
-        super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, features, port, ip, std_out, tcp)
+    def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
+                 file_path = '.', file = False, smm = True, smm_items = None,
+                 port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+        super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp, 'predictions')
         
     def run(self, block=True):
         """Runs the regressor - continuously streams predictions over UDP or TCP.
