@@ -1016,8 +1016,17 @@ class OnlineEMGRegressor(OnlineStreamer):
     def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file = False, smm = True, smm_items = None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+        
+        if smm_items is None:
+            # TODO: Discuss how we want to implement this
+            smm_items = [
+                ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
+                ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+            ]
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
                                                  file, smm, smm_items, features, port, ip, std_out, tcp, 'predictions')
+        self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
+        self.smi = smm_items
         
     def run(self, block=True):
         """Runs the regressor - continuously streams predictions over UDP or TCP.
@@ -1035,14 +1044,50 @@ class OnlineEMGRegressor(OnlineStreamer):
         """
         self.process.terminate()
 
-    def _run_helper(self):
-        self.raw_data.reset_emg()
-        while True:
-            data = self._get_data_helper()
-            if len(data) >= self.window_size:
-                window, classifier_input = self.get_data(data)
-                prediction = np.array(self.predictor.regressor.predict(classifier_input)).squeeze()
-                self.write_output(prediction, "")
+    def write_output(self, model_input, window):
+        # Make prediction
+        predictions = self.predictor.run(model_input)
+        print(predictions.shape)
+        # might need to convert to 1D
+        self.previous_predictions.append(predictions)
+        
+        time_stamp = time.time()
+        if self.options['std_out']:
+            print(f"{predictions} {time.time()}")
+
+        # Write model output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'model_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {predictions} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
+
+        if "smm" in self.options.keys():
+            #assumed to have "model_input" and "model_output" keys
+            # these are (1+)
+            raise NotImplementedError('SMM still needs to be implemented for OnlineEMGRegressor.')
+            def insert_model_input(data):
+                input_size = self.options['smm'].variables['model_input']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
+                return data
+            def insert_model_output(data):
+                output_size = self.options['smm'].variables['model_output']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, predictions]), data))[:output_size,:]
+                return data
+            self.options['smm'].modify_variable("model_input",
+                                                insert_model_input)
+            self.options['smm'].modify_variable("model_output",
+                                                insert_model_output)
+            self.options['model_smm_writes'] += 1
+
+        message = str(predictions) + '\n'
+        if not self.tcp:
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
 
     def analyze_regressor(self, analyze_time):
         # Analyze latency of regressor
@@ -1053,5 +1098,3 @@ class OnlineEMGRegressor(OnlineStreamer):
         # Waiting until shared memory changes are implemented before implementing this
         raise NotImplementedError('The OnlineEMGRegressor.visualize() method has not been implemented yet.')
 
-
-        
