@@ -21,6 +21,7 @@ import time
 import inspect
 from scipy import stats
 import csv
+from abc import ABC, abstractmethod
 
 from libemg.utils import get_windows
 
@@ -539,7 +540,7 @@ class EMGRegressor(EMGPredictor):
         self.deadband_threshold = threshold
 
 
-class OnlineStreamer:
+class OnlineStreamer(ABC):
     """OnlineStreamer.
 
     This is a base class for using algorithms (classifiers/regressors/other) in conjunction with online streamers.
@@ -547,8 +548,8 @@ class OnlineStreamer:
 
     Parameters
     ----------
-    offline_classifier: EMGClassifier
-        An EMGClassifier object. 
+    offline_predictor: EMGPredictor
+        An EMGPredictor object. 
     window_size: int
         The number of samples in a window. 
     window_increment: int
@@ -582,7 +583,7 @@ class OnlineStreamer:
     """
 
     def __init__(self, 
-                 offline_classifier, 
+                 offline_predictor, 
                  window_size, 
                  window_increment, 
                  online_data_handler, 
@@ -599,7 +600,7 @@ class OnlineStreamer:
         self.features = features
         self.port = port
         self.ip = ip
-        self.classifier = offline_classifier
+        self.predictor = offline_predictor
 
         self.output_format = output_format
 
@@ -630,62 +631,7 @@ class OnlineStreamer:
             self._run_helper()
         else:
             self.process.start()
-
-    # def get_data(self, data):
-    #     # Extract window and predict sample
-    #     window = get_windows(data, self.window_size, self.window_size)
-    #     # Dealing with the case for CNNs when no features are used
-    #     if self.features:
-    #         features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
-    #         classifier_input = self._format_data_sample(features)
-    #     else:
-    #         classifier_input = window
-    #     self.raw_data.adjust_increment(self.window_size, self.window_increment)
-    #     return window, classifier_input
     
-    def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
-        time_stamp = time.time()
-        if calculated_velocity == "":
-            printed_velocity = "-1"
-        else:
-            printed_velocity = float(calculated_velocity)
-        if self.options['std_out']:
-            print(f"{int(prediction)} {printed_velocity} {time.time()}")
-        # Write classifier output:
-        if self.options['file']:
-            if not 'file_handle' in self.files.keys():
-                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
-            writer = csv.writer(self.files['file_handle'])
-            feat_str = str(model_input[0]).replace('\n','')[1:-1]
-            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
-            writer.writerow(row)
-            self.files['file_handle'].flush()
-        if "smm" in self.options.keys():
-            #assumed to have "classifier_input" and "classifier_output" keys
-            # these are (1+)
-            def insert_classifier_input(data):
-                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
-                return data
-            def insert_classifier_output(data):
-                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
-                return data
-            self.options['smm'].modify_variable("classifier_input",
-                                                insert_classifier_input)
-            self.options['smm'].modify_variable("classifier_output",
-                                                insert_classifier_output)
-            self.options['classifier_smm_writes'] += 1
-
-        if self.output_format == "predictions":
-            message = str(prediction) + calculated_velocity + '\n'
-        elif self.output_format == "probabilities":
-            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-        if not self.tcp:
-            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
-        else:
-            self.conn.sendall(str.encode(message))
-                    
     def prepare_smm(self):
         for i in self.smi:
             if len(i) == 3:
@@ -714,6 +660,66 @@ class OnlineStreamer:
     def get_interaction_items(self):
         return self.smm_items
     
+    def load_emg_predictor(self, number):
+        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
+            self.predictor = pickle.load(handle)
+            print(f"Loaded model #{number}.")
+    
+
+    def _run_helper(self):
+        if self.smm:
+            self.prepare_smm()
+            self.options['smm'].modify_variable("active_flag", lambda x:1)
+            self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+        
+        self.odh.prepare_smm()
+
+        if self.features is not None:
+            fe = FeatureExtractor()
+        
+        self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
+        # todo: deal with different sampling frequencies for different modalities
+        self.odh.reset()
+        
+        files = {}
+        while True:
+            if self.smm:
+                if not self.options["smm"].get_variable("active_flag")[0,0]:
+                    continue
+
+                if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
+                    self.load_emg_predictor(self.options["smm"].get_variable("adapt_flag")[0][0])
+                    self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+
+            val, count = self.odh.get_data(N=self.window_size)
+            modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
+
+            if all(modality_ready):
+                data, count = self._get_data_helper()
+
+                # Extract window and predict sample
+                window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
+
+                # Dealing with the case for CNNs when no features are used
+                if self.features:
+                    model_input = None
+                    for mod in self.odh.modalities:
+                        # todo: features for each modality can be different
+                        mod_features = fe.extract_features(self.features, window[mod], self.predictor.feature_params)
+                        mod_features = self._format_data_sample(mod_features)
+                        if model_input is None:
+                            model_input = mod_features
+                        else:
+                            model_input = np.hstack((model_input, mod_features)) 
+                    
+                else:
+                    model_input = window[list(window.keys())[0]] #TODO: Change this
+                
+                for mod in self.odh.modalities:
+                    self.expected_count[mod] += self.window_increment 
+                
+                self.write_output(model_input, window)
+
     # ----- All of these are unique to each online streamer ----------
     def run(self):
         pass 
@@ -721,7 +727,8 @@ class OnlineStreamer:
     def stop_running(self):
         pass
 
-    def _run_helper(self):
+    @abstractmethod
+    def write_output(self, model_input, window):
         pass
 
 
@@ -776,11 +783,8 @@ class OnlineEMGClassifier(OnlineStreamer):
         
         
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
-        self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
+        self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
-        
-
-        
         
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
@@ -829,89 +833,75 @@ class OnlineEMGClassifier(OnlineStreamer):
         print("Total Number of Predictions: " + str(len(times) + 1))
         self.stop_running()
     
-    def _run_helper(self):
-        if self.smm:
-            self.prepare_smm()
-            self.options['smm'].modify_variable("active_flag", lambda x:1)
-            self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+
+    def write_output(self, model_input, window):
+        # Make prediction
+        probabilities = self.predictor.classifier.predict_proba(model_input)
+        prediction, probability = self.predictor._prediction_helper(probabilities)
+        prediction = prediction[0]
+
+        # Check for rejection
+        if self.predictor.rejection:
+            #TODO: Right now this will default to -1
+            prediction = self.predictor._rejection_helper(prediction, probability)
+        self.previous_predictions.append(prediction)
         
-        self.odh.prepare_smm()
-
-        if self.features is not None:
-            fe = FeatureExtractor()
+        # Check for majority vote
+        if self.predictor.majority_vote:
+            values, counts = np.unique(list(self.previous_predictions), return_counts=True)
+            prediction = values[np.argmax(counts)]
         
-        self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
-        # todo: deal with different sampling frequencies for different modalities
-        self.odh.reset()
-        
-        files = {}
-        while True:
-            if self.smm:
-                if not self.options["smm"].get_variable("active_flag")[0,0]:
-                    continue
+        # Check for velocity based control
+        calculated_velocity = ""
+        if self.predictor.velocity:
+            calculated_velocity = " 0"
+            # Dont check if rejected 
+            if prediction >= 0:
+                calculated_velocity = " " + str(self.predictor._get_velocity(window, prediction))
 
-                if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
-                    self.load_emg_classifier(self.options["smm"].get_variable("adapt_flag")[0][0])
-                    self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
 
-            val, count = self.odh.get_data(N=self.window_size)
-            modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
+        time_stamp = time.time()
+        if calculated_velocity == "":
+            printed_velocity = "-1"
+        else:
+            printed_velocity = float(calculated_velocity)
+        if self.options['std_out']:
+            print(f"{int(prediction)} {printed_velocity} {time.time()}")
 
-            if all(modality_ready):
-                data, count = self._get_data_helper()
+        # Write classifier output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
+        if "smm" in self.options.keys():
+            #assumed to have "classifier_input" and "classifier_output" keys
+            # these are (1+)
+            def insert_classifier_input(data):
+                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
+                return data
+            def insert_classifier_output(data):
+                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
+                return data
+            self.options['smm'].modify_variable("classifier_input",
+                                                insert_classifier_input)
+            self.options['smm'].modify_variable("classifier_output",
+                                                insert_classifier_output)
+            self.options['classifier_smm_writes'] += 1
 
-                # Extract window and predict sample
-                window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
-
-                # Dealing with the case for CNNs when no features are used
-                if self.features:
-                    classifier_input = None
-                    for mod in self.odh.modalities:
-                        # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], self.classifier.feature_params)
-                        mod_features = self._format_data_sample(mod_features)
-                        if classifier_input is None:
-                            classifier_input = mod_features
-                        else:
-                            classifier_input = np.hstack((classifier_input, mod_features)) 
-                    
-                else:
-                    classifier_input = window[list(window.keys())[0]] #TODO: Change this
-                
-                for mod in self.odh.modalities:
-                    self.expected_count[mod] += self.window_increment 
-                
-                # Make prediction
-                probabilities = self.classifier.classifier.predict_proba(classifier_input)
-                prediction, probability = self.classifier._prediction_helper(probabilities)
-                prediction = prediction[0]
-
-                # Check for rejection
-                if self.classifier.rejection:
-                    #TODO: Right now this will default to -1
-                    prediction = self.classifier._rejection_helper(prediction, probability)
-                self.previous_predictions.append(prediction)
-                
-                # Check for majority vote
-                if self.classifier.majority_vote:
-                    values, counts = np.unique(list(self.previous_predictions), return_counts=True)
-                    prediction = values[np.argmax(counts)]
-                
-                # Check for velocity based control
-                calculated_velocity = ""
-                if self.classifier.velocity:
-                    calculated_velocity = " 0"
-                    # Dont check if rejected 
-                    if prediction >= 0:
-                        calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
-                
-                self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
-                
-    def load_emg_classifier(self, number):
-        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
-            self.classifier = pickle.load(handle)
-            print(f"Loaded model #{number}.")
-    
+        if self.output_format == "predictions":
+            message = str(prediction) + calculated_velocity + '\n'
+        elif self.output_format == "probabilities":
+            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+        if not self.tcp:
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
 
 
     def _format_data_sample(self, data):
@@ -946,7 +936,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         # make a new socket that subscribes to the libemg events
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.classifier.classifier.classes_)
+        num_classes = len(self.predictor.classifier.classes_)
         cmap = cm.get_cmap('turbo', num_classes)
 
         if legend is not None:
@@ -1051,7 +1041,7 @@ class OnlineEMGRegressor(OnlineStreamer):
             data = self._get_data_helper()
             if len(data) >= self.window_size:
                 window, classifier_input = self.get_data(data)
-                prediction = np.array(self.classifier.regressor.predict(classifier_input)).squeeze()
+                prediction = np.array(self.predictor.regressor.predict(classifier_input)).squeeze()
                 self.write_output(prediction, "")
 
     def analyze_regressor(self, analyze_time):
