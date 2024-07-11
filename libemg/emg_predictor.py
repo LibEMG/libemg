@@ -640,7 +640,7 @@ class OnlineStreamer(ABC):
         self.options['smm'] = smm
         self.options['classifier_smm_writes'] = 0
 
-    def analyze_predictor(self, analyze_time=10, port=12346, ip='127.0.0.1'):
+    def analyze_predictor(self, analyze_time=10):
         """Analyzes the latency of the designed predictor. 
 
         Parameters
@@ -658,7 +658,7 @@ class OnlineStreamer(ABC):
         """
         print("Starting analysis of predictor " + "(" + str(analyze_time) + "s)...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind((ip, port))
+        sock.bind((self.ip, self.port))
         st = time.time()
         times = []
         while(time.time() - st < analyze_time):
