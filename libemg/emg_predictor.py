@@ -592,8 +592,7 @@ class OnlineStreamer(ABC):
                  features, 
                  port, ip, 
                  std_out, 
-                 tcp, 
-                 output_format):
+                 tcp):
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
@@ -602,7 +601,6 @@ class OnlineStreamer(ABC):
         self.ip = ip
         self.predictor = offline_predictor
 
-        self.output_format = output_format
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
 
@@ -783,7 +781,9 @@ class OnlineEMGClassifier(OnlineStreamer):
                         ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
                         ["adapt_flag", (1,1), np.int32],
                         ["active_flag", (1,1), np.int8]]
-        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
+        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
+                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
+        self.output_format = output_format
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
         
@@ -899,6 +899,8 @@ class OnlineEMGClassifier(OnlineStreamer):
             message = str(prediction) + calculated_velocity + '\n'
         elif self.output_format == "probabilities":
             message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+        else:
+            raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
