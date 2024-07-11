@@ -1027,7 +1027,7 @@ class OnlineEMGRegressor(OnlineStreamer):
                 ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
             ]
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp, 'predictions')
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
         
