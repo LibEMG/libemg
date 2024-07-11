@@ -784,10 +784,11 @@ class OnlineDataHandler(DataHandler):
             feature_list = ['MAV']
         
         def extract_data():
-            data = self.get_data()
+            # data = self.get_data()
+            data = self.smm.get_variable('emg')
             if len(data) > num_samples:
                 # Only look at the most recent num_samples samples (essentially extracting a single window)
-                data = data[-num_samples:]
+                data = data[:num_samples]
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
@@ -796,7 +797,6 @@ class OnlineDataHandler(DataHandler):
                 # Remap raw data to image format
                 for key in feature_set_dict:
                     feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
-                # data = remap_function(data)
             return feature_set_dict
 
         cmap = cm.viridis   # colourmap to determine heatmap style
