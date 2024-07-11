@@ -631,7 +631,7 @@ class OnlineStreamer(ABC):
             self.process.start()
     
     def prepare_smm(self):
-        for i in self.smi:
+        for i in self.smm_items:
             if len(i) == 3:
                 i.append(Lock())
         smm = SharedMemoryManager()
