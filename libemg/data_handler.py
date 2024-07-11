@@ -784,7 +784,6 @@ class OnlineDataHandler(DataHandler):
             feature_list = ['MAV']
         
         def extract_data():
-            # data = self.get_data()
             data = self.smm.get_variable('emg')
             if len(data) > num_samples:
                 # Only look at the most recent num_samples samples (essentially extracting a single window)
