@@ -1024,6 +1024,8 @@ class OnlineEMGRegressor(OnlineStreamer):
             smm_items = [
                 ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
                 ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+                ["adapt_flag", (1,1), np.int32],
+                ["active_flag", (1,1), np.int8]
             ]
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
                                                  file, smm, smm_items, features, port, ip, std_out, tcp)
@@ -1047,9 +1049,7 @@ class OnlineEMGRegressor(OnlineStreamer):
 
     def write_output(self, model_input, window):
         # Make prediction
-        predictions = self.predictor.run(model_input)
-        print(predictions.shape)
-        # might need to convert to 1D
+        predictions = self.predictor.run(model_input).squeeze()
         
         time_stamp = time.time()
         if self.options['std_out']:
