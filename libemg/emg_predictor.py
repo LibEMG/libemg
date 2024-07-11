@@ -665,6 +665,7 @@ class OnlineStreamer(ABC):
             data, _ = sock.recvfrom(1024)
             if data:
                 times.append(time.time())
+        sock.close()
         times = np.diff(times)
         print("Time Between Predictions (Average): " + str(np.mean(times)) + 's')
         print("Time Between Predictions (STD): " + str(np.std(times)) + 's')
