@@ -1003,5 +1003,5 @@ class OnlineDataHandler(DataHandler):
                 return False
             
     def start_listening(self):
-        print("LibEMG>v1.0 no longer requires offline_data_handler.start_listening().\nThis is deprecated.")
+        print("LibEMG>v1.0 no longer requires online_data_handler.start_listening().\nThis is deprecated.")
         pass
