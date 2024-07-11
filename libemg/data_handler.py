@@ -23,7 +23,7 @@ from pathlib import Path
 from glob import glob
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
-from libemg.utils import make_regex
+from libemg.utils import make_regex, get_windows, _get_fn_windows, _get_mode_windows
 from itertools import compress
 from datetime import datetime
 from multiprocessing import Process, Event
