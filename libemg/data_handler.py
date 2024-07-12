@@ -862,6 +862,7 @@ class OnlineDataHandler(DataHandler):
         normalize: boolean
             Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
         """
+        raise NotImplementedError('This method has not been fixed to account for changes to shared memory.')
         pyplot.style.use('ggplot')
         feature_list = feature_dic.keys()
         fe = FeatureExtractor()
