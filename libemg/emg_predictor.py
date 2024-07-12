@@ -22,6 +22,7 @@ import inspect
 from scipy import stats
 import csv
 from abc import ABC, abstractmethod
+import re
 
 from libemg.utils import get_windows
 
@@ -1022,9 +1023,10 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         if smm_items is None:
             # TODO: Discuss how we want to implement this
+            # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
                 ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
-                ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+                ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
                 ["adapt_flag", (1,1), np.int32],
                 ["active_flag", (1,1), np.int8]
             ]
@@ -1069,7 +1071,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         if "smm" in self.options.keys():
             #assumed to have "model_input" and "model_output" keys
             # these are (1+)
-            raise NotImplementedError('SMM still needs to be implemented for OnlineEMGRegressor.')
+            # This could maybe be moved to OnlineStreamer instead
             def insert_model_input(data):
                 input_size = self.options['smm'].variables['model_input']["shape"][0]
                 data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
@@ -1084,14 +1086,65 @@ class OnlineEMGRegressor(OnlineStreamer):
                                                 insert_model_output)
             self.options['model_smm_writes'] += 1
 
-        message = str(predictions) + '\n'
+        message = f"{str(predictions)} {str(time_stamp)}\n"
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
             self.conn.sendall(str.encode(message))
 
-    def visualize(self, max_len = 50):
-        # Make a line plot showing the current point on the DOF
-        # Waiting until shared memory changes are implemented before implementing this
-        raise NotImplementedError('The OnlineEMGRegressor.visualize() method has not been implemented yet.')
+    def visualize(self, max_len = 50, legend = False):
+        # TODO: Maybe add an extra option for 2 DOF problems where a single point is plotted on a 2D plane
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(layout='constrained')
+        fig.suptitle('Live Regressor Output', fontsize=20)
 
+        # Make local UDP socket whose purpose is to read from regressor output
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((self.ip, self.port))
+        
+        # Grab sample data to determine # of DOFs
+        data, _ = sock.recvfrom(1024)
+        data = str(data.decode('utf-8'))
+        predictions = self.parse_output(data)[0]
+        cmap = cm.get_cmap('turbo', len(predictions))
+
+        if legend:
+            handles = [mpatches.Patch(color=cmap.colors[dof_idx], label=f"DOF {dof_idx}") for dof_idx in range(len(predictions))]
+
+        decision_horizon_predictions = []
+        timestamps = []
+        start_time = time.time()
+        while True:
+            data, _ = sock.recvfrom(1024)
+            data = str(data.decode('utf-8'))
+            print(data)
+            predictions, timestamp = self.parse_output(data)
+            timestamps.append(timestamp - start_time)
+            decision_horizon_predictions.append(predictions)
+
+            timestamps = timestamps[-max_len:]
+            decision_horizon_predictions = decision_horizon_predictions[-max_len:]
+
+            if plt.fignum_exists(fig.number):
+                ax.clear()
+                ax.set_ylim((-1.5, 1.5))
+                ax.set_xlabel('Time (s)')
+                ax.set_ylabel('Prediction')
+                for dof_idx in range(len(predictions)):
+                    ax.scatter(timestamps, np.array(decision_horizon_predictions)[:, dof_idx], c=cmap.colors[dof_idx], s=4, alpha=0.8)
+
+                if legend:
+                    ax.legend(handles=handles)
+                plt.draw()
+                plt.pause(0.01)
+            else:
+                # Figure was closed
+                return
+
+    @staticmethod
+    def parse_output(message):
+        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", message)
+        outputs = list(map(float, outputs))
+        predictions = outputs[:-1]
+        timestamp = outputs[-1]
+        return predictions, timestamp
