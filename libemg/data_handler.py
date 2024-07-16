@@ -741,7 +741,8 @@ class OnlineDataHandler(DataHandler):
             emg_plots.append(ax.plot([],[],label="CH"+str(channels[i])))
 
         def update(frame):
-            data = self.smm.get_variable("emg")
+            data, _ = self.get_data()
+            data = data['emg']
             data = data[:,channels]
             inter_channel_amount = 1.5 * np.max(data)
             if len(data) > num_samples:
@@ -784,7 +785,8 @@ class OnlineDataHandler(DataHandler):
             feature_list = ['MAV']
         
         def extract_data():
-            data = self.smm.get_variable('emg')
+            data, _ = self.get_data()
+            data = data['emg']
             if len(data) > num_samples:
                 # Only look at the most recent num_samples samples (essentially extracting a single window)
                 data = data[:num_samples]
