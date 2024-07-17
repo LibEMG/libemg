@@ -142,7 +142,7 @@ class DataCollectionPanel:
         collection_details["time"]    = datetime.now().isoformat()
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)
-        with open(self.output_folder + "collection_details.json", 'w') as f:
+        with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
             json.dump(collection_details, f)
 
         # make the media list for SGT progression
