@@ -1117,7 +1117,6 @@ class OnlineEMGRegressor(OnlineStreamer):
         while True:
             data, _ = sock.recvfrom(1024)
             data = str(data.decode('utf-8'))
-            print(data)
             predictions, timestamp = self.parse_output(data)
             timestamps.append(timestamp - start_time)
             decision_horizon_predictions.append(predictions)
