@@ -1132,7 +1132,7 @@ class OnlineEMGRegressor(OnlineStreamer):
                     ax.scatter(timestamps, np.array(decision_horizon_predictions)[:, dof_idx], c=cmap.colors[dof_idx], s=4, alpha=0.8)
 
                 if legend:
-                    ax.legend(handles=handles)
+                    ax.legend(handles=handles, loc='upper right')
                 plt.draw()
                 plt.pause(0.01)
             else:
