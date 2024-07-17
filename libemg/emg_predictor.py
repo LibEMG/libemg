@@ -1126,7 +1126,6 @@ class OnlineEMGRegressor(OnlineStreamer):
 
             if plt.fignum_exists(fig.number):
                 ax.clear()
-                ax.set_ylim((-1.5, 1.5))
                 ax.set_xlabel('Time (s)')
                 ax.set_ylabel('Prediction')
                 for dof_idx in range(len(predictions)):
