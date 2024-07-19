@@ -908,15 +908,6 @@ class OnlineEMGClassifier(OnlineStreamer):
             self.conn.sendall(str.encode(message))
 
 
-    def _format_data_sample(self, data):
-        arr = None
-        for feat in data:
-            if arr is None:
-                arr = data[feat]
-            else:
-                arr = np.hstack((arr, data[feat]))
-        return arr
-
     def visualize(self, max_len=50, legend=None):
         """Produces a live plot of classifier decisions -- Note this consumes the decisions.
         Do not use this alongside the actual control operation of libemg. Online classifier has to
