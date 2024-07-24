@@ -590,14 +590,14 @@ class OnlineStreamer(ABC):
                  online_data_handler, 
                  file_path, file, 
                  smm, smm_items, 
-                 features, 
+                 fe, 
                  port, ip, 
                  std_out, 
                  tcp):
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
-        self.features = features
+        self.fe = fe
         self.port = port
         self.ip = ip
         self.predictor = offline_predictor
@@ -705,8 +705,6 @@ class OnlineStreamer(ABC):
         
         self.odh.prepare_smm()
 
-        if self.features is not None:
-            fe = FeatureExtractor()
         
         self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
         # todo: deal with different sampling frequencies for different modalities
@@ -732,12 +730,11 @@ class OnlineStreamer(ABC):
                 window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
 
                 # Dealing with the case for CNNs when no features are used
-                if self.features:
+                if self.fe is not None:
                     model_input = None
                     for mod in self.odh.modalities:
                         # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], self.predictor.feature_params)
-                        mod_features = self._format_data_sample(mod_features)
+                        mod_features = self.fe(window[mod], array=True)
                         if model_input is None:
                             model_input = mod_features
                         else:
