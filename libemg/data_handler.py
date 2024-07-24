@@ -772,7 +772,8 @@ class OnlineDataHandler(DataHandler):
             Compatible with all features in libemg.feature_extractor.get_feature_list() that return a single value per channel (e.g., MAV, RMS). 
             If a feature type that returns multiple values is passed, an error will be thrown. If None, defaults to MAV.
         remap_function: callable or None (optional), default=None
-            Function pointer that remaps raw data to a format that can be represented by an image.
+            Function pointer that remaps raw data to a format that can be represented by an image (such as np.reshape). Takes in an array and should return
+            an array. If None, no remapping is done.
         """
         # Create figure
         pyplot.style.use('ggplot')
@@ -800,6 +801,22 @@ class OnlineDataHandler(DataHandler):
                     feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
             return feature_set_dict
 
+        # Analyze data stream to determine min/max values for normalizing
+        analyze_time = 5
+        print(f"Analyzing data stream for {analyze_time} seconds to determine min/max values for each feature value. Please rest, then perform a contraction at max intensity.")
+        start_time = time.time()
+        normalization_values = {}
+        while (time.time() - start_time) < analyze_time:
+            features = extract_data()
+            for feature, feature_data in features.items():
+                if feature not in normalization_values.keys():
+                    normalization_values[feature] = (feature_data.min(), feature_data.max())
+                else:
+                    old_min, old_max = normalization_values[feature]
+                    current_min = min(old_min, feature_data.min())
+                    current_max = max(old_max, feature_data.max())
+                    normalization_values[feature] = (current_min, current_max)
+
         cmap = cm.viridis   # colourmap to determine heatmap style
         
         # Format figure
@@ -825,14 +842,12 @@ class OnlineDataHandler(DataHandler):
             data = extract_data()
                 
             if len(data) > 0:
-                min = 100  # -32769
-                max = 22000  # 32769
-                min = 10  # -32769
-                max = 3200  # 32769
                 # Loop through feature plots
-                for feature_data, plot in zip(data.values(), plots):
+                for feature, plot in zip(data.items(), plots):
+                    feature_key, feature_data = feature
+                    feature_min, feature_max = normalization_values[feature_key]
                     # Normalize to properly display colours
-                    normalized_data = (feature_data - min) / (max - min)
+                    normalized_data = (feature_data - feature_min) / (feature_max - feature_min)
                     # Convert to coloured map
                     heatmap_data = cmap(normalized_data)
                     plot.set_data(heatmap_data) # update plot
