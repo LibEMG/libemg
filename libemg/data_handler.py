@@ -760,7 +760,7 @@ class OnlineDataHandler(DataHandler):
         animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
     
-    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None):
+    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None, cmap = None):
         """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
 
         Parameters
@@ -774,6 +774,8 @@ class OnlineDataHandler(DataHandler):
         remap_function: callable or None (optional), default=None
             Function pointer that remaps raw data to a format that can be represented by an image (such as np.reshape). Takes in an array and should return
             an array. If None, no remapping is done.
+        cmap: colormap or None (optional), default=None
+            matplotlib colormap used to plot heatmap.
         """
         # Create figure
         pyplot.style.use('ggplot')
@@ -784,6 +786,9 @@ class OnlineDataHandler(DataHandler):
         if feature_list is None:
             # Default to MAV
             feature_list = ['MAV']
+
+        if cmap is None:
+            cmap = cm.viridis   # colourmap to determine heatmap style
         
         def extract_data():
             data, _ = self.get_data()
@@ -817,7 +822,6 @@ class OnlineDataHandler(DataHandler):
                     current_max = max(old_max, feature_data.max())
                     normalization_values[feature] = (current_min, current_max)
 
-        cmap = cm.viridis   # colourmap to determine heatmap style
         
         # Format figure
         sample_data = extract_data()    # access sample data to determine heatmap size
