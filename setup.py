@@ -37,6 +37,7 @@ setup(
         "requests",
         "semantic-version",
         "websockets",
+        "opencv-python"
     ],
     keywords=[
         "emg",

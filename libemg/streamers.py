@@ -14,8 +14,6 @@ from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 
-
-
 def sifibridge_streamer(version="1_1",
                  shared_memory_items = None,
                  ecg=False,
@@ -41,9 +39,15 @@ def sifibridge_streamer(version="1_1",
         The version for the sifi streamer.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> sifibridge_streamer()
+    >>> streamer, shared_memory = sifibridge_streamer()
     """
 
     if shared_memory_items is None:
@@ -83,11 +87,9 @@ def sifibridge_streamer(version="1_1",
                             freq = freq,# eda sampling frequency
                             streaming=streaming)
     sb.start()
-    # p = Process(target=sb.start_stream, daemon=True)
-    # p.start()
     return sb, shared_memory_items
 
-
+# TODO: Update this mock streamer 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
     """Streams EMG from a test file over UDP.
 
@@ -110,10 +112,15 @@ def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="
         The desired port to stream over. 
     ip: string optional, default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
-    
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ----------
-    >>> mock_emg_stream("stream_data.csv", num_channels=8, sampling_rate=100)
+    >>> streamer, shared_memory = mock_emg_stream("stream_data.csv", num_channels=8, sampling_rate=100)
     """
     Process(target=_stream_thread, args=(file_path, num_channels, sampling_rate, port, ip), daemon=True).start()
 
@@ -150,9 +157,15 @@ def myo_streamer(
         Specifies whether IMU data should be forwarded to shared memory.
     filtered : bool (optional), default=True
         If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> myo_streamer()
+    >>> streamer, shared_memory = myo_streamer()
     """
     if shared_memory_items is None:
         shared_memory_items = []
@@ -200,9 +213,15 @@ def delsys_streamer(shared_memory_items : list | None = None,
         The channels (i.e., electrodes) that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
     timeout : int
         Timeout for commands sent to Delsys.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> delsys_streamer()
+    >>> streamer, shared_memory = delsys_streamer()
     """
     if shared_memory_items is None:
         shared_memory_items = []
@@ -249,9 +268,15 @@ def oymotion_streamer(shared_memory_items : list | None = None,
         Detemines whether EMG data will be forwarded
     imu : bool (optional),
         Determines whether IMU data will be forwarded
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object
+    Object: shared memory
+        The shared memory object
     Examples
     ---------
-    >>> oymotion_streamer()
+    >>> streamer, shared_memory = oymotion_streamer()
     """
     
     if sampling_rate == 1000:
@@ -297,10 +322,15 @@ def emager_streamer(shared_memory_items = None):
     shared_memory_items : list (optional)
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
-
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> emager_streamer()
+    >>> streamer, shared_memory = emager_streamer()
     """
     if shared_memory_items is None:
         # Create defaults
@@ -314,7 +344,7 @@ def emager_streamer(shared_memory_items = None):
     ema.start()
     return ema, shared_memory_items
 
-
+#TODO: Updat documentation
 def leap_streamer(shared_memory_items : list | None =None,
                   arm_basis : bool = True,
                   arm_width : bool = False,

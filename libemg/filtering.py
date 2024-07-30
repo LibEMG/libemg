@@ -106,8 +106,6 @@ class Filter:
         if type(data) == OfflineDataHandler:
             # make sure we have data to filter
             self._filter_offline_data_handler(data)
-        elif type(data) == OnlineDataHandler:
-            return self._filter_online_data_handler(data)
         elif type(data) == np.ndarray:
             return self._filter_np_ndarray(data)
         # should we also accomodate the RawData class?
@@ -126,26 +124,6 @@ class Filter:
         assert hasattr(data,"data")
         for f in range(len(data.data)):
             data.data[f] = self._run_filter(data.data[f])
-
-
-    def _filter_online_data_handler(self, data):
-        ''' Helper function that runs the installed filters on recently captured data in the online data handler.
-
-        Parameters
-        ----------
-        data: OnlineDataHandler    
-            The data that will be passed through the filters.
-
-        Returns
-        ------- 
-        np.ndarray
-            Data that has been filtered.
-        '''
-        # this just gets the data in the tcpip port. it isnt the full window
-        # I advise using the np_ndarray with a full window (see demo/filter_example.py -> online_filtering_demo())
-        emg_data = np.array(data.raw_data.get_emg())
-        assert emg_data.shape[0] > 5
-        return self._run_filter(emg_data)
 
     def _filter_np_ndarray(self, data):
         ''' Helper function that runs the installed filters on an np.ndarray.
