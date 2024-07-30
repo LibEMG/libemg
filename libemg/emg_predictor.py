@@ -605,9 +605,13 @@ class OnlineStreamer(ABC):
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
 
+        required_smm_items = [  # these tags are also required
+            ["adapt_flag", (1,1), np.int32],
+            ["active_flag", (1,1), np.int8]
+        ]
+        smm_items.extend(required_smm_items)
         self.smm = smm
         self.smm_items = smm_items
-
         
 
         self.files = {}
@@ -779,41 +783,47 @@ class OnlineEMGClassifier(OnlineStreamer):
     online_data_handler: OnlineDataHandler
         An online data handler object.
     features: list or None
-        A list of features that will be extracted during real-time classification. These should be the 
-        same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
-    file_path: str (optional)
-        A location that the inputs and output of the classifier will be saved to.
-    file: bool (optional)
-        A toggle for activating the saving of inputs and outputs of the classifier.
-    parameters: dict (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
+        A list of features that will be extracted during real-time classification. 
+    file_path: str, default = '.'
+        Location to store model outputs. Only used if file=True.
+    file: bool, default = False
+        True if model outputs should be stored in a file, otherwise False.
+    smm: bool, default = False
+        True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
+    smm_items: list, default = None
+        List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
+        When modifying this variable, items with the name 'classifier_output' and 'classifier_input' are expected to be passed in to track classifier inputs and outputs.
+        The 'classifier_input' item should be of the format ['classifier_input', (100, 1 + num_features), np.double]
+        The 'classifier_output' item should be of the format ['classifier_output', (100, 1 + num_dofs), np.double].
+        If None, defaults to:
+        [
+            ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+            ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+        ]
     port: int (optional), default = 12346
         The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
-    velocity: bool (optional), default = False
-        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
-    channels: list (optional), default=None 
-        If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False, smm=True, 
+                 file_path = '.', file=False, smm=False, 
                  smm_items= None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
                  output_format="predictions"):
         
         if smm_items is None:
-            smm_items = [["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                        ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
-                        ["adapt_flag", (1,1), np.int32],
-                        ["active_flag", (1,1), np.int8]]
+            smm_items = [
+                ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+            ]
+        assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
         self.output_format = output_format
@@ -996,9 +1006,22 @@ class OnlineEMGRegressor(OnlineStreamer):
         An online data handler object.
     features: list
         A list of features that will be extracted during real-time regression. 
-    parameters: dict (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
+    file_path: str, default = '.'
+        Location to store model outputs. Only used if file=True.
+    file: bool, default = False
+        True if model outputs should be stored in a file, otherwise False.
+    smm: bool, default = False
+        True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
+    smm_items: list, default = None
+        List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
+        When modifying this variable, items with the name 'model_output' and 'model_input' are expected to be passed in to track model inputs and outputs.
+        The 'model_input' item should be of the format ['model_input', (100, 1 + num_features), np.double]
+        The 'model_output' item should be of the format ['model_output', (100, 1 + num_dofs), np.double].
+        If None, defaults to:
+        [
+            ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
+            ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
+        ]
     port: int (optional), default = 12346
         The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
@@ -1009,18 +1032,16 @@ class OnlineEMGRegressor(OnlineStreamer):
         If True, will stream predictions over TCP instead of UDP.
     """
     def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file = False, smm = True, smm_items = None,
+                 file_path = '.', file = False, smm = False, smm_items = None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False):
-        
         if smm_items is None:
-            # TODO: Discuss how we want to implement this
             # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
-                ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
                 ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
-                ["adapt_flag", (1,1), np.int32],
-                ["active_flag", (1,1), np.int8]
+                ['model_output', (100, 3), np.double]  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
             ]
+        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
                                                  file, smm, smm_items, features, port, ip, std_out, tcp)
         self.smi = smm_items
