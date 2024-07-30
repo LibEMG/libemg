@@ -1,3 +1,4 @@
+from pathlib import Path
 import dearpygui.dearpygui as dpg
 import numpy as np
 import os
@@ -141,7 +142,7 @@ class DataCollectionPanel:
         collection_details["time"]    = datetime.now().isoformat()
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)
-        with open(self.output_folder + "collection_details.json", 'w') as f:
+        with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
             json.dump(collection_details, f)
 
         # make the media list for SGT progression
@@ -149,7 +150,7 @@ class DataCollectionPanel:
             for class_index, motion_class in enumerate(files):
                 # entry for collection of rep
                 media = Media()
-                media.from_file(self.media_folder + motion_class)
+                media.from_file(Path(self.media_folder, motion_class).absolute().as_posix())
                 collection_conf.append([media,motion_class.split('.')[0],class_index,rep_index,self.rep_time])
         return collection_conf
 
@@ -205,7 +206,8 @@ class DataCollectionPanel:
             
             self.play_collection_visual(media_list[self.i], active=True)
             
-            self.save_data(self.output_folder + "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv")
+            output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
+            self.save_data(output_path)
             last_rep = media_list[self.i][3]
             self.i = self.i+1
             if self.i  == len(media_list):

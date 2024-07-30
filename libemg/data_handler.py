@@ -23,7 +23,7 @@ from pathlib import Path
 from glob import glob
 from multiprocessing import Process
 from multiprocessing.managers import BaseManager
-from libemg.utils import make_regex
+from libemg.utils import make_regex, get_windows, _get_fn_windows, _get_mode_windows
 from itertools import compress
 from datetime import datetime
 from multiprocessing import Process, Event
@@ -741,7 +741,8 @@ class OnlineDataHandler(DataHandler):
             emg_plots.append(ax.plot([],[],label="CH"+str(channels[i])))
 
         def update(frame):
-            data = self.smm.get_variable("emg")
+            data, _ = self.get_data()
+            data = data['emg']
             data = data[:,channels]
             inter_channel_amount = 1.5 * np.max(data)
             if len(data) > num_samples:
@@ -759,7 +760,7 @@ class OnlineDataHandler(DataHandler):
         animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
     
-    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None):
+    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None, cmap = None):
         """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
 
         Parameters
@@ -771,7 +772,10 @@ class OnlineDataHandler(DataHandler):
             Compatible with all features in libemg.feature_extractor.get_feature_list() that return a single value per channel (e.g., MAV, RMS). 
             If a feature type that returns multiple values is passed, an error will be thrown. If None, defaults to MAV.
         remap_function: callable or None (optional), default=None
-            Function pointer that remaps raw data to a format that can be represented by an image.
+            Function pointer that remaps raw data to a format that can be represented by an image (such as np.reshape). Takes in an array and should return
+            an array. If None, no remapping is done.
+        cmap: colormap or None (optional), default=None
+            matplotlib colormap used to plot heatmap.
         """
         # Create figure
         pyplot.style.use('ggplot')
@@ -782,12 +786,16 @@ class OnlineDataHandler(DataHandler):
         if feature_list is None:
             # Default to MAV
             feature_list = ['MAV']
+
+        if cmap is None:
+            cmap = cm.viridis   # colourmap to determine heatmap style
         
         def extract_data():
-            data = self.get_data()
+            data, _ = self.get_data()
+            data = data['emg']
             if len(data) > num_samples:
                 # Only look at the most recent num_samples samples (essentially extracting a single window)
-                data = data[-num_samples:]
+                data = data[:num_samples]
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
@@ -796,10 +804,24 @@ class OnlineDataHandler(DataHandler):
                 # Remap raw data to image format
                 for key in feature_set_dict:
                     feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
-                # data = remap_function(data)
             return feature_set_dict
 
-        cmap = cm.viridis   # colourmap to determine heatmap style
+        # Analyze data stream to determine min/max values for normalizing
+        analyze_time = 5
+        print(f"Analyzing data stream for {analyze_time} seconds to determine min/max values for each feature value. Please rest, then perform a contraction at max intensity.")
+        start_time = time.time()
+        normalization_values = {}
+        while (time.time() - start_time) < analyze_time:
+            features = extract_data()
+            for feature, feature_data in features.items():
+                if feature not in normalization_values.keys():
+                    normalization_values[feature] = (feature_data.min(), feature_data.max())
+                else:
+                    old_min, old_max = normalization_values[feature]
+                    current_min = min(old_min, feature_data.min())
+                    current_max = max(old_max, feature_data.max())
+                    normalization_values[feature] = (current_min, current_max)
+
         
         # Format figure
         sample_data = extract_data()    # access sample data to determine heatmap size
@@ -824,14 +846,12 @@ class OnlineDataHandler(DataHandler):
             data = extract_data()
                 
             if len(data) > 0:
-                min = 100  # -32769
-                max = 22000  # 32769
-                min = 10  # -32769
-                max = 3200  # 32769
                 # Loop through feature plots
-                for feature_data, plot in zip(data.values(), plots):
+                for feature, plot in zip(data.items(), plots):
+                    feature_key, feature_data = feature
+                    feature_min, feature_max = normalization_values[feature_key]
                     # Normalize to properly display colours
-                    normalized_data = (feature_data - min) / (max - min)
+                    normalized_data = (feature_data - feature_min) / (feature_max - feature_min)
                     # Convert to coloured map
                     heatmap_data = cmap(normalized_data)
                     plot.set_data(heatmap_data) # update plot
@@ -863,6 +883,7 @@ class OnlineDataHandler(DataHandler):
         normalize: boolean
             Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
         """
+        raise NotImplementedError('This method has not been fixed to account for changes to shared memory.')
         pyplot.style.use('ggplot')
         feature_list = feature_dic.keys()
         fe = FeatureExtractor()
@@ -1003,5 +1024,5 @@ class OnlineDataHandler(DataHandler):
                 return False
             
     def start_listening(self):
-        print("LibEMG>v1.0 no longer requires offline_data_handler.start_listening().\nThis is deprecated.")
+        print("LibEMG>v1.0 no longer requires online_data_handler.start_listening().\nThis is deprecated.")
         pass
