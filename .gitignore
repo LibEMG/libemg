@@ -44,3 +44,5 @@ media/*
 test_*.py
 *.csv
 .vscode/*
+test_delsys_api.py
+resources/

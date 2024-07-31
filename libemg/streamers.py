@@ -6,6 +6,7 @@ import numpy as np
 from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
+from libemg._streamers._delsys_API_streamer import DelsysAPIStreamer
 if platform.system() != 'Linux':
     from libemg._streamers._oymotion_windows_streamer import Gforce
 else: 
@@ -193,7 +194,7 @@ def delsys_streamer(shared_memory_items : list | None = None,
                     timeout             : int = 10):
     """The streamer for the Delsys device (Avanti/Trigno). 
 
-    This function connects to the Delsys and streams its data over UDP. Note that you must have the Delsys Control Utility
+    This function connects to the Delsys. Note that you must have the Delsys Control Utility
     installed for this to work.
 
     Parameters
@@ -246,6 +247,56 @@ def delsys_streamer(shared_memory_items : list | None = None,
     delsys.start()
     return delsys, shared_memory_items
 
+
+def delsys_api_streamer(license             : str = None,
+                        key                 : str = None,
+                        num_channels        : int = None,
+                        dll_folder          : str = 'resources/',
+                        shared_memory_items : list | None = None,
+                        emg                 : bool = True):
+    """The streamer for the Delsys devices that use their new C#.NET API. 
+
+    This function connects to the Delsys. Note that you must have the Delsys .dll files (found here: https://github.com/delsys-inc/Example-Applications/tree/main/Python/resources), 
+    C#.NET 8.0 SDK, and the delsys license + key. Additionally, for using any device that connects over USB, make sure that the usb driver is version >= 6.0.0.
+
+    Parameters
+    ----------
+    license : str
+        Delsys license
+    key : str
+        Delsys key
+    num_channels: int
+        The number of delsys sensors you are using.
+    dll_folder: string : optional (default='resources/')
+        The location of the DLL files installed from the Delsys Github.
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
+    emg : bool : (optional)
+        Whether to collect emg data or not.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
+    Examples
+    ---------
+    >>> streamer, shared_memory = delsys_streamer()
+    """
+    assert license is not None
+    assert key is not None
+    if shared_memory_items is None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (5300,num_channels), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+    for item in shared_memory_items:
+        item.append(Lock())
+    
+    delsys = DelsysAPIStreamer(key, license, dll_folder, shared_memory_items=shared_memory_items, emg=emg)
+    delsys.start()
+    return delsys, shared_memory_items
 
 def oymotion_streamer(shared_memory_items : list | None = None,
                       sampling_rate       : int = 1000,
