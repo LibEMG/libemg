@@ -1,6 +1,16 @@
 # Online Data Handler
 There is different convenient functionality in the `OnlineDataHandler` to help developers. Firstly, two visualize functions: `visualize` and `visualize_channels`, exemplified in Table 1 are included.
 
+```Python
+from libemg.streamers import myo_streamer
+from libemg.data_handler import OnlineDataHandler
+
+if __name__ == "__main__":
+    streamer, sm = myo_streamer()
+    odh = OnlineDataHandler(sm)
+    odh.visualize()
+```
+
 | <center>Combined</center>  | <center>All Channels</center> |
 | ------------- | ------------- |
 | ![alt text](all_channels.gif)  | ![alt text](multi_channel.gif)   |
@@ -8,6 +18,7 @@ There is different convenient functionality in the `OnlineDataHandler` to help d
 
 # EMG Classifier 
 The EMG classifier contains a visualization tool for viewing the decisions stream (i.e., the predictions over time) for a particular classifier using the `visualize` function. 
+
 
 ![alt text](decision_stream.png)
 <center> <p> Figure 2: The decision stream of a classifier.</b></p> </center>

@@ -645,7 +645,7 @@ class OnlineDataHandler(DataHandler):
         
         print("Analysis sucessfully complete. ODH process has stopped.")
 
-    def visualize(self, num_samples=500, block=False):
+    def visualize(self, num_samples=500, block=True):
         """Visualize the incoming raw EMG in a plot (all channels together).
 
         Parameters

@@ -279,4 +279,4 @@ class DataCollectionPanel:
         self.visualization_thread.start()
     
     def _run_visualization_helper(self):
-        self.gui.online_data_handler.visualize()
+        self.gui.online_data_handler.visualize(block=False)
