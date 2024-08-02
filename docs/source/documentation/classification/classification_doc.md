@@ -24,7 +24,7 @@ Additionally, custom classifiers can be created. Any custom classifier should be
 
 ```Python
 from sklearn.ensemble import RandomForestClassifier
-from libemg.classification import EMGClassifier
+from libemg.predictor import EMGClassifier
 
 rf_custom_classifier = RandomForestClassifier(max_depth=5, random_state=0)
 classifier = EMGClassifier(rf_custom_classifier)

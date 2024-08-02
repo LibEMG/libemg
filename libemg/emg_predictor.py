@@ -608,8 +608,6 @@ class OnlineStreamer:
         self.smm = smm
         self.smm_items = smm_items
 
-        
-
         self.files = {}
         self.tcp = tcp
         if not tcp:
@@ -630,18 +628,6 @@ class OnlineStreamer:
             self._run_helper()
         else:
             self.process.start()
-
-    # def get_data(self, data):
-    #     # Extract window and predict sample
-    #     window = get_windows(data, self.window_size, self.window_size)
-    #     # Dealing with the case for CNNs when no features are used
-    #     if self.features:
-    #         features = self.fe.extract_features(self.features, window, self.classifier.feature_params)
-    #         classifier_input = self._format_data_sample(features)
-    #     else:
-    #         classifier_input = window
-    #     self.raw_data.adjust_increment(self.window_size, self.window_increment)
-    #     return window, classifier_input
     
     def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
         time_stamp = time.time()
@@ -661,7 +647,7 @@ class OnlineStreamer:
             writer.writerow(row)
             self.files['file_handle'].flush()
         if "smm" in self.options.keys():
-            #assumed to have "classifier_input" and "classifier_output" keys
+            # assumed to have "classifier_input" and "classifier_output" keys
             # these are (1+)
             def insert_classifier_input(data):
                 input_size = self.options['smm'].variables['classifier_input']["shape"][0]
@@ -766,11 +752,11 @@ class OnlineEMGClassifier(OnlineStreamer):
         If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False, smm=True, 
-                 smm_items=[["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                      ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
-                      ["adapt_flag", (1,1), np.int32],
-                      ["active_flag", (1,1), np.int8]],
+                 file_path = '.', file=False, smm=False, 
+                 smm_items=[["classifier_output", (100,4), np.double],      # timestamp, class prediction, confidence, velocity
+                            ["classifier_input", (100,1+32), np.double],    # timestamp, <- features ->
+                            ["adapt_flag", (1,1), np.int32],
+                            ["active_flag", (1,1), np.int8]],
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
                  output_format="predictions"):
         
@@ -778,9 +764,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
         self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
         self.smi = smm_items
-        
-
-        
         
     def run(self, block=True):
         """Runs the classifier - continuously streams predictions over UDP.
@@ -912,8 +895,6 @@ class OnlineEMGClassifier(OnlineStreamer):
             self.classifier = pickle.load(handle)
             print(f"Loaded model #{number}.")
     
-
-
     def _format_data_sample(self, data):
         arr = None
         for feat in data:

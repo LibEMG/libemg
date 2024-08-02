@@ -37,7 +37,10 @@ setup(
         "requests",
         "semantic-version",
         "websockets",
-        "opencv-python"
+        "opencv-python",
+        "pythonnet",
+        "bleak",
+        "dearpygui"
     ],
     keywords=[
         "emg",

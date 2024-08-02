@@ -127,12 +127,6 @@ class GUI:
     def _inspect_data_callback(self):
         pass
 
-    def _visualize_livesignal_callback(self):
-        panel_arguments = list(inspect.signature(VisualizeLiveSignalPanel.__init__).parameters)
-        passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
-        self.vlsp = VisualizeLiveSignalPanel(**passed_arguments, gui=self)
-        self.vlsp.spawn_configuration_window()
-
     def _train_classifier_callback(self):
         pass
 
