@@ -12,7 +12,6 @@ wfdb
 bleak
 semantic-version
 requests
-opencv-python
 # For Docs
 sphinx==5.0.0
 sphinx_rtd_theme==1.0.0
