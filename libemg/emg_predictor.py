@@ -21,6 +21,8 @@ import time
 import inspect
 from scipy import stats
 import csv
+from abc import ABC, abstractmethod
+import re
 
 from libemg.utils import get_windows
 
@@ -539,7 +541,7 @@ class EMGRegressor(EMGPredictor):
         self.deadband_threshold = threshold
 
 
-class OnlineStreamer:
+class OnlineStreamer(ABC):
     """OnlineStreamer.
 
     This is a base class for using algorithms (classifiers/regressors/other) in conjunction with online streamers.
@@ -547,8 +549,8 @@ class OnlineStreamer:
 
     Parameters
     ----------
-    offline_classifier: EMGClassifier
-        An EMGClassifier object. 
+    offline_predictor: EMGPredictor
+        An EMGPredictor object. 
     window_size: int
         The number of samples in a window. 
     window_increment: int
@@ -582,7 +584,7 @@ class OnlineStreamer:
     """
 
     def __init__(self, 
-                 offline_classifier, 
+                 offline_predictor, 
                  window_size, 
                  window_increment, 
                  online_data_handler, 
@@ -591,20 +593,23 @@ class OnlineStreamer:
                  features, 
                  port, ip, 
                  std_out, 
-                 tcp, 
-                 output_format):
+                 tcp):
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
         self.features = features
         self.port = port
         self.ip = ip
-        self.classifier = offline_classifier
+        self.predictor = offline_predictor
 
-        self.output_format = output_format
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
 
+        required_smm_items = [  # these tags are also required
+            ["adapt_flag", (1,1), np.int32],
+            ["active_flag", (1,1), np.int8]
+        ]
+        smm_items.extend(required_smm_items)
         self.smm = smm
         self.smm_items = smm_items
 
@@ -673,7 +678,7 @@ class OnlineStreamer:
             self.conn.sendall(str.encode(message))
                     
     def prepare_smm(self):
-        for i in self.smi:
+        for i in self.smm_items:
             if len(i) == 3:
                 i.append(Lock())
         smm = SharedMemoryManager()
@@ -681,6 +686,38 @@ class OnlineStreamer:
             smm.create_variable(*item)
         self.options['smm'] = smm
         self.options['classifier_smm_writes'] = 0
+
+    def analyze_predictor(self, analyze_time=10):
+        """Analyzes the latency of the designed predictor. 
+
+        Parameters
+        ----------
+        analyze_time: int (optional), default=10 (seconds)
+            The time in seconds that you want to analyze the model for. 
+        port: int (optional), default = 12346
+            The port used for streaming predictions over UDP.
+        ip: string (optional), default = '127.0.0.1'
+            The ip used for streaming predictions over UDP.
+        
+        (1) Time Between Prediction (Average): The average time between subsequent predictions.
+        (2) STD Between Predictions (Standard Deviation): The standard deviation between predictions. 
+        (3) Total Number of Predictions: The number of predictions that were made. Sometimes if the increment is too small, samples will get dropped and this may be less than expected.  
+        """
+        print("Starting analysis of predictor " + "(" + str(analyze_time) + "s)...")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        sock.bind((self.ip, self.port))
+        st = time.time()
+        times = []
+        while(time.time() - st < analyze_time):
+            data, _ = sock.recvfrom(1024)
+            if data:
+                times.append(time.time())
+        sock.close()
+        times = np.diff(times)
+        print("Time Between Predictions (Average): " + str(np.mean(times)) + 's')
+        print("Time Between Predictions (STD): " + str(np.std(times)) + 's')
+        print("Total Number of Predictions: " + str(len(times) + 1))
+        self.stop_running()
 
     def _format_data_sample(self, data):
         arr = None
@@ -700,118 +737,12 @@ class OnlineStreamer:
     def get_interaction_items(self):
         return self.smm_items
     
-    # ----- All of these are unique to each online streamer ----------
-    def run(self):
-        pass 
-
-    def stop_running(self):
-        pass
-
-    def _run_helper(self):
-        pass
-
-
-class OnlineEMGClassifier(OnlineStreamer):
-    """OnlineEMGClassifier.
-
-    Given a EMGClassifier and additional information, this class will stream class predictions over UDP in real-time.
-
-    Parameters
-    ----------
-    offline_classifier: EMGClassifier
-        An EMGClassifier object. 
-    window_size: int
-        The number of samples in a window. 
-    window_increment: int
-        The number of samples that advances before next window.
-    online_data_handler: OnlineDataHandler
-        An online data handler object.
-    features: list or None
-        A list of features that will be extracted during real-time classification. These should be the 
-        same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
-    file_path: str (optional)
-        A location that the inputs and output of the classifier will be saved to.
-    file: bool (optional)
-        A toggle for activating the saving of inputs and outputs of the classifier.
-    parameters: dict (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
-    port: int (optional), default = 12346
-        The port used for streaming predictions over UDP.
-    ip: string (optional), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
-    velocity: bool (optional), default = False
-        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
-    std_out: bool (optional), default = False
-        If True, prints predictions to std_out.
-    tcp: bool (optional), default = False
-        If True, will stream predictions over TCP instead of UDP.
-    output_format: str (optional), default=predictions
-        If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
-    channels: list (optional), default=None 
-        If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
-    """
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False, smm=False, 
-                 smm_items=[["classifier_output", (100,4), np.double],      # timestamp, class prediction, confidence, velocity
-                            ["classifier_input", (100,1+32), np.double],    # timestamp, <- features ->
-                            ["adapt_flag", (1,1), np.int32],
-                            ["active_flag", (1,1), np.int8]],
-                 port=12346, ip='127.0.0.1', std_out=False, tcp=False,
-                 output_format="predictions"):
-        
-        
-        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler, file_path, file, smm, smm_items, features, port, ip, std_out, tcp, output_format)
-        self.previous_predictions = deque(maxlen=self.classifier.majority_vote)
-        self.smi = smm_items
-        
-    def run(self, block=True):
-        """Runs the classifier - continuously streams predictions over UDP.
-
-        Parameters
-        ----------
-        block: bool (optional), default = True
-            If True, the run function blocks the main thread. Otherwise it runs in a 
-            seperate process.
-        """
-        self.start_stream(block)
-
-    def stop_running(self):
-        """Kills the process streaming classification decisions.
-        """
-        self.process.terminate()
-
-    def analyze_classifier(self, analyze_time=10, port=12346, ip='127.0.0.1'):
-        """Analyzes the latency of the designed classifier. 
-
-        Parameters
-        ----------
-        analyze_time: int (optional), default=10 (seconds)
-            The time in seconds that you want to analyze the device for. 
-        port: int (optional), default = 12346
-            The port used for streaming predictions over UDP.
-        ip: string (optional), default = '127.0.0.1'
-            The ip used for streaming predictions over UDP.
-        
-        (1) Time Between Prediction (Average): The average time between subsequent predictions.
-        (2) STD Between Predictions (Standard Deviation): The standard deviation between predictions. 
-        (3) Total Number of Predictions: The number of predictions that were made. Sometimes if the increment is too small, samples will get dropped and this may be less than expected.  
-        """
-        print("Starting analysis of classifier " + "(" + str(analyze_time) + "s)...")
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind((ip, port))
-        st = time.time()
-        times = []
-        while(time.time() - st < analyze_time):
-            data, _ = sock.recvfrom(1024)
-            if data:
-                times.append(time.time())
-        times = np.diff(times)
-        print("Time Between Predictions (Average): " + str(np.mean(times)) + 's')
-        print("Time Between Predictions (STD): " + str(np.std(times)) + 's')
-        print("Total Number of Predictions: " + str(len(times) + 1))
-        self.stop_running()
+    def load_emg_predictor(self, number):
+        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
+            self.predictor = pickle.load(handle)
+            print(f"Loaded model #{number}.")
     
+
     def _run_helper(self):
         if self.smm:
             self.prepare_smm()
@@ -834,7 +765,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                     continue
 
                 if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
-                    self.load_emg_classifier(self.options["smm"].get_variable("adapt_flag")[0][0])
+                    self.load_emg_predictor(self.options["smm"].get_variable("adapt_flag")[0][0])
                     self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
 
             val, count = self.odh.get_data(N=self.window_size)
@@ -848,61 +779,185 @@ class OnlineEMGClassifier(OnlineStreamer):
 
                 # Dealing with the case for CNNs when no features are used
                 if self.features:
-                    classifier_input = None
+                    model_input = None
                     for mod in self.odh.modalities:
                         # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], self.classifier.feature_params)
+                        mod_features = fe.extract_features(self.features, window[mod], self.predictor.feature_params)
                         mod_features = self._format_data_sample(mod_features)
-                        if classifier_input is None:
-                            classifier_input = mod_features
+                        if model_input is None:
+                            model_input = mod_features
                         else:
-                            classifier_input = np.hstack((classifier_input, mod_features)) 
+                            model_input = np.hstack((model_input, mod_features)) 
                     
                 else:
-                    classifier_input = window[list(window.keys())[0]] #TODO: Change this
+                    model_input = window[list(window.keys())[0]] #TODO: Change this
                 
                 for mod in self.odh.modalities:
                     self.expected_count[mod] += self.window_increment 
                 
-                # Make prediction
-                probabilities = self.classifier.model.predict_proba(classifier_input)
-                prediction, probability = self.classifier._prediction_helper(probabilities)
-                prediction = prediction[0]
+                self.write_output(model_input, window)
 
-                # Check for rejection
-                if self.classifier.rejection:
-                    #TODO: Right now this will default to -1
-                    prediction = self.classifier._rejection_helper(prediction, probability)
-                self.previous_predictions.append(prediction)
-                
-                # Check for majority vote
-                if self.classifier.majority_vote:
-                    values, counts = np.unique(list(self.previous_predictions), return_counts=True)
-                    prediction = values[np.argmax(counts)]
-                
-                # Check for velocity based control
-                calculated_velocity = ""
-                if self.classifier.velocity:
-                    calculated_velocity = " 0"
-                    # Dont check if rejected 
-                    if prediction >= 0:
-                        calculated_velocity = " " + str(self.classifier._get_velocity(window, prediction))
-                
-                self.write_output(prediction, probabilities, probability, calculated_velocity, classifier_input)
-                
-    def load_emg_classifier(self, number):
-        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
-            self.classifier = pickle.load(handle)
-            print(f"Loaded model #{number}.")
-    
-    def _format_data_sample(self, data):
-        arr = None
-        for feat in data:
-            if arr is None:
-                arr = data[feat]
-            else:
-                arr = np.hstack((arr, data[feat]))
-        return arr
+    # ----- All of these are unique to each online streamer ----------
+    def run(self):
+        pass 
+
+    def stop_running(self):
+        pass
+
+    @abstractmethod
+    def write_output(self, model_input, window):
+        pass
+
+
+class OnlineEMGClassifier(OnlineStreamer):
+    """OnlineEMGClassifier.
+
+    Given a EMGClassifier and additional information, this class will stream class predictions over UDP in real-time.
+
+    Parameters
+    ----------
+    offline_classifier: EMGClassifier
+        An EMGClassifier object. 
+    window_size: int
+        The number of samples in a window. 
+    window_increment: int
+        The number of samples that advances before next window.
+    online_data_handler: OnlineDataHandler
+        An online data handler object.
+    features: list or None
+        A list of features that will be extracted during real-time classification. 
+    file_path: str, default = '.'
+        Location to store model outputs. Only used if file=True.
+    file: bool, default = False
+        True if model outputs should be stored in a file, otherwise False.
+    smm: bool, default = False
+        True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
+    smm_items: list, default = None
+        List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
+        When modifying this variable, items with the name 'classifier_output' and 'classifier_input' are expected to be passed in to track classifier inputs and outputs.
+        The 'classifier_input' item should be of the format ['classifier_input', (100, 1 + num_features), np.double]
+        The 'classifier_output' item should be of the format ['classifier_output', (100, 1 + num_dofs), np.double].
+        If None, defaults to:
+        [
+            ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+            ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+        ]
+    port: int (optional), default = 12346
+        The port used for streaming predictions over UDP.
+    ip: string (optional), default = '127.0.0.1'
+        The ip used for streaming predictions over UDP.
+    std_out: bool (optional), default = False
+        If True, prints predictions to std_out.
+    tcp: bool (optional), default = False
+        If True, will stream predictions over TCP instead of UDP.
+    output_format: str (optional), default=predictions
+        If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
+    """
+    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
+                 file_path = '.', file=False, smm=False, 
+                 smm_items= None,
+                 port=12346, ip='127.0.0.1', std_out=False, tcp=False,
+                 output_format="predictions"):
+        
+        if smm_items is None:
+            smm_items = [
+                ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+            ]
+        assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
+        super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
+                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
+        self.output_format = output_format
+        self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
+        self.smi = smm_items
+        
+    def run(self, block=True):
+        """Runs the classifier - continuously streams predictions over UDP.
+
+        Parameters
+        ----------
+        block: bool (optional), default = True
+            If True, the run function blocks the main thread. Otherwise it runs in a 
+            seperate process.
+        """
+        self.start_stream(block)
+
+    def stop_running(self):
+        """Kills the process streaming classification decisions.
+        """
+        self.process.terminate()
+
+    def write_output(self, model_input, window):
+        # Make prediction
+        probabilities = self.predictor.classifier.predict_proba(model_input)
+        prediction, probability = self.predictor._prediction_helper(probabilities)
+        prediction = prediction[0]
+
+        # Check for rejection
+        if self.predictor.rejection:
+            #TODO: Right now this will default to -1
+            prediction = self.predictor._rejection_helper(prediction, probability)
+        self.previous_predictions.append(prediction)
+        
+        # Check for majority vote
+        if self.predictor.majority_vote:
+            values, counts = np.unique(list(self.previous_predictions), return_counts=True)
+            prediction = values[np.argmax(counts)]
+        
+        # Check for velocity based control
+        calculated_velocity = ""
+        if self.predictor.velocity:
+            calculated_velocity = " 0"
+            # Dont check if rejected 
+            if prediction >= 0:
+                calculated_velocity = " " + str(self.predictor._get_velocity(window, prediction))
+
+
+        time_stamp = time.time()
+        if calculated_velocity == "":
+            printed_velocity = "-1"
+        else:
+            printed_velocity = float(calculated_velocity)
+        if self.options['std_out']:
+            print(f"{int(prediction)} {printed_velocity} {time.time()}")
+
+        # Write classifier output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
+        if "smm" in self.options.keys():
+            #assumed to have "classifier_input" and "classifier_output" keys
+            # these are (1+)
+            def insert_classifier_input(data):
+                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
+                return data
+            def insert_classifier_output(data):
+                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
+                return data
+            self.options['smm'].modify_variable("classifier_input",
+                                                insert_classifier_input)
+            self.options['smm'].modify_variable("classifier_output",
+                                                insert_classifier_output)
+            self.options['classifier_smm_writes'] += 1
+
+        if self.output_format == "predictions":
+            message = str(prediction) + calculated_velocity + '\n'
+        elif self.output_format == "probabilities":
+            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+        else:
+            raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
+        if not self.tcp:
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
 
     def visualize(self, max_len=50, legend=None):
         """Produces a live plot of classifier decisions -- Note this consumes the decisions.
@@ -927,7 +982,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         # make a new socket that subscribes to the libemg events
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.classifier.model.classes_)
+        num_classes = len(self.predictor.classifier.classes_)
         cmap = cm.get_cmap('turbo', num_classes)
 
         if legend is not None:
@@ -992,9 +1047,22 @@ class OnlineEMGRegressor(OnlineStreamer):
         An online data handler object.
     features: list
         A list of features that will be extracted during real-time regression. 
-    parameters: dict (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
+    file_path: str, default = '.'
+        Location to store model outputs. Only used if file=True.
+    file: bool, default = False
+        True if model outputs should be stored in a file, otherwise False.
+    smm: bool, default = False
+        True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
+    smm_items: list, default = None
+        List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
+        When modifying this variable, items with the name 'model_output' and 'model_input' are expected to be passed in to track model inputs and outputs.
+        The 'model_input' item should be of the format ['model_input', (100, 1 + num_features), np.double]
+        The 'model_output' item should be of the format ['model_output', (100, 1 + num_dofs), np.double].
+        If None, defaults to:
+        [
+            ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
+            ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
+        ]
     port: int (optional), default = 12346
         The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
@@ -1004,8 +1072,20 @@ class OnlineEMGRegressor(OnlineStreamer):
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
     """
-    def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, port=12346, ip='127.0.0.1', std_out=False, tcp=False):
-        super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, features, port, ip, std_out, tcp)
+    def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
+                 file_path = '.', file = False, smm = False, smm_items = None,
+                 port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+        if smm_items is None:
+            # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
+            smm_items = [
+                ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
+                ['model_output', (100, 3), np.double]  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
+            ]
+        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
+        super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
+        self.smi = smm_items
         
     def run(self, block=True):
         """Runs the regressor - continuously streams predictions over UDP or TCP.
@@ -1023,23 +1103,99 @@ class OnlineEMGRegressor(OnlineStreamer):
         """
         self.process.terminate()
 
-    def _run_helper(self):
-        self.raw_data.reset_emg()
-        while True:
-            data = self._get_data_helper()
-            if len(data) >= self.window_size:
-                window, classifier_input = self.get_data(data)
-                prediction = np.array(self.classifier.regressor.predict(classifier_input)).squeeze()
-                self.write_output(prediction, "")
-
-    def analyze_regressor(self, analyze_time):
-        # Analyze latency of regressor
-        raise NotImplementedError('The OnlineEMGRegressor.analyze_regressor() method has not been implemented yet.')
-
-    def visualize(self, max_len = 50):
-        # Make a line plot showing the current point on the DOF
-        # Waiting until shared memory changes are implemented before implementing this
-        raise NotImplementedError('The OnlineEMGRegressor.visualize() method has not been implemented yet.')
-
-
+    def write_output(self, model_input, window):
+        # Make prediction
+        predictions = self.predictor.run(model_input).squeeze()
         
+        time_stamp = time.time()
+        if self.options['std_out']:
+            print(f"{predictions} {time.time()}")
+
+        # Write model output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'model_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {predictions} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
+
+        if "smm" in self.options.keys():
+            #assumed to have "model_input" and "model_output" keys
+            # these are (1+)
+            # This could maybe be moved to OnlineStreamer instead
+            def insert_model_input(data):
+                input_size = self.options['smm'].variables['model_input']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
+                return data
+            def insert_model_output(data):
+                output_size = self.options['smm'].variables['model_output']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, predictions]), data))[:output_size,:]
+                return data
+            self.options['smm'].modify_variable("model_input",
+                                                insert_model_input)
+            self.options['smm'].modify_variable("model_output",
+                                                insert_model_output)
+            self.options['model_smm_writes'] += 1
+
+        message = f"{str(predictions)} {str(time_stamp)}\n"
+        if not self.tcp:
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
+
+    def visualize(self, max_len = 50, legend = False):
+        # TODO: Maybe add an extra option for 2 DOF problems where a single point is plotted on a 2D plane
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(layout='constrained')
+        fig.suptitle('Live Regressor Output', fontsize=20)
+
+        # Make local UDP socket whose purpose is to read from regressor output
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((self.ip, self.port))
+        
+        # Grab sample data to determine # of DOFs
+        data, _ = sock.recvfrom(1024)
+        data = str(data.decode('utf-8'))
+        predictions = self.parse_output(data)[0]
+        cmap = cm.get_cmap('turbo', len(predictions))
+
+        if legend:
+            handles = [mpatches.Patch(color=cmap.colors[dof_idx], label=f"DOF {dof_idx}") for dof_idx in range(len(predictions))]
+
+        decision_horizon_predictions = []
+        timestamps = []
+        start_time = time.time()
+        while True:
+            data, _ = sock.recvfrom(1024)
+            data = str(data.decode('utf-8'))
+            predictions, timestamp = self.parse_output(data)
+            timestamps.append(timestamp - start_time)
+            decision_horizon_predictions.append(predictions)
+
+            timestamps = timestamps[-max_len:]
+            decision_horizon_predictions = decision_horizon_predictions[-max_len:]
+
+            if plt.fignum_exists(fig.number):
+                ax.clear()
+                ax.set_xlabel('Time (s)')
+                ax.set_ylabel('Prediction')
+                for dof_idx in range(len(predictions)):
+                    ax.scatter(timestamps, np.array(decision_horizon_predictions)[:, dof_idx], color=cmap.colors[dof_idx], s=4, alpha=0.8)
+
+                if legend:
+                    ax.legend(handles=handles, loc='upper right')
+                plt.draw()
+                plt.pause(0.01)
+            else:
+                # Figure was closed
+                return
+
+    @staticmethod
+    def parse_output(message):
+        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", message)
+        outputs = list(map(float, outputs))
+        predictions = outputs[:-1]
+        timestamp = outputs[-1]
+        return predictions, timestamp

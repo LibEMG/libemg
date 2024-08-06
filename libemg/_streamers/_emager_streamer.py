@@ -33,21 +33,6 @@ def reorder(data, mask, match_result):
         roll_data.append(np.roll(data[i*128:(i+1)*128], -offset))
     return roll_data
 
-def remap_raw_to_spatial(data):
-    '''
-    Remap raw data to spatial format, where each element in the matrix is ordered based on the
-    location of the electrode.
-    :param data: (numpy array) - (N x 64) data input, where N is the number of samples.
-    :return: (numpy array) - (N x 4 x 16) spatial image, where the order corresponds to electrode location.
-    '''
-    channel_map = _get_channel_map()
-    data_remap = np.empty_like(data)
-    if data.shape[0] != 0:
-        for remap_channel_idx, channel_idx in enumerate(channel_map):
-            data_remap[:, remap_channel_idx] = data[:, channel_idx]
-        num_samples = data.shape[0]
-        data_remap = data_remap.reshape((num_samples, 4, 16))    # reshape to image format
-    return data_remap
 
 class Emager:
     def __init__(self, baud_rate):
@@ -67,7 +52,7 @@ class Emager:
         ### ^ Number of bytes in message (i.e. channel bytes + header/tail bytes)
         self.mask = np.array([0, 2] + [0, 1] * 63)
         ### ^ Template mask for template matching on input data
-        self.channelMap = _get_channel_map()
+        self.channel_map = _get_channel_map()
         self.emg_handlers = []
 
     def connect(self):
@@ -91,12 +76,11 @@ class Emager:
             if len(data_packet):
                 for p in range(len(data_packet)):
                     samples = [int.from_bytes(bytes([data_packet[p][s*2], data_packet[p][s*2+1]]), 'big',signed=True) for s in range(64)]
+                    samples = np.array(samples)[self.channel_map]    # sort columns so columns correspond to channels in ascending order
                     for h in self.emg_handlers:
                         h(samples)
             else:
                 continue
-
-        # TODO: Modify output so it orders based on the channels (using channelMap) so converting to heatmap is easier and we can remove the remap_raw_to_spatial function
     
     def clear_buffer(self):
         '''
@@ -110,7 +94,6 @@ class Emager:
         self.ser.close()
         return
 
-# Myostreamer begins here ------
 class EmagerStreamer(Process):
     def __init__(self, shared_memory_items):
         super().__init__(daemon=True)
