@@ -890,7 +890,7 @@ class OnlineEMGClassifier(OnlineStreamer):
 
     def write_output(self, model_input, window):
         # Make prediction
-        probabilities = self.predictor.classifier.predict_proba(model_input)
+        probabilities = self.predictor.model.predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
         prediction = prediction[0]
 
@@ -982,7 +982,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         # make a new socket that subscribes to the libemg events
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.predictor.classifier.classes_)
+        num_classes = len(self.predictor.model.classes_)
         cmap = cm.get_cmap('turbo', num_classes)
 
         if legend is not None:
