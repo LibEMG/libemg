@@ -29,23 +29,55 @@ def sifibridge_streamer(version="1_1",
                  fc_lp = 0, # low pass eda
                  fc_hp = 5, # high pass eda
                  freq = 250,# eda sampling frequency
-                 streaming=False):
+                 streaming=False,
+                 mac= None):
     """The streamer for the sifi armband. 
     This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
     for the SiFi biopoint and bioarmband.
     Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
     Parameters
     ----------
-    version: string (option), default = '1.2'
+    version: string (option), default = '1_1'
         The version for the sifi streamer.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
+    ecg, default = False
+        The flag to enable electrocardiography recording from the main sensor unit.
+    emg, default = True
+        The flag to enable electromyography recording.
+    eda, default = False
+        The flag to enable electrodermal recording.
+    imu, default = False
+        The flag to enable inertial measurement unit recording
+    ppg, default = False
+        The flag to enable photoplethysmography recording
+    notch_on, default = True
+        The flag to enable a fc Hz notch filter on device (firmware).
+    notch_freq, default = 60
+        The cutoff frequency of the notch filter specified by notch_on.
+    emg_fir_on, default = True
+        The flag to enable a bandpass filter on device (firmware).
+    emg_fir, default = [20, 450]
+        The low and high cutoff frequency of the bandpass filter specified by emg_fir_on.
+    eda_cfg, default = True
+        The flag to specify if using high or low frequency current for EDA or bioimpedance.
+    fc_lp, default = 0
+        The low cutoff frequency for the bioimpedance.
+    fc_hp, default = 5
+        The high cutoff frequency for the bioimpedance.
+    freq, default = 250
+        The sampling frequency for bioimpedance.
+    streaming, default = False
+        Whether to package the modalities together within packets for lower latency.
+    mac, default = None:  
+        mac address of the device to be connected to
     Returns
     ----------
     Object: streamer
-        The sifi streamer object.
+        The sifi streamer process object.
     Object: shared memory
-        The shared memory object.
+        The shared memory items list to be passed to the OnlineDataHandler.
+    
     Examples
     ---------
     >>> streamer, shared_memory = sifibridge_streamer()
@@ -86,7 +118,8 @@ def sifibridge_streamer(version="1_1",
                             fc_lp = fc_lp, # low pass eda
                             fc_hp = fc_hp, # high pass eda
                             freq = freq,# eda sampling frequency
-                            streaming=streaming)
+                            streaming=streaming,
+                            mac = mac)
     sb.start()
     return sb, shared_memory_items
 
