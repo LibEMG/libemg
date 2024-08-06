@@ -30,8 +30,8 @@ def sifibridge_streamer(version="1_1",
                  fc_hp = 5, # high pass eda
                  freq = 250,# eda sampling frequency
                  streaming=False):
-    """The UDP streamer for the sifi armband. 
-    This function connects to the sifi bridge and streams its data over UDP. This is used
+    """The streamer for the sifi armband. 
+    This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
     for the SiFi biopoint and bioarmband.
     Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
     Parameters
@@ -92,9 +92,9 @@ def sifibridge_streamer(version="1_1",
 
 # TODO: Update this mock streamer 
 def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
-    """Streams EMG from a test file over UDP.
+    """Streams EMG from a test file (used for debugging).
 
-    This function can be used to simulate raw EMG being streamed over a UDP port. The main purpose 
+    This function can be used to simulate raw EMG being streamed over SharedMemory. The main purpose 
     of this function would be to explore real-time interactions without the need for a physical 
     device. Note: This will start up a seperate process to stream data over. Additionally, 
     this uses the time module and as such the sampling rate may not be perfect and there may 

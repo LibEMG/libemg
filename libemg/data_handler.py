@@ -82,7 +82,7 @@ class RegexFilter:
         return idx
 
 
-class MetadataFetcher(ABC):
+class _MetadataFetcher(ABC):
     def __init__(self, description: str):
         """Describes a type of metadata and implements a method to fetch it.
 
@@ -114,7 +114,7 @@ class MetadataFetcher(ABC):
         raise NotImplementedError("Must implement __call__ method.")
 
 
-class FilePackager(MetadataFetcher):
+class _FilePackager(_MetadataFetcher):
     def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool], align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load = None, column_mask = None):
         """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
         that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
@@ -181,7 +181,7 @@ class FilePackager(MetadataFetcher):
         return packaged_file_data
 
 
-class ColumnFetcher(MetadataFetcher):
+class _ColumnFetcher(_MetadataFetcher):
     def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         """Fetch metadata from columns within data file.
 
@@ -260,7 +260,7 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location: str, regex_filters: Sequence[RegexFilter], metadata_fetchers: Sequence[MetadataFetcher] | None = None, delimiter: str = ',',
+    def get_data(self, folder_location: str, regex_filters: Sequence[RegexFilter], metadata_fetchers: Sequence[_MetadataFetcher] | None = None, delimiter: str = ',',
                  mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: Sequence[int] | None = None, downsampling_factor: int | None = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
@@ -539,13 +539,13 @@ class OnlineDataHandler(DataHandler):
     file_path: string (optional), default = "data/"
         The path of the folder/file to write the raw data to. This only gets written to if the file parameter is set to true. For example data/test_ would write data/test_EMG.csv.
     file: bool (optional): default = False
-        If True, all data acquired over the UDP port will be written to a file specified by the file_path parameter.
+        If True, all data acquired over SharedMemory will be written to a file specified by the file_path parameter.
     std_out: bool (optional): default = False
-        If True, all data acquired over the UDP port will be written to std_out.
+        If True, all data acquired over SharedMemory will be written to std_out.
     emg_arr: bool (optional): default = True
-        If True, all data acquired over the UDP port will be written to an array object that can be accessed.
+        If True, all data acquired over SharedMemory will be written to an array object that can be accessed.
     imu_arr: bool (optional): default = False
-        If True, all data acquired over the UDP port will be written to an array object (of IMU data) that can be accessed.
+        If True, all data acquired over SharedMemory will be written to an array object (of IMU data) that can be accessed.
     max_buffer: int (optional): default = None
         The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
     add_timestamps: bool(optional): default = False 
