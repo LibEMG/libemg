@@ -82,7 +82,7 @@ class RegexFilter:
         return idx
 
 
-class _MetadataFetcher(ABC):
+class MetadataFetcher(ABC):
     def __init__(self, description: str):
         """Describes a type of metadata and implements a method to fetch it.
 
@@ -114,7 +114,7 @@ class _MetadataFetcher(ABC):
         raise NotImplementedError("Must implement __call__ method.")
 
 
-class _FilePackager(_MetadataFetcher):
+class FilePackager(MetadataFetcher):
     def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool], align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load = None, column_mask = None):
         """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
         that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
@@ -181,7 +181,7 @@ class _FilePackager(_MetadataFetcher):
         return packaged_file_data
 
 
-class _ColumnFetcher(_MetadataFetcher):
+class ColumnFetch(MetadataFetcher):
     def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         """Fetch metadata from columns within data file.
 
@@ -260,7 +260,7 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
-    def get_data(self, folder_location: str, regex_filters: Sequence[RegexFilter], metadata_fetchers: Sequence[_MetadataFetcher] | None = None, delimiter: str = ',',
+    def get_data(self, folder_location: str, regex_filters: Sequence[RegexFilter], metadata_fetchers: Sequence[MetadataFetcher] | None = None, delimiter: str = ',',
                  mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: Sequence[int] | None = None, downsampling_factor: int | None = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
         RegexFilters, which will filter out non-matching files and grab metadata from the filename based on their provided description. Data can be labelled with other
@@ -536,29 +536,12 @@ class OnlineDataHandler(DataHandler):
     ----------
     shared_memory_items: Object
         The shared memory object returned from the streamer.
-    file_path: string (optional), default = "data/"
-        The path of the folder/file to write the raw data to. This only gets written to if the file parameter is set to true. For example data/test_ would write data/test_EMG.csv.
-    file: bool (optional): default = False
-        If True, all data acquired over SharedMemory will be written to a file specified by the file_path parameter.
-    std_out: bool (optional): default = False
-        If True, all data acquired over SharedMemory will be written to std_out.
-    emg_arr: bool (optional): default = True
-        If True, all data acquired over SharedMemory will be written to an array object that can be accessed.
-    imu_arr: bool (optional): default = False
-        If True, all data acquired over SharedMemory will be written to an array object (of IMU data) that can be accessed.
-    max_buffer: int (optional): default = None
-        The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
-    add_timestamps: bool(optional): default = False 
-        If True, timestamps will be added to the raw filese generated when setting the file flag to true.
     """
-    def __init__(self, shared_memory_items, file_path="", timestamps=False, std_out=False, daemon=False):
-        self.options = {'file_path': file_path, 'std_out': std_out}
+    def __init__(self, shared_memory_items):
         self.shared_memory_items = shared_memory_items
         self.prepare_smm()
         self.log_signal = Event()
-        self.visualize_signal = Event()
-        
-        self.timestamps = timestamps
+        self.visualize_signal = Event()        
         self.fi = None
     
     def prepare_smm(self):
@@ -918,6 +901,23 @@ class OnlineDataHandler(DataHandler):
     #         plt.show()
 
     def get_data(self, N=0, filter=True):
+        """Grab the data in the shared memory buffer across all modalities.
+ 
+        Parameters
+        ----------
+        N : int
+            Number of samples to grab from the shared memory items. If zero, grabs all data.
+        filter: bool
+            Apply the installed filters to the data prior to returning or not.
+ 
+        Returns
+        ----------
+        val: dict
+            A dictionary with keys corresponding to the modalities. Each key will have a np.ndarray of data returned.
+        count: dict
+            A dictionary with keys corresponding to the modalities. Each key will have an int corresponding to the number
+            of samples received since the streamer began (or the last reset call).
+        """
         val   = {}
         count = {}
         for mod in self.modalities:
@@ -934,6 +934,13 @@ class OnlineDataHandler(DataHandler):
         return val,count
 
     def reset(self, modality=None):
+        """Reset the data within the shared memory buffer.
+ 
+        Parameters
+        ----------
+        modality: str
+            The modality that should be reset. If None, all modalities are reset.
+        """
         if modality == None:
             modality = self.modalities
         else:
@@ -942,8 +949,21 @@ class OnlineDataHandler(DataHandler):
             self.smm.modify_variable(mod, lambda x: np.zeros_like(x))
             self.smm.modify_variable(mod+"_count", lambda x: np.zeros_like(x))
 
-    def log_to_file(self, block=False):
+    def log_to_file(self, block=False, file_path='', timestamps=True):
+        """Logs the raw data being read to a file.
+
+        Parameters
+        ----------
+        block: bool (optional), default=False 
+            If true, the main thread will be blocked. 
+        file_path: int (optional), default=''
+            The prefix to the file path that will be logged for each modality.
+        timestamps: bool (optional), default=True
+            If true, this will log the timestamps with each recording.
+        """
         print("ODH->log_to_file begin.")
+        self.file_path = file_path
+        self.timestamps = timestamps
         if block:
             self._log_to_file()
             print("ODH->log_to_file ended.")
@@ -972,7 +992,7 @@ class OnlineDataHandler(DataHandler):
                 last_count[m] = new_count
                 if num_new_samples:
                     if not m in files.keys():
-                        files[m] = open(self.options['file_path'] + m + '.csv', "a", newline='')
+                        files[m] = open(self.file_path + m + '.csv', "a", newline='')
                     if self.timestamps:
                         np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)))
                         # check to see if they're in the right order, or if they need to be reversed again!

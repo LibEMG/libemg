@@ -2,7 +2,7 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from libemg.data_handler import _ColumnFetcher, _MetadataFetcher, OfflineDataHandler, RegexFilter
+from libemg.data_handler import ColumnFetch, MetadataFetcher, OfflineDataHandler, RegexFilter
 from libemg.utils import make_regex
 from glob import glob
 from os import walk
@@ -221,7 +221,7 @@ class OneSubjectMyoDataset(Dataset):
             return odh
 
 
-class _SessionFetcher(_MetadataFetcher):
+class _SessionFetcher(MetadataFetcher):
     def __init__(self):
         super().__init__('sessions')
 
@@ -243,7 +243,7 @@ class _SessionFetcher(_MetadataFetcher):
         return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
 
 
-class _RepFetcher(_ColumnFetcher):
+class _RepFetcher(ColumnFetch):
     def __call__(self, filename, file_data, all_files):
         column_data = super().__call__(filename, file_data, all_files)
         
@@ -318,7 +318,7 @@ class PutEMGForceDataset(Dataset):
             ]
             metadata_fetchers = [
                 _SessionFetcher(),
-                _ColumnFetcher('labels', column_mask),
+                ColumnFetch('labels', column_mask),
                 _RepFetcher('reps', list(range(36, 40)))
             ]
             odh = OfflineDataHandler()

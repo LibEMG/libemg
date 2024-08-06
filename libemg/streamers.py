@@ -90,53 +90,6 @@ def sifibridge_streamer(version="1_1",
     sb.start()
     return sb, shared_memory_items
 
-# TODO: Update this mock streamer 
-def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
-    """Streams EMG from a test file (used for debugging).
-
-    This function can be used to simulate raw EMG being streamed over SharedMemory. The main purpose 
-    of this function would be to explore real-time interactions without the need for a physical 
-    device. Note: This will start up a seperate process to stream data over. Additionally, 
-    this uses the time module and as such the sampling rate may not be perfect and there may 
-    be some latency.
-
-    Parameters
-    ----------
-    file_path: string
-        The path of the csv file where the EMG data is located. 
-    num_channels: int
-        The number of channels to stream. This should be <= to 
-        the number of columns in the CSV.
-    sampling_rate: int (optional), default=100
-        The desired sampling rate in Hz.
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string optional, default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
-    Returns
-    ----------
-    Object: streamer
-        The sifi streamer object.
-    Object: shared memory
-        The shared memory object.
-    Examples
-    ----------
-    >>> streamer, shared_memory = mock_emg_stream("stream_data.csv", num_channels=8, sampling_rate=100)
-    """
-    Process(target=_stream_thread, args=(file_path, num_channels, sampling_rate, port, ip), daemon=True).start()
-
-def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
-    data = np.loadtxt(file_path, delimiter=",")
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    index = 0
-    while index < len(data):
-        val = time.time() + (1000/sampling_rate)/1000
-        while time.time() < val:
-            pass
-        data_arr = pickle.dumps(list(data[index][:num_channels]))
-        sock.sendto(data_arr, (ip, port))
-        index += 1
-
 def myo_streamer(
     shared_memory_items : list | None = None,
     emg                 : bool = True, 
@@ -395,7 +348,7 @@ def emager_streamer(shared_memory_items = None):
     ema.start()
     return ema, shared_memory_items
 
-#TODO: Updat documentation
+#TODO: Update docs
 def leap_streamer(shared_memory_items : list | None =None,
                   arm_basis : bool = True,
                   arm_width : bool = False,
