@@ -36,7 +36,13 @@ class OfflineMetrics:
             'CONF_MAT',
             'RECALL',
             'PREC',
-            'F1'
+            'F1',
+            'R2',
+            'MSE',
+            'MAPE',
+            'RMSE',
+            'NRMSE',
+            'MAE'
         ]
     
     def extract_common_metrics(self, y_true, y_predictions, null_label=None):
@@ -99,15 +105,16 @@ class OfflineMetrics:
         offline_metrics = {}            
         for metric in metrics:
             method_to_call = getattr(self, 'get_' + metric)
-            if metric in ['CA', 'INS', 'CONF_MAT', 'RECALL', 'PREC', 'F1']:
-                offline_metrics[metric] = method_to_call(y_true, y_predictions)
-            elif metric in ['AER']:
+            if metric in ['AER']:
                 if not null_label is None:
                     offline_metrics[metric] = method_to_call(y_true, y_predictions, null_label)
                 else:
                     print("AER not computed... Please input the null_label parameter.")
             elif metric in ['REJ_RATE']:
                 offline_metrics[metric] = method_to_call(og_y_preds)
+            else:
+                # Assume all other metrics have the signature (y_true, y_predictions)
+                offline_metrics[metric] = method_to_call(y_true, y_predictions)
         return offline_metrics
 
     def get_CA(self, y_true, y_predictions):
@@ -313,6 +320,41 @@ class OfflineMetrics:
         f1 = 2 * (prec * recall) / (prec + recall)
         return np.average(f1, weights=weights)  
     
+    def get_R2(self, y_true, y_predictions):
+        ssr = np.sum((y_predictions - y_true) ** 2, axis=0)
+        sst = np.sum((y_true - y_true.mean(axis=0)) ** 2, axis=0)
+        r2 = np.mean(1 - ssr/sst)
+        return r2
+    
+    def get_MSE(self, y_true, y_predictions):
+        values = (y_true - y_predictions) ** 2
+        mse = np.sum(values, axis=0) / y_true.shape[0]
+        mse = mse.mean()
+        return mse
+
+    def get_MAPE(self, y_true, y_predictions):
+        values = np.abs((y_true - y_predictions) / np.maximum(np.abs(y_true), np.finfo(np.float64).eps))    # some values could be 0, so take epsilon if that's the case to avoid inf
+        mape = np.sum(values, axis=0) / y_true.shape[0]
+        mape = mape.mean()
+        return mape
+
+    def get_RMSE(self, y_true, y_predictions):
+        values = (y_true - y_predictions) ** 2
+        mse = np.sum(values, axis=0) / y_true.shape[0]
+        rmse = np.sqrt(mse).mean()
+        return rmse
+
+    def get_NRMSE(self, y_true, y_predictions):
+        values = (y_true - y_predictions) ** 2
+        mse = np.sum(values, axis=0) / y_true.shape[0]
+        nrmse = np.sqrt(mse) / (y_true.max(axis=0) - y_true.min(axis=0))
+        nrmse = nrmse.mean()
+        return nrmse
+
+    def get_MAE(self, y_true, y_predictions):
+        residuals = np.abs(y_predictions - y_true)
+        mae = np.mean(residuals, axis=0).mean()
+        return mae 
     
     def visualize(self, dic, y_axis=[0,1]):
         """Visualize the computed metrics in a bar chart.
