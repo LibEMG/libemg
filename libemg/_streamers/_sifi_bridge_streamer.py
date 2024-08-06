@@ -57,6 +57,8 @@ class SiFiBridgeStreamer(Process):
         Reduce latency by joining packets of different modalities together.
     bridge_version : str
         Version of sifi bridge to use for PIPE.
+    mac : str
+        MAC address of the device to be connected with.
     
     """
     def __init__(self, 
@@ -76,7 +78,8 @@ class SiFiBridgeStreamer(Process):
                  fc_hp:                int  = 5, # high pass eda
                  freq:                 int  = 250,# eda sampling frequency
                  streaming:            bool = False,
-                 bridge_version:       str | None = None):
+                 bridge_version:       str | None = None,
+                 mac:                  str | None = None):
         
         Process.__init__(self, daemon=True)
 
@@ -93,7 +96,7 @@ class SiFiBridgeStreamer(Process):
         self.prepare_config_message(ecg, emg, eda, imu, ppg, 
                                     notch_on, notch_freq, emgfir_on, emg_fir,
                                     eda_cfg, fc_lp, fc_hp, freq, streaming)
-        self.prepare_connect_message(version)
+        self.prepare_connect_message(version, mac)
         self.prepare_executable(bridge_version)
         
 
@@ -136,8 +139,12 @@ class SiFiBridgeStreamer(Process):
         self.config_message = bytes(self.config_message,"UTF-8")
 
     def prepare_connect_message(self, 
-                                version: str):
-        self.connect_message = '-c BioPoint_v' + str(version) + '\n'
+                                version: str,
+                                mac : str):
+        if mac is not None:
+            self.connect_message = '-c ' + str(mac) + '\n'
+        else:
+            self.connect_message = '-c BioPoint_v' + str(version) + '\n'
         self.connect_message = bytes(self.connect_message,"UTF-8")
     
     def prepare_executable(self,
