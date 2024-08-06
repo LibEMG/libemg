@@ -439,8 +439,9 @@ class SiFiBridgeStreamer(Process):
         print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
 
     def __del__(self):
-        self.proc.stdin.write(b"-d -q\n")
-        print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
-        print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
-        self.smm.cleanup()
-        print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
+        # self.proc.stdin.write(b"-d -q\n")
+        # print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
+        # print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
+        # self.smm.cleanup()
+        # print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
+        pass
