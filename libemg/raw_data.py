@@ -8,6 +8,13 @@ class RawData:
         self.emg_data = []
         self.imu_data = []
         self.other_modalities = {}
+        self.rejection_thresholds = [0.5, 0.5, 0.5, 0.5, 0.5]
+    
+    def set_rejection_thresholds(self, thresh):
+        self.rejection_thresholds = thresh
+    
+    def get_rejection_thresholds(self):
+        return self.rejection_thresholds
 
     def get_imu(self):
         return self.imu_data
