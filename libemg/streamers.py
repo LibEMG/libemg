@@ -6,6 +6,7 @@ import numpy as np
 from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
+from libemg._streamers._delsys_API_streamer import DelsysAPIStreamer
 if platform.system() != 'Linux':
     from libemg._streamers._oymotion_windows_streamer import Gforce
 else: 
@@ -13,8 +14,6 @@ else:
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
-
-
 
 def sifibridge_streamer(version="1_1",
                  shared_memory_items = None,
@@ -31,8 +30,8 @@ def sifibridge_streamer(version="1_1",
                  fc_hp = 5, # high pass eda
                  freq = 250,# eda sampling frequency
                  streaming=False):
-    """The UDP streamer for the sifi armband. 
-    This function connects to the sifi bridge and streams its data over UDP. This is used
+    """The streamer for the sifi armband. 
+    This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
     for the SiFi biopoint and bioarmband.
     Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
     Parameters
@@ -41,9 +40,15 @@ def sifibridge_streamer(version="1_1",
         The version for the sifi streamer.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> sifibridge_streamer()
+    >>> streamer, shared_memory = sifibridge_streamer()
     """
 
     if shared_memory_items is None:
@@ -83,51 +88,7 @@ def sifibridge_streamer(version="1_1",
                             freq = freq,# eda sampling frequency
                             streaming=streaming)
     sb.start()
-    # p = Process(target=sb.start_stream, daemon=True)
-    # p.start()
     return sb, shared_memory_items
-
-
-def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
-    """Streams EMG from a test file over UDP.
-
-    This function can be used to simulate raw EMG being streamed over a UDP port. The main purpose 
-    of this function would be to explore real-time interactions without the need for a physical 
-    device. Note: This will start up a seperate process to stream data over. Additionally, 
-    this uses the time module and as such the sampling rate may not be perfect and there may 
-    be some latency.
-
-    Parameters
-    ----------
-    file_path: string
-        The path of the csv file where the EMG data is located. 
-    num_channels: int
-        The number of channels to stream. This should be <= to 
-        the number of columns in the CSV.
-    sampling_rate: int (optional), default=100
-        The desired sampling rate in Hz.
-    port: int (optional), default=12345
-        The desired port to stream over. 
-    ip: string optional, default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
-    
-    Examples
-    ----------
-    >>> mock_emg_stream("stream_data.csv", num_channels=8, sampling_rate=100)
-    """
-    Process(target=_stream_thread, args=(file_path, num_channels, sampling_rate, port, ip), daemon=True).start()
-
-def _stream_thread(file_path, num_channels, sampling_rate, port, ip):
-    data = np.loadtxt(file_path, delimiter=",")
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    index = 0
-    while index < len(data):
-        val = time.time() + (1000/sampling_rate)/1000
-        while time.time() < val:
-            pass
-        data_arr = pickle.dumps(list(data[index][:num_channels]))
-        sock.sendto(data_arr, (ip, port))
-        index += 1
 
 def myo_streamer(
     shared_memory_items : list | None = None,
@@ -150,9 +111,15 @@ def myo_streamer(
         Specifies whether IMU data should be forwarded to shared memory.
     filtered : bool (optional), default=True
         If True, the data is the filtered data. Otherwise it is the raw unfiltered data.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> myo_streamer()
+    >>> streamer, shared_memory = myo_streamer()
     """
     if shared_memory_items is None:
         shared_memory_items = []
@@ -180,7 +147,7 @@ def delsys_streamer(shared_memory_items : list | None = None,
                     timeout             : int = 10):
     """The streamer for the Delsys device (Avanti/Trigno). 
 
-    This function connects to the Delsys and streams its data over UDP. Note that you must have the Delsys Control Utility
+    This function connects to the Delsys. Note that you must have the Delsys Control Utility
     installed for this to work.
 
     Parameters
@@ -200,9 +167,15 @@ def delsys_streamer(shared_memory_items : list | None = None,
         The channels (i.e., electrodes) that are being used in the experiment. The Delsys will send 16 channels over the delsys_ip, but we only take the active channels to be streamed over the stream_ip/stream_port.
     timeout : int
         Timeout for commands sent to Delsys.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> delsys_streamer()
+    >>> streamer, shared_memory = delsys_streamer()
     """
     if shared_memory_items is None:
         shared_memory_items = []
@@ -228,6 +201,56 @@ def delsys_streamer(shared_memory_items : list | None = None,
     return delsys, shared_memory_items
 
 
+def delsys_api_streamer(license             : str = None,
+                        key                 : str = None,
+                        num_channels        : int = None,
+                        dll_folder          : str = 'resources/',
+                        shared_memory_items : list | None = None,
+                        emg                 : bool = True):
+    """The streamer for the Delsys devices that use their new C#.NET API. 
+
+    This function connects to the Delsys. Note that you must have the Delsys .dll files (found here: https://github.com/delsys-inc/Example-Applications/tree/main/Python/resources), 
+    C#.NET 8.0 SDK, and the delsys license + key. Additionally, for using any device that connects over USB, make sure that the usb driver is version >= 6.0.0.
+
+    Parameters
+    ----------
+    license : str
+        Delsys license
+    key : str
+        Delsys key
+    num_channels: int
+        The number of delsys sensors you are using.
+    dll_folder: string : optional (default='resources/')
+        The location of the DLL files installed from the Delsys Github.
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
+    emg : bool : (optional)
+        Whether to collect emg data or not.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
+    Examples
+    ---------
+    >>> streamer, shared_memory = delsys_streamer()
+    """
+    assert license is not None
+    assert key is not None
+    if shared_memory_items is None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (5300,num_channels), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+    for item in shared_memory_items:
+        item.append(Lock())
+    
+    delsys = DelsysAPIStreamer(key, license, dll_folder, shared_memory_items=shared_memory_items, emg=emg)
+    delsys.start()
+    return delsys, shared_memory_items
+
 def oymotion_streamer(shared_memory_items : list | None = None,
                       sampling_rate       : int = 1000,
                       emg                 : bool = True,
@@ -249,9 +272,15 @@ def oymotion_streamer(shared_memory_items : list | None = None,
         Detemines whether EMG data will be forwarded
     imu : bool (optional),
         Determines whether IMU data will be forwarded
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object
+    Object: shared memory
+        The shared memory object
     Examples
     ---------
-    >>> oymotion_streamer()
+    >>> streamer, shared_memory = oymotion_streamer()
     """
     
     if sampling_rate == 1000:
@@ -297,10 +326,15 @@ def emager_streamer(shared_memory_items = None):
     shared_memory_items : list (optional)
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
-
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
     Examples
     ---------
-    >>> emager_streamer()
+    >>> streamer, shared_memory = emager_streamer()
     """
     if shared_memory_items is None:
         # Create defaults
@@ -314,7 +348,7 @@ def emager_streamer(shared_memory_items = None):
     ema.start()
     return ema, shared_memory_items
 
-
+#TODO: Update docs
 def leap_streamer(shared_memory_items : list | None =None,
                   arm_basis : bool = True,
                   arm_width : bool = False,

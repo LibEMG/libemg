@@ -365,6 +365,7 @@ class Myo(object):
 		return None
 
 	def disconnect(self):
+		print('Disconnecting from Myo.')
 		if self.conn is not None:
 			self.bt.disconnect(self.conn)
 
@@ -531,34 +532,37 @@ class MyoStreamer(Process):
         mode = emg_mode.FILTERED
         if not self.filtered:
             mode = emg_mode.RAW
-        m = Myo(mode=mode)
-        m.connect()
+        self.m = Myo(mode=mode)
+        self.m.connect()
 
         if self.emg:
             def write_emg(emg):
                 emg = np.array(emg)
                 self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
                 self.smm.modify_variable("emg_count", lambda x: x + 2)
-            m.add_emg_handler(write_emg)
+            self.m.add_emg_handler(write_emg)
         if self.imu:
             def write_imu(quat, acc, gyro):
                 imu_arr = np.array([*quat, *acc, *gyro])
                 self.smm.modify_variable("imu", lambda x: np.vstack((imu_arr, x))[:x.shape[0],:])
                 self.smm.modify_variable("imu_count", lambda x: x + 1)
-            m.add_imu_handler(write_imu)
+            self.m.add_imu_handler(write_imu)
 
-        m.set_leds([128, 0, 0], [128, 0, 0])
+        self.m.set_leds([128, 0, 0], [128, 0, 0])
 		# Vibrate to show that its connected
-        m.vibrate(3)
+        self.m.vibrate(3)
 		# Disable vibrations
-        m.vibrate(0)
+        self.m.vibrate(0)
 
         while True:
             if self.signal.is_set():
-                m.disconnect()
+                self.cleanup()
                 break
             try:
-                m.run()
+                self.m.run()
             except:
                 print("Worker Stopped.")
                 quit() 
+		
+    def cleanup(self):
+	     self.m.disconnect()

@@ -117,29 +117,27 @@ Now that we have shown how to leverage EMG predictions to replace traditional ke
 
 First, the required imports from libemg:
 ```Python
-from libemg.screen_guided_training import ScreenGuidedTraining
+from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
-from libemg.streamers import myo_streamer
-from libemg.utils import make_regex
+from libemg.streamers import oymotion_streamer
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier
 ```
 
 To listen for decisions streamed over a port, an OnlineDataHandler is required. This data handler maintains a real-time EMG data buffer and is required for training and classification.
 ```Python
-self.odh = OnlineDataHandler()
-self.odh.start_listening()
+streamer, sm = oymotion_streamer()
+self.odh = OnlineDataHandler(sm)
 ```
 
 When the data accumulation button is pressed the training UI menu is presented to the user. Note that using the [LibEMGGesture library](https://github.com/libemg/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
 ```Python
 def launch_training(self):
-    # Destroy the menu 
     self.window.destroy()
     # Launch training ui
-    training_ui = ScreenGuidedTraining()
+    training_ui = GUI(self.odh, width=700, height=700, gesture_height=300, gesture_width=300)
     training_ui.download_gestures([1,2,3,4,5], "images/")
-    training_ui.launch_training(self.odh, 2, 3, "images/", "data/", 1)
+    training_ui.start_gui()
     self.initialize_ui()
 ```
 
@@ -160,15 +158,14 @@ After acquiring the offline training data, creating an online classifier is simp
 ```Python
 # Step 1: Parse offline training data
 dataset_folder = 'data/'
-classes_values = ["0","1","2","3","4"]
-reps_values = ["0", "1", "2"]
 regex_filters = [
-    RegexFilter(left_bound = "_C_", right_bound=".csv", values = classes_values, description='classes'),
-    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+    RegexFilter(left_bound = "C_", right_bound="_R", values = ["0","1","2","3","4"], description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_emg.csv", values = ["0", "1", "2"], description='reps'),
 ]
-odh = OfflineDataHandler()
-odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
-train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
+
+offline_dh = OfflineDataHandler()
+offline_dh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
+train_windows, train_metadata = offline_dh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
 Step 2 involves extracting features from the train_windows since the online classifier expects these as input. In this example, Hudgins' Time Domain (HTD) features are extracted, a common grouping used for prosthesis control. However, testing different features or feature groups could be done by changing this line.

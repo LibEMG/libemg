@@ -1,4 +1,4 @@
-Data Handling
+Data Handler
 ------------------------------
 .. automodule:: libemg.data_handler
    :members:
@@ -40,5 +40,5 @@ Streamers
 
 Screen Guided Training
 ------------------------------
-.. automodule:: libemg.screen_guided_training
+.. automodule:: libemg.gui
    :members:

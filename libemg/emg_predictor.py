@@ -612,7 +612,6 @@ class OnlineStreamer(ABC):
         smm_items.extend(required_smm_items)
         self.smm = smm
         self.smm_items = smm_items
-        
 
         self.files = {}
         self.tcp = tcp
@@ -635,6 +634,49 @@ class OnlineStreamer(ABC):
         else:
             self.process.start()
     
+    def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
+        time_stamp = time.time()
+        if calculated_velocity == "":
+            printed_velocity = "-1"
+        else:
+            printed_velocity = float(calculated_velocity)
+        if self.options['std_out']:
+            print(f"{int(prediction)} {printed_velocity} {time.time()}")
+        # Write classifier output:
+        if self.options['file']:
+            if not 'file_handle' in self.files.keys():
+                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
+            writer = csv.writer(self.files['file_handle'])
+            feat_str = str(model_input[0]).replace('\n','')[1:-1]
+            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
+            writer.writerow(row)
+            self.files['file_handle'].flush()
+        if "smm" in self.options.keys():
+            # assumed to have "classifier_input" and "classifier_output" keys
+            # these are (1+)
+            def insert_classifier_input(data):
+                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
+                return data
+            def insert_classifier_output(data):
+                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
+                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
+                return data
+            self.options['smm'].modify_variable("classifier_input",
+                                                insert_classifier_input)
+            self.options['smm'].modify_variable("classifier_output",
+                                                insert_classifier_output)
+            self.options['classifier_smm_writes'] += 1
+
+        if self.output_format == "predictions":
+            message = str(prediction) + calculated_velocity + '\n'
+        elif self.output_format == "probabilities":
+            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
+        if not self.tcp:
+            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
+        else:
+            self.conn.sendall(str.encode(message))
+                    
     def prepare_smm(self):
         for i in self.smm_items:
             if len(i) == 3:
@@ -916,7 +958,6 @@ class OnlineEMGClassifier(OnlineStreamer):
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
             self.conn.sendall(str.encode(message))
-
 
     def visualize(self, max_len=50, legend=None):
         """Produces a live plot of classifier decisions -- Note this consumes the decisions.
