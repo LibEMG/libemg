@@ -15,36 +15,35 @@ Fortunately, we can leverage nearly the entire pipeline code that we have used b
 
 ```Python
 # make our results repeatable
-    fix_random_seed(seed_value=0, use_cuda=True)
-    # download the dataset from the internet
-    dataset = OneSubjectMyoDataset(save_dir='dataset/',
-                          redownload=False)
-    odh = dataset.prepare_data(format=OfflineDataHandler)
+fix_random_seed(seed_value=0, use_cuda=True)
+# download the dataset from the internet
+dataset = OneSubjectMyoDataset(save_dir='dataset/',
+                        redownload=False)
+odh = dataset.prepare_data(format=OfflineDataHandler)
 
-    # split the dataset into a train, validation, and test set
-    # this dataset has a "sets" metadata flag, so lets split 
-    # train/test using that.
-    not_test_data = odh.isolate_data("sets",[0,1,2,3,4])
-    test_data = odh.isolate_data("sets",[5])
-    # lets further split up training and validation based on reps
-    train_data = not_test_data.isolate_data("sets",[0,1,2,3])
-    valid_data = not_test_data.isolate_data("sets",[4])
+# split the dataset into a train, validation, and test set
+# this dataset has a "sets" metadata flag, so lets split 
+# train/test using that.
+not_test_data = odh.isolate_data("sets",[0,1,2,3,4])
+test_data = odh.isolate_data("sets",[5])
+# lets further split up training and validation based on reps
+train_data = not_test_data.isolate_data("sets",[0,1,2,3])
+valid_data = not_test_data.isolate_data("sets",[4])
 
-    # let's perform the filtering on the dataset too (neural networks like
-    # inputs that are standardized).
-    fi = Filter(sampling_frequency=200)
-    standardize_dictionary = {"name":"standardize",
-                              "data": train_data}
-    fi.install_filters(standardize_dictionary)
-    fi.filter(train_data)
-    fi.filter(valid_data)
-    fi.filter(test_data)
+# let's perform the filtering on the dataset too (neural networks like
+# inputs that are standardized).
+fi = Filter(sampling_frequency=200)
+standardize_dictionary = {"name":"standardize", "data": train_data}
+fi.install_filters(standardize_dictionary)
+fi.filter(train_data)
+fi.filter(valid_data)
+fi.filter(test_data)
 
-    # for each of these dataset partitions, lets get our windows ready
-    window_size, window_increment = 50, 10
-    train_windows, train_metadata = train_data.parse_windows(window_size, window_increment)
-    valid_windows, valid_metadata = valid_data.parse_windows(window_size, window_increment)
-    test_windows,  test_metadata  = test_data.parse_windows( window_size, window_increment)
+# for each of these dataset partitions, lets get our windows ready
+window_size, window_increment = 50, 10
+train_windows, train_metadata = train_data.parse_windows(window_size, window_increment)
+valid_windows, valid_metadata = valid_data.parse_windows(window_size, window_increment)
+test_windows,  test_metadata  = test_data.parse_windows( window_size, window_increment)
 ```
 
 The main differences between handcrafted feature pipelines and deep learning pipelines begins now. For handcrafted features we would have proceeded to extracting our features, but for deep learning we use the windows themselves as the input. For later processing, we can use PyTorch's built-in dataset and dataloader classes to make grabbing batches of inputs and labels easier. The dataset object we define requires two methods to interface with the dataloader, a __getitem__() method and a __len__() method. The __getitem__() method takes in an index and returns a tuple of all things desired for that sample (in this case the data and label, but we could include other labels like a limb position identifier or subject identifier). The __len__() method just returns the total number of samples in the dataset. We then can define a dataloader, which is a convinient object for grabbing batches of the tuples defined in the __getitem__() method. In PyTorch's implementation, we can provide a reference to our dataset class, the batch size we desire, and a collate method (how we are collecting many __getitem__() calls into a single torch tensor).
@@ -136,6 +135,8 @@ class CNN(nn.Module):
         self.output_layer = nn.Linear(size_after_conv, n_output)
         # and for predict_proba we need a softmax function:
         self.softmax = nn.Softmax(dim=1)
+
+        self.to("cuda" if torch.cuda.is_available() else "cpu")
         
 
     def conv_only(self, x):
@@ -183,7 +184,7 @@ class CNN(nn.Module):
                 acc = sum(torch.argmax(output,1) == labels)/labels.shape[0]
                 # log it
                 self.log["training_loss"] += [(epoch, loss.item())]
-                self.log["training_accuracy"] += [(epoch, acc)]
+                self.log["training_accuracy"] += [(epoch, acc.item())]
             # validation set
             self.eval()
             for data, labels in dataloader_dictionary["validation_dataloader"]:
@@ -194,7 +195,7 @@ class CNN(nn.Module):
                 acc = sum(torch.argmax(output,1) == labels)/labels.shape[0]
                 # log it
                 self.log["validation_loss"] += [(epoch, loss.item())]
-                self.log["validation_accuracy"] += [(epoch, acc)]
+                self.log["validation_accuracy"] += [(epoch, acc.item())]
             if verbose:
                 epoch_trloss = np.mean([i[1] for i in self.log['training_loss'] if i[0]==epoch])
                 epoch_tracc  = np.mean([i[1] for i in self.log['training_accuracy'] if i[0]==epoch])
@@ -204,15 +205,19 @@ class CNN(nn.Module):
         self.eval()
 
     def predict(self, x):
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         if type(x) != torch.Tensor:
             x = torch.tensor(x, dtype=torch.float32)
+        x = x.to(device)
         y = self.forward(x)
         predictions = torch.argmax(y, dim=1)
         return predictions.cpu().detach().numpy()
 
     def predict_proba(self, x):
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         if type(x) != torch.Tensor:
             x = torch.tensor(x, dtype=torch.float32)
+        x = x.to(device)
         y = self.forward(x)
         return y.cpu().detach().numpy()
 ```
@@ -220,42 +225,42 @@ class CNN(nn.Module):
 Back in the main code, we can now construct our dataset and dataloaders using the windows and classes of the training and validation sets:
 
 ```Python
-    # libemg supports deep learning, but we need to prepare the dataloaders
-    train_dataloader = make_data_loader(train_windows, train_metadata["classes"])
-    valid_dataloader = make_data_loader(valid_windows, valid_metadata["classes"])
-    
-    # let's make the dictionary of dataloaders
-    dataloader_dictionary = {"training_dataloader": train_dataloader,
-                             "validation_dataloader": valid_dataloader}
+# libemg supports deep learning, but we need to prepare the dataloaders
+train_dataloader = make_data_loader(train_windows, train_metadata["classes"])
+valid_dataloader = make_data_loader(valid_windows, valid_metadata["classes"])
+
+# let's make the dictionary of dataloaders
+dataloader_dictionary = {"training_dataloader": train_dataloader,
+                            "validation_dataloader": valid_dataloader}
 ```
 
 We can initialize our model:
 
 ```Python
-    # We need to tell the libEMG EMGClassifier that we are using a custom model
-    model = CNN(n_output   = np.unique(np.vstack(odh.classes[:])).shape[0],
-                n_channels = train_windows.shape[1],
-                n_samples  = train_windows.shape[2],
-                n_filters  = 64)
+# We need to tell the libEMG EMGClassifier that we are using a custom model
+model = CNN(n_output   = np.unique(np.vstack(odh.classes[:])).shape[0],
+            n_channels = train_windows.shape[1],
+            n_samples  = train_windows.shape[2],
+            n_filters  = 64)
 ```
 
 And we can train this model with hyperparameters we specify:
 
 ```Python
-    # we can even make a dictionary of parameters that get passed into 
-    # the training process of the deep learning model
-    dl_dictionary = {"learning_rate": 1e-4,
-                     "num_epochs": 50,
-                     "verbose": True}
+# we can even make a dictionary of parameters that get passed into 
+# the training process of the deep learning model
+dl_dictionary = {"learning_rate": 1e-4,
+                    "num_epochs": 50,
+                    "verbose": True}
 ```
 
 With these things defined, we can finally interface the CNN model with LibEMG. We can pass our PyTorch classifier to the EMGClassifier.fit() method as the chosen classifier. We can also pass our deep learning dictionary as the positional dataloader_dictionary argument to tell the library we are training a deep learning model. Finally, the deep learning hyperparameter dictionary is passed in with the parameters keyword (note: the keys of this dictionary are positional arguments in the .fit() function).
 
 ```Python
-    # Now that we've made the custom classifier object, libEMG knows how to 
-    # interpret it when passed in the dataloader_dictionary. Everything happens behind the scenes.
-    classifier = EMGClassifier()
-    classifier.fit(model, dataloader_dictionary=dataloader_dictionary, parameters=dl_dictionary)
+# Now that we've made the custom classifier object, libEMG knows how to 
+# interpret it when passed in the dataloader_dictionary. Everything happens behind the scenes.
+classifier = EMGClassifier(model)
+classifier.fit(dataloader_dictionary=dataloader_dictionary, parameters=dl_dictionary)
 ```
 
 After the classifier has been trained, we can use this EMGClassifier object the same way we always have done, despite now using a neural network.
@@ -263,19 +268,19 @@ After the classifier has been trained, we can use this EMGClassifier object the 
 Getting offline metrics for the test set using this classifier:
 
 ```Python
-    # get the classifier's predictions on the test set
-    preds = classifier.run(test_windows)
-    om = OfflineMetrics()
-    metrics = ['CA','AER','INS','REJ_RATE','CONF_MAT','RECALL','PREC','F1']
-    results = om.extract_offline_metrics(metrics, test_metadata['classes'], preds[0], null_label=2)
-    for key in results:
-        print(f"{key}: {results[key]}")
+# get the classifier's predictions on the test set
+preds = classifier.run(test_windows)
+om = OfflineMetrics()
+metrics = ['CA','AER','INS','REJ_RATE','CONF_MAT','RECALL','PREC','F1']
+results = om.extract_offline_metrics(metrics, test_metadata['classes'], preds[0], null_label=2)
+for key in results:
+    print(f"{key}: {results[key]}")
 ```
 
 We can even use the post-processing available to the EMGClassifier with custom classifiers!
 
 ```Python
-    classifier.add_majority_vote(3)
-    classifier.add_rejection(0.9)
-    classifier.add_velocity(train_windows, train_metadata["classes"])
+classifier.add_majority_vote(3)
+classifier.add_rejection(0.9)
+classifier.add_velocity(train_windows, train_metadata["classes"])
 ```

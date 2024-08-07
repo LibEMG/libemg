@@ -1,4 +1,4 @@
-Data Handling
+Data Handler
 ------------------------------
 .. automodule:: libemg.data_handler
    :members:
@@ -20,7 +20,7 @@ Feature Selection
 
 Classification
 ------------------------------
-.. automodule:: libemg.emg_classifier
+.. automodule:: libemg.emg_predictor
    :members:
 
 Offline Evaluation Metrics
@@ -40,5 +40,5 @@ Streamers
 
 Screen Guided Training
 ------------------------------
-.. automodule:: libemg.screen_guided_training
+.. automodule:: libemg.gui
    :members:

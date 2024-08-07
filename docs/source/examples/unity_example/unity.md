@@ -1,4 +1,4 @@
-[View Source Code](https://github.com/libemg/LibEMG_Unity_Showcase)
+[View Source Code](https://github.com/eeddy/Momo-Demo)
 
 Often, it is desirable to use tech stacks other than Python to develop applications that leverage EMG-based control. For example, Unity is a game development environment that enables high-quality games and VR/AR development, making it an intriguing tool for developing immersive environments. LibEMG was designed with this in mind and can easily interface with these differing tools. As long as the programming interface has socket functionality (C# does), it can leverage LibEMG. This example shows how to leverage the library in a simple Unity game for myoelectric training. This same concept applies to more complex applications (e.g., AR/VR) and programming languages. 
 
@@ -64,11 +64,10 @@ public class MovementController : MonoBehaviour
 Once the initial game worked with simple keyboard controls, we implemented the EMG-based input. Since LibEMG is developed in Python, we had to include the machine learning/training portion as a Python application. While there may be ways to call Python from within C#, this was outside the scope of this example. Instead, we created a simple UI with two buttons: `Get Training Data` and `Start Classifying`. All python code can be found in `myo_control.py`. The library imports required for this example are as follows:
 
 ```Python
-from libemg.screen_guided_training import ScreenGuidedTraining
-from libemg.data_handler import OnlineDataHandler, OfflineDataHandler
-from libemg.utils import make_regex
+from libemg.gui import GUI
+from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import OnlineEMGClassifier, EMGClassifier 
+from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier 
 from libemg.streamers import myo_streamer
 ```
 
@@ -83,9 +82,9 @@ When the `Get Training Data` button is clicked, we leverage the library's Traini
 ```Python
 def launch_training(self):
     self.window.destroy()
-    training_ui = ScreenGuidedTraining()
+    training_ui = GUI(self.odh, gesture_height=500, gesture_width=500)
     training_ui.download_gestures([1,2,4,5], "images/")
-    training_ui.launch_training(self.odh, 2, 3, "images/", "data/", 1)
+    training_ui.start_gui()
     self.initialize_ui()
 ```
 
@@ -96,18 +95,14 @@ The first step involves processing the accumulated training data into an `Offlin
 # Step 1: Parse offline training data
 dataset_folder = 'data/'
 classes_values = ["0","1","2","3"]
-classes_regex = make_regex(left_bound = "_C_", right_bound=".csv", values = classes_values)
 reps_values = ["0", "1", "2"]
-reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-dic = {
-    "reps": reps_values,
-    "reps_regex": reps_regex,
-    "classes": classes_values,
-    "classes_regex": classes_regex
-}
+regex_filters = [
+    RegexFilter(left_bound = "_C_", right_bound=".csv", values = classes_values, description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+]
 
 odh = OfflineDataHandler()
-odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
+odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
 train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
@@ -115,7 +110,7 @@ The next step involves extracting features from the offline data. Let's experime
 ```Python
 # Step 2: Extract features from offline data
 fe = FeatureExtractor()
-feature_list = fe.get_feature_groups()['LS9']
+feature_list = fe.get_feature_groups()['HTD']
 training_features = fe.extract_features(feature_list, train_windows)
 ```
 
@@ -130,11 +125,9 @@ Next, we have to create an offline EMG classifier. We have opted for an SVM mode
 
 ```Python
 # Step 4: Create the EMG classifier
-o_classifier = EMGClassifier()
-o_classifier.fit(model="SVM", feature_dictionary=data_set)
+o_classifier = EMGClassifier("SVM")
+o_classifier.fit(feature_dictionary=data_set)
 o_classifier.add_velocity(train_windows, train_metadata['classes'])
-o_classifier.add_majority_vote(5)
-o_classifier.add_rejection(0.9)
 ```
 
 Finally, lets create the `OnlineEMGClassifier` and begin streaming predictions. Note that we set block to false so that we don't block the UI thread. 

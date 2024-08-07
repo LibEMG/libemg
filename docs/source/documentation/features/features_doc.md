@@ -33,7 +33,7 @@ features_2 = fe.extract_feature_group('HTD', windows)
 Each of the ~50 features that were implemented were tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Their value shouldn't be discounted when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.
 
 
-![alt text](feature_accuracies.png)
+![alt text](feature_performance.png)
 <center> <p> Figure 1: Individual Accuracy of Each Feature on the 3DCDataset</p> </center>
 
 <details>
@@ -46,7 +46,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from libemg.datasets import _3DCDataset
-from libemg.emg_classifier import EMGClassifier
+from libemg.emg_predictor import EMGClassifier
 from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import make_regex
 from libemg.data_handler import OfflineDataHandler
@@ -108,8 +108,8 @@ if __name__ == "__main__":
             data_set['training_labels'] = train_metadata["classes"]
 
             # setup the classifier
-            classifier = EMGClassifier()
-            classifier.fit(model,feature_dictionary=data_set.copy())
+            classifier = EMGClassifier(model)
+            classifier.fit(feature_dictionary=data_set.copy())
 
             # running the classifier analyzes the test data we already passed it
             preds,probs = classifier.run(test_features, test_metadata['classes'])

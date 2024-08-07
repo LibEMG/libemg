@@ -2,11 +2,11 @@ import numpy as np
 import time
 import socket
 import pytest
-from libemg.data_handler import OfflineDataHandler, OnlineDataHandler
+from libemg.data_handler import OfflineDataHandler, OnlineDataHandler, RegexFilter
 from libemg.utils import make_regex, get_windows
 from libemg.streamers import mock_emg_stream
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_classifier import EMGClassifier, OnlineEMGClassifier
+from libemg.emg_predictor import EMGClassifier, OnlineEMGClassifier
 
 """
 By default these tests are marked @slow - and they do not work in the CI
@@ -20,17 +20,13 @@ def test_emg_classifier():
     odh = OfflineDataHandler()
     dataset_folder = 'tests/data/myo_dataset/'
     classes_values = ["0","1","2","3","4"]
-    classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG", values = classes_values)
     reps_values = ["0","1","2","3"]
-    reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-    dic = {
-        "reps": reps_values,
-        "reps_regex": reps_regex,
-        "classes": classes_values,
-        "classes_regex": classes_regex
-    }
+    regex_filters = [
+        RegexFilter(left_bound = "_C_", right_bound="_EMG", values = classes_values, description='classes'),
+        RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+    ]
     odh = OfflineDataHandler()
-    odh.get_data(folder_location=dataset_folder, filename_dic = dic, delimiter=",")
+    odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
 
     windows, metadata = odh.parse_windows(50,25)
     test_data = np.loadtxt("tests/data/stream_data_tester.csv", delimiter=",")
@@ -44,8 +40,8 @@ def test_emg_classifier():
     data_set['training_labels'] = metadata['classes']
     testing_features = fe.extract_feature_group('HTD', test_windows)
 
-    off_class = EMGClassifier()
-    off_class.fit("LDA", data_set.copy())
+    off_class = EMGClassifier('LDA')
+    off_class.fit(data_set.copy())
     offline_preds, _ = off_class.run(test_data=testing_features)
 
     online_data_handler = OnlineDataHandler(emg_arr=True)

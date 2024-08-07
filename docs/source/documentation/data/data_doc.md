@@ -170,23 +170,15 @@ One overhead for most EMG projects is interfacing with a particular dataset sinc
 <summary><b>Example Code</b></summary>
 
 ```Python
+from libemg.data_handler import OfflineDataHandler, RegexFilter
 dataset_folder = 'dataset'
-sets_values = ["training", "testing"]
-sets_regex = make_regex(left_bound = "dataset/", right_bound="/", values = sets_values)
-classes_values = ["0","1","2","3","4"]
-classes_regex = make_regex(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values)
-reps_values = ["0","1","2","3"]
-reps_regex = make_regex(left_bound = "R_", right_bound="_C_", values = reps_values)
-dic = {
-    "sets": sets_values,
-    "sets_regex": sets_regex,
-    "reps": reps_values,
-    "reps_regex": reps_regex,
-    "classes": classes_values,
-    "classes_regex": classes_regex
-}
+regex_filters = [
+    RegexFilter(left_bound = "dataset/", right_bound="/", values = sets_values, description='sets'),
+    RegexFilter(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values, description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+]
 odh = OfflineDataHandler()
-odh.get_data(folder_location=dataset_folder, filename_dic=dic, delimiter=",")
+odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimiter=",")
 
 # Extract training data:
 train_odh = odh.isolate_data(key="sets", values=[0])
@@ -203,20 +195,22 @@ training_features = fe.extract_features(feature_list, train_windows)
 
 # Online Data Handler 
 
-One complication when using EMG devices is the lack of standardization, meaning that interfacing with hardware is a new undertaking for each device. A goal of LibEMG is to abstract these differences and enable a hardware-agnostic framework. Therefore, this module acts as a middle layer for processing real-time data streaming from any device. In this architecture - exemplified in Figure 1 - the OnlineDataHandler reads data from a UDP port, then passes these data to the system. The system then buffers, stores, and processes these data for use within the pipeline. In turn, the `UDP Streamer` and `OnlineDataHandler` are mutually independent as they communicate over a pre-specified UDP port. Both run in their processes, so the main thread is never blocked.
+One complication when using EMG devices is the lack of standardization, meaning that interfacing with hardware is a new undertaking for each device. A goal of LibEMG is to abstract these differences and enable a hardware-agnostic framework. Therefore, this module acts as a middle layer for processing real-time data streaming from any device. In this architecture - exemplified in Figure 1 – live data streaming is performed by using a shared memory buffer as the core. This shared memory buffer is created by the device streamer, where a process is spawned that continuously populates the buffer with samples. Other modules can gain access to the shared memory buffer using the shared memory items that the streamer returned, allowing for cross-process, low-latency, non-blocking access to the data of interest. We provide an OnlineDataHandler object that is a generic object for attaching to the shared memory buffer with added some utilities.
+ 
+An example of the online data streaming workflow is provided below:
+ 
+```Python
+# start the hardware streamer, receive a process handle and shared memory descriptors
+streamer_process, shared_memory_items = libemg.streamers.myo_streamer()
+# start an online data handler to attach to the shared memory buffer
+odh = libemg.data_handler.OnlineDataHandler(shared_memory_items=shared_memory_items)
+# start logging the data to a file
+odh.log_to_file()
+# start visualizing the data
+odh.visualization()
+```
 
 ![alt text](online_dh.png)
 <center> <p> Figure 1: OnlineDataHandler Architecture</p> </center>
-
-The typical setup to read data in real-time from a device is exemplified in the code snipped below. The order in which the `OnlineDataHandler` and the `streamer` get created does not matter (as they are independent). However, they must both be initialized before you can do anything with the data. 
-
-```Python
-# Create Online Data Handler - This listens for data 
-odh = OnlineDataHandler()
-odh.start_listening()
-# Create UDP Streamer - This streams data 
-[preferred]_streamer()
-# Proceed with the rest of the pipeline... 
-```
 
 **For more information on the default streamers and creating your own, please reference the Supported Hardware section.** 
