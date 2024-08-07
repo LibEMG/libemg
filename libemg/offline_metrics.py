@@ -97,7 +97,9 @@ class OfflineMetrics:
         """
         assert len(y_true) == len(y_predictions)
         og_y_preds = y_predictions.copy()
-        if -1 in y_predictions:
+        is_classification = np.all(y_predictions.astype(int) == y_predictions) and np.all(y_true.astype(int) == y_true)
+        if -1 in y_predictions and is_classification:
+            # Only apply to classification data
             rm_idxs = np.where(y_predictions == -1)
             y_predictions = np.delete(y_predictions, rm_idxs)
             y_true = np.delete(y_true, rm_idxs)
