@@ -103,10 +103,6 @@ class DataKernel():
         else:
             return None
         
-from collections import deque
-from pythonnet import load
-load("coreclr")
-import clr
 
 class DelsysAPIStreamer(Process):
     def __init__(self, key, license, dll_folder = 'resources/', shared_memory_items:   list = [],
@@ -162,6 +158,14 @@ class DelsysAPIStreamer(Process):
         self.emg_handlers.append(h)
 
     def run(self):
+        try:
+            from collections import deque
+            from pythonnet import load
+            load("coreclr")
+            import clr
+        except RuntimeError as e:
+            raise RuntimeError('.NET runtime not found, so DelsysAPI Streamer cannot run. Please ensure that a .NET runtime >8.0 is installed. Exiting run() method.') from e
+
         clr.AddReference(self.dll_folder + "DelsysAPI")
         clr.AddReference("System.Collections")
         from Aero import AeroPy

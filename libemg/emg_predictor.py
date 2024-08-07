@@ -3,6 +3,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticD
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
@@ -469,7 +470,10 @@ class EMGRegressor(EMGPredictor):
             'GB': (GradientBoostingRegressor, {"random_state": 0}),
             'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
         }
+        convert_to_multioutput = isinstance(model, str)
         model = self._validate_model_parameters(model, model_parameters, model_config)
+        if convert_to_multioutput:
+            model = MultiOutputRegressor(model)
         self.deadband_threshold = deadband_threshold
         super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
