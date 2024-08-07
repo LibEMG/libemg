@@ -160,22 +160,35 @@ class DataCollectionPanel:
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
         
-        collection_window_width = self.video_player_width + 100
+        collection_window_width  = self.video_player_width + 100
         collection_window_height = self.video_player_height + 300
         with dpg.window(label="Collection Window",
                         tag="__dc_collection_window",
                         width=collection_window_width,
                         height=collection_window_height):
-            dpg.add_spacer(height=50, width=50)
+            
             with dpg.group(horizontal=True):
+                dpg.add_spacer(height=20,width=self.video_player_width/2+30-(7*len("Collection Menu"))/2)
                 dpg.add_text(default_value="Collection Menu")
             with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_prompt_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
             with dpg.group(horizontal=True):
+                dpg.add_spacer(height=20,width=30)
                 dpg.add_image("__dc_collection_visual")
             with dpg.group(horizontal=True):
+                dpg.add_spacer(height=20,width=30)
                 dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
-            
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_redo_spacer", height=20, width=self.video_player_width/2+30 - (7*len("Redo"))/2)
+                dpg.add_button(tag="__dc_redo_button", label="Redo", callback=self.redo_collection_callback)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_continue_spacer", height=20, width=self.video_player_width/2+30 - (7*len("Continue"))/2)
+                dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback)
+            dpg.hide_item(item="__dc_redo_button")
+            dpg.hide_item(item="__dc_continue_button")
+                
+        
         # dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
@@ -211,8 +224,8 @@ class DataCollectionPanel:
             # pause / redo goes here!
             if last_rep != current_rep  or (not self.auto_advance):
                 self.advance = False
-                dpg.add_button(tag="__dc_redo_button", label="Redo", callback=self.redo_collection_callback, parent="__dc_collection_window")
-                dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback, parent="__dc_collection_window")
+                dpg.show_item(item="__dc_redo_button")
+                dpg.show_item(item="__dc_continue_button")
                 while not self.advance:
                     time.sleep(0.1)
                     dpg.configure_app(manual_callback_management=True)
@@ -225,22 +238,24 @@ class DataCollectionPanel:
             self.i      = self.i - self.num_motions
         else:
             self.i      = self.i - 1 
-        dpg.delete_item("__dc_redo_button")
-        dpg.delete_item("__dc_continue_button")
+        dpg.hide_item(item="__dc_redo_button")
+        dpg.hide_item(item="__dc_continue_button")
         self.advance = True
     
     def continue_collection_callback(self):
-        dpg.delete_item("__dc_redo_button")
-        dpg.delete_item("__dc_continue_button")
+        dpg.hide_item(item="__dc_redo_button")
+        dpg.hide_item(item="__dc_continue_button")
         self.advance = True
 
     def play_collection_visual(self, media, active=True):
         if active:
             timer_duration = self.rep_time
             dpg.set_value("__dc_prompt", value=media[1])
+            dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len(media[1]))/2)
         else:
             timer_duration = self.rest_time
             dpg.set_value("__dc_prompt", value="Up next: "+media[1])
+            dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len("Up next: "+media[1]))/2)
         
         
         texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
