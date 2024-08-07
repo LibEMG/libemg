@@ -323,39 +323,132 @@ class OfflineMetrics:
         return np.average(f1, weights=weights)  
     
     def get_R2(self, y_true, y_predictions):
+        """R2 score.
+
+        The R^2 score measures how well a regression model captures the variance in the predictions.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the R2 score for each DOF.
+        """
         ssr = np.sum((y_predictions - y_true) ** 2, axis=0)
         sst = np.sum((y_true - y_true.mean(axis=0)) ** 2, axis=0)
-        r2 = np.mean(1 - ssr/sst)
+        r2 = 1 - ssr/sst
         return r2
     
     def get_MSE(self, y_true, y_predictions):
+        """Mean squared error.
+
+        The MSE measures the averages squared errors between the true labels and predictions.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the MSE score for each DOF.
+        """
         values = (y_true - y_predictions) ** 2
         mse = np.sum(values, axis=0) / y_true.shape[0]
-        mse = mse.mean()
         return mse
 
     def get_MAPE(self, y_true, y_predictions):
+        """Mean absolute percentage error.
+
+        The MAPE measures the average error between the true labels and predictions as a percentage of the true value.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the MAPE score for each DOF.
+        """
         values = np.abs((y_true - y_predictions) / np.maximum(np.abs(y_true), np.finfo(np.float64).eps))    # some values could be 0, so take epsilon if that's the case to avoid inf
         mape = np.sum(values, axis=0) / y_true.shape[0]
-        mape = mape.mean()
         return mape
 
     def get_RMSE(self, y_true, y_predictions):
+        """Root mean square error.
+
+        The RMSE measures the square root of the MSE.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the RMSE score for each DOF.
+        """
         values = (y_true - y_predictions) ** 2
         mse = np.sum(values, axis=0) / y_true.shape[0]
-        rmse = np.sqrt(mse).mean()
+        rmse = np.sqrt(mse)
         return rmse
 
     def get_NRMSE(self, y_true, y_predictions):
+        """Normalized root mean square error.
+
+        The NRMSE measures the RMSE normalized by the range of possible values.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the RMSE score for each DOF.
+        """
         values = (y_true - y_predictions) ** 2
         mse = np.sum(values, axis=0) / y_true.shape[0]
         nrmse = np.sqrt(mse) / (y_true.max(axis=0) - y_true.min(axis=0))
-        nrmse = nrmse.mean()
         return nrmse
 
     def get_MAE(self, y_true, y_predictions):
+        """Mean absolute error.
+
+        The MAE measures the average L1 error between the true labels and predictions.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the MAE score for each DOF.
+        """
         residuals = np.abs(y_predictions - y_true)
-        mae = np.mean(residuals, axis=0).mean()
+        mae = np.mean(residuals, axis=0)
         return mae 
     
     def visualize(self, dic, y_axis=[0,1]):
