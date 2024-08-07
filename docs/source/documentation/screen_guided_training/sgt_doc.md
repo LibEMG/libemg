@@ -21,20 +21,17 @@ One of the tedious aspects (and annoyances) of performing data collection is the
 Each gesture in the library is associated with a unique id that is referenced when specifying the gestures to download. A simple pipeline for setting up the SGT module is as follows: 
 
 ```Python
-from libemg.screen_guided_training import ScreenGuidedTraining
+from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler
 from libemg.streamers import myo_streamer
 
 # Create data handler and streamer 
-odh = OnlineDataHandler(emg_arr=True)
-odh.start_listening()
-myo_streamer()
+_, sm = myo_streamer()
+odh = OnlineDataHandler(sm)
 
-train_ui = ScreenGuidedTraining()
-# Download gestures with indices 1,2,3,4,5 and store them in the "gestures/" folder
-train_ui.download_gestures([1,2,3,4,5], "gestures/", download_gifs=True)
-# Launch the training UI
-train_ui.launch_training(odh, output_folder="demos/data/sgt/", rep_folder="demos/images/test/")
+training_ui = GUI(self.odh, width=700, height=700, gesture_height=300, gesture_width=300)
+training_ui.download_gestures([1,2,3,4,5], "images/")
+training_ui.start_gui()
 ```
 
 # Types of Training 
