@@ -43,6 +43,7 @@ LibEMG
    examples/features_and_group_example/features_and_group_example
    examples/feature_optimization_example/feature_optimization_example
    examples/deep_learning_example/deep_learning_example
+   examples/offline_regression_example/offline_regression_example
    
 .. toctree::
    :maxdepth: 1
