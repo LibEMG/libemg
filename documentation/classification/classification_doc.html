@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classifiers &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Classifiers</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/classification/classification_doc.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="classifiers">
+<h1>Classifiers<a class="headerlink" href="#classifiers" title="Permalink to this heading"></a></h1>
+<p>After recording, processing, and extracting features from a window of EMG data, it is passed to a machine learning algorithm for classification. These control systems have evolved in the prosthetics community for continuously classifying muscular contractions for enabling prosthesis control. Therefore, they are primarily limited to recognizing static contractions (e.g., hand open/close and wrist flexion/extension) as they have no temporal awareness. Currently, this is the form of recognition supported by LibEMG and is an initial step to explore EMG as an interaction opportunity for general-purpose use. This section highlights the machine-learning strategies that are part of LibEMG’s pipeline. Additionally, a number of post-processing methods (i.e., techniques to improve performance after classification) are explored.</p>
+<section id="statistical-models">
+<h2>Statistical Models<a class="headerlink" href="#statistical-models" title="Permalink to this heading"></a></h2>
+<p>The statistical classifiers (i.e., traditional machine learning methods) implemented leverage the sklearn package. For most cases, the “base” classifiers use the default options, meaning that the pre-defined models are not necessarily optimal. However, the <code class="docutils literal notranslate"><span class="pre">parameters</span></code> attribute can be used when initializing the classifiers to pass in additional sklearn parameters in a dictionary. For example, looking at the <code class="docutils literal notranslate"><span class="pre">RandomForestClassifier</span></code> docs on sklearn:</p>
+<p><img alt="Random Forest" src="../../_images/random_forest.png" /></p>
+<p>A classifier with any of those parameters using the <code class="docutils literal notranslate"><span class="pre">parameters</span></code> attribute. For example:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="mi">99</span><span class="p">,</span>
+    <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="s1">&#39;random_state&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;max_leaf_nodes&#39;</span><span class="p">:</span> <span class="mi">10</span>
+<span class="p">}</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Please reference the <a class="reference external" href="https://scikit-learn.org/stable/">sklearn docs</a> for parameter options for each classifier.</p>
+<p>Additionally, custom classifiers can be created. Any custom classifier should be modeled after the sklearn classifiers and must have the <code class="docutils literal notranslate"><span class="pre">fit</span></code>, <code class="docutils literal notranslate"><span class="pre">predict</span></code>, and <code class="docutils literal notranslate"><span class="pre">predict_proba</span></code> functions to work correctly.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">from</span> <span class="nn">libemg.predictor</span> <span class="kn">import</span> <span class="n">EMGClassifier</span>
+
+<span class="n">rf_custom_classifier</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="n">rf_custom_classifier</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="linear-discriminant-analysis-lda">
+<h3>Linear Discriminant Analysis (LDA)<a class="headerlink" href="#linear-discriminant-analysis-lda" title="Permalink to this heading"></a></h3>
+<p>A linear classifier that uses common covariances for all classes and assumes a normal distribution.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;LDA&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the LDA docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.LinearDiscriminantAnalysis.html">here.</a></p>
+</section>
+<section id="k-nearest-neighbour-knn">
+<h3>K-Nearest Neighbour (KNN)<a class="headerlink" href="#k-nearest-neighbour-knn" title="Permalink to this heading"></a></h3>
+<p>Discriminates between inputs using the K closest samples in feature space. The implemented version in the library defaults to k = 5. A commonly used classifier for EMG-based recognition.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;n_neighbors&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span> <span class="c1"># Optional</span>
+<span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;KNN&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the KNN docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html">here.</a></p>
+</section>
+<section id="support-vector-machines-svm">
+<h3>Support Vector Machines (SVM)<a class="headerlink" href="#support-vector-machines-svm" title="Permalink to this heading"></a></h3>
+<p>A hyperplane that maximizes the distance between classes is used as the boundary for recognition. A commonly used classifier for EMG-based recognition.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;SVM&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the SVM docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html">here.</a></p>
+</section>
+<section id="artificial-neural-networks-mlp">
+<h3>Artificial Neural Networks (MLP)<a class="headerlink" href="#artificial-neural-networks-mlp" title="Permalink to this heading"></a></h3>
+<p>A deep learning technique that uses human-like “neurons” to model data to help discriminate between inputs. Especially for this model, we <strong>highly</strong> recommend you create your own.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;MLP&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the MLP docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html">here.</a></p>
+</section>
+<section id="random-forest-rf">
+<h3>Random Forest (RF)<a class="headerlink" href="#random-forest-rf" title="Permalink to this heading"></a></h3>
+<p>Uses a combination of decision trees to discriminate between inputs.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;RF&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the RF docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html">here.</a></p>
+</section>
+<section id="quadratic-discriminant-analysis-qda">
+<h3>Quadratic Discriminant Analysis (QDA)<a class="headerlink" href="#quadratic-discriminant-analysis-qda" title="Permalink to this heading"></a></h3>
+<p>A quadratic classifier that uses class-specific covariances and assumes normally distributed classes.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;QDA&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the QDA docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis.html">here.</a></p>
+</section>
+<section id="gaussian-naive-bayes-nb">
+<h3>Gaussian Naive Bayes (NB)<a class="headerlink" href="#gaussian-naive-bayes-nb" title="Permalink to this heading"></a></h3>
+<p>Assumes independence of all input features and normally distributed classes.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;NB&#39;</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Check out the NB docs <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.GaussianNB.html">here.</a></p>
+<!-- ### Gradient Boosting (GB)
+```Python
+classifier = EMGClassifier('GB', data_set)
+classifier.fit('GB', data_set)
+```
+Check out the GB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingClassifier.html) -->
+</section>
+</section>
+<section id="deep-learning-pytorch">
+<h2>Deep Learning (Pytorch)<a class="headerlink" href="#deep-learning-pytorch" title="Permalink to this heading"></a></h2>
+<p>Another available option is to use <a class="reference external" href="https://pytorch.org/">pytorch</a> models (i.e., a library for deep learning) to train the classifier, although this involves making some custom code for preparing the dataset and the deep learning model. For a guide on how to use deep learning models, consult the deep learning example.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feature Extraction &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Feature Selection" href="../feature_selection/feature_selection.html" />
+    <link rel="prev" title="Filtering" href="../filtering/filtering.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Feature Extraction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#feature-performance">Feature Performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#features">Features</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mean-absolute-value-mav-sup-1-sup"><strong>Mean Absolute Value (MAV)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#zero-crossings-zc-sup-1-sup"><strong>Zero Crossings (ZC)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slope-sign-change-ssc-sup-1-sup"><strong>Slope Sign Change (SSC)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#waveform-length-wl-sup-1-sup"><strong>Waveform Length (WL)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#l-score-ls-sup-2-sup"><strong>L-score (LS)</strong> <sup>[2]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#maximum-fractal-length-mfl-sup-3-sup"><strong>Maximum Fractal Length (MFL)</strong> <sup>[3]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-squared-ratio-msr-sup-4-sup"><strong>Mean Squared Ratio (MSR)</strong> <sup>[4]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#willison-amplitude-wamp-sup-1-sup"><strong>Willison Amplitude (WAMP)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#root-mean-square-rms-sup-1-sup"><strong>Root Mean Square (RMS)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#integral-of-absolute-value-iav-sup-1-sup"><strong>Integral of Absolute Value (IAV)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#difference-absolute-standard-deviation-value-dasdv-sup-1-sup"><strong>Difference Absolute Standard Deviation Value (DASDV)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#variance-var-sup-5-sup"><strong>Variance (VAR)</strong> <sup>[5]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#first-temporal-moment-m0-sup-6-sup"><strong>First Temporal Moment (M0)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#second-temporal-moment-m2-sup-6-sup"><strong>Second Temporal Moment (M2)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fourth-temporal-moment-m4-sup-6-sup"><strong>Fourth Temporal Moment (M4)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sparsness-sparsi-sup-6-sup"><strong>Sparsness (SPARSI)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irregularity-factor-irf-sup-6-sup"><strong>Irregularity Factor (IRF)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#waveform-length-factor-wlr-sup-6-sup"><strong>Waveform Length Factor (WLR)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autoregressive-coefficients-ar4-and-ar9-sup-1-sup"><strong>Autoregressive Coefficients (AR4 and AR9)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cepstral-coefficient-cc"><strong>Cepstral Coefficient (CC)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#log-detector-ld-sup-1-sup"><strong>Log Detector (LD)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-absolute-value-first-difference-mavfd"><strong>Mean Absolute Value First Difference (MAVFD)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-absolute-value-slope-mavslp-sup-1-sup"><strong>Mean Absolute Value Slope (MAVSLP)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#median-frequency-mdf-sup-1-sup"><strong>Median Frequency (MDF)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-frequency-mnf-sup-1-sup"><strong>Mean Frequency (MNF)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-power-mnp-sup-1-sup"><strong>Mean Power (MNP)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#maximum-peaks-mpk-sup-1-sup"><strong>Maximum/Peaks (MPK) <sup>[1]</sup></strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#skewness-skew-sup-7-sup"><strong>Skewness (SKEW)</strong> <sup>[7]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kurtosis-kurt-sup-7-sup"><strong>Kurtosis (KURT)</strong> <sup>[7]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#root-mean-squared-phasor-rmsphasor-sup-12-sup"><strong>Root Mean Squared Phasor (RMSPHASOR)</strong> <sup>[12]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#waveform-length-phasor-wlphasor-sup-12-sup"><strong>Waveform Length Phasor (WLPHASOR)</strong> <sup>[12]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#peak-average-power-pap-sup-13-sup"><strong>Peak Average Power (PAP)</strong> <sup>[13]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multiplication-of-peaks-mzp-sup-13-sup"><strong>Multiplication of Peaks (MZP)</strong> <sup>[13]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#temporal-moment-tm-sup-1-sup"><strong>Temporal Moment (TM)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#spectral-moment-sm-sup-1-sup"><strong>Spectral Moment (SM)</strong> <sup>[1]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sample-entropy-sampen"><strong>Sample Entropy (SAMPEN)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fuzzy-entropy-fuzzyen"><strong>Fuzzy Entropy (FUZZYEN)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#discrete-time-fourier-transform-representation-dftr"><strong>Discrete Time Fourier Transform Representation (DFTR)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#integral-square-descriptor-isd"><strong>Integral Square Descriptor (ISD)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#coefficient-of-regularization-cor"><strong>Coefficient of Regularization (COR)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-difference-derivative-mdiff"><strong>Mean Difference Derivative (MDIFF)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-logarithm-kernel-mlk"><strong>Mean Logarithm Kernel (MLK)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#activation-act"><strong>Activation (ACT)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mobility-mob"><strong>Mobility (MOB)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#complexity-comp"><strong>Complexity (COMP)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wavelet-energy-weng"><strong>Wavelet Energy (WENG)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wavelet-variance-wv"><strong>Wavelet Variance (WV)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wavelet-waveform-length-wwl"><strong>Wavelet Waveform Length (WWL)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wavelet-entropy-went"><strong>Wavelet Entropy (WENT)</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#feature-sets">Feature Sets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#hudgin-s-time-domain-htd-sup-8-sup"><strong>Hudgin’s Time Domain (HTD)</strong> <sup>[8]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#time-domain-autoregressive-tdar-sup-10-sup"><strong>Time Domain Autoregressive (TDAR)</strong> <sup>[10]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#low-sampling-frequency-4-ls4-sup-2-sup"><strong>Low Sampling Frequency 4 (LS4)</strong> <sup>[2]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#low-sampling-frequency-9-ls9-sup-2-sup"><strong>Low Sampling Frequency 9 (LS9)</strong> <sup>[2]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#topologically-selected-time-domain-tstd-sup-14-sup"><strong>Topologically Selected Time Domain (TSTD)</strong> <sup>[14]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#time-domain-power-spectral-descriptors-tdpsd-sup-6-sup"><strong>Time Domain Power Spectral Descriptors (TDPSD)</strong> <sup>[6]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#combined-sup-11-sup"><strong>Combined</strong> <sup>[11]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#discrete-fourier-transform-representation-dftr-sup-15-sup"><strong>Discrete Fourier Transform Representation (DFTR)</strong>  <sup>[15]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inverse-time-domain-itd-sup-16-sup"><strong>Inverse Time Domain (ITD)</strong> <sup>[16]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hjorth-parameters-hjorth-sup-17-sup"><strong>Hjorth Parameters (HJORTH)</strong> <sup>[17]</sup></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multisignal-wavelet-transform-based-features-mswt-sup-18-sup"><strong>MultiSignal Wavelet Transform-Based Features (MSWT)</strong> <sup>[18]</sup></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Feature Extraction</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/features/features.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="feature-extraction">
+<h1>Feature Extraction<a class="headerlink" href="#feature-extraction" title="Permalink to this heading"></a></h1>
+<p>Due to the stochastic and transient nature of the EMG signal, the raw signal provides little information. As such, hand-crafted features are extracted from the underlying signal to increase its information density before being passed to the machine learning model. These features are extracted from windows (i.e., a predefined number of samples) of EMG. The selection of features (or feature sets) is essential for robust control systems.</p>
+<p>This module aims to simplify the feature extraction stage for developers. We have included a number of features from the literature that we have robustly tested and validated. The following code snippet exemplifies how to extract features from raw EMG:</p>
+<details>
+<summary><b>Example Code</b></summary>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">libemg.feature_extractor</span> <span class="kn">import</span> <span class="n">FeatureExtractor</span>
+<span class="kn">from</span> <span class="nn">libemg.utils</span> <span class="kn">import</span> <span class="n">get_windows</span>
+
+<span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+
+<span class="c1"># Load data from a csv file:</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="s2">&quot;emg_data.csv&quot;</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+<span class="c1"># Split the raw EMG into windows</span>
+<span class="n">windows</span> <span class="o">=</span> <span class="n">get_windows</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+
+<span class="c1"># Extract a list of features</span>
+<span class="n">feature_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;MAV&#39;</span><span class="p">,</span> <span class="s1">&#39;SSC&#39;</span><span class="p">,</span> <span class="s1">&#39;ZC&#39;</span><span class="p">,</span> <span class="s1">&#39;WL&#39;</span><span class="p">]</span>
+<span class="n">features_1</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">windows</span><span class="p">)</span>
+
+<span class="c1"># Extract a predefined feature group</span>
+<span class="n">features_2</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="s1">&#39;HTD&#39;</span><span class="p">,</span> <span class="n">windows</span><span class="p">)</span>
+</pre></div>
+</div>
+</details>
+<br/>
+<p><strong>Note that some features have parameters that must be tuned for a particular problem and hardware implementation.</strong></p>
+<section class="tex2jax_ignore mathjax_ignore" id="feature-performance">
+<h2>Feature Performance<a class="headerlink" href="#feature-performance" title="Permalink to this heading"></a></h2>
+<p>Each of the ~50 features that were implemented were tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don’t achieve high accuracy on their own for this gesture recognition task. Their value shouldn’t be discounted when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.</p>
+<p><img alt="alt text" src="../../_images/feature_performance.png" /></p>
+<center> <p> Figure 1: Individual Accuracy of Each Feature on the 3DCDataset</p> </center>
+<details>
+<summary><b>Example Code</b></summary>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">libemg.datasets</span> <span class="kn">import</span> <span class="n">_3DCDataset</span>
+<span class="kn">from</span> <span class="nn">libemg.emg_predictor</span> <span class="kn">import</span> <span class="n">EMGClassifier</span>
+<span class="kn">from</span> <span class="nn">libemg.feature_extractor</span> <span class="kn">import</span> <span class="n">FeatureExtractor</span>
+<span class="kn">from</span> <span class="nn">libemg.utils</span> <span class="kn">import</span> <span class="n">make_regex</span>
+<span class="kn">from</span> <span class="nn">libemg.data_handler</span> <span class="kn">import</span> <span class="n">OfflineDataHandler</span>
+<span class="kn">from</span> <span class="nn">libemg.offline_metrics</span> <span class="kn">import</span> <span class="n">OfflineMetrics</span>
+<span class="kn">from</span> <span class="nn">libemg.filtering</span> <span class="kn">import</span> <span class="n">Filter</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># get the 3DC Dataset using library handle - this downloads the dataset</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">_3DCDataset</span><span class="p">(</span><span class="n">save_dir</span><span class="o">=</span><span class="s1">&#39;example_data&#39;</span><span class="p">,</span>
+                          <span class="n">redownload</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1"># take the downloaded dataset and load it as an offlinedatahandler</span>
+    <span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="n">OfflineDataHandler</span><span class="p">)</span>
+
+    <span class="c1"># Perform an analysis where we test all the features available of the library individually for within-subject</span>
+    <span class="c1"># classification accuracy.</span>
+
+    <span class="c1"># setup out model type and output metrics</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="s2">&quot;LDA&quot;</span>
+    <span class="n">om</span> <span class="o">=</span> <span class="n">OfflineMetrics</span><span class="p">()</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CA&#39;</span><span class="p">]</span>
+
+    <span class="c1"># get the subject list</span>
+    <span class="n">subject_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">22</span><span class="p">))</span>
+
+    <span class="c1"># initialize our feature extractor</span>
+    <span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+    <span class="n">feature_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_list</span><span class="p">()</span>
+
+    <span class="c1"># get the variable ready for where we save the results</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_list</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">subject_list</span><span class="p">)))</span>
+
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subject_list</span><span class="p">:</span>
+        <span class="n">subject_data</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;subjects&quot;</span><span class="p">,[</span><span class="n">s</span><span class="p">])</span>
+        <span class="n">subject_train</span> <span class="o">=</span> <span class="n">subject_data</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">subject_test</span>  <span class="o">=</span> <span class="n">subject_data</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># apply a standardization on the raw data (x - mean)/std</span>
+        <span class="nb">filter</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">sampling_frequency</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+        <span class="n">filter_dic</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;standardize&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">subject_train</span>
+        <span class="p">}</span>
+        <span class="nb">filter</span><span class="o">.</span><span class="n">install_filters</span><span class="p">(</span><span class="n">filter_dic</span><span class="p">)</span>
+        <span class="nb">filter</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">subject_train</span><span class="p">)</span>
+        <span class="nb">filter</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">subject_test</span><span class="p">)</span>
+
+        <span class="c1"># from the standardized data, perform windowing</span>
+        <span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">subject_train</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">test_windows</span><span class="p">,</span> <span class="n">test_metadata</span> <span class="o">=</span> <span class="n">subject_test</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># for each feature in the feature list</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feature_list</span><span class="p">):</span>
+            <span class="n">train_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">([</span><span class="n">f</span><span class="p">],</span> <span class="n">train_windows</span><span class="p">)</span>
+            <span class="n">test_features</span>  <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">([</span><span class="n">f</span><span class="p">],</span> <span class="n">test_windows</span><span class="p">)</span>
+
+            <span class="c1"># get the dataset ready for the classifier</span>
+            <span class="n">data_set</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_features</span>
+            <span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_labels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">]</span>
+
+            <span class="c1"># setup the classifier</span>
+            <span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">feature_dictionary</span><span class="o">=</span><span class="n">data_set</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+
+            <span class="c1"># running the classifier analyzes the test data we already passed it</span>
+            <span class="n">preds</span><span class="p">,</span><span class="n">probs</span> <span class="o">=</span> <span class="n">classifier</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">test_features</span><span class="p">,</span> <span class="n">test_metadata</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">])</span>
+            <span class="c1"># get the CA: classification accuracy offline metric and add it to the results</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="n">om</span><span class="o">.</span><span class="n">extract_offline_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">test_metadata</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">],</span> <span class="n">preds</span><span class="p">)[</span><span class="n">metrics</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">100</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S</span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">s</span><span class="p">]</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+    <span class="c1"># the feature accuracy is represented by the mean accuracy across the subjects</span>
+    <span class="n">mean_feature_accuracy</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">std_feature_accuracy</span>  <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">mean_feature_accuracy</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">std_feature_accuracy</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Features&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Accuracy&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</details>
+<br/>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="features">
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this heading"></a></h2>
+<p>Let <span class="math notranslate nohighlight">\(x_{i}\)</span> represents the signal in segment i and <span class="math notranslate nohighlight">\(N\)</span> denotes the number of samples in the timeseries.</p>
+<p>Let <span class="math notranslate nohighlight">\(fj\)</span> be the frequency of the spectrum at frequency bin <span class="math notranslate nohighlight">\(j\)</span>, <span class="math notranslate nohighlight">\(P_{j}\)</span> is the
+EMG power spectrum at frequency bin <span class="math notranslate nohighlight">\(j\)</span>, and <span class="math notranslate nohighlight">\(M\)</span> is the length of the frequency bin.</p>
+<p><strong>Note: every feature and feature group is associated with an abbreviation (e.g., MAV). This is how we refer to a specific feature in our library and is how you should interface with it.</strong></p>
+<section id="mean-absolute-value-mav-sup-1-sup">
+<h3><strong>Mean Absolute Value (MAV)</strong> <sup>[1]</sup><a class="headerlink" href="#mean-absolute-value-mav-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>The average of the absolute value of the EMG signal. This is one of the most commonly used features for EMG.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MAV} = \frac{1}{N}\sum_{i=1}^{N} |x_{i}|
+\)</span></p>
+</section>
+<section id="zero-crossings-zc-sup-1-sup">
+<h3><strong>Zero Crossings (ZC)</strong> <sup>[1]</sup><a class="headerlink" href="#zero-crossings-zc-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>The number of times that the amplitude of the EMG signal crosses a zero amplitude threshold.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{ZC} = \sum_{i=1}^{N-1}[\text{sgn}(x_{i} \times x_{i+1}) \cap |x_{i} - x_{i+1}| \ge \text{threshold}]
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+\text{sgn(}x\text{)} = \left\{\begin{array}{lr}
+    1, &amp; \text{if } x \ge \text{threshold} \\
+    0, &amp; \text{otherwise }
+    \end{array}\right\}
+\)</span></p>
+</section>
+<section id="slope-sign-change-ssc-sup-1-sup">
+<h3><strong>Slope Sign Change (SSC)</strong> <sup>[1]</sup><a class="headerlink" href="#slope-sign-change-ssc-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>The number of times that the slope of the EMG signal changes (i.e., the number of times that it changes between positive and negative).</p>
+<p><span class="math notranslate nohighlight">\(
+\text{SSC} = \sum_{i=2}^{N-1}[f[(x_{i} - x_{i-1}) \times (x_{i} - x_{i+1})]] \\
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+f(x) = \left\{\begin{array}{lr}
+    1, &amp; \text{if } x \ge \text{threshold} \\
+    0, &amp; \text{otherwise }
+    \end{array}\right\}
+\)</span></p>
+</section>
+<section id="waveform-length-wl-sup-1-sup">
+<h3><strong>Waveform Length (WL)</strong> <sup>[1]</sup><a class="headerlink" href="#waveform-length-wl-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>The cumulative length of the EMG waveform over the passed in window. This feature is used to measure the overall complexity of the signal (i.e., higher WL means more complex).</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WL} = \sum_{i=1}^{N-1}|x_{i+1} - x_{i}|
+\)</span></p>
+</section>
+<section id="l-score-ls-sup-2-sup">
+<h3><strong>L-score (LS)</strong> <sup>[2]</sup><a class="headerlink" href="#l-score-ls-sup-2-sup" title="Permalink to this heading"></a></h3>
+<p>A feature that uses the Legendre Shift Polynomial.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{LS} = \sum_{i=1}^{N} \text{LSP} * B
+\)</span></p>
+</section>
+<section id="maximum-fractal-length-mfl-sup-3-sup">
+<h3><strong>Maximum Fractal Length (MFL)</strong> <sup>[3]</sup><a class="headerlink" href="#maximum-fractal-length-mfl-sup-3-sup" title="Permalink to this heading"></a></h3>
+<p>A nonlinear information feature for the EMG waveform that is relatively invariant to contraction intensity.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MFL} = log_{10} \sum_{i=1}^{N-1}  | x_{i+1} - x_{i} |
+\)</span></p>
+</section>
+<section id="mean-squared-ratio-msr-sup-4-sup">
+<h3><strong>Mean Squared Ratio (MSR)</strong> <sup>[4]</sup><a class="headerlink" href="#mean-squared-ratio-msr-sup-4-sup" title="Permalink to this heading"></a></h3>
+<p>Determines the total amount of activity in a window.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MSR} = \frac{1}{N}\sum_{i=1}^{N}(x_{i})^{\frac{1}{2}}
+\)</span></p>
+</section>
+<section id="willison-amplitude-wamp-sup-1-sup">
+<h3><strong>Willison Amplitude (WAMP)</strong> <sup>[1]</sup><a class="headerlink" href="#willison-amplitude-wamp-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>The number of times that there is a difference between amplitudes of two seperate samples exceeding a pre-defined threshold. This feature is related to the firing of motor unit action potentials and muscle contraction force.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WAMP} = \sum_{i=1}^{N-1}[f(|x_{n}-x_{n+1})] \\
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+f(x) = \left\{\begin{array}{lr}
+    1, &amp; \text{if } x \ge \text{threshold} \\
+    0, &amp; \text{otherwise }
+    \end{array}\right\}
+\)</span></p>
+</section>
+<section id="root-mean-square-rms-sup-1-sup">
+<h3><strong>Root Mean Square (RMS)</strong> <sup>[1]</sup><a class="headerlink" href="#root-mean-square-rms-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Models the signal as an amplitude modulated Gaussian random process that relates to constant force and non-fatiguing contraction.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{RMS} = \sqrt{\frac{1}{N}\sum_{i=1}^{N}x_{i}^{2}}
+\)</span></p>
+</section>
+<section id="integral-of-absolute-value-iav-sup-1-sup">
+<h3><strong>Integral of Absolute Value (IAV)</strong> <sup>[1]</sup><a class="headerlink" href="#integral-of-absolute-value-iav-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>The integral of the absolute value. Also known as IEMG.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{IAV} = \sum_{i=i}^{N} |x_{i}|
+\)</span></p>
+</section>
+<section id="difference-absolute-standard-deviation-value-dasdv-sup-1-sup">
+<h3><strong>Difference Absolute Standard Deviation Value (DASDV)</strong> <sup>[1]</sup><a class="headerlink" href="#difference-absolute-standard-deviation-value-dasdv-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Standard deviation of the wavelength.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{DASDV}=\sqrt{\frac{1}{N-1}\sum_{i=1}^{N-1} (x_{i+1} - x_{i})^2}
+\)</span></p>
+</section>
+<section id="variance-var-sup-5-sup">
+<h3><strong>Variance (VAR)</strong> <sup>[5]</sup><a class="headerlink" href="#variance-var-sup-5-sup" title="Permalink to this heading"></a></h3>
+<p>Calculates the variance of the data.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{VAR} = \frac{1}{N-1}\sum_{i=1}^{N} (x_{i}^{2} - \mu _x)
+\)</span></p>
+</section>
+<section id="first-temporal-moment-m0-sup-6-sup">
+<h3><strong>First Temporal Moment (M0)</strong> <sup>[6]</sup><a class="headerlink" href="#first-temporal-moment-m0-sup-6-sup" title="Permalink to this heading"></a></h3>
+<p>A commonly-used feature part of the TDPSD feature set.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{M0} = log(\frac{\sqrt{\sum_{i=1}^{N}x_{i}^2}^{0.1}}{0.1})
+\)</span></p>
+</section>
+<section id="second-temporal-moment-m2-sup-6-sup">
+<h3><strong>Second Temporal Moment (M2)</strong> <sup>[6]</sup><a class="headerlink" href="#second-temporal-moment-m2-sup-6-sup" title="Permalink to this heading"></a></h3>
+<p>A commonly-used feature part of the TDPSD feature set.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{M2} = log(\frac{\sqrt{\sum_{i=1}^{N-1}(x_{i+1} - x_{i})^2)}^{0.1}}{0.1})
+\)</span></p>
+</section>
+<section id="fourth-temporal-moment-m4-sup-6-sup">
+<h3><strong>Fourth Temporal Moment (M4)</strong> <sup>[6]</sup><a class="headerlink" href="#fourth-temporal-moment-m4-sup-6-sup" title="Permalink to this heading"></a></h3>
+<p>A commonly-used feature part of the TDPSD feature set.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{M4} = log(\frac{\sqrt{\sum_{i=1}^{N-2}(x_{i+2} + x_{i})^2)}^{0.1}}{0.1})
+\)</span></p>
+</section>
+<section id="sparsness-sparsi-sup-6-sup">
+<h3><strong>Sparsness (SPARSI)</strong> <sup>[6]</sup><a class="headerlink" href="#sparsness-sparsi-sup-6-sup" title="Permalink to this heading"></a></h3>
+<p>A commonly-used feature part of the TDPSD feature set.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{SPARSI} = log( |\frac{\text{M0}}{\sqrt{ | \text{M0}-\text{M2} | }\sqrt{ | \text{M0}-\text{M4} | }} |)
+\)</span></p>
+</section>
+<section id="irregularity-factor-irf-sup-6-sup">
+<h3><strong>Irregularity Factor (IRF)</strong> <sup>[6]</sup><a class="headerlink" href="#irregularity-factor-irf-sup-6-sup" title="Permalink to this heading"></a></h3>
+<p>A commonly-used feature part of the TDPSD feature set.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{IRF} = log ( | \frac{\text{M2}}{\sqrt{ | \text{M0}*\text{M4} | }} | )
+\)</span></p>
+</section>
+<section id="waveform-length-factor-wlr-sup-6-sup">
+<h3><strong>Waveform Length Factor (WLR)</strong> <sup>[6]</sup><a class="headerlink" href="#waveform-length-factor-wlr-sup-6-sup" title="Permalink to this heading"></a></h3>
+<p>A commonly-used feature part of the TDPSD feature set.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WLR} = log (\sum_{i=1}^{N-1} | x_{i+1} - x_{i} | / \sum_{i=1}^{N-2} | x_{i+2} + x_{i} |)
+\)</span></p>
+</section>
+<section id="autoregressive-coefficients-ar4-and-ar9-sup-1-sup">
+<h3><strong>Autoregressive Coefficients (AR4 and AR9)</strong> <sup>[1]</sup><a class="headerlink" href="#autoregressive-coefficients-ar4-and-ar9-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>For order r, the autoregressive coefficient can be calculated by: **</p>
+<p><span class="math notranslate nohighlight">\(
+\text{AR}_{r} = \sum_{i=1}^{N-r} x_{i+r}*x_{i}
+\)</span></p>
+</section>
+<section id="cepstral-coefficient-cc">
+<h3><strong>Cepstral Coefficient (CC)</strong><a class="headerlink" href="#cepstral-coefficient-cc" title="Permalink to this heading"></a></h3>
+<p>For order r, the cepstral coefficient can be calculated by:</p>
+<p><span class="math notranslate nohighlight">\(
+\text{CC}_{1}= -\text{AR}_{1} \\
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+\text{CC}_{r}= \sum_{i=1}^{r} \frac{r-i}{r} \text{AR}_{r} *\text{CC}_{r-2}
+\)</span></p>
+</section>
+<section id="log-detector-ld-sup-1-sup">
+<h3><strong>Log Detector (LD)</strong> <sup>[1]</sup><a class="headerlink" href="#log-detector-ld-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Provides an estimate of the muscle contraction force.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{LD} = e^{\frac{1}{N}\sum_{i=1}^{N} log(|x_{i}|)}
+\)</span></p>
+</section>
+<section id="mean-absolute-value-first-difference-mavfd">
+<h3><strong>Mean Absolute Value First Difference (MAVFD)</strong><a class="headerlink" href="#mean-absolute-value-first-difference-mavfd" title="Permalink to this heading"></a></h3>
+<p>Gets the mean absolute value of the slope of the signal.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MAVFD} = \sum_{i=1}^{N-1} \frac{x_{i+1}-x_{i}}{N-1}
+\)</span></p>
+</section>
+<section id="mean-absolute-value-slope-mavslp-sup-1-sup">
+<h3><strong>Mean Absolute Value Slope (MAVSLP)</strong> <sup>[1]</sup><a class="headerlink" href="#mean-absolute-value-slope-mavslp-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Get the slope between p sections within a window. Here demonstrated for p=2.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MAVSLP}_{p} = \sum_{i=\frac{N}{p} + 1}^{N} \frac{|x_{i}|}{(\frac{N}{P})} - \sum_{j=1}^{\frac{N}{p}}\frac{|x_{j}|}{(\frac{N}{P})}
+\)</span></p>
+</section>
+<section id="median-frequency-mdf-sup-1-sup">
+<h3><strong>Median Frequency (MDF)</strong> <sup>[1]</sup><a class="headerlink" href="#median-frequency-mdf-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Frequency at which the EMG spectrum is divided into 2 portions with equal amplitude.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MDF} = \frac{1}{2}\sum_{j=1}^{M}{P_{j}}
+\)</span></p>
+</section>
+<section id="mean-frequency-mnf-sup-1-sup">
+<h3><strong>Mean Frequency (MNF)</strong> <sup>[1]</sup><a class="headerlink" href="#mean-frequency-mnf-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Computes the average frequency of the EMG spectrum.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MNF} = (\sum_{j=1}^{M}{f_{j}P_{j}})/(\sum_{j=1}^{M}{P_{j}})
+\)</span></p>
+</section>
+<section id="mean-power-mnp-sup-1-sup">
+<h3><strong>Mean Power (MNP)</strong> <sup>[1]</sup><a class="headerlink" href="#mean-power-mnp-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>Computes the average power of the EMG spectrum.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MNP} = \frac{1}{M}\sum_{j=1}^{M}P_{j}
+\)</span></p>
+</section>
+<section id="maximum-peaks-mpk-sup-1-sup">
+<h3><strong>Maximum/Peaks (MPK) <sup>[1]</sup></strong><a class="headerlink" href="#maximum-peaks-mpk-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>A feature that records the highest amplitude within the window:</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MPK} = max(x)
+\)</span></p>
+</section>
+<section id="skewness-skew-sup-7-sup">
+<h3><strong>Skewness (SKEW)</strong> <sup>[7]</sup><a class="headerlink" href="#skewness-skew-sup-7-sup" title="Permalink to this heading"></a></h3>
+<p>Characterizes the degree of asymmetry in the distribution of a variable.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{SKEW} = (\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^3) / (\sqrt{(\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^2)})
+\)</span></p>
+</section>
+<section id="kurtosis-kurt-sup-7-sup">
+<h3><strong>Kurtosis (KURT)</strong> <sup>[7]</sup><a class="headerlink" href="#kurtosis-kurt-sup-7-sup" title="Permalink to this heading"></a></h3>
+<p>Indicates non-gaussianity and used to identify the peakedness of a distribution.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{KURT} = [(\frac{1}{N}\sum_{i=1}^{N}{x_{i}^4})/(\frac{1}{N}\sum_{i=1}^{N}{x_{i}^2})^2] - 3
+\)</span></p>
+</section>
+<section id="root-mean-squared-phasor-rmsphasor-sup-12-sup">
+<h3><strong>Root Mean Squared Phasor (RMSPHASOR)</strong> <sup>[12]</sup><a class="headerlink" href="#root-mean-squared-phasor-rmsphasor-sup-12-sup" title="Permalink to this heading"></a></h3>
+<p>A feature that computes all channel-wise differences in RMS values and incorporates spatial resolution to get the predominant directions of RMS and the derivative of RMS. <span class="math notranslate nohighlight">\(RMSi_{c}\)</span> refers to the complex-valued spatial RMS of channel i. <span class="math notranslate nohighlight">\(dRMSi_{c}\)</span> refers to the same complex-valued spatial RMS computed on the derivative of the channel i signal. This feature set returns (N)(N-1)/2 RMSPHASOR features and (N)(N-1)/2 dRMSPHASOR features for a total of (N)(N-1) features for N channels.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{RMSPHASOR}_{i,j} = \text{log}(\text{norm}(RMSi_{c} - RMSj_{c}))
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+\text{dRMSPHASOR}_{i,j} = \text{log}(\text{norm}(dRMSi_{c} - dRMSj_{c}))
+\)</span></p>
+</section>
+<section id="waveform-length-phasor-wlphasor-sup-12-sup">
+<h3><strong>Waveform Length Phasor (WLPHASOR)</strong> <sup>[12]</sup><a class="headerlink" href="#waveform-length-phasor-wlphasor-sup-12-sup" title="Permalink to this heading"></a></h3>
+<p>A feature that computes all channel-wise differences in WL values and incorporates spatial resolution to get the predominant directions of WL and the derivative of WL. <span class="math notranslate nohighlight">\(WLi_{c}\)</span> refers to the complex-valued spatial WL of channel i. <span class="math notranslate nohighlight">\(dWL_{c}\)</span> refers to the same complex-valued spatial WL computed on the derivative of the channel i signal.
+This feature set returns (N)(N-1)/2 WLPHASOR features and (N)(N-1)/2 dWLPHASOR features for a total of (N)(N-1) features for N channels.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WLPHASOR}_{i,j} = \text{norm}(WLi_{c} - WLj_{c})
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+\text{dWLPHASOR}_{i,j} = \text{norm}(dWLi_{c} - dWLj_{c})
+\)</span></p>
+</section>
+<section id="peak-average-power-pap-sup-13-sup">
+<h3><strong>Peak Average Power (PAP)</strong> <sup>[13]</sup><a class="headerlink" href="#peak-average-power-pap-sup-13-sup" title="Permalink to this heading"></a></h3>
+<p>A peak average power computation using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 0th, 2nd, and 4th order moments are used to compute PAP using the following equation:</p>
+<p><span class="math notranslate nohighlight">\(
+\text{PAP} = \frac{M0}{M4/M2}
+\)</span></p>
+</section>
+<section id="multiplication-of-peaks-mzp-sup-13-sup">
+<h3><strong>Multiplication of Peaks (MZP)</strong> <sup>[13]</sup><a class="headerlink" href="#multiplication-of-peaks-mzp-sup-13-sup" title="Permalink to this heading"></a></h3>
+<p>A spectral peak product using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 2nd, and 4th order moments are used to compute PAP using the following equation:</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MZP} = \sqrt(\frac{M4}{M2})
+\)</span></p>
+</section>
+<section id="temporal-moment-tm-sup-1-sup">
+<h3><strong>Temporal Moment (TM)</strong> <sup>[1]</sup><a class="headerlink" href="#temporal-moment-tm-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>A temporal moment feature computed directly from the time domain. An order parameter is passed in that scales the signal prior to computing the moments. The zeroth order moment is the windowsize, the first order moment is like the MAV, and the second order moment is like the variance;therefore the feature should be used with order &gt; 3 (this is set as the default).</p>
+<p><span class="math notranslate nohighlight">\(
+\text{TM} =  \sum_{i=1}^{N} |x_{i}^{order}|
+\)</span></p>
+</section>
+<section id="spectral-moment-sm-sup-1-sup">
+<h3><strong>Spectral Moment (SM)</strong> <sup>[1]</sup><a class="headerlink" href="#spectral-moment-sm-sup-1-sup" title="Permalink to this heading"></a></h3>
+<p>A spectral moment feature computed from the frequency domain. An order parameter is passed in that scales the signal prior to computing the moments. POW is the power spectrum of the signal and f is the frequencies associated with every sample of the power spectrum.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{SM} =  \sum_{i=1}^{F} pow_{i}*f_{i}^{order}
+\)</span></p>
+</section>
+<section id="sample-entropy-sampen">
+<h3><strong>Sample Entropy (SAMPEN)</strong><a class="headerlink" href="#sample-entropy-sampen" title="Permalink to this heading"></a></h3>
+<p>Sample entropy is a measure of the self-similarity within the signal. It captures nonlinear complexity information and is particularly useful for assessing contraction intensity, fatigue, or muscle tone. SAMPEN is computed using the log ratio of two “count” variables determined within the window, A and B. A represents the sum of all occurrances of each N-1 sample pattern that have distance less than r from all N-1 sample patterns. B is similar, however, it is the sum of all occurrences of each N sample patterns having a distances less than r. r is typically 0.2 * std, however, it can be changed as an argument of the library.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{SAMPEN} = -log \frac{A}{B}
+\)</span></p>
+</section>
+<section id="fuzzy-entropy-fuzzyen">
+<h3><strong>Fuzzy Entropy (FUZZYEN)</strong><a class="headerlink" href="#fuzzy-entropy-fuzzyen" title="Permalink to this heading"></a></h3>
+<p>Fuzzy entropy similarly is a measure of self-similarity within the signal; however, it uses a similarity measure (continuous A from SAMPEN) between the N samples patterns instead of counting the occurences that strictly are less than the threshold (discrete A and B from SAMPEN). The similarity is computed by:</p>
+<p><span class="math notranslate nohighlight">\(
+\text{FUZZYEN}=e^{\frac{-A^{d}}{r}}
+\)</span></p>
+<p>where d and r are arguments to the function that correspond to the distance order and similarity threshold, respectively.</p>
+</section>
+<section id="discrete-time-fourier-transform-representation-dftr">
+<h3><strong>Discrete Time Fourier Transform Representation (DFTR)</strong><a class="headerlink" href="#discrete-time-fourier-transform-representation-dftr" title="Permalink to this heading"></a></h3>
+<p>DFTR is a feature that computes the energy within 6 frequency bins of the EMG power spectrum (20-92, 92-163, 163-235, 235-307, 307-378, 378-450) Hz. If the frequency of the signal is less than these bins, then the bin is omitted (determined via a function argument).</p>
+<p><span class="math notranslate nohighlight">\(
+\text{DFTR}_{bin} = \sum_{i \in bin} M_i
+\)</span></p>
+</section>
+<section id="integral-square-descriptor-isd">
+<h3><strong>Integral Square Descriptor (ISD)</strong><a class="headerlink" href="#integral-square-descriptor-isd" title="Permalink to this heading"></a></h3>
+<p>Integral square descriptor captures the sum of the energy of the signal.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{ISD} = \sum x_i^2
+\)</span></p>
+</section>
+<section id="coefficient-of-regularization-cor">
+<h3><strong>Coefficient of Regularization (COR)</strong><a class="headerlink" href="#coefficient-of-regularization-cor" title="Permalink to this heading"></a></h3>
+<p>The coefficient of regularization captures first and second order variability of the signal is inverse proportional to the energy in the signal.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{COR} = \frac{\sum \nabla x^2}{\sum \nabla^2 x^2 * \sum x^2}
+\)</span></p>
+</section>
+<section id="mean-difference-derivative-mdiff">
+<h3><strong>Mean Difference Derivative (MDIFF)</strong><a class="headerlink" href="#mean-difference-derivative-mdiff" title="Permalink to this heading"></a></h3>
+<p>Mean difference derivative is computed by taking the sum of the first order variability of the signal.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MDIFF} = \frac{\sum \nabla x^2}{N}
+\)</span></p>
+</section>
+<section id="mean-logarithm-kernel-mlk">
+<h3><strong>Mean Logarithm Kernel (MLK)</strong><a class="headerlink" href="#mean-logarithm-kernel-mlk" title="Permalink to this heading"></a></h3>
+<p>Mean logarithm kernel is the log representation of the average absolute value of the signal.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MLK} = \frac{log \sum |x|}{N}
+\)</span></p>
+</section>
+<section id="activation-act">
+<h3><strong>Activation (ACT)</strong><a class="headerlink" href="#activation-act" title="Permalink to this heading"></a></h3>
+<p>The activation of the signal is the ISD feature normalized by the window size.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{ACT} = \frac{ISD}{N}
+\)</span></p>
+</section>
+<section id="mobility-mob">
+<h3><strong>Mobility (MOB)</strong><a class="headerlink" href="#mobility-mob" title="Permalink to this heading"></a></h3>
+<p>Extract Mobility (MOB) feature. This feature is sqrt(m2/m0), where m0 and m2 are the first and second order moments found via
+Parseval’s theorem. Interestingly, the Gabor frequency tells us that the number of zero crossings per unit time can be described
+using 1/pi * mobility.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MOB} = \sqrt{\frac{m2}{m0}}
+\)</span></p>
+</section>
+<section id="complexity-comp">
+<h3><strong>Complexity (COMP)</strong><a class="headerlink" href="#complexity-comp" title="Permalink to this heading"></a></h3>
+<p>This feature is sqrt(m4/m2), where m2 and m4 are the second and fourth order moments found via
+Parseval’s theorem. It is a measure of the the similarity of the shape of a signal compared to a pure sine waveform. Because the Gabor frequency
+tells us the number of zero crossings per unit time, the derivative of this metric gives us the number of extrema per unit time.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{COMP} = \sqrt{\frac{m4}{m2}}
+\)</span></p>
+</section>
+<section id="wavelet-energy-weng">
+<h3><strong>Wavelet Energy (WENG)</strong><a class="headerlink" href="#wavelet-energy-weng" title="Permalink to this heading"></a></h3>
+<p>This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the average energy of a window per decomposition level. Given <span class="math notranslate nohighlight">\(\phi_o\)</span> is the decomposition for level <span class="math notranslate nohighlight">\(o\)</span> :</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WENG}_o = \sum \phi_o ^2
+\)</span></p>
+</section>
+<section id="wavelet-variance-wv">
+<h3><strong>Wavelet Variance (WV)</strong><a class="headerlink" href="#wavelet-variance-wv" title="Permalink to this heading"></a></h3>
+<p>This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts variance of the window per decomposition level. Given <span class="math notranslate nohighlight">\(\phi_o\)</span> is the decomposition for level <span class="math notranslate nohighlight">\(o\)</span> :</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WV}_o = \text{var}({\phi_o^2})
+\)</span></p>
+</section>
+<section id="wavelet-waveform-length-wwl">
+<h3><strong>Wavelet Waveform Length (WWL)</strong><a class="headerlink" href="#wavelet-waveform-length-wwl" title="Permalink to this heading"></a></h3>
+<p>This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts waveform length of the window per decomposition level. Given <span class="math notranslate nohighlight">\(\phi_o\)</span> is the decomposition for level <span class="math notranslate nohighlight">\(o\)</span> :</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WWL}_o = \sum{|\nabla{\phi_o ^2}|}
+\)</span></p>
+</section>
+<section id="wavelet-entropy-went">
+<h3><strong>Wavelet Entropy (WENT)</strong><a class="headerlink" href="#wavelet-entropy-went" title="Permalink to this heading"></a></h3>
+<p>This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the entropy of the window per decomposition level. Given <span class="math notranslate nohighlight">\(\phi_o\)</span> is the decomposition for level <span class="math notranslate nohighlight">\(o\)</span> and <span class="math notranslate nohighlight">\(i\)</span> indicates the sample:</p>
+<p><span class="math notranslate nohighlight">\(
+\text{WENT}_o = \sum{x \text{log}(x)}
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+x = \frac{\phi_{i,o}^2}{\sum_{\forall i}{\phi_o^2}}
+\)</span></p>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="feature-sets">
+<h2>Feature Sets<a class="headerlink" href="#feature-sets" title="Permalink to this heading"></a></h2>
+<p>Feature sets are validated groups of features that have been shown empirically to perform well for EMG-related classification tasks. The following feature sets are common groupings that are implemented in the library:</p>
+<section id="hudgin-s-time-domain-htd-sup-8-sup">
+<h3><strong>Hudgin’s Time Domain (HTD)</strong> <sup>[8]</sup><a class="headerlink" href="#hudgin-s-time-domain-htd-sup-8-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Mean Absolute Value (MAV)</p></li>
+<li><p>Zero Crossings (ZC)</p></li>
+<li><p>Slope Sign Change (SSC)</p></li>
+<li><p>Waveform Length (WL)</p></li>
+</ol>
+</section>
+<section id="time-domain-autoregressive-tdar-sup-10-sup">
+<h3><strong>Time Domain Autoregressive (TDAR)</strong> <sup>[10]</sup><a class="headerlink" href="#time-domain-autoregressive-tdar-sup-10-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Mean Absolute Value (MAV)</p></li>
+<li><p>Zero Crossings (ZC)</p></li>
+<li><p>Slope Sign Change (SSC)</p></li>
+<li><p>Waveform Length (WL)</p></li>
+<li><p>Autoregressive Coefficient 4 (AR4)</p></li>
+</ol>
+</section>
+<section id="low-sampling-frequency-4-ls4-sup-2-sup">
+<h3><strong>Low Sampling Frequency 4 (LS4)</strong> <sup>[2]</sup><a class="headerlink" href="#low-sampling-frequency-4-ls4-sup-2-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>L-Score (LS)</p></li>
+<li><p>Maximum Fractal Length (MFL)</p></li>
+<li><p>Mean Squared Ratio (MSR)</p></li>
+<li><p>Willison Amplitude (WAMP)</p></li>
+</ol>
+</section>
+<section id="low-sampling-frequency-9-ls9-sup-2-sup">
+<h3><strong>Low Sampling Frequency 9 (LS9)</strong> <sup>[2]</sup><a class="headerlink" href="#low-sampling-frequency-9-ls9-sup-2-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>TD4 Features</p></li>
+<li><p>Zero Crossings (ZC)</p></li>
+<li><p>Root Mean Square (RMS)</p></li>
+<li><p>Integral of the Absolute Value (IAV)</p></li>
+<li><p>Absolute Square Average Difference Value (DASDV)</p></li>
+<li><p>Variance (VAR)</p></li>
+</ol>
+</section>
+<section id="topologically-selected-time-domain-tstd-sup-14-sup">
+<h3><strong>Topologically Selected Time Domain (TSTD)</strong> <sup>[14]</sup><a class="headerlink" href="#topologically-selected-time-domain-tstd-sup-14-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Mean Absolute Value First Difference (MAVFD)</p></li>
+<li><p>Difference Absolute Standard Deviation Value  (DASDV)</p></li>
+<li><p>Willison Amplitude (WAMP)</p></li>
+<li><p>Zero Crossings (ZC)</p></li>
+<li><p>Maximum Fractal Length (MFL)</p></li>
+<li><p>Sample Entropy (SAMPEN)</p></li>
+<li><p>TDPSD Features</p></li>
+</ol>
+</section>
+<section id="time-domain-power-spectral-descriptors-tdpsd-sup-6-sup">
+<h3><strong>Time Domain Power Spectral Descriptors (TDPSD)</strong> <sup>[6]</sup><a class="headerlink" href="#time-domain-power-spectral-descriptors-tdpsd-sup-6-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>First Temporal Moment (M0)</p></li>
+<li><p>Second Temporal Moment (M2)</p></li>
+<li><p>Fourth Temporal Moment (M4)</p></li>
+<li><p>Sparsness (SPARSI)</p></li>
+<li><p>Irregularity Factor (IRF)</p></li>
+<li><p>Waveform Length Factor (WLF)</p></li>
+</ol>
+</section>
+<section id="combined-sup-11-sup">
+<h3><strong>Combined</strong> <sup>[11]</sup><a class="headerlink" href="#combined-sup-11-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Waveform Length (WL)</p></li>
+<li><p>Slope Sign Change (SSC)</p></li>
+<li><p>Log Detector (LD)</p></li>
+<li><p>Autoregressive Coefficient 9 (AR9)</p></li>
+</ol>
+</section>
+<section id="discrete-fourier-transform-representation-dftr-sup-15-sup">
+<h3><strong>Discrete Fourier Transform Representation (DFTR)</strong>  <sup>[15]</sup><a class="headerlink" href="#discrete-fourier-transform-representation-dftr-sup-15-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Discrete Fourier Transform Representation (DFTR)</p></li>
+</ol>
+</section>
+<section id="inverse-time-domain-itd-sup-16-sup">
+<h3><strong>Inverse Time Domain (ITD)</strong> <sup>[16]</sup><a class="headerlink" href="#inverse-time-domain-itd-sup-16-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Integral Square Descriptor (ISD)</p></li>
+<li><p>Coefficient of Regularization (COR)</p></li>
+<li><p>Mean Difference Derivative (MDIFF)</p></li>
+<li><p>Mean Logarithm Kernel (MLK)</p></li>
+</ol>
+</section>
+<section id="hjorth-parameters-hjorth-sup-17-sup">
+<h3><strong>Hjorth Parameters (HJORTH)</strong> <sup>[17]</sup><a class="headerlink" href="#hjorth-parameters-hjorth-sup-17-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Activation (ACT)</p></li>
+<li><p>Mobility (MOB)</p></li>
+<li><p>Complexity (COMP)</p></li>
+</ol>
+</section>
+<section id="multisignal-wavelet-transform-based-features-mswt-sup-18-sup">
+<h3><strong>MultiSignal Wavelet Transform-Based Features (MSWT)</strong> <sup>[18]</sup><a class="headerlink" href="#multisignal-wavelet-transform-based-features-mswt-sup-18-sup" title="Permalink to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Wavelet Energy (WENG)</p></li>
+<li><p>Wavelet Variance (WV)</p></li>
+<li><p>Wavelet Waveform Length (WWL)</p></li>
+<li><p>Wavelet Entropy (WENT)</p></li>
+</ol>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading"></a></h2>
+<p><a id="1">[1]</a>
+Angkoon Phinyomark, Pornchai Phukpattaranont, Chusak Limsakul,
+Feature reduction and selection for EMG signal classification,
+Expert Systems with Applications,
+Volume 39, Issue 8,
+2012,
+Pages 7420-7431,
+ISSN 0957-4174,
+<a class="reference external" href="https://doi.org/10.1016/j.eswa.2012.01.102">https://doi.org/10.1016/j.eswa.2012.01.102</a>.</p>
+<p><a id="2">[2]</a>
+Phinyomark A, N Khushaba R, Scheme E. Feature Extraction and Selection for Myoelectric Control Based on Wearable EMG Sensors. Sensors (Basel). 2018 May 18;18(5):1615. doi: 10.3390/s18051615. PMID: 29783659; PMCID: PMC5982518.</p>
+<p><a id="3">[3]</a>
+Angkoon Phinyomark, Franck Quaine, Sylvie Charbonnier, Christine Serviere, Franck Tarpin-Bernard, Yann Laurillau,
+EMG feature evaluation for improving myoelectric pattern recognition robustness,
+Expert Systems with Applications,
+Volume 40, Issue 12,
+2013,
+Pages 4832-4840,
+ISSN 0957-4174,
+<a class="reference external" href="https://doi.org/10.1016/j.eswa.2013.02.023">https://doi.org/10.1016/j.eswa.2013.02.023</a>.</p>
+<p><a id="4">[4]</a>
+Oluwarotimi Williams Samuel, Hui Zhou, Xiangxin Li, Hui Wang, Haoshi Zhang, Arun Kumar Sangaiah, Guanglin Li,
+Pattern recognition of electromyography signals based on novel time domain features for amputees’ limb motion classification,
+Computers &amp; Electrical Engineering,
+Volume 67,
+2018,
+Pages 646-655,
+ISSN 0045-7906,
+<a class="reference external" href="https://doi.org/10.1016/j.compeleceng.2017.04.003">https://doi.org/10.1016/j.compeleceng.2017.04.003</a>.</p>
+<p><a id="5">[5]</a>
+Angkoon Phinyomark, Franck Quaine, Sylvie Charbonnier, Christine Serviere, Franck Tarpin-Bernard, Yann Laurillau,
+Feature extraction of the first difference of EMG time series for EMG pattern recognition,
+Computer Methods and Programs in Biomedicine,
+Volume 117, Issue 2,
+2014,
+Pages 247-256,
+ISSN 0169-2607,
+<a class="reference external" href="https://doi.org/10.1016/j.cmpb.2014.06.013">https://doi.org/10.1016/j.cmpb.2014.06.013</a>.</p>
+<p><a id="6">[6]</a>
+Al-Timemy AH, Khushaba RN, Bugmann G, Escudero J. Improving the Performance Against Force Variation of EMG Controlled Multifunctional Upper-Limb Prostheses for Transradial Amputees. IEEE Trans Neural Syst Rehabil Eng. 2016 Jun;24(6):650-61. doi: 10.1109/TNSRE.2015.2445634. Epub 2015 Jun 23. PMID: 26111399.</p>
+<p><a id="7">[7]</a>
+S. Thongpanja, A. Phinyomark, F. Quaine, Y. Laurillau, C. Limsakul and P. Phukpattaranont, “Probability Density Functions of Stationary Surface EMG Signals in Noisy Environments,” in IEEE Transactions on Instrumentation and Measurement, vol. 65, no. 7, pp. 1547-1557, July 2016, doi: 10.1109/TIM.2016.2534378.</p>
+<p><a id="8">[8]</a>
+B. Hudgins, P. Parker and R. N. Scott, “A new strategy for multifunction myoelectric control,” in IEEE Transactions on Biomedical Engineering, vol. 40, no. 1, pp. 82-94, Jan. 1993, doi: 10.1109/10.204774.</p>
+<p><a id="9">[9]</a>
+Campbell E, Phinyomark A, Scheme E. Current Trends and Confounding Factors in Myoelectric Control: Limb Position and Contraction Intensity. Sensors. 2020; 20(6):1613. <a class="reference external" href="https://doi.org/10.3390/s20061613">https://doi.org/10.3390/s20061613</a></p>
+<p><a id="10">[10]</a>
+Phinyomark A, Khushaba RN, Ibáñez-Marcelo E, Patania A, Scheme E, Petri G. Navigating features: a topologically informed chart of electromyographic features space. J R Soc Interface. 2017 Dec;14(137):20170734. doi: 10.1098/rsif.2017.0734. PMID: 29212759; PMCID: PMC5746577.</p>
+<p><a id="11">[11]</a>
+Tkach, D., Huang, H. &amp; Kuiken, T.A. Study of stability of time-domain features for electromyographic pattern recognition. J NeuroEngineering Rehabil 7, 21 (2010). <a class="reference external" href="https://doi.org/10.1186/1743-0003-7-2">https://doi.org/10.1186/1743-0003-7-2</a></p>
+<p><a id="12">[12]</a>
+Onay, F., Mert, A. Phasor represented EMG feature extraction against varying contraction level of prosthetic control. Biomedical Signal Processing and Control 59 (2020). <a class="reference external" href="https://doi.org/10.1016/j.bspc.2020.101881">https://doi.org/10.1016/j.bspc.2020.101881</a></p>
+<p><a id="13">[13]</a>
+Pancholi, S., Jain, P., Varghese, A., Joshi, A. A Novel Time-Domain based Feature for EMG-PR Prosthetic and Rehabilitation Application. 2019 41st Annual International Conference of the IEEE Engineering in Medicine and Biology Society (EMBC) (2019). <a class="reference external" href="https://doi.org/10.1109/EMBC.2019.8857399">https://doi.org/10.1109/EMBC.2019.8857399</a></p>
+<p><a id="14">[14]</a>
+Phinyomark A, Khushaba RN, Ibáñez-Marcelo E, Patania A, Scheme E, Petri G. Navigating features: a topologically informed chart of electromyographic features space. J R Soc Interface. 2017 Dec;14(137):20170734. doi: 10.1098/rsif.2017.0734. PMID: 29212759; PMCID: PMC5746577.</p>
+<p><a id="15">[15]</a>
+He J, Zhang D, Sheng X, Li S, Zhu X. Invariant Surface EMG Feature Against Varying Contraction Level for Myoelectric Control Based on Muscle Coordination. IEEE J Biomed Health Inform. 2015 May;19(3):874-82. doi: 10.1109/JBHI.2014.2330356. Epub 2014 Jun 30. PMID: 25014975.</p>
+<p><a id="16">[16]</a>
+M. G. Asogbon Samuel et al., “Enhancing the Robustness of EMG-PR Based System against the Combined Influence of Force Variation and Subject Mobility,” 2018 3rd Asia-Pacific Conference on Intelligent Robot Systems (ACIRS), Singapore, 2018, pp. 12-17, doi: 10.1109/ACIRS.2018.8467236.</p>
+<p><a id="17">[17]</a>
+Bo Hjorth, EEG analysis based on time domain properties, Electroencephalography and Clinica Neurophysiology, Volume 29, Issue 3, 1970, Pages 306-310, ISSN 0013-4694, <a class="reference external" href="https://doi.org/10.1016/0013-4694(70)90143-4">https://doi.org/10.1016/0013-4694(70)90143-4</a>.</p>
+<p><a id="18">[18]</a>
+Rami Khushaba, <a class="reference external" href="https://github.com/RamiKhushaba/getmswtfeat">https://github.com/RamiKhushaba/getmswtfeat</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../filtering/filtering.html" class="btn btn-neutral float-left" title="Filtering" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../feature_selection/feature_selection.html" class="btn btn-neutral float-right" title="Feature Selection" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

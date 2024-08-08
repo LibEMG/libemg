@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Learning &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Continuous Control (Snake)" href="../snake_example/snake_example.html" />
+    <link rel="prev" title="Optimizing Feature Params" href="../feature_optimization_example/feature_optimization_example.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Deep Learning</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/examples/deep_learning_example/deep_learning_example.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deep-learning">
+<h1>Deep Learning<a class="headerlink" href="#deep-learning" title="Permalink to this heading"></a></h1>
+<p><a class="reference external" href="https://github.com/libemg/LibEMG_DeepLearning_Showcase">View Source Code</a></p>
+<style>
+    .center {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+    }
+</style>
+<p>Although there are many options for prebuilt classifiers incorporated into LibEMG, we also provide the ability to use custom classifiers for offline or online evaluation of EMG signals. As a demonstration of how to get custom classifiers working, in this example we will be training a convolutional neural network with PyTorch and using it as the classifier of the EMGClassifier object. This approach lets the designer provide any sort of classification strategy they want to implement, while still providing the helpful utilities packaged in the EMGClassifier, like majority vote, rejection, and velocity control.</p>
+<p>Fortunately, we can leverage nearly the entire pipeline code that we have used before for setting up pipeline. We can leverage existing datasets by loading them into an OfflineDataHandler object. After loading the dataset in, we can divide the dataset into a training (first 4 reps), validation (5th rep), and testing set (6th rep). Then, by applying filters and standardization (learned from the training set), we can ensure the inputs are reasonable for the neural network. Just like was done in the examples requiring handcrafted features, we can window our training, validation, and testing sets.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># make our results repeatable</span>
+<span class="n">fix_random_seed</span><span class="p">(</span><span class="n">seed_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">use_cuda</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># download the dataset from the internet</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">OneSubjectMyoDataset</span><span class="p">(</span><span class="n">save_dir</span><span class="o">=</span><span class="s1">&#39;dataset/&#39;</span><span class="p">,</span>
+                        <span class="n">redownload</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="n">OfflineDataHandler</span><span class="p">)</span>
+
+<span class="c1"># split the dataset into a train, validation, and test set</span>
+<span class="c1"># this dataset has a &quot;sets&quot; metadata flag, so lets split</span>
+<span class="c1"># train/test using that.</span>
+<span class="n">not_test_data</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">test_data</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">5</span><span class="p">])</span>
+<span class="c1"># lets further split up training and validation based on reps</span>
+<span class="n">train_data</span> <span class="o">=</span> <span class="n">not_test_data</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">valid_data</span> <span class="o">=</span> <span class="n">not_test_data</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">4</span><span class="p">])</span>
+
+<span class="c1"># let&#39;s perform the filtering on the dataset too (neural networks like</span>
+<span class="c1"># inputs that are standardized).</span>
+<span class="n">fi</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">sampling_frequency</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">standardize_dictionary</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;standardize&quot;</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">train_data</span><span class="p">}</span>
+<span class="n">fi</span><span class="o">.</span><span class="n">install_filters</span><span class="p">(</span><span class="n">standardize_dictionary</span><span class="p">)</span>
+<span class="n">fi</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">train_data</span><span class="p">)</span>
+<span class="n">fi</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">valid_data</span><span class="p">)</span>
+<span class="n">fi</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">test_data</span><span class="p">)</span>
+
+<span class="c1"># for each of these dataset partitions, lets get our windows ready</span>
+<span class="n">window_size</span><span class="p">,</span> <span class="n">window_increment</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">10</span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">window_size</span><span class="p">,</span> <span class="n">window_increment</span><span class="p">)</span>
+<span class="n">valid_windows</span><span class="p">,</span> <span class="n">valid_metadata</span> <span class="o">=</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">window_size</span><span class="p">,</span> <span class="n">window_increment</span><span class="p">)</span>
+<span class="n">test_windows</span><span class="p">,</span>  <span class="n">test_metadata</span>  <span class="o">=</span> <span class="n">test_data</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">window_increment</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The main differences between handcrafted feature pipelines and deep learning pipelines begins now. For handcrafted features we would have proceeded to extracting our features, but for deep learning we use the windows themselves as the input. For later processing, we can use PyTorch’s built-in dataset and dataloader classes to make grabbing batches of inputs and labels easier. The dataset object we define requires two methods to interface with the dataloader, a <strong>getitem</strong>() method and a <strong>len</strong>() method. The <strong>getitem</strong>() method takes in an index and returns a tuple of all things desired for that sample (in this case the data and label, but we could include other labels like a limb position identifier or subject identifier). The <strong>len</strong>() method just returns the total number of samples in the dataset. We then can define a dataloader, which is a convinient object for grabbing batches of the tuples defined in the <strong>getitem</strong>() method. In PyTorch’s implementation, we can provide a reference to our dataset class, the batch size we desire, and a collate method (how we are collecting many <strong>getitem</strong>() calls into a single torch tensor).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1">#------------------------------------------------#</span>
+<span class="c1">#            Interfacing with data               #</span>
+<span class="c1">#------------------------------------------------#</span>
+<span class="c1"># we require a class for our dataset that has the windows and classes saved</span>
+<span class="c1"># it needs to have a __getitem__ method that returns the data and label for that id.</span>
+<span class="c1"># it needs to have a __len__     method that returns the number of samples in the dataset.</span>
+<span class="k">class</span> <span class="nc">DL_input_data</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">windows</span><span class="p">,</span> <span class="n">classes</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">windows</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classes</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">classes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">idx</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">label</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">make_data_loader</span><span class="p">(</span><span class="n">windows</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">):</span>
+    <span class="c1"># first we make the object that holds the data</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">DL_input_data</span><span class="p">(</span><span class="n">windows</span><span class="p">,</span> <span class="n">classes</span><span class="p">)</span>
+    <span class="c1"># and now we make a dataloader with that object</span>
+    <span class="n">dl</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">collate_fn</span> <span class="o">=</span> <span class="n">collate_fn</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dl</span>
+
+<span class="k">def</span> <span class="nf">collate_fn</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
+    <span class="c1"># this function is used internally by the dataloader (see line 46)</span>
+    <span class="c1"># it describes how we stitch together the examples into a batch</span>
+    <span class="n">signals</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">signal</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+        <span class="c1"># concat signals onto list signals</span>
+        <span class="n">signals</span> <span class="o">+=</span> <span class="p">[</span><span class="n">signal</span><span class="p">]</span>
+        <span class="n">labels</span> <span class="o">+=</span> <span class="p">[</span><span class="n">label</span><span class="p">]</span>
+    <span class="c1"># convert back to tensors</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">signals</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">signals</span><span class="p">,</span> <span class="n">labels</span>
+</pre></div>
+</div>
+<p>With the infrastructure of the dataset complete, we can now get to the exciting part which is constructing and training the neural network classifier! We can define a relatively shallow three layer convolutional neural network. In the constructor, we define the layers we wish to have in the network. We then define how inputs are passed through these layers in the forward method. We can also include .fit(), .predict(), and .predict_proba() methods which train the neural network, provide the class label for the input, or provide the class-probabilities of the outputs, respectively. By defining these three methods, we satisfy everything the EMGClassifier object will be looking for when this network is incorporated into the pipeline.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1">#------------------------------------------------#</span>
+<span class="c1">#             Deep Learning Model                #</span>
+<span class="c1">#------------------------------------------------#</span>
+<span class="c1"># we require having forward, fit, predict, and predict_proba methods to interface with the</span>
+<span class="c1"># EMGClassifier class. Everything else is extra.</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+
+<span class="k">class</span> <span class="nc">CNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_output</span><span class="p">,</span> <span class="n">n_channels</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">,</span> <span class="n">n_filters</span><span class="o">=</span><span class="mi">256</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="c1"># let&#39;s have 3 convolutional layers that taper off</span>
+        <span class="n">l0_filters</span> <span class="o">=</span> <span class="n">n_channels</span>
+        <span class="n">l1_filters</span> <span class="o">=</span> <span class="n">n_filters</span>
+        <span class="n">l2_filters</span> <span class="o">=</span> <span class="n">n_filters</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">l3_filters</span> <span class="o">=</span> <span class="n">n_filters</span> <span class="o">//</span> <span class="mi">4</span>
+        <span class="c1"># let&#39;s manually setup those layers</span>
+        <span class="c1"># simple layer 1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv1d</span><span class="p">(</span><span class="n">l0_filters</span><span class="p">,</span> <span class="n">l1_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bn1</span>   <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm1d</span><span class="p">(</span><span class="n">l1_filters</span><span class="p">)</span>
+        <span class="c1"># simple layer 2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv1d</span><span class="p">(</span><span class="n">l1_filters</span><span class="p">,</span> <span class="n">l2_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bn2</span>   <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm1d</span><span class="p">(</span><span class="n">l2_filters</span><span class="p">)</span>
+        <span class="c1"># simple layer 3</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv1d</span><span class="p">(</span><span class="n">l2_filters</span><span class="p">,</span> <span class="n">l3_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bn3</span>   <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm1d</span><span class="p">(</span><span class="n">l3_filters</span><span class="p">)</span>
+        <span class="c1"># and we need an activation function:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">act</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">()</span>
+        <span class="c1"># now we need to figure out how many neurons we have at the linear layer</span>
+        <span class="c1"># we can use an example input of the correct shape to find the number of neurons</span>
+        <span class="n">example_input</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_channels</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">),</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">conv_output</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_only</span><span class="p">(</span><span class="n">example_input</span><span class="p">)</span>
+        <span class="n">size_after_conv</span> <span class="o">=</span> <span class="n">conv_output</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># now we can define a linear layer that brings us to the number of classes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">size_after_conv</span><span class="p">,</span> <span class="n">n_output</span><span class="p">)</span>
+        <span class="c1"># and for predict_proba we need a softmax function:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">softmax</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">conv_only</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bn1</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bn2</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv3</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bn3</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_only</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">act</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader_dictionary</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># what device should we use (GPU if available)</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span>
+        <span class="c1"># get the optimizer and loss function ready</span>
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+        <span class="n">loss_function</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()</span>
+        <span class="c1"># setup a place to log training metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;training_loss&quot;</span><span class="p">:[],</span>
+                    <span class="s2">&quot;validation_loss&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="s2">&quot;training_accuracy&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                    <span class="s2">&quot;validation_accuracy&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="c1"># now start the training</span>
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+            <span class="c1">#training set</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">labels</span> <span class="ow">in</span> <span class="n">dataloader_dictionary</span><span class="p">[</span><span class="s2">&quot;training_dataloader&quot;</span><span class="p">]:</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_function</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+                <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                <span class="n">acc</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">output</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="n">labels</span><span class="p">)</span><span class="o">/</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="c1"># log it</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s2">&quot;training_loss&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s2">&quot;training_accuracy&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">acc</span><span class="o">.</span><span class="n">item</span><span class="p">())]</span>
+            <span class="c1"># validation set</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">labels</span> <span class="ow">in</span> <span class="n">dataloader_dictionary</span><span class="p">[</span><span class="s2">&quot;validation_dataloader&quot;</span><span class="p">]:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_function</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+                <span class="n">acc</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">output</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="n">labels</span><span class="p">)</span><span class="o">/</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="c1"># log it</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s2">&quot;validation_loss&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s2">&quot;validation_accuracy&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">acc</span><span class="o">.</span><span class="n">item</span><span class="p">())]</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="n">epoch_trloss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;training_loss&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="n">epoch</span><span class="p">])</span>
+                <span class="n">epoch_tracc</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;training_accuracy&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="n">epoch</span><span class="p">])</span>
+                <span class="n">epoch_valoss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;validation_loss&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="n">epoch</span><span class="p">])</span>
+                <span class="n">epoch_vaacc</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">[</span><span class="s1">&#39;validation_accuracy&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">==</span><span class="n">epoch</span><span class="p">])</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">: trloss:</span><span class="si">{</span><span class="n">epoch_trloss</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">  tracc:</span><span class="si">{</span><span class="n">epoch_tracc</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">  valoss:</span><span class="si">{</span><span class="n">epoch_valoss</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">  vaacc:</span><span class="si">{</span><span class="n">epoch_vaacc</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">!=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">predictions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">predictions</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">predict_proba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">!=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Back in the main code, we can now construct our dataset and dataloaders using the windows and classes of the training and validation sets:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># libemg supports deep learning, but we need to prepare the dataloaders</span>
+<span class="n">train_dataloader</span> <span class="o">=</span> <span class="n">make_data_loader</span><span class="p">(</span><span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">])</span>
+<span class="n">valid_dataloader</span> <span class="o">=</span> <span class="n">make_data_loader</span><span class="p">(</span><span class="n">valid_windows</span><span class="p">,</span> <span class="n">valid_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">])</span>
+
+<span class="c1"># let&#39;s make the dictionary of dataloaders</span>
+<span class="n">dataloader_dictionary</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;training_dataloader&quot;</span><span class="p">:</span> <span class="n">train_dataloader</span><span class="p">,</span>
+                            <span class="s2">&quot;validation_dataloader&quot;</span><span class="p">:</span> <span class="n">valid_dataloader</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>We can initialize our model:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># We need to tell the libEMG EMGClassifier that we are using a custom model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">CNN</span><span class="p">(</span><span class="n">n_output</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">odh</span><span class="o">.</span><span class="n">classes</span><span class="p">[:]))</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">n_channels</span> <span class="o">=</span> <span class="n">train_windows</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">n_samples</span>  <span class="o">=</span> <span class="n">train_windows</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+            <span class="n">n_filters</span>  <span class="o">=</span> <span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And we can train this model with hyperparameters we specify:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># we can even make a dictionary of parameters that get passed into</span>
+<span class="c1"># the training process of the deep learning model</span>
+<span class="n">dl_dictionary</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
+                    <span class="s2">&quot;num_epochs&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+                    <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>With these things defined, we can finally interface the CNN model with LibEMG. We can pass our PyTorch classifier to the EMGClassifier.fit() method as the chosen classifier. We can also pass our deep learning dictionary as the positional dataloader_dictionary argument to tell the library we are training a deep learning model. Finally, the deep learning hyperparameter dictionary is passed in with the parameters keyword (note: the keys of this dictionary are positional arguments in the .fit() function).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Now that we&#39;ve made the custom classifier object, libEMG knows how to</span>
+<span class="c1"># interpret it when passed in the dataloader_dictionary. Everything happens behind the scenes.</span>
+<span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">dataloader_dictionary</span><span class="o">=</span><span class="n">dataloader_dictionary</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="n">dl_dictionary</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After the classifier has been trained, we can use this EMGClassifier object the same way we always have done, despite now using a neural network.</p>
+<p>Getting offline metrics for the test set using this classifier:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># get the classifier&#39;s predictions on the test set</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="n">classifier</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">test_windows</span><span class="p">)</span>
+<span class="n">om</span> <span class="o">=</span> <span class="n">OfflineMetrics</span><span class="p">()</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CA&#39;</span><span class="p">,</span><span class="s1">&#39;AER&#39;</span><span class="p">,</span><span class="s1">&#39;INS&#39;</span><span class="p">,</span><span class="s1">&#39;REJ_RATE&#39;</span><span class="p">,</span><span class="s1">&#39;CONF_MAT&#39;</span><span class="p">,</span><span class="s1">&#39;RECALL&#39;</span><span class="p">,</span><span class="s1">&#39;PREC&#39;</span><span class="p">,</span><span class="s1">&#39;F1&#39;</span><span class="p">]</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">om</span><span class="o">.</span><span class="n">extract_offline_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">test_metadata</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">],</span> <span class="n">preds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">null_label</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can even use the post-processing available to the EMGClassifier with custom classifiers!</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifier</span><span class="o">.</span><span class="n">add_majority_vote</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">add_rejection</span><span class="p">(</span><span class="mf">0.9</span><span class="p">)</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">add_velocity</span><span class="p">(</span><span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../feature_optimization_example/feature_optimization_example.html" class="btn btn-neutral float-left" title="Optimizing Feature Params" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../snake_example/snake_example.html" class="btn btn-neutral float-right" title="Continuous Control (Snake)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

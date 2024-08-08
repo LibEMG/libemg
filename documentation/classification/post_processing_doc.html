@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post-Processing &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Post-Processing</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/classification/post_processing_doc.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="post-processing">
+<h1>Post-Processing<a class="headerlink" href="#post-processing" title="Permalink to this heading"></a></h1>
+<section id="rejection">
+<h2>Rejection<a class="headerlink" href="#rejection" title="Permalink to this heading"></a></h2>
+<p>Classifier outputs are overridden to a default or inactive state when the output decision is uncertain. This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.</p>
+<ul class="simple">
+<li><p><strong>Confidence <sup>[1]</sup>:</strong> Rejects based on a predefined <strong>confidence threshold</strong> (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected. Figure 1 exemplifies rejection using an SVM classifier with a threshold of 0.8.</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add rejection with 90% confidence threshold</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">add_rejection</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="majority-voting-sup-2-3-sup">
+<h2>Majority Voting <sup>[2,3]</sup><a class="headerlink" href="#majority-voting-sup-2-3-sup" title="Permalink to this heading"></a></h2>
+<p>Overrides the current output with the label corresponding to the class that occurred most frequently over the past <span class="math notranslate nohighlight">\(N\)</span> decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations. Figure 1 exemplifies applying a majority vote of 5 samples to a decision stream.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add majority vote on 10 samples</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">add_majority_vote</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="velocity-control-sup-4-sup">
+<h2>Velocity Control <sup>[4]</sup><a class="headerlink" href="#velocity-control-sup-4-sup" title="Permalink to this heading"></a></h2>
+<p>Outputs an associated <em>velocity</em> with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. Note that ramp contractions should be accumulated during the training phase.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add velocity control</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">add_velocity</span><span class="p">(</span><span class="n">train_windows</span><span class="p">,</span> <span class="n">train_labels</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Figure 1 shows the decision stream (i.e., the predictions over time) of a classifier with no post-processing, rejection, and majority voting. In this example, the shaded regions show the ground truth label, whereas the colour of each point represents the predicted label. All black points indicate predictions that have been rejected.</p>
+<p><img alt="alt text" src="../../_images/decision_stream.png" /></p>
+<center> <p> Figure 1: Decision Stream of No Post-Processing, Rejection, and Majority Voting. This can be created using the <b>.visualize()</b> method call. </p> </center>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading"></a></h2>
+<p><a id="1">[1]</a>
+E. J. Scheme, B. S. Hudgins and K. B. Englehart, “Confidence-Based Rejection for Improved Pattern Recognition Myoelectric Control,” in IEEE Transactions on Biomedical Engineering, vol. 60, no. 6, pp. 1563-1570, June 2013, doi: 10.1109/TBME.2013.2238939.</p>
+<p><a id="2">[2]</a>
+Scheme E, Englehart K. Training Strategies for Mitigating the Effect of Proportional Control on Classification in Pattern Recognition Based Myoelectric Control. J Prosthet Orthot. 2013 Apr 1;25(2):76-83. doi: 10.1097/JPO.0b013e318289950b. PMID: 23894224; PMCID: PMC3719876.</p>
+<p><a id="3">[3]</a>
+Wahid MF, Tafreshi R, Langari R. A Multi-Window Majority Voting Strategy to Improve Hand Gesture Recognition Accuracies Using Electromyography Signal. IEEE Trans Neural Syst Rehabil Eng. 2020 Feb;28(2):427-436. doi: 10.1109/TNSRE.2019.2961706. Epub 2019 Dec 23. PMID: 31870989.</p>
+<p><a id="4">[4]</a>
+E. Scheme, B. Lock, L. Hargrove, W. Hill, U. Kuruganti and K. Englehart, “Motion Normalized Proportional Control for Improved Pattern Recognition-Based Myoelectric Control,” in IEEE Transactions on Neural Systems and Rehabilitation Engineering, vol. 22, no. 1, pp. 149-157, Jan. 2014, doi: 10.1109/TNSRE.2013.2247421.</p>
+<p><a>[Sklearn]</a>
+Fabian Pedregosa, Gaël Varoquaux, Alexandre Gramfort, Vincent Michel, Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron Weiss, Vincent Dubourg, Jake Vanderplas, Alexandre Passos, David Cournapeau, Matthieu Brucher, Matthieu Perrot, and Édouard Duchesnay. 2011. Scikit-learn: Machine Learning in Python. J. Mach. Learn. Res. 12, null (2/1/2011), 2825–2830.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

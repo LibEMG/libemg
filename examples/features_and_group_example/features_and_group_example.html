@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exploring Features &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Optimizing Feature Params" href="../feature_optimization_example/feature_optimization_example.html" />
+    <link rel="prev" title="Simple Offline Analysis" href="../simple_offline_example/simple_offline_example.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Exploring Features</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/examples/features_and_group_example/features_and_group_example.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="exploring-features">
+<h1>Exploring Features<a class="headerlink" href="#exploring-features" title="Permalink to this heading"></a></h1>
+<p><a class="reference external" href="https://github.com/libemg/LibEMG_Feature_Showcase">View Source Code</a></p>
+<style>
+    .center {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+    }
+</style>
+<p>Although there are many approaches for designing EMG pattern recognition pipelines (using established feature sets, using automatic feature selection approaches, or using deep learning directly on the signals), a good first step would be to determine the offline accuracy on a dataset that matches your hardware and gesture set for the available features and feature sets provided by the library. That’s exactly what we’re going to do in this first example! This is a good template for how to use the library and will cover many common tasks such as:</p>
+<ol class="arabic simple">
+<li><p>Loading in a public dataset</p></li>
+<li><p>Slicing the dataset by subject and repetition</p></li>
+<li><p>Windowing the data</p></li>
+<li><p>Extracting features from the windows</p></li>
+<li><p>Training a classifier</p></li>
+<li><p>Determining the performance of that classifier on test data</p></li>
+</ol>
+<p>The first part of this analysis is to prepare the dataset. For this example, the 3DC dataset was chosen (see included datasets).</p>
+<p>When the dataset has been downloaded (data for each subject is zipped), it can be prepared into a LibEMG friendly format and using provided utilities. This will convert the .zip files to folders containing many .csv files that contain a single motion.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">_3DCDataset</span><span class="p">(</span><span class="n">save_dir</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At this point, we can also instantiate various objects that correspond to the modules of the library. We will need a feature extractor, and offline metric object. We can also query the features and feature groups the library provides at the same time.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">fe</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">feature_extractor</span><span class="o">.</span><span class="n">FeatureExtractor</span><span class="p">()</span>
+<span class="n">feature_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_list</span><span class="p">()</span>
+<span class="n">feature_group_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_groups</span><span class="p">()</span>
+<span class="n">om</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">offline_metrics</span><span class="o">.</span><span class="n">OfflineMetrics</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now, we can iterate within-subject and test the accuracy of each available feature / feature set. First we isolate the training and test sets using the prescribed validation scheme of the 3DC authors. Next we can window the motions to prepare for feature extraction.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subject_list</span><span class="p">:</span>
+    <span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">(</span><span class="n">subjects_values</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="o">+</span><span class="mi">1</span><span class="p">)],</span> <span class="n">classes_values</span><span class="o">=</span><span class="n">classes_values</span><span class="p">)</span>
+    <span class="n">train_odh</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">test_odh</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">train_odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">window_size</span><span class="p">,</span> <span class="n">window_increment</span><span class="p">)</span>
+    <span class="n">test_windows</span><span class="p">,</span>  <span class="n">test_metadata</span>  <span class="o">=</span> <span class="n">test_odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">window_size</span><span class="p">,</span> <span class="n">window_increment</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now, we can nest another loop that extracts individual feature and feature sets from these prepared windows. Once the features are extracted we can prepare the feature dictionary (a standard format for the libemg.emg_predictor.EMGClassifier object that indicates you want to use handcrafted features).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_list</span><span class="p">)</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_group_list</span><span class="p">)):</span>
+    <span class="k">if</span> <span class="n">f</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_list</span><span class="p">):</span>
+        <span class="n">feature</span> <span class="o">=</span> <span class="n">feature_list</span><span class="p">[</span><span class="n">f</span><span class="p">]</span>
+        <span class="n">train_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">([</span><span class="n">feature</span><span class="p">],</span> <span class="n">train_windows</span><span class="p">,</span><span class="n">feature_parameters</span><span class="p">)</span>
+        <span class="n">test_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">([</span><span class="n">feature</span><span class="p">],</span> <span class="n">test_windows</span><span class="p">,</span><span class="n">feature_parameters</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">feature</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">feature_group_list</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="n">f</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">feature_list</span><span class="p">)]</span>
+        <span class="n">train_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="n">feature</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">,</span><span class="n">feature_parameters</span><span class="p">)</span>
+        <span class="n">test_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="n">feature</span><span class="p">,</span> <span class="n">test_windows</span><span class="p">,</span><span class="n">feature_parameters</span><span class="p">)</span>
+    <span class="n">feature_dictionary</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;training_features&quot;</span><span class="p">:</span> <span class="n">train_features</span><span class="p">,</span>
+        <span class="s2">&quot;training_labels&quot;</span><span class="p">:</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">]</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+<p>Finally, with these features prepared we can train a classifier and determine the classification accuracy:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">clf</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">emg_predictor</span><span class="o">.</span><span class="n">EMGClassifier</span><span class="p">(</span><span class="s1">&#39;LDA&#39;</span><span class="p">)</span>
+<span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">feature_dictionary</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">test_features</span><span class="p">)</span>
+<span class="n">results</span><span class="p">[</span><span class="n">s</span><span class="p">,</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">om</span><span class="o">.</span><span class="n">extract_offline_metrics</span><span class="p">([</span><span class="s2">&quot;CA&quot;</span><span class="p">],</span> <span class="n">test_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">],</span> <span class="n">preds</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="s2">&quot;CA&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Subject: </span><span class="si">{}</span><span class="s2">, Feature: </span><span class="si">{}</span><span class="s2">, Accuracy: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">s</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="n">results</span><span class="p">[</span><span class="n">s</span><span class="p">,</span><span class="n">f</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>From this analysis, we are able to see how the performance of the available features and feature sets on 3DC Dataset This is a valuable first step that could be iterated upon by exploring filtering methods, determining custom feature sets through selection, changing the underlying classifier of the EMGClassifier object (perhaps even to deep learning), or optimizing the extraction of features themselves through determining the best parameters for each feature extraction method.</p>
+<p><img alt="" src="../../_images/feature_performance1.png" /></p>
+<p>In this procedure, we have used LibEMG to import a public dataset, slice it according to a prescribed training/testing split, performed windowing, extracted features, trained a classifier, and determined accuracy on the test set. This was all done with relatively few lines of code, but still allows the designer to customize the pipeline as they see fit.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../simple_offline_example/simple_offline_example.html" class="btn btn-neutral float-left" title="Simple Offline Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../feature_optimization_example/feature_optimization_example.html" class="btn btn-neutral float-right" title="Optimizing Feature Params" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

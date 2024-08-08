@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proportional Control (Mouse Interface) &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Mixed Reality (Hololens 2)" href="../mixed_reality_example/mixed_reality_example.html" />
+    <link rel="prev" title="Cross Platform Control (Unity)" href="../unity_example/unity_example.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Proportional Control (Mouse Interface)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#mouse-design-considerations">Mouse Design Considerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#controls">Controls</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#velocity-control">Velocity Control</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#classifier">Classifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mouse-controller">Mouse Controller</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Proportional Control (Mouse Interface)</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/examples/mouse_example/mouse_example.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="proportional-control-mouse-interface">
+<h1>Proportional Control (Mouse Interface)<a class="headerlink" href="#proportional-control-mouse-interface" title="Permalink to this heading"></a></h1>
+<p><a class="reference external" href="https://github.com/libemg/LibEMG_Cursor_Showcase">View Source Code</a></p>
+<p><strong>Note, this controller is by no means a robust mouse interface and is is instead a simple demonstration highlighting the possibilities of the library.</strong></p>
+<p>The main control scheme leveraged by the prosthetics community involves continuously predicting user intent to micro-adjust a prosthesis. These predictions occur for relatively small windows of data (in the order of milliseconds) to enable responsive controllers. There are many applications where this continuous control could be useful in HCI, including cursor control. In this example, we use proportional (i.e., velocity) control to create a cursor interface for a desktop computer. We then use it as an alternative way to play a fun online game <a class="reference external" href="https://snake.io/">snake.io</a>.</p>
+<p><img alt="" src="../../_images/Snake-Demo.gif" /></p>
+<center> <p> Figure 1: An example of using the mouse interface to play an online game. </p> </center>
+<section class="tex2jax_ignore mathjax_ignore" id="mouse-design-considerations">
+<h2>Mouse Design Considerations<a class="headerlink" href="#mouse-design-considerations" title="Permalink to this heading"></a></h2>
+<section id="controls">
+<h3>Controls<a class="headerlink" href="#controls" title="Permalink to this heading"></a></h3>
+<p>The controls used for the mouse interface are highlighted below:</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Control</p></th>
+<th class="head"><p>Contraction</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Move Right</p></td>
+<td><p>Wrist Extension</p></td>
+</tr>
+<tr class="row-odd"><td><p>Move Left</p></td>
+<td><p>Wrist Flexion</p></td>
+</tr>
+<tr class="row-even"><td><p>Move Up</p></td>
+<td><p>Hand Open</p></td>
+</tr>
+<tr class="row-odd"><td><p>Move Down</p></td>
+<td><p>Hand Close</p></td>
+</tr>
+<tr class="row-even"><td><p>Do Nothing</p></td>
+<td><p>Rest</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="velocity-control">
+<h3>Velocity Control<a class="headerlink" href="#velocity-control" title="Permalink to this heading"></a></h3>
+<p>Velocity-based control should be used to enable more efficient and effective cursor control. Therefore, in this example, when users contract harder, the cursor will move faster in the specified direction. Alternatively, more precise control can be achieved by eliciting lighter contractions.</p>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="classifier">
+<h2>Classifier<a class="headerlink" href="#classifier" title="Permalink to this heading"></a></h2>
+<p>While this example won’t walk through each step of the online classifier, a couple of noteworthy components are highlighted below. The classifier code can be found in <code class="docutils literal notranslate"><span class="pre">main_menu.py</span></code>.</p>
+<ol class="arabic simple">
+<li><p>The LS4 feature group is used as it is ideal for devices with low sampling rates (i.e., the Myo).</p></li>
+<li><p>An LDA classifier is used due to its robustness and success within the prosthetics community.</p></li>
+<li><p>Rejection is used to reduce the number of false activations.</p></li>
+<li><p>Velocity-based control is added to enable a more effective mouse interface.</p></li>
+</ol>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="mouse-controller">
+<h2>Mouse Controller<a class="headerlink" href="#mouse-controller" title="Permalink to this heading"></a></h2>
+<p>Moving the cursor was no different than the continuous control schemes used in the previous examples. By leveraging the <code class="docutils literal notranslate"><span class="pre">pyautogui</span></code> library, we moved the cursor by a certain number of pixels for every prediction. In this case, <code class="docutils literal notranslate"><span class="pre">self.VEL</span></code> is the number of pixels and the multiplier is a representation of the contraction intensity. To view the code associated with the mouse controller, please view <code class="docutils literal notranslate"><span class="pre">myo_mouse.py</span></code>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="c1"># Move Down</span>
+    <span class="n">pyautogui</span><span class="o">.</span><span class="n">moveRel</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">VEL</span> <span class="o">*</span> <span class="n">multiplier</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="c1"># Move Up</span>
+    <span class="n">pyautogui</span><span class="o">.</span><span class="n">moveRel</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">VEL</span> <span class="o">*</span> <span class="n">multiplier</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="c1"># Move Right</span>
+    <span class="n">pyautogui</span><span class="o">.</span><span class="n">moveRel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">VEL</span> <span class="o">*</span> <span class="n">multiplier</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+    <span class="c1"># Move Left</span>
+    <span class="n">pyautogui</span><span class="o">.</span><span class="n">moveRel</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">VEL</span> <span class="o">*</span> <span class="n">multiplier</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../unity_example/unity_example.html" class="btn btn-neutral float-left" title="Cross Platform Control (Unity)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../mixed_reality_example/mixed_reality_example.html" class="btn btn-neutral float-right" title="Mixed Reality (Hololens 2)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

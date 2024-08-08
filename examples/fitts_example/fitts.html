@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Methods &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Methods</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/examples/fitts_example/fitts.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p><a class="reference external" href="https://github.com/libemg/LibEMG_Isofitts_Showcase">View Source Code</a></p>
+<style>
+    .center {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+    }
+</style>
+<p>For EMG-based control systems, it has been shown that the offline performance of a system (i.e., classification accuracy) does not necessarily correlate to online usability. In this example, we introduce an Iso Fitts test for assessing the online performance of continuous EMG-based control systems. While this test evaluates systems with 2DOFs that leverage continuous constant control, it could be extended to more complicated systems such as proportional control with discrete inputs.</p>
+<section class="tex2jax_ignore mathjax_ignore" id="methods">
+<h1>Methods<a class="headerlink" href="#methods" title="Permalink to this heading"></a></h1>
+<p>This example acts as a mini experiment that you can try out on yourself or a friend where the offline and online performance of four popular classifiers (<strong>LDA, SVM, RF,</strong> and <strong>KNN (k=5</strong>)) are compared.</p>
+<p>The steps of this ‘mini experiment’ are as follows:</p>
+<ol class="arabic">
+<li><p><strong>Accumulate 5 repetitions of five contractions (no movement, flexion, extension, hand open, and hand closed).</strong> These classes correspond to movement in the isofitts task (do nothing,  and move left, right, up, and down).</p>
+ <div>
+     <img src="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/menu.PNG?raw=true" width="32%" display="inline-block" float="left"/>
+     <img src="https://github.com/libemg/LibEMG_Snake_Showcase/blob/main/docs/training_screen1.PNG?raw=true" width="32%" float="left"/>
+     <img src="https://github.com/libemg/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=true" width="32%" float="left"/>
+ </div>
+</li>
+<li><p><strong>Train and evaluate four classifiers in an offline setting (LDA, SVM, KNN (k=5), and RF).</strong> For this step, the first three reps are used for training and the last two for testing.</p></li>
+<li><p><strong>Perform an Iso Fitts test to evaluate the online usability of each classifier trained in step 2.</strong> These fitts law tests are useful for computing throughput, overshoots, and efficiency. Ultimately, these metrics provide an indication of the online usability of a model. The Iso Fitts test is useful for myoelectric control systems as it requires changes in degrees of freedom to complete sucessfully.</p>
+<img alt="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/isofitts.PNG?raw=true" class="center" src="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/isofitts.PNG?raw=true" />
+</li>
+</ol>
+<p><strong>Note:</strong> We have made this example to work with the <code class="docutils literal notranslate"><span class="pre">Myo</span> <span class="pre">Armband</span></code>. However, it can easily be used for any hardware by simply switching the <code class="docutils literal notranslate"><span class="pre">streamer</span></code>, <code class="docutils literal notranslate"><span class="pre">WINDOW_SIZE</span></code>, and <code class="docutils literal notranslate"><span class="pre">INCREMENT</span></code>.</p>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="menu">
+<h1>Menu<a class="headerlink" href="#menu" title="Permalink to this heading"></a></h1>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.streamers</span> <span class="kn">import</span> <span class="n">myo_streamer</span>
+<span class="kn">from</span> <span class="nn">libemg.gui</span> <span class="kn">import</span> <span class="n">GUI</span>
+<span class="kn">from</span> <span class="nn">libemg.data_handler</span> <span class="kn">import</span> <span class="n">OnlineDataHandler</span><span class="p">,</span> <span class="n">OfflineDataHandler</span><span class="p">,</span> <span class="n">RegexFilter</span>
+<span class="kn">from</span> <span class="nn">libemg.utils</span> <span class="kn">import</span> <span class="n">make_regex</span>
+<span class="kn">from</span> <span class="nn">libemg.feature_extractor</span> <span class="kn">import</span> <span class="n">FeatureExtractor</span>
+<span class="kn">from</span> <span class="nn">libemg.emg_predictor</span> <span class="kn">import</span> <span class="n">OnlineEMGClassifier</span><span class="p">,</span> <span class="n">EMGClassifier</span>
+</pre></div>
+</div>
+<p>Similarly to previous examples, we decided to create a simple menu to (1) leverage the training module and (2) enable the use of different classifiers. To do this, we have included two buttons in <code class="docutils literal notranslate"><span class="pre">menu.py</span></code>. When the “accumulate training data button” is clicked, we leverage the training UI module. For this example, we want five reps (3 training - 2 testing), and we point it to the “classes” folder as it contains images for each class.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">launch_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+    <span class="n">training_ui</span> <span class="o">=</span> <span class="n">GUI</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">odh</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">700</span><span class="p">,</span> <span class="n">gesture_height</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">gesture_width</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="n">training_ui</span><span class="o">.</span><span class="n">download_gestures</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="s2">&quot;images/&quot;</span><span class="p">)</span>
+    <span class="n">training_ui</span><span class="o">.</span><span class="n">start_gui</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The next button option involves starting the Iso Fitts task. This occurs after the training data has been recorded. Note that in this step we create the online classifier and start the Fitts law test. We opted for 8 circles, but this can be varied easily with the constructor.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">start_test</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">window</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">set_up_classifier</span><span class="p">()</span>
+    <span class="n">FittsLawTest</span><span class="p">(</span><span class="n">num_trials</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">num_circles</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">savefile</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_str</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;.pkl&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="c1"># Its important to stop the classifier after the game has ended</span>
+    <span class="c1"># Otherwise it will continuously run in a seperate process</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">stop_running</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">initialize_ui</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now, let’s break this piece of code up. First, let’s explore the <code class="docutils literal notranslate"><span class="pre">self.set_up_classifier()</span></code> function call. This step involves parsing the offline training data using the <code class="docutils literal notranslate"><span class="pre">OfflineDataHandler</span></code>. The file format for this example is R_&lt;#&gt;<em>C</em>&lt;#&gt;.csv. So to extract the reps the left bound is <code class="docutils literal notranslate"><span class="pre">R_</span></code> and the right bound is <code class="docutils literal notranslate"><span class="pre">_C_</span></code>. Similarly, to extract the classes, the left bound is <code class="docutils literal notranslate"><span class="pre">C_</span></code> and the right bound is <code class="docutils literal notranslate"><span class="pre">.csv</span></code>. Additionally, there are three training reps and five classes. Once we extract all this information, we create the <code class="docutils literal notranslate"><span class="pre">OfflineDataHandler</span></code> and extract the <code class="docutils literal notranslate"><span class="pre">train_windows</span></code> and <code class="docutils literal notranslate"><span class="pre">train_metadata</span></code> variables.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Step 1: Parse offline training data</span>
+<span class="n">dataset_folder</span> <span class="o">=</span> <span class="s1">&#39;data/&#39;</span>
+<span class="n">classes_values</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">,</span><span class="s2">&quot;2&quot;</span><span class="p">,</span><span class="s2">&quot;3&quot;</span><span class="p">,</span><span class="s2">&quot;4&quot;</span><span class="p">]</span>
+<span class="n">reps_values</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;2&quot;</span><span class="p">]</span>
+<span class="n">regex_filters</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;.csv&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">classes_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;classes&#39;</span><span class="p">),</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;R_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">reps_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;reps&#39;</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">OfflineDataHandler</span><span class="p">()</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">folder_location</span><span class="o">=</span><span class="n">dataset_folder</span><span class="p">,</span> <span class="n">regex_filters</span><span class="o">=</span><span class="n">regex_filters</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">WINDOW_SIZE</span><span class="p">,</span> <span class="n">WINDOW_INCREMENT</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The next step involves extracting features from the training data. To do this we leverage the   <code class="docutils literal notranslate"><span class="pre">FeatureExtractor</span></code> module. In this example, we use the <code class="docutils literal notranslate"><span class="pre">Low</span> <span class="pre">Sampling</span> <span class="pre">4</span> <span class="pre">(LS4)</span></code> feature set as it is a robust group for low sampling rate devices such as the Myo.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Step 2: Extract features from offline data</span>
+<span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+<span class="n">feature_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_groups</span><span class="p">()[</span><span class="s1">&#39;LS4&#39;</span><span class="p">]</span>
+<span class="n">training_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We then split the training features and labels into a dataset dictionary for the <code class="docutils literal notranslate"><span class="pre">OnlineEMGClassifier</span></code> module.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Step 3: Dataset creation</span>
+<span class="n">data_set</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">training_features</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_labels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Finally, we create the <code class="docutils literal notranslate"><span class="pre">EMGClassifier</span></code> and the <code class="docutils literal notranslate"><span class="pre">OnlineEMGClassifier</span></code> using the default options. Notice that when creating the classifier, we pass in the text from the menu text field. This enables the user to pass in <code class="docutils literal notranslate"><span class="pre">LDA</span></code>, <code class="docutils literal notranslate"><span class="pre">SVM</span></code>, etc. with ease. Once the classifier is created, the <code class="docutils literal notranslate"><span class="pre">.run()</span></code> function is called and predictions begin.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Step 4: Create the EMG Classifier</span>
+<span class="n">o_classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_str</span><span class="o">.</span><span class="n">get</span><span class="p">())</span>
+<span class="n">o_classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">feature_dictionary</span><span class="o">=</span><span class="n">data_set</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Create online EMG classifier and start classifying.</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">classifier</span> <span class="o">=</span> <span class="n">OnlineEMGClassifier</span><span class="p">(</span><span class="n">o_classifier</span><span class="p">,</span> <span class="n">WINDOW_SIZE</span><span class="p">,</span> <span class="n">WINDOW_INCREMENT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odh</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">classifier</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># block set to false so it will run in a seperate process.</span>
+</pre></div>
+</div>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="fitts-test">
+<h1>Fitts Test<a class="headerlink" href="#fitts-test" title="Permalink to this heading"></a></h1>
+<p>To create the Isofitts test, we leveraged <code class="docutils literal notranslate"><span class="pre">pygame</span></code>. The code for this module can be found in <code class="docutils literal notranslate"><span class="pre">isofitts.py</span></code>. The cursor moves based on the <code class="docutils literal notranslate"><span class="pre">OnlineEMGClassifier's</span></code> predictions:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">current_direction</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">recvfrom</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">data</span><span class="p">:</span>
+    <span class="n">input_class</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="c1"># 0 = Hand Closed = down</span>
+    <span class="k">if</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_direction</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">VEL</span>
+    <span class="c1"># 1 = Hand Open</span>
+    <span class="k">elif</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_direction</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">VEL</span>
+    <span class="c1"># 3 = Extension </span>
+    <span class="k">elif</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_direction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">VEL</span>
+    <span class="c1"># 4 = Flexion</span>
+    <span class="k">elif</span> <span class="n">input_class</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_direction</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">VEL</span>
+</pre></div>
+</div>
+<p>To increase the speed of the cursor we could do one of two things: (1) increase the velocity of the cursor (i.e., how many pixels it moves for each prediction), or (2) decrease the increment so that more predictions are made in the same amount of time.</p>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="data-analysis">
+<h1>Data Analysis<a class="headerlink" href="#data-analysis" title="Permalink to this heading"></a></h1>
+<p>After accumulating data from the experiment, we need a way to analyze the data. In  <code class="docutils literal notranslate"><span class="pre">analyze_data.py</span></code>, we added the capability to evaluate each model’s offline and online performance.</p>
+<p>To evaluate each model’s offline performance, we took a similar approach to set up the online classifier. However, in this case, we have to split up the data into training and testing. To do this, we first extract each of the five reps of data. We will split this into training and testing in a little bit.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">dataset_folder</span> <span class="o">=</span> <span class="s1">&#39;data&#39;</span>
+<span class="n">classes_values</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">,</span><span class="s2">&quot;2&quot;</span><span class="p">,</span><span class="s2">&quot;3&quot;</span><span class="p">,</span><span class="s2">&quot;4&quot;</span><span class="p">]</span>
+<span class="n">reps_values</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;0&quot;</span><span class="p">,</span><span class="s2">&quot;1&quot;</span><span class="p">,</span><span class="s2">&quot;2&quot;</span><span class="p">,</span><span class="s2">&quot;3&quot;</span><span class="p">,</span><span class="s2">&quot;4&quot;</span><span class="p">]</span>
+<span class="n">regex_filters</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;.csv&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">classes_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;classes&#39;</span><span class="p">),</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;R_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">reps_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;reps&#39;</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">OfflineDataHandler</span><span class="p">()</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">folder_location</span><span class="o">=</span><span class="n">dataset_folder</span><span class="p">,</span> <span class="n">filename_dic</span> <span class="o">=</span> <span class="n">dic</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Using the <code class="docutils literal notranslate"><span class="pre">isolate_data</span></code> function, we can split the data into training and testing. In this specific case, we are splitting on the “reps” keyword and we want values with index 0-2 for training and 3-4 for testing. After isolating the data, we extract windows and associated metadata for both training and testing sets.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">train_odh</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;reps&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">train_odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">WINDOW_SIZE</span><span class="p">,</span><span class="n">WINDOW_INCREMENT</span><span class="p">)</span>
+<span class="n">test_odh</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;reps&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">test_windows</span><span class="p">,</span> <span class="n">test_metadata</span> <span class="o">=</span> <span class="n">test_odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">WINDOW_SIZE</span><span class="p">,</span><span class="n">WINDOW_INCREMENT</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Next, we create a dataset dictionary consisting of testing and training features and labels. This dictionary is passed into an <code class="docutils literal notranslate"><span class="pre">OfflineDataHandler.</span></code></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">data_set</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;testing_features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="s1">&#39;HTD&#39;</span><span class="p">,</span> <span class="n">test_windows</span><span class="p">)</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="s1">&#39;HTD&#39;</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">)</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;testing_labels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_metadata</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">]</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_labels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Finally, to extract the offline performance of each model, we leverage the <code class="docutils literal notranslate"><span class="pre">OfflineMetrics</span></code> module. We do this in a loop to easily evaluate a number of classifiers. We append the metrics to a dictionary for future use.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">om</span> <span class="o">=</span> <span class="n">OfflineMetrics</span><span class="p">()</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CA&#39;</span><span class="p">,</span> <span class="s1">&#39;AER&#39;</span><span class="p">,</span> <span class="s1">&#39;INS&#39;</span><span class="p">,</span> <span class="s1">&#39;CONF_MAT&#39;</span><span class="p">]</span>
+<span class="c1"># Normal Case - Test all different classifiers</span>
+<span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;LDA&#39;</span><span class="p">,</span> <span class="s1">&#39;SVM&#39;</span><span class="p">,</span> <span class="s1">&#39;KNN&#39;</span><span class="p">,</span> <span class="s1">&#39;RF&#39;</span><span class="p">]:</span>
+    <span class="n">classifier</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">()</span>
+    <span class="n">classifier</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">data_set</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="n">preds</span><span class="p">,</span> <span class="n">probs</span> <span class="o">=</span> <span class="n">classifier</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;testing_features&#39;</span><span class="p">],</span> <span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;testing_labels&#39;</span><span class="p">])</span>
+    <span class="n">out_metrics</span> <span class="o">=</span> <span class="n">om</span><span class="o">.</span><span class="n">extract_offline_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;testing_labels&#39;</span><span class="p">],</span> <span class="n">preds</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">offline_metrics</span><span class="p">[</span><span class="s1">&#39;classifier&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">offline_metrics</span><span class="p">[</span><span class="s1">&#39;metrics&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">out_metrics</span><span class="p">)</span>
+<span class="k">return</span> <span class="n">offline_metric</span>
+</pre></div>
+</div>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="results">
+<h1>Results<a class="headerlink" href="#results" title="Permalink to this heading"></a></h1>
+<p>There are clear discrepancies between offline and online metrics. For example, RF outperforms LDA in the offline analysis, but it is clear in the online test that it is much worse. This highlights the need to evaluate EMG-based control systems in online settings with user-in-the-loop feedback.</p>
+<p><strong>Visual Output:</strong>
+<img alt="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/perf_metrics.PNG?raw=true" src="https://github.com/libemg/LibEMG_Isofitts_Showcase/blob/main/docs/perf_metrics.PNG?raw=true" /></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

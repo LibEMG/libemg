@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Myoelectric Control &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Myoelectric Control</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/introduction/intro_doc.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>Welcome to the LibEMG user guide. This section (1) introduces EMG as an interaction technique, (2) explores the main components of LibEMG’s pipeline, and (3) highlights LibEMG’s role in enabling the development of robust real-time interactions and performing offline analyses.</p>
+<section class="tex2jax_ignore mathjax_ignore" id="myoelectric-control">
+<h1>Myoelectric Control<a class="headerlink" href="#myoelectric-control" title="Permalink to this heading"></a></h1>
+<p>Myoelectric control, the control of a device through muscular inputs, is beginning to garner increased attention as an interaction technique for hands-free input as it enables subtle, intuitive, and “always-available” control. By placing surface electrodes directly on the skin (i.e., surface EMG), the electrical signals produced during muscular contractions, can be recorded, processed, and passed to machine learning algorithms. These muscle-based inputs can be classified and converted to interactive commands, enabling numerous hands-free interactive experiences.</p>
+<p>Myoelectric control has been primarily limited in its use for prosthesis control (i.e., enabling amputees to control a prosthetic limb), in part, due to the inherent challenges associated with designing and developing control systems. LibEMG leans on the work done by the prosthetics community to jump-start the robust exploration of EMG as a reliable interaction technique for HCI researchers to explore. Moving forward, this library should serve as a starting point for unlocking the possibilities of EMG-based input beyond what is currently possible.</p>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="modules">
+<h1>Modules<a class="headerlink" href="#modules" title="Permalink to this heading"></a></h1>
+<p>As displayed in Figure 1, LibEMG consists of six main modules. Although many of these modules can stand independently from the others (e.g., the Feature Extraction module can be used on any dataset), they work sequentially to make up the core EMG pipeline. This pipeline is directly inspired from prosthetics research.</p>
+<p><img alt="alt text" src="../../_images/core_modules.png" /></p>
+<center> <p> Figure 1: Diagram of LibEMG's Core Modules. Dashed lines represent modules that are optional to implement.</p> </center>
+<h3 style="background-color:#F3FFA8;padding-left: 10px;"> Data Handler Module</h3>
+<p>For offline analysis, loading, parsing, and extracting EMG data can be time-consuming and tedious. Additionally, naming and folder conventions are often unique to specific projects. <strong>For the offline component of this module, the goal is to facilitate the process of accumulating offline data.</strong> Contrastingly, <strong>the online portion of this module acts as a middleware, listening for EMG data over Shared Memory.</strong> This module can interface with any device, regardless of its technical specifications, abstracting many complications involved in interfacing with different EMG hardware. Moreover, although LibEMG is hardware agnostic, multiple devices are supported by default. For more information, check out the Supported Hardware section.</p>
+<h3 style="background-color:#D3A8FF;padding-left: 10px;"> Filtering Module</h3>
+<p>Surface EMG is inherently noisy due to its stochastic nature and external factors such as powerline interference, motion artifact, and muscle cross-talk. Filtering EMG is often required to eliminate this noise and improve the ability of machine learning algorithms to discriminate between muscular inputs. <strong>This module provides programmers with a means to apply filters for alleviating noise.</strong> This module stands independently from the others and can be leveraged for filtering any raw data. While this module is optional in the pipeline, filtering data usually leads to more repeatable and separable signals, improving classification accuracy.</p>
+<h3 style="background-color:#FFDCA8;padding-left: 10px;"> Feature Extraction Module</h3>
+<p>As EMG signals are stochastic, they do not provide adequate descriptive information for classification. Feature extraction increases the information density of the underlying signal by computing descriptive properties from a sequence of raw data. <strong>This module provides programmers with a set of validated features and feature groups for their projects.</strong> This module stands independently from the others and can be leveraged for any feature extraction task.</p>
+<h3 style="background-color:#A8DAFF;padding-left: 10px;"> Feature Selection Module</h3>
+<p>Feature selection is an important design consideration when developing EMG-based control systems, as features can drastically influence performance. Often, however, it is difficult to know what features to select for a particular problem. <strong>This module provides a means to extract the most relevant features for a specific problem.</strong> This module is optional and is primarily a tool to explore the robustness of certain features and groups using a variety of metrics. These are the techniques used by previous work to suggest predefined feature groups.</p>
+<h3 style="background-color:#A8FFB1;padding-left: 10px;"> Classification Module</h3>
+<p>Classification uses machine learning models to predict user intent from EMG data (i.e., features) generated during contractions. <strong>This module enables online (real-time) and offline (after-the-fact) classification.</strong> Currently, it is limited to continuous control schemes where a model continuously predicts user intent based on segments (i.e., windows) of data.</p>
+<h3 style="background-color:#FFA8AD;padding-left: 10px;"> Evaluation Module</h3>
+<p>System evaluation is required when analyzing the performance of any EMG control system. The two evaluation techniques are <strong>offline</strong> and <strong>online</strong> evaluation. Offline evaluation is performed using previously collected EMG data without explicit user feedback. In contrast, online evaluation occurs with the user “in-the-loop” responding to
+feedback from the control scheme under test.  <strong>This module provides a means to extract offline evaluation metrics.</strong> As online evaluation is application dependent (and should be tested using the implemented system), it is not directly addressed by this library.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

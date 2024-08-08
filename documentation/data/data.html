@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Filtering" href="../filtering/filtering.html" />
+    <link rel="prev" title="Introduction" href="../introduction/introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#datasets">Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#offline-data-handler">Offline Data Handler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#online-data-handler">Online Data Handler</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Data</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/data/data.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="data">
+<h1>Data<a class="headerlink" href="#data" title="Permalink to this heading"></a></h1>
+<style>
+    table {
+        width: 100%;
+    }
+    .device_img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+        height: 50%;
+    }
+    .device_img_2 {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 35%;
+        height: 50%;
+    }
+</style>
+<p>This module has three data-related functions: <strong>(1) Datasets</strong>, <strong>(2) Offline Data Handling</strong>, and <strong>(3) Online Data Handling</strong>. The dataset functionality has built-in support for downloading and exploring a variety of validated datasets. The OfflineDataHandler is responsible for parsing through previously collected (offline) datasets and preparing data to be passed through the pipeline. Finally, the OnlineDataHandler is responsible for accumulating, storing, and processing real-time data.</p>
+<section class="tex2jax_ignore mathjax_ignore" id="datasets">
+<h2>Datasets<a class="headerlink" href="#datasets" title="Permalink to this heading"></a></h2>
+<p>Several validated datasets consisting of different gestures and recording technology are included in this library. These datasets can be used for exploring the library’s capabilities and for future research. When using the packaged datasets for research purposes, we ask that you reference the original dataset contribution and not just this toolkit (the original dataset contributions might not be obvious since they are included for download with this toolkit).</p>
+<details>
+<summary><b>OneSubjectMyoDataset</b></summary>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>12 Reps (i.e., 6 Trials x 2 Reps)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Time Per Rep:</strong></p></td>
+<td><p>3s</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Device:</strong></p></td>
+<td><p>Myo</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>EMG (200 Hz)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.datasets</span> <span class="kn">import</span> <span class="n">OneSubjectMyoDataset</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">OneSubjectMyoDataset</span><span class="p">(</span><span class="n">redownload</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Work</span> <span class="n">to</span> <span class="n">be</span> <span class="n">published</span><span class="o">...</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</details>
+<br>
+<details>
+<summary><b>3DCDatset</b></summary>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>22</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>4 Training, 4 Testing</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Time Per Rep:</strong></p></td>
+<td><p>5s</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>EMG (1000 Hz)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.datasets</span> <span class="kn">import</span> <span class="n">_3DCDataset</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">_3DCDataset</span><span class="p">(</span><span class="n">redownload</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">cote2019deep</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Deep</span> <span class="n">learning</span> <span class="k">for</span> <span class="n">electromyographic</span> <span class="n">hand</span> <span class="n">gesture</span> <span class="n">signal</span> <span class="n">classification</span> <span class="n">using</span> <span class="n">transfer</span> <span class="n">learning</span><span class="p">},</span> <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">C</span><span class="p">{</span><span class="o">^</span><span class="n">o</span><span class="p">}</span><span class="n">t</span><span class="p">{</span><span class="s1">&#39;e}-Allard, Ulysse and Fall, Cheikh Latyr and Drouin, Alexandre and Campeau-Lecours, Alexandre and Gosselin, Cl{&#39;</span><span class="n">e</span><span class="p">}</span><span class="n">ment</span> <span class="ow">and</span> <span class="n">Glette</span><span class="p">,</span> <span class="n">Kyrre</span> <span class="ow">and</span> <span class="n">Laviolette</span><span class="p">,</span> <span class="n">Fran</span><span class="p">{</span>\<span class="n">c</span><span class="p">{</span><span class="n">c</span><span class="p">}}</span><span class="n">ois</span> <span class="ow">and</span> <span class="n">Gosselin</span><span class="p">,</span> <span class="n">Benoit</span><span class="p">},</span> <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">transactions</span> <span class="n">on</span> <span class="n">neural</span> <span class="n">systems</span> <span class="ow">and</span> <span class="n">rehabilitation</span> <span class="n">engineering</span><span class="p">},</span> <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">27</span><span class="p">},</span> <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">4</span><span class="p">},</span> <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">760</span><span class="o">--</span><span class="mi">771</span><span class="p">},</span> <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2019</span><span class="p">},</span> <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span><span class="p">}</span> <span class="p">}</span>
+
+<span class="nd">@article</span><span class="p">{</span><span class="n">cote2020interpreting</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Interpreting</span> <span class="n">deep</span> <span class="n">learning</span> <span class="n">features</span> <span class="k">for</span> <span class="n">myoelectric</span> <span class="n">control</span><span class="p">:</span> <span class="n">A</span> <span class="n">comparison</span> <span class="k">with</span> <span class="n">handcrafted</span> <span class="n">features</span><span class="p">},</span> <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">C</span><span class="p">{</span><span class="o">^</span><span class="n">o</span><span class="p">}</span><span class="n">t</span><span class="p">{</span><span class="s1">&#39;e}-Allard, Ulysse and Campbell, Evan and Phinyomark, Angkoon and Laviolette, Fran{\c</span><span class="si">{c}</span><span class="s1">}ois and Gosselin, Benoit and Scheme, Erik}, journal={Frontiers in Bioengineering and Biotechnology}, volume=</span><span class="si">{8}</span><span class="s1">, pages=</span><span class="si">{158}</span><span class="s1">, year=</span><span class="si">{2020}</span><span class="s1">, publisher={Frontiers Media SA} }</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</details>
+<br/>
+<details>
+<summary><b>Nina Pro DB2</b></summary>
+<br/>
+The Ninapro DB2 is a dataset that can be used to test how algorithms perform for large gesture sets. The dataset contains 6 repetitions of 50 motion classes (plus optional rest) that were recorded using 12 Delsys Trigno electrodes around the forearm.
+<br/>
+<br/>
+<p>Note, this dataset will not be automatically downloaded. To download this dataset, please see <a class="reference external" href="http://ninapro.hevs.ch/node/17">Nina DB2</a>. Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors.</p>
+<br/>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>40</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Time Per Rep:</strong></p></td>
+<td><p>5s</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Classes:</strong></p></td>
+<td><p>50 <a class="reference external" href="http://ninapro.hevs.ch/node/123">Nina Pro DB2</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>EMG (2000 Hz)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.datasets</span> <span class="kn">import</span> <span class="n">NinaproDB2</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">NinaproDB2</span><span class="p">(</span><span class="s2">&quot;data/NinaDB2&quot;</span><span class="p">)</span> <span class="c1">#The loacation of Nina DB2 is downloaded</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Atzori</span><span class="p">,</span> <span class="n">M</span><span class="o">.</span><span class="p">,</span> <span class="n">Gijsberts</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="p">,</span> <span class="n">Castellini</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span> <span class="n">et</span> <span class="n">al</span><span class="o">.</span>
+<span class="n">Electromyography</span> <span class="n">data</span> <span class="k">for</span> <span class="n">non</span><span class="o">-</span><span class="n">invasive</span> <span class="n">naturally</span><span class="o">-</span><span class="n">controlled</span> <span class="n">robotic</span> <span class="n">hand</span> <span class="n">prostheses</span><span class="o">.</span>
+<span class="n">Sci</span> <span class="n">Data</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">140053</span> <span class="p">(</span><span class="mi">2014</span><span class="p">)</span><span class="o">.</span>
+<span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">doi</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="mf">10.1038</span><span class="o">/</span><span class="n">sdata</span><span class="mf">.2014.53</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</details>
+</br>
+<details>
+<summary><b>Nina Pro DB8</b></summary>
+<br/>
+<p>Note, this dataset will not be automatically downloaded. To download this dataset, please see <a class="reference external" href="http://ninapro.hevs.ch/DB8">Nina DB8</a>. Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors.</p>
+<br/>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>12</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>20 Training, 2 Testing</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Time Per Rep:</strong></p></td>
+<td><p>6-9s</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Classes:</strong></p></td>
+<td><p>9 <a class="reference external" href="http://ninapro.hevs.ch/DB8">Nina Pro DB8</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>EMG (1111 Hz)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.datasets</span> <span class="kn">import</span> <span class="n">NinaproDB8</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">NinaproDB8</span><span class="p">(</span><span class="s2">&quot;data/NinaDB8&quot;</span><span class="p">)</span> <span class="c1">#The loacation of Nina DB8 is downloaded</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">AUTHOR</span><span class="o">=</span><span class="n">Krasoulis</span> <span class="n">Agamemnon</span><span class="p">,</span> <span class="n">Vijayakumar</span> <span class="n">Sethu</span><span class="p">,</span> <span class="n">Nazarpour</span> <span class="n">Kianoush</span>
+<span class="n">TITLE</span><span class="o">=</span><span class="n">Effect</span> <span class="n">of</span> <span class="n">User</span> <span class="n">Practice</span> <span class="n">on</span> <span class="n">Prosthetic</span> <span class="n">Finger</span> <span class="n">Control</span> <span class="n">With</span> <span class="n">an</span> <span class="n">Intuitive</span> <span class="n">Myoelectric</span> <span class="n">Decoder</span>
+<span class="n">JOURNAL</span><span class="o">=</span><span class="n">Frontiers</span> <span class="ow">in</span> <span class="n">Neuroscience</span>
+<span class="n">VOLUME</span><span class="o">=</span><span class="mi">13</span>
+<span class="n">YEAR</span><span class="o">=</span><span class="mi">2019</span>
+<span class="n">URL</span><span class="o">=</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">frontiersin</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">articles</span><span class="o">/</span><span class="mf">10.3389</span><span class="o">/</span><span class="n">fnins</span><span class="mf">.2019.00891</span>
+<span class="n">DOI</span><span class="o">=</span><span class="mf">10.3389</span><span class="o">/</span><span class="n">fnins</span><span class="mf">.2019.00891</span>
+<span class="n">ISSN</span><span class="o">=</span><span class="mi">1662</span><span class="o">-</span><span class="mi">453</span><span class="n">X</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</details>
+</br>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="offline-data-handler">
+<h2>Offline Data Handler<a class="headerlink" href="#offline-data-handler" title="Permalink to this heading"></a></h2>
+<p>One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are either .csv or .txt files, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset’s file and folder structure. These expressions can be used to create a dictionary that is passed to the OfflineDataHandler. Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: <code class="docutils literal notranslate"><span class="pre">dataset/train/R_1_C_1_EMG.csv</span></code> where R is the rep and C is the class.</p>
+<details>
+<summary><b>Example Code</b></summary>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.data_handler</span> <span class="kn">import</span> <span class="n">OfflineDataHandler</span><span class="p">,</span> <span class="n">RegexFilter</span>
+<span class="n">dataset_folder</span> <span class="o">=</span> <span class="s1">&#39;dataset&#39;</span>
+<span class="n">regex_filters</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;dataset/&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">sets_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;sets&#39;</span><span class="p">),</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;_EMG.csv&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">classes_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;classes&#39;</span><span class="p">),</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;R_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">reps_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;reps&#39;</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">OfflineDataHandler</span><span class="p">()</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">folder_location</span><span class="o">=</span><span class="n">dataset_folder</span><span class="p">,</span> <span class="n">regex_filters</span><span class="o">=</span><span class="n">regex_filters</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+
+<span class="c1"># Extract training data:</span>
+<span class="n">train_odh</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;sets&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">train_odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">25</span><span class="p">)</span>
+
+<span class="c1"># Extract features</span>
+<span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+<span class="n">feature_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_list</span><span class="p">()</span>
+<span class="n">training_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">)</span>
+</pre></div>
+</div>
+</details>
+</br>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="online-data-handler">
+<h2>Online Data Handler<a class="headerlink" href="#online-data-handler" title="Permalink to this heading"></a></h2>
+<p>One complication when using EMG devices is the lack of standardization, meaning that interfacing with hardware is a new undertaking for each device. A goal of LibEMG is to abstract these differences and enable a hardware-agnostic framework. Therefore, this module acts as a middle layer for processing real-time data streaming from any device. In this architecture - exemplified in Figure 1 – live data streaming is performed by using a shared memory buffer as the core. This shared memory buffer is created by the device streamer, where a process is spawned that continuously populates the buffer with samples. Other modules can gain access to the shared memory buffer using the shared memory items that the streamer returned, allowing for cross-process, low-latency, non-blocking access to the data of interest. We provide an OnlineDataHandler object that is a generic object for attaching to the shared memory buffer with added some utilities.</p>
+<p>An example of the online data streaming workflow is provided below:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># start the hardware streamer, receive a process handle and shared memory descriptors</span>
+<span class="n">streamer_process</span><span class="p">,</span> <span class="n">shared_memory_items</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">streamers</span><span class="o">.</span><span class="n">myo_streamer</span><span class="p">()</span>
+<span class="c1"># start an online data handler to attach to the shared memory buffer</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">data_handler</span><span class="o">.</span><span class="n">OnlineDataHandler</span><span class="p">(</span><span class="n">shared_memory_items</span><span class="o">=</span><span class="n">shared_memory_items</span><span class="p">)</span>
+<span class="c1"># start logging the data to a file</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">log_to_file</span><span class="p">()</span>
+<span class="c1"># start visualizing the data</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">visualization</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><img alt="alt text" src="../../_images/online_dh.png" /></p>
+<center> <p> Figure 1: OnlineDataHandler Architecture</p> </center>
+<p><strong>For more information on the default streamers and creating your own, please reference the Supported Hardware section.</strong></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../introduction/introduction.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../filtering/filtering.html" class="btn btn-neutral float-right" title="Filtering" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

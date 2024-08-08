@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feature Selection &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Classification" href="../classification/classification.html" />
+    <link rel="prev" title="Feature Extraction" href="../features/features.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Feature Selection</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#selection-strategies">Selection Strategies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#feature-extraction-setup">Feature Extraction Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#classification-accuracy-ca"><strong>Classification Accuracy (CA)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#active-error-ae"><strong>Active Error (AE)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mean-semi-principle-axis-msa"><strong>Mean Semi Principle Axis (MSA)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#feature-efficiency-fe"><strong>Feature Efficiency (FE)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#repeatability-index-ri"><strong>Repeatability Index (RI)</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#seperability-index-si"><strong>Seperability Index (SI)</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Feature Selection</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/feature_selection/feature_selection.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="feature-selection">
+<h1>Feature Selection<a class="headerlink" href="#feature-selection" title="Permalink to this heading"></a></h1>
+<p>Feature selection is a valuable process for optimizing pattern recognition pipelines where a large, varied representation of the input is provided (for instance a large number or features, or all principal components of the input space). Much like the motivation for feature extraction is to improve the information density from the original input signal to more meaningful features, the process of feature extraction takes many features and determines the most relevant features that provide valuable information for a particular classification task.</p>
+<p>In this library, we provide two methods for feature selection: metric-based selection and sequential forward selection. Metric-based selection is a single value that gets computed per feature, which is used to rank the features in terms of their effectiveness on their own. Unlike metric-based selection, where only a single round is used to assess features independent contribution, sequential foward selection is an iterative process. First, the best feature is determined in isolation based on the selected metric. The next round of the selection procedure determines the second best feature to be used in combination with the best feature determined in the last round. As this process continues, the best new feature to add in the proposed feature set is always determined in combination with the features determined in the previous rounds.</p>
+<section class="tex2jax_ignore mathjax_ignore" id="selection-strategies">
+<h2>Selection Strategies<a class="headerlink" href="#selection-strategies" title="Permalink to this heading"></a></h2>
+<p>Since EMG patterns during real-time use are often drastically different than those used to train the system, classification accuracy does not necessarily correlate to online usability. As such, there are numerous feature selection strategies for EMG-based control systems for optimizing the features selected for a particular problem. For a summary of the following feature selection techniques and suggestions, please see <em>A Multivariate Approach for Predicting Myoelectric Control Usability</em> <sup>[1]</sup>.</p>
+<section id="feature-extraction-setup">
+<h3>Feature Extraction Setup<a class="headerlink" href="#feature-extraction-setup" title="Permalink to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># extract data</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">OneSubjectMyoDataset</span><span class="p">(</span><span class="n">save_dir</span><span class="o">=</span><span class="s1">&#39;example_data&#39;</span><span class="p">,</span> <span class="n">redownload</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="n">OfflineDataHandler</span><span class="p">)</span>
+
+<span class="c1"># get the training data from the dataset</span>
+<span class="n">train_data</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+
+<span class="c1"># select the features for feature selection - in this case we select all of them</span>
+<span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+<span class="n">feature_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_list</span><span class="p">()</span>
+
+<span class="c1"># extract every feature in the toolbox on the training data</span>
+<span class="n">training_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">)</span>
+
+<span class="c1"># set values for feature selection</span>
+<span class="n">class_var</span> <span class="o">=</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">crossvalidation_var</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;var&quot;</span><span class="p">:</span> <span class="n">train_metadata</span><span class="p">[</span><span class="s2">&quot;reps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)}</span>
+</pre></div>
+</div>
+</section>
+<section id="classification-accuracy-ca">
+<h3><strong>Classification Accuracy (CA)</strong><a class="headerlink" href="#classification-accuracy-ca" title="Permalink to this heading"></a></h3>
+<p>Emphasizes classification accuracy of a classifier using leave-one-trial-out cross validation.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{CA} = \frac{1}{T}\sum_{t=1}^{n}(\frac{1}{n}\sum_{i=1}^{n}\hat{y}_{i,t} == {y}_{i,t})
+\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(T\)</span> is the total number of trials, <span class="math notranslate nohighlight">\(t\)</span> is an individual trial, <span class="math notranslate nohighlight">\(n\)</span> is the total number of data frames, <span class="math notranslate nohighlight">\(\hat{y}_{i,t}\)</span> is the predicted class label for frame <span class="math notranslate nohighlight">\(i\)</span>, and <span class="math notranslate nohighlight">\(y_{i,t}\)</span> is the true class label for frame i.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Classification Accuracy:</span>
+<span class="n">metric</span><span class="o">=</span><span class="s2">&quot;accuracy&quot;</span>
+<span class="n">accuracy_results</span><span class="p">,</span> <span class="n">accuracy_fs</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">run_selection</span><span class="p">(</span><span class="n">training_features</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">class_var</span><span class="p">,</span> <span class="n">crossvalidation_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="active-error-ae">
+<h3><strong>Active Error (AE)</strong><a class="headerlink" href="#active-error-ae" title="Permalink to this heading"></a></h3>
+<p>Similar to CA but focuses on active error (i.e., the error of the classifier without considering incorrect No Movmenet predictions). Also known as (1 - active classification accuracy). The active error metric assumes that class label 0 is associated with the no motion class. The easiest way to ensure this is to make the first element of the class_values key of the offlinedatahandler dictionary the no motion class.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{AE} = \frac{1}{T}\sum_{t=1}^{n}(1-(\frac{1}{n}\sum_{i=1}^{n}(\hat{y}_{i,t} == {y}_{i,t}) \text{ or } (\hat{y}_{i,t} == {y}_{NM})))
+\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(T\)</span> is the total number of trials, <span class="math notranslate nohighlight">\(t\)</span> is an individual trial, <span class="math notranslate nohighlight">\(n\)</span> is the total number of data frames, <span class="math notranslate nohighlight">\(\hat{y}_{i,t}\)</span> is the predicted class label for frame <span class="math notranslate nohighlight">\(i\)</span>, <span class="math notranslate nohighlight">\(y_{i,t}\)</span> is the true class label for frame <span class="math notranslate nohighlight">\(i\)</span> and <span class="math notranslate nohighlight">\(y_{NM}\)</span> is the no movement class.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Active Error:</span>
+<span class="n">metric</span><span class="o">=</span><span class="s2">&quot;activeerror&quot;</span>
+<span class="n">aerror_results</span><span class="p">,</span> <span class="n">aerror_fs</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">run_selection</span><span class="p">(</span><span class="n">training_features</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">class_var</span><span class="p">,</span> <span class="n">crossvalidation_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="mean-semi-principle-axis-msa">
+<h3><strong>Mean Semi Principle Axis (MSA)</strong><a class="headerlink" href="#mean-semi-principle-axis-msa" title="Permalink to this heading"></a></h3>
+<p>Quantifies the size of a training elipsoid.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{MSA} = \frac{1}{N}\sum_{j=1}^{N}((\prod_{k=1}^{D}a_{j,k})^{\frac{1}{D}})
+\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(N\)</span> is the number of classes, <span class="math notranslate nohighlight">\(j\)</span> represents a specific class, <span class="math notranslate nohighlight">\(D\)</span> is the total dimensionality of the space, and <span class="math notranslate nohighlight">\(a_{k}\)</span> is the geometric mean of each semi-principle axis.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Mean Semi Principal Axis</span>
+<span class="n">metric</span><span class="o">=</span><span class="s2">&quot;meansemiprincipalaxis&quot;</span>
+<span class="n">msa_results</span><span class="p">,</span> <span class="n">msa_fs</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">run_selection</span><span class="p">(</span><span class="n">training_features</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">class_var</span><span class="p">,</span> <span class="n">crossvalidation_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="feature-efficiency-fe">
+<h3><strong>Feature Efficiency (FE)</strong><a class="headerlink" href="#feature-efficiency-fe" title="Permalink to this heading"></a></h3>
+<p>A measure of the fraction of samples seperable by a particular feature.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{FE} = \frac{1}{N}\sum_{j=1}^{N}\max\limits_{i=1,...,j-1,j+1,...,N} \\ \times (\max\limits_{k=1,...,D} \frac{n(C_{i}) + n(C_{j}) - n(S_{k})}{n(C_{i}) + n(C_{j})})
+\)</span></p>
+<p><span class="math notranslate nohighlight">\(
+S_{k} = p | p \space \epsilon \space C_{i} \space \cup \space C_{j}, \space \min(\max(f_{k}|c_{j}), \max(f_{k}|c_{i})) \ge p \ge \max(\min(f_{k}|c_{j}), \min(f_{k}|c_{i}))
+\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(N\)</span> is the number of active classes, <span class="math notranslate nohighlight">\(j\)</span> and <span class="math notranslate nohighlight">\(i\)</span> are particular class labels, <span class="math notranslate nohighlight">\(D\)</span> is the dimensionality, <span class="math notranslate nohighlight">\(n(C_{i})\)</span> is the cardinality of the set of data points in class <span class="math notranslate nohighlight">\(i\)</span> and <span class="math notranslate nohighlight">\(n(C_{j})\)</span> in class <span class="math notranslate nohighlight">\(j\)</span>, <span class="math notranslate nohighlight">\(S_{k}\)</span> is the set of points not seperable along a feature dimension <span class="math notranslate nohighlight">\(k\)</span>, <span class="math notranslate nohighlight">\(n(S_{k})\)</span> is the cardinality of the overlap set, <span class="math notranslate nohighlight">\(f_{k}|c_{i}\)</span> is the value of feature <span class="math notranslate nohighlight">\(f\)</span> in dimension <span class="math notranslate nohighlight">\(k\)</span> for class label <span class="math notranslate nohighlight">\(i\)</span>, and <span class="math notranslate nohighlight">\(p\)</span> is the <span class="math notranslate nohighlight">\(D\)</span> dimensional data point in class <span class="math notranslate nohighlight">\(i\)</span> or <span class="math notranslate nohighlight">\(j\)</span>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Feature Efficiency:</span>
+<span class="n">metric</span><span class="o">=</span><span class="s2">&quot;featureefficiency&quot;</span>
+<span class="n">fe_results</span><span class="p">,</span> <span class="n">fe_fs</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">run_selection</span><span class="p">(</span><span class="n">training_features</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">class_var</span><span class="p">,</span> <span class="n">crossvalidation_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="repeatability-index-ri">
+<h3><strong>Repeatability Index (RI)</strong><a class="headerlink" href="#repeatability-index-ri" title="Permalink to this heading"></a></h3>
+<p>Measures the repeatability of contractions/emg patterns between subsequent repetitions.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{RI} = \frac{1}{N}\sum_{j=1}^{N}\frac{1}{R}\sum_{r=1}^{R}\frac{1}{2}\sqrt{(\mu_{TR_{j}} -\mu_{r,j})'S_{TR_{j}}^-1 (\mu_{TR_{j}} - \mu_{r,j})}
+\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(N\)</span> is the number of active classes, <span class="math notranslate nohighlight">\(R\)</span> is the number of repetitions, <span class="math notranslate nohighlight">\(j\)</span> is a specific class, <span class="math notranslate nohighlight">\(r\)</span> is a specific repetition, <span class="math notranslate nohighlight">\(\mu_{TR_{j}}\)</span> is the centroid of the class j training ellipsoid, <span class="math notranslate nohighlight">\(\mu_{r,j}\)</span> is the centroid of a testing elipsoid of the same <span class="math notranslate nohighlight">\(j\)</span> and rep <span class="math notranslate nohighlight">\(r\)</span>, and <span class="math notranslate nohighlight">\(S_{TR_{j}}\)</span> is the covariance matrix of the class j training ellipsoid.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Repeatability:</span>
+<span class="n">metric</span><span class="o">=</span><span class="s2">&quot;repeatability&quot;</span>
+<span class="n">ri_results</span><span class="p">,</span> <span class="n">ri_fs</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">run_selection</span><span class="p">(</span><span class="n">training_features</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">class_var</span><span class="p">,</span> <span class="n">crossvalidation_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="seperability-index-si">
+<h3><strong>Seperability Index (SI)</strong><a class="headerlink" href="#seperability-index-si" title="Permalink to this heading"></a></h3>
+<p>A measure of the distance between different classes.</p>
+<p><span class="math notranslate nohighlight">\(
+\text{FE} = \frac{1}{N}\sum_{j=1}^{N}\max\limits_{i=1,...,j-1,j+1,...,N} \frac{1}{2} \\ \times \sqrt{(\mu_{TR_{j}} -\mu_{TR_{i}})'S_{TR_{j}}^-1 (\mu_{TR_{j}} - \mu_{TR_{i}})}
+\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(N\)</span> is the number of active classes, <span class="math notranslate nohighlight">\(\mu_{TR_{j}}\)</span> is the centroid of class <span class="math notranslate nohighlight">\(j\)</span> training ellipsoid (all reps), <span class="math notranslate nohighlight">\(\mu_{TR_{i}}\)</span> is the centroid of the nearest training ellipsoid of a different class i, and <span class="math notranslate nohighlight">\(S_{TR_{j}}\)</span> is the covariance matrix of class j training ellipsoid.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Seperability:</span>
+<span class="n">metric</span><span class="o">=</span><span class="s2">&quot;seperability&quot;</span>
+<span class="n">si_results</span><span class="p">,</span> <span class="n">si_fs</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">run_selection</span><span class="p">(</span><span class="n">training_features</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">class_var</span><span class="p">,</span> <span class="n">crossvalidation_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this heading"></a></h2>
+<p><a id="1">[1]</a>
+J. L. Nawfel, K. B. Englehart and E. J. Scheme, “A Multi-Variate Approach to Predicting Myoelectric Control Usability,” in IEEE Transactions on Neural Systems and Rehabilitation Engineering, vol. 29, pp. 1312-1327, 2021, doi: 10.1109/TNSRE.2021.3094324.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../features/features.html" class="btn btn-neutral float-left" title="Feature Extraction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../classification/classification.html" class="btn btn-neutral float-right" title="Classification" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

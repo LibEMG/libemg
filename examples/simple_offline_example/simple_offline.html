@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Step 1: Importing LibEMG &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documentation/visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Step 1: Importing LibEMG</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/examples/simple_offline_example/simple_offline.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p><a class="reference external" href="https://github.com/libemg/LibEMG_OneSubject_Showcase">View Source Code</a></p>
+<img alt="https://github.com/libemg/LibEMG_OneSubject_Showcase/blob/main/Docs/Results.png?raw=true" src="https://github.com/libemg/LibEMG_OneSubject_Showcase/blob/main/Docs/Results.png?raw=true" />
+<p>This simple offline analysis serves as a starting point to understand the offline functionality of the library. In this example, we will load in the OneSubjectMyoDataset and test the classification accuracy of several different classifiers. Finally, we will look at the PCA feature space of the data. All code can be found in <code class="docutils literal notranslate"><span class="pre">main.py</span></code>.</p>
+<section id="step-1-importing-libemg">
+<h1>Step 1: Importing LibEMG<a class="headerlink" href="#step-1-importing-libemg" title="Permalink to this heading"></a></h1>
+<p>The very first step involves importing the modules needed. In general, each of LibEMG’s modules has its own import. Make sure that you have successfully installed libemg through pip.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.datasets</span> <span class="kn">import</span> <span class="n">OneSubjectMyoDataset</span>
+<span class="kn">from</span> <span class="nn">libemg.emg_predictor</span> <span class="kn">import</span> <span class="n">EMGClassifier</span>
+<span class="kn">from</span> <span class="nn">libemg.feature_extractor</span> <span class="kn">import</span> <span class="n">FeatureExtractor</span>
+<span class="kn">from</span> <span class="nn">libemg.offline_metrics</span> <span class="kn">import</span> <span class="n">OfflineMetrics</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-setting-up-constants">
+<h1>Step 2: Setting up Constants<a class="headerlink" href="#step-2-setting-up-constants" title="Permalink to this heading"></a></h1>
+<p>Window and increment size selection will have major impacts on a control system. In general, while bigger window sizes can improve classification accuracy, they introduce lag to the system as predictions are made on older data. Moreover, smaller increment sizes result in more responsive systems. Ultimately, this comes with increased hardware costs to process these decisions. LibEMG defines window and increment sizes as the number of samples. In this case, the dataset was recorded from the Myo Armband (which samples at 200Hz), so a window of 20 samples corresponds to 100ms.</p>
+<p>Determining the features or feature set to use is another design consideration. Often, it is suggested to use one of the predefined validated feature groups such as HTD, LS4, or LS9.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">WINDOW_SIZE</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">WINDOW_INCREMENT</span> <span class="o">=</span> <span class="mi">10</span> 
+<span class="n">FEATURE_SET</span> <span class="o">=</span> <span class="s2">&quot;HTD&quot;</span>
+</pre></div>
+</div>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="step-3-loading-in-dataset">
+<h1>Step 3: Loading in Dataset<a class="headerlink" href="#step-3-loading-in-dataset" title="Permalink to this heading"></a></h1>
+<p>In this example, we load in the OneSubjectMyoDataset, which is automatically downloaded and stored in an OfflineDataHandler. After preparing the data set, we isolate it into sets 0-2 and 3-5. Since this dataset consists of six trials, trials 1-3 will be used for training and 4-6 for testing. Finally, we can extract windows from both the training and testing data.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load in dataset</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">OneSubjectMyoDataset</span><span class="p">()</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+
+<span class="c1"># Split data into training and testing</span>
+<span class="n">train_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span> 
+<span class="n">test_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="s2">&quot;sets&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span> 
+
+<span class="c1"># Extract windows </span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_meta</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">WINDOW_SIZE</span><span class="p">,</span> <span class="n">WINDOW_INCREMENT</span><span class="p">)</span>
+<span class="n">test_windows</span><span class="p">,</span> <span class="n">test_meta</span> <span class="o">=</span> <span class="n">test_data</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">WINDOW_SIZE</span><span class="p">,</span> <span class="n">WINDOW_INCREMENT</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="step-4-feature-extraction">
+<h1>Step 4: Feature Extraction<a class="headerlink" href="#step-4-feature-extraction" title="Permalink to this heading"></a></h1>
+<p>We first create a data_set dictionary, since it is required to be passed to each classifier. We also extract features from the test windows.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create data set dictionary using training data</span>
+<span class="n">data_set</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="n">FEATURE_SET</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">)</span>
+<span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_labels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_meta</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">]</span>
+
+<span class="n">test_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_feature_group</span><span class="p">(</span><span class="n">FEATURE_SET</span><span class="p">,</span> <span class="n">test_windows</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="step-5-classification">
+<h1>Step 5: Classification<a class="headerlink" href="#step-5-classification" title="Permalink to this heading"></a></h1>
+<p>Iterating on a list of predefined classifiers, we can fit a classifier to the predefined dataset, run it to get the predictions on the test data, and then extract offline metrics. This data could then be accumulated and plotted if desired.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">classifiers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;LDA&quot;</span><span class="p">,</span><span class="s2">&quot;SVM&quot;</span><span class="p">,</span><span class="s2">&quot;KNN&quot;</span><span class="p">,</span><span class="s2">&quot;RF&quot;</span><span class="p">,</span><span class="s2">&quot;QDA&quot;</span><span class="p">]</span>
+
+<span class="c1"># Extract metrics for each classifier</span>
+<span class="k">for</span> <span class="n">classifier</span> <span class="ow">in</span> <span class="n">classifiers</span><span class="p">:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">EMGClassifier</span><span class="p">(</span><span class="n">classifier</span><span class="p">)</span>
+
+    <span class="c1"># Fit and run the classifier</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">data_set</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="n">preds</span><span class="p">,</span> <span class="n">probs</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">test_features</span><span class="p">)</span>
+
+    <span class="c1"># Null label is 2 since it is the no movement class</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="n">om</span><span class="o">.</span><span class="n">extract_common_metrics</span><span class="p">(</span><span class="n">test_meta</span><span class="p">[</span><span class="s2">&quot;classes&quot;</span><span class="p">],</span> <span class="n">preds</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="step-6-pca-feature-space-projection">
+<h1>Step 6: PCA Feature Space Projection<a class="headerlink" href="#step-6-pca-feature-space-projection" title="Permalink to this heading"></a></h1>
+<p>Since LibEMG has a visualize_feature_space function built-in, the PCA feature space of a dataset can be observed with a simple function call below. To create it, the training features + labels and testing features + labels are passed in.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot feature space </span>
+<span class="n">fe</span><span class="o">.</span><span class="n">visualize_feature_space</span><span class="p">(</span><span class="n">data_set</span><span class="p">[</span><span class="s1">&#39;training_features&#39;</span><span class="p">],</span> <span class="n">projection</span><span class="o">=</span><span class="s2">&quot;PCA&quot;</span><span class="p">,</span> <span class="n">classes</span><span class="o">=</span><span class="n">train_meta</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">],</span> <span class="n">test_feature_dic</span><span class="o">=</span><span class="n">test_features</span><span class="p">,</span> <span class="n">t_classes</span><span class="o">=</span><span class="n">test_meta</span><span class="p">[</span><span class="s1">&#39;classes&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

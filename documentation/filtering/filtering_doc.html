@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Filtering Offline Data &mdash; libemg 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../classification/classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Filtering Offline Data</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/filtering/filtering_doc.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>The EMG signal is inherently noisy, meaning it must be filtered before it is passed through the machine learning pipeline. This is because a noisy signal leads to worse classifier performance, and in turn, system performance and online usability. The filtering module, which is built on top of the scipy package, alleviates these challenges by providing developers with a simple tool for removing common sources of noise, such as:</p>
+<ul class="simple">
+<li><p><strong>Powerline Interference:</strong> 50/60 Hz noise, caused by proximity to wired electronic devices.</p></li>
+<li><p><strong>Motion Artifact:</strong> &lt;20 Hz noise, caused by the movement of the limb and, correspondingly, measurement equipment, changing the contact characteristics between the electrodes and the skin.</p></li>
+</ul>
+<p><strong>Note that many hardware devices (such as the Myo and Delsys) have the option for built-in filtering.</strong></p>
+<p>By creating a dictionary with the filter parameters including:</p>
+<ul class="simple">
+<li><p><strong>name:</strong> The name of the filter.</p></li>
+<li><p><strong>cutoff:</strong> The cutoff frequency.</p></li>
+<li><p><strong>order/bandwidth:</strong> How much energy is removed from the signal, or the width of the filter.</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span> <span class="c1"># create a notch filter for removing power line interference</span>
+<span class="n">filter_dictionary</span><span class="o">=</span><span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;notch&quot;</span><span class="p">,</span> <span class="s2">&quot;cutoff&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span> <span class="s2">&quot;bandwidth&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+ <span class="c1"># create a filter for removing high frequency noise and low frequency motion artefacts</span>
+<span class="n">filter_dictionary</span><span class="o">=</span><span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span><span class="s2">&quot;bandpass&quot;</span><span class="p">,</span> <span class="s2">&quot;cutoff&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">450</span><span class="p">],</span> <span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+<span class="c1"># create a filter for low frequency motion artefacts</span>
+<span class="n">filter_dictionary</span><span class="o">=</span><span class="p">{</span> <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;highpass&quot;</span><span class="p">,</span> <span class="s2">&quot;cutoff&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s2">&quot;order&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>These filters can be applied on the Offline or Online Data Handler.</p>
+<section class="tex2jax_ignore mathjax_ignore" id="filtering-offline-data">
+<h1>Filtering Offline Data<a class="headerlink" href="#filtering-offline-data" title="Permalink to this heading"></a></h1>
+<p>It is often desirable to filter offline data to clean them up or for better recognition performance. The filtering module can be used directly on the OfflineDataHandler or a list of EMG data through the <code class="docutils literal notranslate"><span class="pre">.filter()</span></code> function. After installing the filters on the Filter class, simply just pass in the data and the filtering will be applied.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span>    <span class="n">dataset</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">_3DCDataset</span><span class="p">()</span>
+    <span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">(</span><span class="n">subjects_values</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">])</span>
+    <span class="c1"># instantiate the filter object with the sampling frequency</span>
+    <span class="n">fi</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">filtering</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+    <span class="c1"># install filters to the filter object</span>
+    <span class="n">fi</span><span class="o">.</span><span class="n">install_common_filters</span><span class="p">()</span>
+    <span class="c1"># run the entire first subject dataset through the common filters</span>
+    <span class="n">odh</span> <span class="o">=</span> <span class="n">fi</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">odh</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><img alt="" src="../../_images/filter1.png" /></p>
+<center> <p> Figure 1: A plot of the frequency domain before and after removing the 60 Hz powerline interference from a recording of data. </p> </center>
+<!-- ![](filter2.png) 
+<center> <p> Figure 2: TODO </p> </center> -->
+<!-- I couldn't style this well, feel free to give it a shot. -->
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="filtering-online-data">
+<h1>Filtering Online Data<a class="headerlink" href="#filtering-online-data" title="Permalink to this heading"></a></h1>
+<p>Filters can be installed on the OnlineDataHandler, before starting the process to filter real-time (i.e., live) data. These filters are then passed through the rest of the pipeline, for example, to the Training UI or the OnlineEMGClassifier.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">libemg.streamers</span> <span class="kn">import</span> <span class="n">delsys_streamer</span>
+<span class="kn">from</span> <span class="nn">libemg.offline_metrics</span> <span class="kn">import</span> <span class="n">OfflineMetrics</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span> <span class="p">:</span>
+
+<span class="n">fi</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span><span class="n">sampling_frequency</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<span class="n">fi</span><span class="o">.</span><span class="n">install_common_filters</span><span class="p">()</span>
+
+<span class="n">streamer</span> <span class="o">=</span> <span class="n">delsys_streamer</span><span class="p">()</span>
+
+<span class="c1"># Create the Online Data Handler</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">OnlineDataHandler</span><span class="p">(</span><span class="n">max_buffer</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<span class="c1"># Install the Filters (This needs to be done before starting the process)</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">install_filter</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
+
+<span class="n">odh</span><span class="o">.</span><span class="n">start_listening</span><span class="p">()</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">visualize</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
