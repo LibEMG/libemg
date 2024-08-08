@@ -21,7 +21,7 @@ linkify-it-py==2.0.0
 pytest-skip-slow==0.0.3
 dearpygui
 # For oymotion - only on linx
-# bluepy
+bluepy
 PyWavelets==1.4.1
 # for new sgt
 dearpygui
