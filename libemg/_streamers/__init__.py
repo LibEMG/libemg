@@ -11,4 +11,3 @@ from libemg._streamers import _OTB_Syncstation
 from libemg._streamers import _oymotion_windows_streamer
 from libemg._streamers import _emager_streamer
 from libemg._streamers import _leap_streamer
-from libemg._streamers import __new_streaner
