@@ -14,6 +14,28 @@ else:
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
+from libemg._streamers.__new_streaner import NewStreamer
+
+def new_streamer(shared_memory_items = None):
+    """
+    TODO: Update docs like other functions.
+    """
+    # Need to make shared memory items to define the size of the shared memory buffer. This is a buffer 
+    # of 5000 samples by 8 channels. 
+    if shared_memory_items is None:
+        shared_memory_items = []
+        shared_memory_items.append(["emg",       (5000,8), np.double])
+        shared_memory_items.append(["emg_count", (1,1),    np.int32])
+    
+    for item in shared_memory_items:
+        item.append(Lock())
+
+    # TODO: Update this 
+    ns = NewStreamer(shared_memory_items)
+    ns.start()
+    return ns, shared_memory_items
+
+
 
 def sifibridge_streamer(version="1_1",
                  shared_memory_items = None,
