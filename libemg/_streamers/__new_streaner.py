@@ -1,7 +1,6 @@
 from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process
 
-
 """
 This class will inherit from the Process class. The goal is to read data and pass it to the Shared Memory object.
 """
