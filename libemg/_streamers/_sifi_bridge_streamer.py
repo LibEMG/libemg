@@ -309,7 +309,7 @@ class SiFiBridgeStreamer(Process):
             if "emg" in list(data["data"].keys()): # This is the biopoint emg 
                 emg = np.expand_dims(np.array(data['data']["emg"]),0).T
                 for h in self.emg_handlers:
-                    self.emg_handlers(emg) # check to see that this doesn't
+                    h(emg)
             if "acc_x" in list(data["data"].keys()):
                 imu = np.stack((data["data"]["acc_x"],
                                 data["data"]["acc_y"],
