@@ -17,7 +17,7 @@ LibEMG
    documentation/filtering/filtering
    documentation/features/features
    documentation/feature_selection/feature_selection
-   documentation/classification/classification
+   documentation/prediction/prediction
    documentation/evaluation/evaluation
 
 .. toctree::
