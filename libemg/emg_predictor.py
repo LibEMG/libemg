@@ -28,22 +28,22 @@ import re
 from libemg.utils import get_windows
 
 class EMGPredictor:
-    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
-        """Base class for EMG prediction.
+    """Base class for EMG prediction. Parent class that shares common functionality between classifiers and regressors.
 
-        Parameters
-        ----------
-        model: custom model (must have fit, predict and predict_proba functions)
-            Object that will be used to fit and provide predictions.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        """
+    Parameters
+    ----------
+    model: custom model (must have fit, predict and predict_proba functions)
+        Object that will be used to fit and provide predictions.
+    model_parameters: dictionary, default=None
+        Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+    random_seed: int, default=0
+        Constant value to control randomization seed.
+    fix_feature_errors: bool (default=False)
+        If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+    silent: bool (default=False)
+        If True, the outputs from the fix_feature_errors parameter will be silenced. 
+    """
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
         self.model = model
         self.model_parameters = model_parameters
         # default for feature parameters
@@ -202,26 +202,26 @@ class EMGPredictor:
 
 
 class EMGClassifier(EMGPredictor):
+    """The Offline EMG Classifier. 
+
+    This is the base class for any offline EMG classification. 
+
+    Parameters
+    ----------
+    model: string or custom classifier (must have fit, predict and predic_proba functions)
+        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
+        'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+        models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+    model_parameters: dictionary, default=None
+        Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+    random_seed: int, default=0
+        Constant value to control randomization seed.
+    fix_feature_errors: bool (default=False)
+        If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+    silent: bool (default=False)
+        If True, the outputs from the fix_feature_errors parameter will be silenced. 
+    """
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False):
-        """The Offline EMG Classifier. 
-
-        This is the base class for any offline EMG classification. 
-
-        Parameters
-        ----------
-        model: string or custom classifier (must have fit, predict and predic_proba functions)
-            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        """
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
             'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
@@ -440,29 +440,24 @@ class EMGRegressor(EMGPredictor):
 
     This is the base class for any offline EMG regression. 
 
+    Parameters
+    ----------
+    model: string or custom regressor (must have fit and predict functions)
+        The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM' (Support Vector Machine), 'RF' (Random Forest),  
+        'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+        models with no hyperparameter tuning and may not be optimal. Pass in custom regressors or parameters for more control.
+    model_parameters: dictionary, default=None
+        Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+    random_seed: int, default=0
+        Constant value to control randomization seed.
+    fix_feature_errors: bool (default=False)
+        If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+    silent: bool (default=False)
+        If True, the outputs from the fix_feature_errors parameter will be silenced. 
+    deadband_threshold: float, default=0.0
+        Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
     """
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False, deadband_threshold = 0.):
-        """The Offline EMG Regressor. 
-
-        This is the base class for any offline EMG regression. 
-
-        Parameters
-        ----------
-        model: string or custom regressor (must have fit and predict functions)
-            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM' (Support Vector Machine), 'RF' (Random Forest),  
-            'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom regressors or parameters for more control.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        deadband_threshold: float, default=0.0
-            Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
-        """
         model_config = {
             'LR': (LinearRegression, {}),
             'SVM': (SVR, {"kernel": "linear"}),
