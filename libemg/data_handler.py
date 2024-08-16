@@ -181,7 +181,7 @@ class FilePackager(MetadataFetcher):
         return packaged_file_data
 
 
-class ColumnFetch(MetadataFetcher):
+class ColumnFetcher(MetadataFetcher):
     def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         """Fetch metadata from columns within data file.
 
