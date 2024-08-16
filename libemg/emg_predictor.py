@@ -585,6 +585,10 @@ class OnlineStreamer(ABC):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in the feature queue (i.e., sequence length). Mainly used in temporal models that make predictions on
+        a sequence of feature windows (batch x feature_queue_length x features) instead of on raw EMG. If 0, a queue is not created and features are passed as usual
+        (features).
     """
 
     def __init__(self, 
@@ -597,7 +601,9 @@ class OnlineStreamer(ABC):
                  features, 
                  port, ip, 
                  std_out, 
-                 tcp):
+                 tcp,
+                 feature_queue_length = 0):
+
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
@@ -605,6 +611,8 @@ class OnlineStreamer(ABC):
         self.port = port
         self.ip = ip
         self.predictor = offline_predictor
+        self.feature_queue_length = feature_queue_length
+        self.queue = deque() if self.feature_queue_length > 0 else None
 
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
@@ -749,6 +757,18 @@ class OnlineStreamer(ABC):
                             model_input = mod_features
                         else:
                             model_input = np.hstack((model_input, mod_features)) 
+
+                    if self.queue:
+                        # Queue features from previous windows
+                        self.queue.popleft()
+                        self.queue.append(model_input)
+
+                        model_input = np.concatenate(self.queue, axis=0)
+                        print(model_input.shape)
+                        # Do I need to cast to 3D here (for time series models) or should I expect the user will do that?
+                        model_input = np.expand_dims(model_input, axis=0)
+                        print(model_input.shape)
+                        # TODO: Verify that this works then add queue parameter to child classes (then add to feature-extractor-rework branch)
                     
                 else:
                     model_input = window[list(window.keys())[0]] #TODO: Change this
