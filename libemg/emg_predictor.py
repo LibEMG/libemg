@@ -758,7 +758,7 @@ class OnlineStreamer(ABC):
                         else:
                             model_input = np.hstack((model_input, mod_features)) 
 
-                    if self.queue:
+                    if self.queue is not None:
                         # Queue features from previous windows
                         self.queue.popleft()
                         self.queue.append(model_input)
