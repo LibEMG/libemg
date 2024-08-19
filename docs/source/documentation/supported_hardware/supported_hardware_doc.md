@@ -30,7 +30,7 @@ If selecting EMG hardware for real-time use, wireless armbands that sample above
 | <center>Hardware</center> | <center>Function</center> | <center>Image</center> |
 | ------------- | ------------- | ------------- |
 | Myo Armband  | `myo_streamer()`  | <div class="device_img">![](devices/Myo.png) </div>|
-| Delsys  | `delsys_streamer()` | <div class="device_img_2">![](devices/delsys_trigno.png) </div>|
+| Delsys  | `delsys_streamer()` or `delsys_API_streamer()` | <div class="device_img_2">![](devices/delsys_trigno.png) </div>|
 | SIFI Cuff | `sifi_streamer()` | <div class="device_img">![](devices/sifi_cuff.png) </div>|
 | Oymotion | `oymotion_streamer()`| <div class="device_img">![](devices/oymotion.png) </div>|
 | Muovi | `otb_muovi_streamer()`| <div class="device_img">![](devices/muovi.png) </div>| 
@@ -41,6 +41,16 @@ If selecting EMG hardware for real-time use, wireless armbands that sample above
 
 ## Inspecting Hardware
 LibEMG includes an `analyze_hardware` function to run an analysis on the hardware device being used. This is a good way to  check that your device is working as expected. Example output from this function for the Myo Armband is:
+
+```Python
+from libemg.streamers import myo_streamer
+from libemg.data_handler import OnlineDataHandler
+
+if __name__ == "__main__":
+    streamer, sm = myo_streamer()
+    odh = OnlineDataHandler(sm)
+    odh.analyze_hardware()
+```
 
 ```
 Starting analysis (10s)... We suggest that you elicit varying contractions and intensities to get an accurate analysis.

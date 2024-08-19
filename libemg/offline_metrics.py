@@ -36,7 +36,13 @@ class OfflineMetrics:
             'CONF_MAT',
             'RECALL',
             'PREC',
-            'F1'
+            'F1',
+            'R2',
+            'MSE',
+            'MAPE',
+            'RMSE',
+            'NRMSE',
+            'MAE'
         ]
     
     def extract_common_metrics(self, y_true, y_predictions, null_label=None):
@@ -91,7 +97,9 @@ class OfflineMetrics:
         """
         assert len(y_true) == len(y_predictions)
         og_y_preds = y_predictions.copy()
-        if -1 in y_predictions:
+        is_classification = np.all(y_predictions.astype(int) == y_predictions) and np.all(y_true.astype(int) == y_true)
+        if -1 in y_predictions and is_classification:
+            # Only apply to classification data
             rm_idxs = np.where(y_predictions == -1)
             y_predictions = np.delete(y_predictions, rm_idxs)
             y_true = np.delete(y_true, rm_idxs)
@@ -99,15 +107,16 @@ class OfflineMetrics:
         offline_metrics = {}            
         for metric in metrics:
             method_to_call = getattr(self, 'get_' + metric)
-            if metric in ['CA', 'INS', 'CONF_MAT', 'RECALL', 'PREC', 'F1']:
-                offline_metrics[metric] = method_to_call(y_true, y_predictions)
-            elif metric in ['AER']:
+            if metric in ['AER']:
                 if not null_label is None:
                     offline_metrics[metric] = method_to_call(y_true, y_predictions, null_label)
                 else:
                     print("AER not computed... Please input the null_label parameter.")
             elif metric in ['REJ_RATE']:
                 offline_metrics[metric] = method_to_call(og_y_preds)
+            else:
+                # Assume all other metrics have the signature (y_true, y_predictions)
+                offline_metrics[metric] = method_to_call(y_true, y_predictions)
         return offline_metrics
 
     def get_CA(self, y_true, y_predictions):
@@ -313,6 +322,134 @@ class OfflineMetrics:
         f1 = 2 * (prec * recall) / (prec + recall)
         return np.average(f1, weights=weights)  
     
+    def get_R2(self, y_true, y_predictions):
+        """R2 score.
+
+        The R^2 score measures how well a regression model captures the variance in the predictions.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the R2 score for each DOF.
+        """
+        ssr = np.sum((y_predictions - y_true) ** 2, axis=0)
+        sst = np.sum((y_true - y_true.mean(axis=0)) ** 2, axis=0)
+        r2 = 1 - ssr/sst
+        return r2
+    
+    def get_MSE(self, y_true, y_predictions):
+        """Mean squared error.
+
+        The MSE measures the averages squared errors between the true labels and predictions.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the MSE score for each DOF.
+        """
+        values = (y_true - y_predictions) ** 2
+        mse = np.sum(values, axis=0) / y_true.shape[0]
+        return mse
+
+    def get_MAPE(self, y_true, y_predictions):
+        """Mean absolute percentage error.
+
+        The MAPE measures the average error between the true labels and predictions as a percentage of the true value.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the MAPE score for each DOF.
+        """
+        values = np.abs((y_true - y_predictions) / np.maximum(np.abs(y_true), np.finfo(np.float64).eps))    # some values could be 0, so take epsilon if that's the case to avoid inf
+        mape = np.sum(values, axis=0) / y_true.shape[0]
+        return mape
+
+    def get_RMSE(self, y_true, y_predictions):
+        """Root mean square error.
+
+        The RMSE measures the square root of the MSE.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the RMSE score for each DOF.
+        """
+        values = (y_true - y_predictions) ** 2
+        mse = np.sum(values, axis=0) / y_true.shape[0]
+        rmse = np.sqrt(mse)
+        return rmse
+
+    def get_NRMSE(self, y_true, y_predictions):
+        """Normalized root mean square error.
+
+        The NRMSE measures the RMSE normalized by the range of possible values.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the RMSE score for each DOF.
+        """
+        values = (y_true - y_predictions) ** 2
+        mse = np.sum(values, axis=0) / y_true.shape[0]
+        nrmse = np.sqrt(mse) / (y_true.max(axis=0) - y_true.min(axis=0))
+        return nrmse
+
+    def get_MAE(self, y_true, y_predictions):
+        """Mean absolute error.
+
+        The MAE measures the average L1 error between the true labels and predictions.
+
+        Parameters
+        ----------
+        y_true: list
+            A list of ground truth labels.
+        y_predictions: list
+            A list of predicted labels.
+
+        Returns
+        ----------
+        list
+            Returns a list consisting of the MAE score for each DOF.
+        """
+        residuals = np.abs(y_predictions - y_true)
+        mae = np.mean(residuals, axis=0)
+        return mae 
     
     def visualize(self, dic, y_axis=[0,1]):
         """Visualize the computed metrics in a bar chart.

@@ -31,7 +31,7 @@ The steps of this 'mini experiment' are as follows:
 # Menu
 ```Python
 from libemg.streamers import myo_streamer
-from libemg.screen_guided_training import ScreenGuidedTraining
+from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
 from libemg.utils import make_regex
 from libemg.feature_extractor import FeatureExtractor
@@ -42,9 +42,9 @@ Similarly to previous examples, we decided to create a simple menu to (1) levera
 ```Python
 def launch_training(self):
     self.window.destroy()
-    training_ui = ScreenGuidedTraining()
-    training_ui.download_gestures([1,2,3,4,5], "classes/")
-    training_ui.launch_training(self.odh, 5, 3, "classes/", "data/", 1)
+    training_ui = GUI(self.odh, width=700, height=700, gesture_height=300, gesture_width=300)
+    training_ui.download_gestures([1,2,3,4,5], "images/")
+    training_ui.start_gui()
 ```
 
 The next button option involves starting the Iso Fitts task. This occurs after the training data has been recorded. Note that in this step we create the online classifier and start the Fitts law test. We opted for 8 circles, but this can be varied easily with the constructor.

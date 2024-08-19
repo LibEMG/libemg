@@ -55,7 +55,6 @@ class DataCollectionPanel:
         self.cleanup_window("visualization")
         with dpg.window(tag="__dc_configuration_window", label="Data Collection Configuration"):
             
-            # dpg.add_spacer(height=50)
             dpg.add_text(label="Training Menu")
             with dpg.table(header_row=False, resizable=True, policy=dpg.mvTable_SizingStretchProp,
                    borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True):
@@ -129,6 +128,7 @@ class DataCollectionPanel:
     def gather_media(self):
         # find everything in the media folder
         files = os.listdir(self.media_folder)
+        files = sorted(files)
         valid_files = [file.endswith((".gif",".png",".mp4","jpg")) for file in files]
         files = list(compress(files, valid_files))
         self.num_motions = len(files)
@@ -160,27 +160,35 @@ class DataCollectionPanel:
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
         
-        collection_window_width = self.video_player_width + 100
+        collection_window_width  = self.video_player_width + 100
         collection_window_height = self.video_player_height + 300
         with dpg.window(label="Collection Window",
                         tag="__dc_collection_window",
                         width=collection_window_width,
                         height=collection_window_height):
-            dpg.add_spacer(height=50)
-            width_spacer = (collection_window_width - self.video_player_width) // 2
+            
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_spacer(height=20,width=self.video_player_width/2+30-(7*len("Collection Menu"))/2)
                 dpg.add_text(default_value="Collection Menu")
             with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_prompt_spacer",width=width_spacer, height=10)
+                dpg.add_spacer(tag="__dc_prompt_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_spacer(height=20,width=30)
                 dpg.add_image("__dc_collection_visual")
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=width_spacer, height=10)
+                dpg.add_spacer(height=20,width=30)
                 dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
-            
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_redo_spacer", height=20, width=self.video_player_width/2+30 - (7*len("Redo"))/2)
+                dpg.add_button(tag="__dc_redo_button", label="Redo", callback=self.redo_collection_callback)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_continue_spacer", height=20, width=self.video_player_width/2+30 - (7*len("Continue"))/2)
+                dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback)
+            dpg.hide_item(item="__dc_redo_button")
+            dpg.hide_item(item="__dc_continue_button")
+                
+        
         # dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
@@ -216,8 +224,8 @@ class DataCollectionPanel:
             # pause / redo goes here!
             if last_rep != current_rep  or (not self.auto_advance):
                 self.advance = False
-                dpg.add_button(tag="__dc_redo_button", label="Redo", callback=self.redo_collection_callback, parent="__dc_collection_window")
-                dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback, parent="__dc_collection_window")
+                dpg.show_item(item="__dc_redo_button")
+                dpg.show_item(item="__dc_continue_button")
                 while not self.advance:
                     time.sleep(0.1)
                     dpg.configure_app(manual_callback_management=True)
@@ -230,24 +238,24 @@ class DataCollectionPanel:
             self.i      = self.i - self.num_motions
         else:
             self.i      = self.i - 1 
-        dpg.delete_item("__dc_redo_button")
-        dpg.delete_item("__dc_continue_button")
+        dpg.hide_item(item="__dc_redo_button")
+        dpg.hide_item(item="__dc_continue_button")
         self.advance = True
     
     def continue_collection_callback(self):
-        dpg.delete_item("__dc_redo_button")
-        dpg.delete_item("__dc_continue_button")
+        dpg.hide_item(item="__dc_redo_button")
+        dpg.hide_item(item="__dc_continue_button")
         self.advance = True
 
     def play_collection_visual(self, media, active=True):
         if active:
             timer_duration = self.rep_time
             dpg.set_value("__dc_prompt", value=media[1])
-            dpg.set_item_width("__dc_prompt_spacer", 300)
+            dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len(media[1]))/2)
         else:
             timer_duration = self.rest_time
             dpg.set_value("__dc_prompt", value="Up next: "+media[1])
-            dpg.set_item_width("__dc_prompt_spacer", 250)
+            dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len("Up next: "+media[1]))/2)
         
         
         texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
@@ -286,77 +294,6 @@ class DataCollectionPanel:
     def visualize_callback(self):
         self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
         self.visualization_thread.start()
-        # self.visualization_process = Process(target=self._run_visualization_helper, daemon=True,)
-        # self.visualization_process.start()
-        # self._run_visualization_helper()
     
     def _run_visualization_helper(self):
-
-        self.last_new_data_size = 0
-
-        self.visualization_horizon = 5000
-        self.visualization_rate    = 24
-        # initialize blank data object
-        self.data = np.zeros((self.visualization_horizon, np.stack(self.gui.online_data_handler.raw_data.get_emg()).shape[1]))
-        self.visualizing = True
-        init_matplotlib_canvas(width=800, height=600)
-        self.plot_handles = plt.plot(self.data)
-
-        plt.xlabel("Samples")
-        plt.ylabel("Values")
-        self.update_data()
-        img = matplotlib_to_numpy()
-        media = Media()
-        media.from_numpy(img)
-        texture = media.get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height)
-        set_texture("__vls_plot", texture, width=self.video_player_width, height=self.video_player_height)
-
-        self.cleanup_window("visualization")
-        with dpg.window(tag="__vls_visualization_window",
-                        label="Live Signal Visualization Configuration",
-                        width=800,
-                        height=600):
-            
-            dpg.add_text(label="Visualization Panel")
-            dpg.add_image("__vls_plot")
-            dpg.add_button(label="Quit", callback=self.quit_visualization_callback)
-        
-        dpg.configure_app(manual_callback_management=True)
-        
-        while self.visualizing:
-            
-            self.update_data()
-            img = matplotlib_to_numpy()
-            media = Media()
-            media.from_numpy(img)
-            texture = media.get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height)
-            set_texture("__vls_plot", texture, width=self.video_player_width, height=self.video_player_height)
-            # time.sleep(1/self.visualization_rate)
-            jobs = dpg.get_callback_queue()
-            dpg.run_callbacks(jobs)
-
-        
-
-        dpg.delete_item("__vls_visualization_window")
-        self.cleanup_window("visualization")
-        dpg.configure_app(manual_callback_management=False)
-    
-    def quit_visualization_callback(self):
-        self.visualizing = False
-
-    def update_data(self):
-        new_data = self.gui.online_data_handler.raw_data.get_emg()
-        if len(new_data):
-            new_data = np.stack(new_data)
-            current_new_data_size = new_data.shape[0]
-            if current_new_data_size == self.last_new_data_size:
-                return
-            if current_new_data_size > self.last_new_data_size:
-                new_data = new_data[self.last_new_data_size:,:]
-            self.last_new_data_size = current_new_data_size
-            self.data = np.vstack((self.data, new_data))
-            # self.gui.online_data_handler.raw_data.reset_emg()
-            self.data = self.data[-self.visualization_horizon:,:]
-            for i, h in enumerate(self.plot_handles):
-                h.set_ydata(self.data[:,i])
-            plt.ylim((np.min(self.data), np.max(self.data)))
+        self.gui.online_data_handler.visualize(block=False)

@@ -668,5 +668,3 @@ class Gforce(Process):
     def cleanup(self):
         self.disconnect()
         print("Oymotion has disconnected.")
-    # def oym_start_stream(gforce, sampling):
-    #     asyncio.run(start_stream(gforce, sampling))

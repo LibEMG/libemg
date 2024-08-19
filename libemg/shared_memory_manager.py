@@ -9,6 +9,12 @@ class SharedMemoryManager:
         if tag in self.variables.keys():
             print(f"Already have access to this variable: {tag}")
             return True
+        try:
+            sm = SharedMemory(tag, create=False)
+            sm.unlink()
+        except:
+            pass
+        
         smh = SharedMemory(tag, create=True, size=int(type().itemsize * np.prod(shape)))
         data = np.ndarray((shape),dtype=type,buffer=smh.buf)
         data.fill(0)

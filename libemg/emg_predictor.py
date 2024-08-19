@@ -3,6 +3,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticD
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
@@ -469,7 +470,10 @@ class EMGRegressor(EMGPredictor):
             'GB': (GradientBoostingRegressor, {"random_state": 0}),
             'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
         }
+        convert_to_multioutput = isinstance(model, str)
         model = self._validate_model_parameters(model, model_parameters, model_config)
+        if convert_to_multioutput:
+            model = MultiOutputRegressor(model)
         self.deadband_threshold = deadband_threshold
         super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
@@ -581,6 +585,10 @@ class OnlineStreamer(ABC):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
+        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
+        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
 
     def __init__(self, 
@@ -593,7 +601,9 @@ class OnlineStreamer(ABC):
                  fe, 
                  port, ip, 
                  std_out, 
-                 tcp):
+                 tcp,
+                 feature_queue_length):
+
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
@@ -601,14 +611,19 @@ class OnlineStreamer(ABC):
         self.port = port
         self.ip = ip
         self.predictor = offline_predictor
+        self.feature_queue_length = feature_queue_length
+        self.queue = deque() if self.feature_queue_length > 0 else None
 
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
 
+        required_smm_items = [  # these tags are also required
+            ["adapt_flag", (1,1), np.int32],
+            ["active_flag", (1,1), np.int8]
+        ]
+        smm_items.extend(required_smm_items)
         self.smm = smm
         self.smm_items = smm_items
-
-        
 
         self.files = {}
         self.tcp = tcp
@@ -630,7 +645,7 @@ class OnlineStreamer(ABC):
             self._run_helper()
         else:
             self.process.start()
-    
+                    
     def prepare_smm(self):
         for i in self.smm_items:
             if len(i) == 3:
@@ -739,6 +754,16 @@ class OnlineStreamer(ABC):
                             model_input = mod_features
                         else:
                             model_input = np.hstack((model_input, mod_features)) 
+
+                    if self.queue is not None:
+                        # Queue features from previous windows
+                        if len(self.queue) == self.feature_queue_length:
+                            self.queue.popleft()
+                        self.queue.append(model_input)
+
+                        model_input = np.concatenate(self.queue, axis=0)
+                        model_input = np.expand_dims(model_input, axis=0)   # cast to 3D here for time series models
+                        # TODO: Verify that this works then add queue parameter to child classes (then add to feature-extractor-rework branch)
                     
                 else:
                     model_input = window[list(window.keys())[0]] #TODO: Change this
@@ -776,43 +801,53 @@ class OnlineEMGClassifier(OnlineStreamer):
     online_data_handler: OnlineDataHandler
         An online data handler object.
     features: list or None
-        A list of features that will be extracted during real-time classification. These should be the 
-        same list used to train the model. Pass in None if using the raw data (this is primarily for CNNs).
-    file_path: str (optional)
-        A location that the inputs and output of the classifier will be saved to.
-    file: bool (optional)
-        A toggle for activating the saving of inputs and outputs of the classifier.
-    parameters: dict (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
+        A list of features that will be extracted during real-time classification. 
+    file_path: str, default = '.'
+        Location to store model outputs. Only used if file=True.
+    file: bool, default = False
+        True if model outputs should be stored in a file, otherwise False.
+    smm: bool, default = False
+        True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
+    smm_items: list, default = None
+        List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
+        When modifying this variable, items with the name 'classifier_output' and 'classifier_input' are expected to be passed in to track classifier inputs and outputs.
+        The 'classifier_input' item should be of the format ['classifier_input', (100, 1 + num_features), np.double]
+        The 'classifier_output' item should be of the format ['classifier_output', (100, 1 + num_dofs), np.double].
+        If None, defaults to:
+        [
+            ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+            ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+        ]
     port: int (optional), default = 12346
         The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
         The ip used for streaming predictions over UDP.
-    velocity: bool (optional), default = False
-        If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
-    channels: list (optional), default=None 
-        If not none, the list of channels that will be extracted. Used if you only want to use a subset of channels during classification. 
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
+        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
+        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False, smm=True, 
+                 file_path = '.', file=False, smm=False, 
                  smm_items= None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
-                 output_format="predictions"):
+                 output_format="predictions", feature_queue_length = 0):
         
         if smm_items is None:
-            smm_items = [["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                        ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
-                        ["adapt_flag", (1,1), np.int32],
-                        ["active_flag", (1,1), np.int8]]
+            smm_items = [
+                ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+            ]
+        assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.output_format = output_format
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
@@ -835,7 +870,7 @@ class OnlineEMGClassifier(OnlineStreamer):
 
     def write_output(self, model_input, window):
         # Make prediction
-        probabilities = self.predictor.classifier.predict_proba(model_input)
+        probabilities = self.predictor.model.predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
         prediction = prediction[0]
 
@@ -904,7 +939,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         else:
             self.conn.sendall(str.encode(message))
 
-
     def visualize(self, max_len=50, legend=None):
         """Produces a live plot of classifier decisions -- Note this consumes the decisions.
         Do not use this alongside the actual control operation of libemg. Online classifier has to
@@ -928,7 +962,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         # make a new socket that subscribes to the libemg events
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
         sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.predictor.classifier.classes_)
+        num_classes = len(self.predictor.model.classes_)
         cmap = cm.get_cmap('turbo', num_classes)
 
         if legend is not None:
@@ -993,9 +1027,22 @@ class OnlineEMGRegressor(OnlineStreamer):
         An online data handler object.
     features: list
         A list of features that will be extracted during real-time regression. 
-    parameters: dict (optional)
-        A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
-        in the sklearn docs for the given model.
+    file_path: str, default = '.'
+        Location to store model outputs. Only used if file=True.
+    file: bool, default = False
+        True if model outputs should be stored in a file, otherwise False.
+    smm: bool, default = False
+        True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
+    smm_items: list, default = None
+        List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
+        When modifying this variable, items with the name 'model_output' and 'model_input' are expected to be passed in to track model inputs and outputs.
+        The 'model_input' item should be of the format ['model_input', (100, 1 + num_features), np.double]
+        The 'model_output' item should be of the format ['model_output', (100, 1 + num_dofs), np.double].
+        If None, defaults to:
+        [
+            ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
+            ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
+        ]
     port: int (optional), default = 12346
         The port used for streaming predictions over UDP.
     ip: string (optional), default = '127.0.0.1'
@@ -1004,22 +1051,24 @@ class OnlineEMGRegressor(OnlineStreamer):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of windows instead of raw EMG.
+        If the value is greater than 0, creates a queue and passes the data to the model as a 1 (window) x feature_queue_length x num_features. 
+        If the value is 0, no feature queue is created and predictions are made on a single window. Defaults to 0.
     """
     def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file = False, smm = True, smm_items = None,
-                 port=12346, ip='127.0.0.1', std_out=False, tcp=False):
-        
+                 file_path = '.', file = False, smm = False, smm_items = None,
+                 port = 12346, ip = '127.0.0.1', std_out = False, tcp = False, feature_queue_length = 0):
         if smm_items is None:
-            # TODO: Discuss how we want to implement this
             # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
-                ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
                 ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
-                ["adapt_flag", (1,1), np.int32],
-                ["active_flag", (1,1), np.int8]
+                ['model_output', (100, 3), np.double]  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
             ]
+        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.smi = smm_items
         
     def run(self, block=True):

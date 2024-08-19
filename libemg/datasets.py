@@ -2,7 +2,7 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from libemg.data_handler import ColumnFetcher, MetadataFetcher, OfflineDataHandler, RegexFilter
+from libemg.data_handler import ColumnFetch, MetadataFetcher, OfflineDataHandler, RegexFilter, FilePackager
 from libemg.utils import make_regex
 from glob import glob
 from os import walk
@@ -243,7 +243,7 @@ class _SessionFetcher(MetadataFetcher):
         return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
 
 
-class _RepFetcher(ColumnFetcher):
+class _RepFetcher(ColumnFetch):
     def __call__(self, filename, file_data, all_files):
         column_data = super().__call__(filename, file_data, all_files)
         
@@ -318,7 +318,7 @@ class PutEMGForceDataset(Dataset):
             ]
             metadata_fetchers = [
                 _SessionFetcher(),
-                ColumnFetcher('labels', column_mask),
+                ColumnFetch('labels', column_mask),
                 _RepFetcher('reps', list(range(36, 40)))
             ]
             odh = OfflineDataHandler()
@@ -327,6 +327,32 @@ class PutEMGForceDataset(Dataset):
                 odh = odh.isolate_data('sessions', sessions)
             if reps is not None:
                 odh = odh.isolate_data('reps', reps)
+            return odh
+
+
+class OneSubjectEMaGerDataset(Dataset):
+    def __init__(self, save_dir = '.', redownload = False, dataset_name = 'OneSubjectEMaGerDataset'):
+        super().__init__(save_dir, redownload)
+        self.url = 'https://github.com/LibEMG/OneSubjectEMaGerDataset'
+        self.dataset_name = dataset_name
+        self.dataset_folder = os.path.join(self.save_dir, self.dataset_name)
+
+        if (not self.check_exists(self.dataset_folder)):
+            self.download(self.url, self.dataset_folder)
+        elif (self.redownload):
+            self.remove_dataset(self.dataset_folder)
+            self.download(self.url, self.dataset_folder)
+
+    def prepare_data(self, format=OfflineDataHandler):
+        if format == OfflineDataHandler:
+            regex_filters = [
+                RegexFilter(left_bound='/', right_bound='/', values=['open-close', 'pro-sup'], description='movements'),
+                RegexFilter(left_bound='_R_', right_bound='_emg.csv', values=[str(idx) for idx in range(5)], description='reps')
+            ]
+            package_function = lambda x, y: Path(x).parent.absolute() == Path(y).parent.absolute()
+            metadata_fetchers = [FilePackager(RegexFilter(left_bound='/', right_bound='.txt', values=['labels'], description='labels'), package_function)]
+            odh = OfflineDataHandler()
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
             return odh
             
 

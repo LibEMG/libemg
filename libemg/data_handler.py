@@ -22,15 +22,11 @@ from matplotlib.animation import FuncAnimation
 from pathlib import Path
 from glob import glob
 from multiprocessing import Process
-from multiprocessing.managers import BaseManager
-from libemg.utils import make_regex, get_windows, _get_fn_windows, _get_mode_windows
-from itertools import compress
-from datetime import datetime
 from multiprocessing import Process, Event
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
 from scipy.signal import welch
-
+from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
     def __init__(self, left_bound: str, right_bound: str, values: Sequence, description: str):
@@ -185,7 +181,7 @@ class FilePackager(MetadataFetcher):
         return packaged_file_data
 
 
-class ColumnFetcher(MetadataFetcher):
+class ColumnFetch(MetadataFetcher):
     def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         """Fetch metadata from columns within data file.
 
@@ -531,41 +527,26 @@ class OfflineDataHandler(DataHandler):
 
 
 class OnlineDataHandler(DataHandler):
-    """OnlineDataHandler class - responsible for collecting data streamed in through UDP socket.
+    """OnlineDataHandler class - responsible for collecting data streamed over shared memory.
 
-    This class is extensible to any device as long as the data is being streamed over UDP.
+    This class is extensible to any device as long as the data is being streamed over shared memory.
     By default this will start writing to an array of EMG data stored in memory.
 
     Parameters
     ----------
-    port: int (optional), default = 12345
-        The UDP port to listen for events on. 
-    ip: string (optional), default = '127.0.0.1'
-        The UDP ip to listen for events on.
-    file_path: string (optional), default = "data/"
-        The path of the folder/file to write the raw data to. This only gets written to if the file parameter is set to true. For example data/test_ would write data/test_EMG.csv.
-    file: bool (optional): default = False
-        If True, all data acquired over the UDP port will be written to a file specified by the file_path parameter.
-    std_out: bool (optional): default = False
-        If True, all data acquired over the UDP port will be written to std_out.
-    emg_arr: bool (optional): default = True
-        If True, all data acquired over the UDP port will be written to an array object that can be accessed.
-    imu_arr: bool (optional): default = False
-        If True, all data acquired over the UDP port will be written to an array object (of IMU data) that can be accessed.
-    max_buffer: int (optional): default = None
-        The buffer for the raw data array. This should be set for visualizatons to reduce latency. Otherwise, the buffer will fill endlessly, leading to latency.
-    add_timestamps: bool(optional): default = False 
-        If True, timestamps will be added to the raw filese generated when setting the file flag to true.
+    shared_memory_items: Object
+        The shared memory object returned from the streamer.
+    channel_mask: list or None (optional), default=None
+        Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+        Defaults to None.
     """
-    def __init__(self, shared_memory_items=[], file_path="", timestamps=False, std_out=False,daemon=False):
-        self.options = {'file_path': file_path, 'std_out': std_out}
+    def __init__(self, shared_memory_items, channel_mask = None):
         self.shared_memory_items = shared_memory_items
         self.prepare_smm()
         self.log_signal = Event()
-        self.visualize_signal = Event()
-        
-        self.timestamps = timestamps
+        self.visualize_signal = Event()        
         self.fi = None
+        self.channel_mask = channel_mask
     
     def prepare_smm(self):
         self.modalities = []
@@ -606,6 +587,17 @@ class OnlineDataHandler(DataHandler):
             The filter object that you'd like to run on the online data.
         """
         self.fi = fi
+
+    def install_channel_mask(self, mask):
+        """Install a channel mask to isolate certain channels for online streaming.
+
+        Parameters
+        ----------
+        mask: list or None (optional), default=None
+            Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+            Defaults to None.
+        """
+        self.channel_mask = mask
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -651,31 +643,26 @@ class OnlineDataHandler(DataHandler):
         
         print("Analysis sucessfully complete. ODH process has stopped.")
 
-    def visualize(self, num_samples=500, y_axes=None,block=False):
-        if block:
-            self._visualize(num_samples, y_axes)
-        else:
-            p = Process(target=self._visualize, kwargs={"num_samples":num_samples,
-                                                          "y_axes":y_axes})
-            p.start()
-
-    def _visualize(self, num_samples, y_axes):
+    def visualize(self, num_samples=500, block=True):
         """Visualize the incoming raw EMG in a plot (all channels together).
 
         Parameters
         ----------
         num_samples: int (optional), default=500
             The number of samples to show in the plot.
-        y_axes: list (optional)
-            A list of two elements consisting the bounds for the y-axis (e.g., [-1,1]).
+        block: Boolean (optional), default=False
+            Blocks the main thread if True.
         """
+        if block:
+            self._visualize(num_samples)
+        else:
+            p = Process(target=self._visualize, kwargs={"num_samples":num_samples})
+            p.start()
+
+    def _visualize(self, num_samples):
         self.prepare_smm()
 
         pyplot.style.use('ggplot')
-        # while not self._check_streaming():
-        #     pass
-        
-        # num_channels = len(self.get_data()[0])
         plots = []
         fig, ax = pyplot.subplots(len(self.modalities), 1,squeeze=False)
         def on_close(event):
@@ -760,7 +747,7 @@ class OnlineDataHandler(DataHandler):
         animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
     
-    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None):
+    def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None, cmap = None):
         """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
 
         Parameters
@@ -772,7 +759,10 @@ class OnlineDataHandler(DataHandler):
             Compatible with all features in libemg.feature_extractor.get_feature_list() that return a single value per channel (e.g., MAV, RMS). 
             If a feature type that returns multiple values is passed, an error will be thrown. If None, defaults to MAV.
         remap_function: callable or None (optional), default=None
-            Function pointer that remaps raw data to a format that can be represented by an image.
+            Function pointer that remaps raw data to a format that can be represented by an image (such as np.reshape). Takes in an array and should return
+            an array. If None, no remapping is done.
+        cmap: colormap or None (optional), default=None
+            matplotlib colormap used to plot heatmap.
         """
         # Create figure
         pyplot.style.use('ggplot')
@@ -783,6 +773,9 @@ class OnlineDataHandler(DataHandler):
         if feature_list is None:
             # Default to MAV
             feature_list = ['MAV']
+
+        if cmap is None:
+            cmap = cm.viridis   # colourmap to determine heatmap style
         
         def extract_data():
             data, _ = self.get_data()
@@ -801,7 +794,22 @@ class OnlineDataHandler(DataHandler):
                     feature_set_dict[key] = remap_function(feature_set_dict[key]).squeeze() # squeeze to remove extra axis added for windows
             return feature_set_dict
 
-        cmap = cm.viridis   # colourmap to determine heatmap style
+        # Analyze data stream to determine min/max values for normalizing
+        analyze_time = 5
+        print(f"Analyzing data stream for {analyze_time} seconds to determine min/max values for each feature value. Please rest, then perform a contraction at max intensity.")
+        start_time = time.time()
+        normalization_values = {}
+        while (time.time() - start_time) < analyze_time:
+            features = extract_data()
+            for feature, feature_data in features.items():
+                if feature not in normalization_values.keys():
+                    normalization_values[feature] = (feature_data.min(), feature_data.max())
+                else:
+                    old_min, old_max = normalization_values[feature]
+                    current_min = min(old_min, feature_data.min())
+                    current_max = max(old_max, feature_data.max())
+                    normalization_values[feature] = (current_min, current_max)
+
         
         # Format figure
         sample_data = extract_data()    # access sample data to determine heatmap size
@@ -826,14 +834,12 @@ class OnlineDataHandler(DataHandler):
             data = extract_data()
                 
             if len(data) > 0:
-                min = 100  # -32769
-                max = 22000  # 32769
-                min = 10  # -32769
-                max = 3200  # 32769
                 # Loop through feature plots
-                for feature_data, plot in zip(data.values(), plots):
+                for feature, plot in zip(data.items(), plots):
+                    feature_key, feature_data = feature
+                    feature_min, feature_max = normalization_values[feature_key]
                     # Normalize to properly display colours
-                    normalized_data = (feature_data - min) / (max - min)
+                    normalized_data = (feature_data - feature_min) / (feature_max - feature_min)
                     # Convert to coloured map
                     heatmap_data = cmap(normalized_data)
                     plot.set_data(heatmap_data) # update plot
@@ -842,94 +848,111 @@ class OnlineDataHandler(DataHandler):
         animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
 
-    def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
-        """Visualize a live pca plot. This is reliant on previously collected training data.
+    # TODO: Update this 
+    # def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
+    #     """Visualize a live pca plot. This is reliant on previously collected training data.
 
-        Parameters
-        ----------
-        feature_dic: dict
-            A dictionary consisting of the different features acquired through screen guided training. This is the output from the 
-            extract_features method.
-        window_size: int
-            The number of samples in a window. 
-        window_increment: int
-            The number of samples that advances before next window.
-        sampling_rate: int
-            The sampling rate of the device. This impacts the refresh rate of the plot. 
-        hold_samples: int (optional), default=20
-            The number of live samples that are shown on the plot.
-        projection: string (optional), default=PCA
-            The projection method. Currently, the only available option, is PCA.
-        classes: list
-            A list of classes that is associated with each feature index.
-        normalize: boolean
-            Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
-        """
-        raise NotImplementedError('This method has not been fixed to account for changes to shared memory.')
-        pyplot.style.use('ggplot')
-        feature_list = feature_dic.keys()
-        fe = FeatureExtractor()
+    #     Parameters
+    #     ----------
+    #     feature_dic: dict
+    #         A dictionary consisting of the different features acquired through screen guided training. This is the output from the 
+    #         extract_features method.
+    #     window_size: int
+    #         The number of samples in a window. 
+    #     window_increment: int
+    #         The number of samples that advances before next window.
+    #     sampling_rate: int
+    #         The sampling rate of the device. This impacts the refresh rate of the plot. 
+    #     hold_samples: int (optional), default=20
+    #         The number of live samples that are shown on the plot.
+    #     projection: string (optional), default=PCA
+    #         The projection method. Currently, the only available option, is PCA.
+    #     classes: list
+    #         A list of classes that is associated with each feature index.
+    #     normalize: boolean
+    #         Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
+    #     """
+    #     pyplot.style.use('ggplot')
+    #     feature_list = feature_dic.keys()
+    #     fe = FeatureExtractor()
 
-        if projection == "PCA":
-            for i, k in enumerate(feature_dic.keys()):
-                feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
+    #     if projection == "PCA":
+    #         for i, k in enumerate(feature_dic.keys()):
+    #             feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
 
-            if normalize:
-                feature_means = np.mean(feature_matrix, axis=0)
-                feature_stds  = np.std(feature_matrix, axis=0)
-                feature_matrix = (feature_matrix - feature_means) / feature_stds
+    #         if normalize:
+    #             feature_means = np.mean(feature_matrix, axis=0)
+    #             feature_stds  = np.std(feature_matrix, axis=0)
+    #             feature_matrix = (feature_matrix - feature_means) / feature_stds
 
-            
-            fig, ax = plt.subplots()
-            pca = PCA(n_components=feature_matrix.shape[1]) 
+    #         fig, ax = plt.subplots()
+    #         pca = PCA(n_components=feature_matrix.shape[1]) 
 
-            if classes is not None:
-                class_list = np.unique(classes)
+    #         if classes is not None:
+    #             class_list = np.unique(classes)
     
-            train_data = pca.fit_transform(feature_matrix)
-            if classes is not None:
-                for c in class_list:
-                    class_ids = classes == c
-                    ax.plot(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)), linestyle="None")
-            else:
-                ax.plot(train_data[:,0], train_data[:,1], marker=".", label="tr", linestyle="None")
+    #         train_data = pca.fit_transform(feature_matrix)
+    #         if classes is not None:
+    #             for c in class_list:
+    #                 class_ids = classes == c
+    #                 ax.plot(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)), linestyle="None")
+    #         else:
+    #             ax.plot(train_data[:,0], train_data[:,1], marker=".", label="tr", linestyle="None")
             
-            graph = ax.plot(0, 0, marker='+', color='gray', alpha=0.75, label="new_data", linestyle="None")
+    #         graph = ax.plot(0, 0, marker='+', color='gray', alpha=0.75, label="new_data", linestyle="None")
 
-            fig.legend()
-            self.raw_data.reset_emg()
+    #         fig.legend()
+    #         self.reset()
 
-            pc1 = [] 
-            pc2 = []      
+    #         pc1 = [] 
+    #         pc2 = []      
 
-            def update(frame):
-                data = self.get_data()
-                if len(data) >= window_size:
-                    window = get_windows(data, window_size, window_size)
-                    features = fe.extract_features(feature_list, window)
-                    for i, k in enumerate(features.keys()):
-                        formatted_data = features[k] if i == 0 else np.hstack((formatted_data, features[k]))
+    #         def update(frame):
+    #             data, count = self.get_data()
+    #             if len(data) >= window_size:
+    #                 window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
+    #                 window = get_windows(data, window_size, window_size)
+    #                 features = fe.extract_features(feature_list, window)
+    #                 for i, k in enumerate(features.keys()):
+    #                     formatted_data = features[k] if i == 0 else np.hstack((formatted_data, features[k]))
                     
-                    if normalize:
-                        formatted_data = (formatted_data-feature_means)/feature_stds
+    #                 if normalize:
+    #                     formatted_data = (formatted_data-feature_means)/feature_stds
 
-                    data = pca.transform(formatted_data)
-                    pc1.append(data[0,0])
-                    pc2.append(data[0,1])
+    #                 data = pca.transform(formatted_data)
+    #                 pc1.append(data[0,0])
+    #                 pc2.append(data[0,1])
 
-                    pc1_data = pc1[-hold_samples:]
-                    pc2_data = pc2[-hold_samples:]
-                    graph[0].set_data(pc1_data, pc2_data)
+    #                 pc1_data = pc1[-hold_samples:]
+    #                 pc2_data = pc2[-hold_samples:]
+    #                 graph[0].set_data(pc1_data, pc2_data)
 
-                    ax.relim()
-                    ax.autoscale_view()
+    #                 ax.relim()
+    #                 ax.autoscale_view()
 
-                    self.raw_data.adjust_increment(window_size, window_increment)
+    #                 self.online.adjust_increment(window_size, window_increment)
 
-            animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
-            plt.show()
+    #         animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
+    #         plt.show()
 
     def get_data(self, N=0, filter=True):
+        """Grab the data in the shared memory buffer across all modalities.
+ 
+        Parameters
+        ----------
+        N : int
+            Number of samples to grab from the shared memory items. If zero, grabs all data.
+        filter: bool
+            Apply the installed filters to the data prior to returning or not.
+ 
+        Returns
+        ----------
+        val: dict
+            A dictionary with keys corresponding to the modalities. Each key will have a np.ndarray of data returned.
+        count: dict
+            A dictionary with keys corresponding to the modalities. Each key will have an int corresponding to the number
+            of samples received since the streamer began (or the last reset call).
+        """
         val   = {}
         count = {}
         for mod in self.modalities:
@@ -942,10 +965,19 @@ class OnlineDataHandler(DataHandler):
                 val[mod]   = data[:N,:]
             else:
                 val[mod]   = data[:,:]
+            if self.channel_mask is not None:
+                val[mod] = val[mod][:, self.channel_mask]
             count[mod] = self.smm.get_variable(mod+"_count")
         return val,count
 
     def reset(self, modality=None):
+        """Reset the data within the shared memory buffer.
+ 
+        Parameters
+        ----------
+        modality: str
+            The modality that should be reset. If None, all modalities are reset.
+        """
         if modality == None:
             modality = self.modalities
         else:
@@ -954,8 +986,21 @@ class OnlineDataHandler(DataHandler):
             self.smm.modify_variable(mod, lambda x: np.zeros_like(x))
             self.smm.modify_variable(mod+"_count", lambda x: np.zeros_like(x))
 
-    def log_to_file(self, block=False):
+    def log_to_file(self, block=False, file_path='', timestamps=True):
+        """Logs the raw data being read to a file.
+
+        Parameters
+        ----------
+        block: bool (optional), default=False 
+            If true, the main thread will be blocked. 
+        file_path: int (optional), default=''
+            The prefix to the file path that will be logged for each modality.
+        timestamps: bool (optional), default=True
+            If true, this will log the timestamps with each recording.
+        """
         print("ODH->log_to_file begin.")
+        self.file_path = file_path
+        self.timestamps = timestamps
         if block:
             self._log_to_file()
             print("ODH->log_to_file ended.")
@@ -984,7 +1029,7 @@ class OnlineDataHandler(DataHandler):
                 last_count[m] = new_count
                 if num_new_samples:
                     if not m in files.keys():
-                        files[m] = open(self.options['file_path'] + m + '.csv', "a", newline='')
+                        files[m] = open(self.file_path + m + '.csv', "a", newline='')
                     if self.timestamps:
                         np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)))
                         # check to see if they're in the right order, or if they need to be reversed again!
