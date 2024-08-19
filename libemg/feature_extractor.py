@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA, KernelPCA, FastICA
 from sklearn.manifold import TSNE, Isomap
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.preprocessing import StandardScaler
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 from pywt import wavedec, upcoef
@@ -13,7 +14,31 @@ class FeatureExtractor:
     """
     Feature extraction class including feature groups, feature list, and feature extraction code.
     """
-    def get_feature_groups(self):
+    def __init__(self, feature_names, feature_dic = None, standardize = False):
+        if isinstance(feature_names, str):
+            # Expects list
+            feature_names = [feature_names]
+
+        if feature_dic is None:
+            feature_dic = {}
+
+        available_feature_groups = list(self.get_feature_groups().keys())
+        feature_list = []
+        for feature_name in feature_names:
+            if feature_name in available_feature_groups:
+                # Passed in feature group - get corresponding list of features
+                feature_name = self.get_feature_groups()[feature_name]
+            else:
+                feature_name = [feature_name]   # cast to list so .extend() appends the item
+            feature_list.extend(feature_name)
+            
+        self.feature_list = feature_list
+        self.feature_dic = feature_dic
+        self.standardize = standardize
+        self.scaler = None
+
+    @staticmethod
+    def get_feature_groups():
         """Gets a list of all available feature groups.
         
         Returns
@@ -35,7 +60,8 @@ class FeatureExtractor:
                           }
         return feature_groups
 
-    def get_feature_list(self):
+    @staticmethod
+    def get_feature_list():
         """Gets a list of all available features.
         
         Returns
@@ -106,34 +132,7 @@ class FeatureExtractor:
         projection_list = ['pca', 'kernelpca', 'ica', 'lda', 'tsne', 'isomap']
         return projection_list
 
-    def extract_feature_group(self, feature_group, windows, feature_dic={}, array=False):
-        """Extracts a group of features.
-        
-        Parameters
-        ----------
-        feature_group: string
-            The group of features to extract. See the get_feature_list() function for valid options.
-        windows: list 
-            A list of windows - should be computed directly from the OfflineDataHandler or the utils.get_windows() method.
-        feature_dic: dict
-            A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
-        array: bool (optional), default=False 
-            If True, the dictionary will get converted to a list. 
-        Returns
-        ----------
-        dictionary or list 
-            A dictionary where each key is a specific feature and its value is a list of the computed 
-            features for each window.
-        """
-        features = {}
-        if not feature_group in self.get_feature_groups():
-            return features
-        feats = self.extract_features(self.get_feature_groups()[feature_group], windows, feature_dic)
-        if array:
-            return self._format_data(feats)
-        return feats 
-
-    def extract_features(self, feature_list, windows, feature_dic={}, array=False):
+    def __call__(self, windows, array=False):
         """Extracts a list of features.
         
         Parameters
@@ -153,15 +152,29 @@ class FeatureExtractor:
             A dictionary where each key is a specific feature and its value is a list of the computed 
             features for each window.
         """
+        if self.standardize and not array:
+            raise ValueError('Cannot standardize data when it is returned as a dictionary. Please disable standardization or set array=True.')
         features = {}
-        for feature in feature_list:
+        for feature in self.feature_list:
             if feature in self.get_feature_list():
                 method_to_call = getattr(self, 'get' + feature + 'feat')
-                valid_keys = [i for i in list(feature_dic.keys()) if feature+"_" in i]
-                smaller_dictionary = dict((k, feature_dic[k]) for k in valid_keys if k in feature_dic)
+                valid_keys = [i for i in list(self.feature_dic.keys()) if feature+"_" in i]
+                smaller_dictionary = dict((k, self.feature_dic[k]) for k in valid_keys if k in self.feature_dic)
                 features[feature] = method_to_call(windows, **smaller_dictionary)
         if array:
-            return self._format_data(features)  
+            features = self._format_data(features)  
+
+        features = self.scale(features)
+        return features
+
+    def scale(self, features):
+        if self.standardize:
+            if self.scaler is None:
+                # Fit scaler
+                self.scaler = StandardScaler()
+                self.scaler.fit(features)
+            features = self.scaler.transform(features)
+
         return features
 
     def check_features(self, features, silent=False):
