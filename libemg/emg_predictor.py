@@ -761,8 +761,13 @@ class OnlineStreamer(ABC):
                     if self.queue is not None:
                         # Queue features from previous windows
                         if len(self.queue) == self.feature_queue_length:
+                            # Remove oldest window
                             self.queue.popleft()
                         self.queue.append(model_input)
+
+                        if len(self.queue) < self.feature_queue_length:
+                            # Skip until buffer fills up
+                            continue
 
                         model_input = np.concatenate(self.queue, axis=0)
                         model_input = np.expand_dims(model_input, axis=0)   # cast to 3D here for time series models
