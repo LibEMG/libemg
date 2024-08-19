@@ -536,13 +536,17 @@ class OnlineDataHandler(DataHandler):
     ----------
     shared_memory_items: Object
         The shared memory object returned from the streamer.
+    channel_mask: list or None (optional), default=None
+        Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+        Defaults to None.
     """
-    def __init__(self, shared_memory_items):
+    def __init__(self, shared_memory_items, channel_mask = None):
         self.shared_memory_items = shared_memory_items
         self.prepare_smm()
         self.log_signal = Event()
         self.visualize_signal = Event()        
         self.fi = None
+        self.channel_mask = channel_mask
     
     def prepare_smm(self):
         self.modalities = []
@@ -583,6 +587,17 @@ class OnlineDataHandler(DataHandler):
             The filter object that you'd like to run on the online data.
         """
         self.fi = fi
+
+    def install_channel_mask(self, mask):
+        """Install a channel mask to isolate certain channels for online streaming.
+
+        Parameters
+        ----------
+        mask: list or None (optional), default=None
+            Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+            Defaults to None.
+        """
+        self.channel_mask = mask
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -949,6 +964,8 @@ class OnlineDataHandler(DataHandler):
                 val[mod]   = data[:N,:]
             else:
                 val[mod]   = data[:,:]
+            if self.channel_mask is not None:
+                val[mod] = val[mod][:, self.channel_mask]
             count[mod] = self.smm.get_variable(mod+"_count")
         return val,count
 
