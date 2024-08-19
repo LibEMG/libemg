@@ -760,7 +760,8 @@ class OnlineStreamer(ABC):
 
                     if self.queue is not None:
                         # Queue features from previous windows
-                        self.queue.popleft()
+                        if len(self.queue) == self.feature_queue_length:
+                            self.queue.popleft()
                         self.queue.append(model_input)
 
                         model_input = np.concatenate(self.queue, axis=0)
@@ -1065,7 +1066,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length=32)
         self.smi = smm_items
         
     def run(self, block=True):
