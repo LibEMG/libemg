@@ -586,9 +586,9 @@ class OnlineStreamer(ABC):
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
     feature_queue_length: int (optional), default = 0
-        Number of windows to include in the feature queue (i.e., sequence length). Mainly used in temporal models that make predictions on
-        a sequence of feature windows (batch x feature_queue_length x features) instead of on raw EMG. If 0, a queue is not created and features are passed as usual
-        (features).
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
+        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
+        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
 
     def __init__(self, 
@@ -602,7 +602,7 @@ class OnlineStreamer(ABC):
                  port, ip, 
                  std_out, 
                  tcp,
-                 feature_queue_length = 0):
+                 feature_queue_length):
 
         self.window_size = window_size
         self.window_increment = window_increment
@@ -765,10 +765,7 @@ class OnlineStreamer(ABC):
                         self.queue.append(model_input)
 
                         model_input = np.concatenate(self.queue, axis=0)
-                        print(model_input.shape)
-                        # Do I need to cast to 3D here (for time series models) or should I expect the user will do that?
-                        model_input = np.expand_dims(model_input, axis=0)
-                        print(model_input.shape)
+                        model_input = np.expand_dims(model_input, axis=0)   # cast to 3D here for time series models
                         # TODO: Verify that this works then add queue parameter to child classes (then add to feature-extractor-rework branch)
                     
                 else:
@@ -834,12 +831,16 @@ class OnlineEMGClassifier(OnlineStreamer):
         If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
+        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
+        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file=False, smm=False, 
                  smm_items= None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
-                 output_format="predictions"):
+                 output_format="predictions", feature_queue_length = 0):
         
         if smm_items is None:
             smm_items = [
@@ -849,7 +850,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.output_format = output_format
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
@@ -1053,10 +1054,14 @@ class OnlineEMGRegressor(OnlineStreamer):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of windows instead of raw EMG.
+        If the value is greater than 0, creates a queue and passes the data to the model as a 1 (window) x feature_queue_length x num_features. 
+        If the value is 0, no feature queue is created and predictions are made on a single window. Defaults to 0.
     """
     def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file = False, smm = False, smm_items = None,
-                 port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+                 port = 12346, ip = '127.0.0.1', std_out = False, tcp = False, feature_queue_length = 0):
         if smm_items is None:
             # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
@@ -1066,7 +1071,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length=32)
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.smi = smm_items
         
     def run(self, block=True):
