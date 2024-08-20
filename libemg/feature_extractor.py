@@ -36,6 +36,7 @@ class FeatureExtractor:
         self.feature_dic = feature_dic
         self.standardize = standardize
         self.scaler = None
+        # TODO: Maybe add an install_scaler() method instead? Then just call that whenever you extract features?
 
     @staticmethod
     def get_feature_groups():
