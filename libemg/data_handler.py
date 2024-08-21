@@ -43,6 +43,8 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field.
         """
+        if values is None:
+            raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
