@@ -42,6 +42,11 @@ Modifies a regressor's output based on whether the prediction's magnitude is abo
 regressor.add_deadband(0.25)
 ```
 
+Figure 2 shows the decision stream of a regressor with no post-processing and deadband thresholding. In this visualization, the shaded blue regions are the ground truth and each black dot corresponds to a single prediction. Predictions for each degree of freedom (DOF) are plotted on separate subplots for visual clarity.
+
+![alt text](regression_post_processing.png)
+<center> <p> Figure 2: Decision Stream of Regressor with No Post-Processing and Deadband Thresholding. This can be created using the regressor's <b>.visualize()</b> method call. </p> </center>
+
 ## References
 
 <a id="1">[1]</a> 
