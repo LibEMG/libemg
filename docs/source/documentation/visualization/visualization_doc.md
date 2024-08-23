@@ -48,3 +48,5 @@ The filtering module has a `visualize_effect` function that demonstrates the eff
 
 Viewing EMG as a time series may not be appropriate for high-density EMG systems. `LibEMG` offers a live heatmap visualization using the `visualize_heatmap` method. Heatmaps of multiple features can be visualized in real-time to show spatial information (only features that produce a single value per window are supported).
 
+![alt text](heatmap.gif)
+<center> <p> Figure 6: Real-time heatmap visualization.</p> </center>
