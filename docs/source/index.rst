@@ -19,6 +19,7 @@ LibEMG
    documentation/feature_selection/feature_selection
    documentation/prediction/prediction
    documentation/evaluation/evaluation
+   documentation/animation/animation
 
 .. toctree::
    :maxdepth: 1
