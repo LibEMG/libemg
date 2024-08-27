@@ -7,6 +7,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
+from sklearn.preprocessing import StandardScaler
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process, Lock
@@ -613,7 +614,7 @@ class OnlineStreamer(ABC):
         self.predictor = offline_predictor
         self.feature_queue_length = feature_queue_length
         self.queue = deque() if self.feature_queue_length > 0 else None
-
+        self.scaler = None
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
 
@@ -755,6 +756,9 @@ class OnlineStreamer(ABC):
                         else:
                             model_input = np.hstack((model_input, mod_features)) 
 
+                    if self.scaler is not None:
+                        model_input = self.scaler.transform(model_input)
+
                     if self.queue is not None:
                         # Queue features from previous windows
                         if len(self.queue) == self.feature_queue_length:
@@ -768,7 +772,6 @@ class OnlineStreamer(ABC):
 
                         model_input = np.concatenate(self.queue, axis=0)
                         model_input = np.expand_dims(model_input, axis=0)   # cast to 3D here for time series models
-                        # TODO: Verify that this works then add queue parameter to child classes (then add to feature-extractor-rework branch)
                     
                 else:
                     model_input = window[list(window.keys())[0]] #TODO: Change this
@@ -777,6 +780,22 @@ class OnlineStreamer(ABC):
                     self.expected_count[mod] += self.window_increment 
                 
                 self.write_output(model_input, window)
+
+    def install_standardization(self, standardization: np.ndarray | StandardScaler):
+        """Install standardization to online model. Standardizes each feature based on training data (i.e., standardizes across windows).
+        Standardization is only applied when features are extracted and is applied before feature queueing (i.e., features are standardized then queued).
+        To standardize data, use the standardize Filter.
+
+        :param standardization: Standardization data. If an array, creates a scaler and fits to the provided array. If a StandardScaler, uses the StandardScaler.
+        :type standardization: np.ndarray | StandardScaler
+        """        
+        scaler = standardization
+
+        if not isinstance(scaler, StandardScaler):
+            # Fit scaler to provided data
+            scaler = StandardScaler().fit(np.array(standardization))
+
+        self.scaler = scaler
 
     # ----- All of these are unique to each online streamer ----------
     def run(self):
