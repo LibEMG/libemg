@@ -63,7 +63,7 @@ class _3DCDataset(Dataset):
             return odh
 
 class Ninapro(Dataset):
-    def __init__(self, save_dir='.', dataset_name="Ninapro"):
+    def __init__(self, save_dir='.', dataset_name="Ninapro", dataglove=False):
         # downloading the Ninapro dataset is not supported (no permission given from the authors)'
         # however, you can download it from http://ninapro.hevs.ch/DB8
         # the subject zip files should be placed at: <save_dir>/NinaproDB8/DB8_s#.zip
@@ -71,8 +71,9 @@ class Ninapro(Dataset):
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, "")
         self.exercise_step = []
+        self.dataglove = dataglove
     
-    def convert_to_compatible(self):
+    def convert_to_compatible(self, step=2):
         # get the zip files (original format they're downloaded in)
         zip_files = find_all_files_of_type_recursively(self.dataset_folder,".zip")
         # unzip the files -- if any are there (successive runs skip this)
@@ -83,9 +84,9 @@ class Ninapro(Dataset):
         # get the mat files (the files we want to convert to csv)
         mat_files = find_all_files_of_type_recursively(self.dataset_folder,".mat")
         for mat_file in mat_files:
-            self.convert_to_csv(mat_file)
+            self.convert_to_csv(mat_file, step, self.dataglove)
     
-    def convert_to_csv(self, mat_file):
+    def convert_to_csv(self, mat_file, step, dataglove):
         # read the mat file
         mat_file = mat_file.replace("\\", "/")
         mat_dir = mat_file.split('/')
@@ -95,16 +96,25 @@ class Ninapro(Dataset):
         exercise = int(mat_file.split('_')[3][1])
         exercise_offset = self.exercise_step[exercise-1] # 0 reps already included
         data = mat['emg']
+        if dataglove:
+            try:
+                target = mat['glove']
+            except:
+                return
         restimulus = mat['restimulus']
         rerepetition = mat['rerepetition']
         if data.shape[0] != restimulus.shape[0]: # this happens in some cases
             min_shape = min([data.shape[0], restimulus.shape[0]])
             data = data[:min_shape,:]
+            if dataglove:
+                target = target[:min_shape,]
             restimulus = restimulus[:min_shape,]
             rerepetition = rerepetition[:min_shape,]
         # remove 0 repetition - collection buffer
         remove_mask = (rerepetition != 0).squeeze()
         data = data[remove_mask,:]
+        if dataglove:
+            target = target[remove_mask,:]
         restimulus = restimulus[remove_mask]
         rerepetition = rerepetition[remove_mask]
         # important little not here: 
@@ -116,6 +126,8 @@ class Ninapro(Dataset):
         # so we remove the rest class too
         remove_mask = (restimulus != 0).squeeze()
         data = data[remove_mask,:]
+        if dataglove:
+            target = target[remove_mask,:]
         restimulus = restimulus[remove_mask]
         rerepetition = rerepetition[remove_mask]
         tail = 0
@@ -129,8 +141,11 @@ class Ninapro(Dataset):
             else:
                 head = head[0] + tail
             # downsample to 1kHz from 2kHz using decimation
-            data_for_file = data[tail:head,:]
-            data_for_file = data_for_file[::2, :]
+            if dataglove:
+                data_for_file = np.concatenate((data[tail:head,:], target[tail:head,:]), 1)
+            else:
+                data_for_file = data[tail:head,:]
+            data_for_file = data_for_file[::step, :]
             # write to csv
             csv_file = mat_dir + 'C' + str(motion-1) + 'R' + str(rep-1 + exercise_offset) + '.csv'
             np.savetxt(csv_file, data_for_file, delimiter=',')
@@ -159,8 +174,10 @@ class NinaproDB8(Ninapro):
             return odh
 
 class NinaproDB2(Ninapro):
-    def __init__(self, save_dir='.', dataset_name="NinaproDB2"):
-        Ninapro.__init__(self, save_dir, dataset_name)
+    def __init__(self, save_dir='.', dataset_name="NinaproDB2", dataglove=False):
+        if dataglove:
+            dataglove = 22 # Number of dataglove ccolumns in DB2
+        Ninapro.__init__(self, save_dir, dataset_name, dataglove)
         self.class_list = ["TODO"]
         self.exercise_step = [0,0,0]
 
@@ -174,7 +191,7 @@ class NinaproDB2(Ninapro):
                 RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
                 RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
             ]
-            odh = OfflineDataHandler()
+            odh = OfflineDataHandler(self.dataglove)
             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
             return odh
 

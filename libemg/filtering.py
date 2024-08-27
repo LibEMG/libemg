@@ -123,7 +123,7 @@ class Filter:
         '''
         assert hasattr(data,"data")
         for f in range(len(data.data)):
-            data.data[f] = self._run_filter(data.data[f])
+            data.data[f] = self._run_filter(data.data[f], data.dataglove)
 
     def _filter_np_ndarray(self, data):
         ''' Helper function that runs the installed filters on an np.ndarray.
@@ -140,7 +140,7 @@ class Filter:
         '''
         return self._run_filter(data)
 
-    def _run_filter(self, matrix):
+    def _run_filter(self, matrix, dataglove=False):
         ''' Helper function that actually runs the installed filters on an np.ndarray. This is where the actual processing happens.
 
         Parameters
@@ -153,6 +153,10 @@ class Filter:
         matrix: np.ndarray
             Data that has been filtered.
         '''
+
+        if dataglove:
+            matrix = matrix[:, :-dataglove]
+
         for fl in range(len(self.filters)):
             if self.filters[fl]["name"] == "standardize":
                 matrix = (matrix - self.filters[fl]["mean"]) / self.filters[fl]["std"]

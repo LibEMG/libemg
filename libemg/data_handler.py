@@ -234,8 +234,9 @@ class OfflineDataHandler(DataHandler):
     The purpose of this class is to facilitate the process of accumulating offline training
     and testing data. This class is extensible to a wide range of file and folder structures. 
     """
-    def __init__(self):
+    def __init__(self, dataglove):
         super().__init__()
+        self.dataglove = dataglove
     
     def __add__(self, other):
         # Concatenate two OfflineDataHandlers together
@@ -317,7 +318,8 @@ class OfflineDataHandler(DataHandler):
         print(f"{len(data_files)} data files fetched out of {len(all_files)} files.")
 
         # Read data from files
-        for file in data_files:
+        for f_num, file in enumerate(data_files):
+            print(f_num, len(data_files))
             if '.hea' in file:
                 # The key is the emg key that is in the mrdf file
                 file_data = (wfdb.rdrecord(file.replace('.hea',''))).__getattribute__(mrdf_key)
@@ -386,7 +388,7 @@ class OfflineDataHandler(DataHandler):
             print(f"{num_relabeled} of {len(active_labels)} active class windows were relabelled to no motion.")
         return active_labels
     
-    def parse_windows(self, window_size, window_increment, metadata_operations=None):
+    def parse_windows(self, window_size, window_increment, metadata_operations=None, dataglove=False):
         """Parses windows based on the acquired data from the get_data function.
 
         Parameters
@@ -419,9 +421,10 @@ class OfflineDataHandler(DataHandler):
             'median': np.median,
             'last_sample': lambda x: x[-1]
         }
-
+        
         metadata_ = {}
         for i, file in enumerate(self.data):
+            print(i, len(self.data))
             # emg data windowing
             windows = get_windows(file,window_size,window_increment)
             if "windows_" in locals():
@@ -444,6 +447,7 @@ class OfflineDataHandler(DataHandler):
                                 except KeyError as e:
                                     raise KeyError(f"Unexpected metadata operation string. Please pass in a function or an accepted string {tuple(common_metadata_operations.keys())}. Got: {operation}.")
                             file_metadata = _get_fn_windows(getattr(self,k)[i], window_size, window_increment, operation)
+                        
                         else:
                             file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                     else:
@@ -454,7 +458,7 @@ class OfflineDataHandler(DataHandler):
                     metadata_[k] = np.concatenate((metadata_[k], file_metadata))
 
             
-        return windows_, metadata_
+        return (windows_[:, :-self.dataglove, :], windows_[:, -self.dataglove:, :], metadata_) if self.dataglove else (windows_, metadata_)
 
     
     def isolate_channels(self, channels):
