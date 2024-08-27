@@ -599,7 +599,7 @@ class OnlineStreamer(ABC):
                  online_data_handler, 
                  file_path, file, 
                  smm, smm_items, 
-                 fe, 
+                 features, 
                  port, ip, 
                  std_out, 
                  tcp,
@@ -608,7 +608,7 @@ class OnlineStreamer(ABC):
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
-        self.fe = fe
+        self.features = features
         self.port = port
         self.ip = ip
         self.predictor = offline_predictor
@@ -727,6 +727,7 @@ class OnlineStreamer(ABC):
         self.odh.reset()
         
         files = {}
+        fe = FeatureExtractor()
         while True:
             if self.smm:
                 if not self.options["smm"].get_variable("active_flag")[0,0]:
@@ -746,11 +747,11 @@ class OnlineStreamer(ABC):
                 window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
 
                 # Dealing with the case for CNNs when no features are used
-                if self.fe is not None:
+                if self.features is not None:
                     model_input = None
                     for mod in self.odh.modalities:
                         # todo: features for each modality can be different
-                        mod_features = self.fe(window[mod], array=True)
+                        mod_features = fe.extract_features(self.features, window[mod], array=True)
                         if model_input is None:
                             model_input = mod_features
                         else:
