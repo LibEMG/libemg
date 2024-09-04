@@ -784,7 +784,8 @@ class OnlineStreamer(ABC):
 
     def install_standardization(self, standardization: np.ndarray | StandardScaler):
         """Install standardization to online model. Standardizes each feature based on training data (i.e., standardizes across windows).
-        Standardization is only applied when features are extracted and is applied before feature queueing (i.e., features are standardized then queued).
+        Standardization is only applied when features are extracted and is applied before feature queueing (i.e., features are standardized then queued)
+        if relevant.
         To standardize data, use the standardize Filter.
 
         :param standardization: Standardization data. If an array, creates a scaler and fits to the provided array. If a StandardScaler, uses the StandardScaler.
