@@ -24,6 +24,8 @@ from scipy import stats
 import csv
 from abc import ABC, abstractmethod
 import re
+from matplotlib.animation import FuncAnimation
+from functools import partial
 
 from libemg.utils import get_windows
 
@@ -1150,10 +1152,11 @@ class OnlineEMGRegressor(OnlineStreamer):
             self.conn.sendall(str.encode(message))
 
     def visualize(self, max_len = 50, legend = False):
-        # TODO: Maybe add an extra option for 2 DOF problems where a single point is plotted on a 2D plane
         plt.style.use('ggplot')
         fig, ax = plt.subplots(layout='constrained')
-        fig.suptitle('Live Regressor Output', fontsize=20)
+        fig.suptitle('Live Regressor Output', fontsize=16)
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Prediction')
 
         # Make local UDP socket whose purpose is to read from regressor output
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1165,13 +1168,14 @@ class OnlineEMGRegressor(OnlineStreamer):
         predictions = self.parse_output(data)[0]
         cmap = cm.get_cmap('turbo', len(predictions))
 
+        plots = [ax.plot([], [], '.', color=cmap.colors[dof_idx], alpha=0.8)[0] for dof_idx in range(len(predictions))]
+
         if legend:
             handles = [mpatches.Patch(color=cmap.colors[dof_idx], label=f"DOF {dof_idx}") for dof_idx in range(len(predictions))]
 
-        decision_horizon_predictions = []
-        timestamps = []
         start_time = time.time()
-        while True:
+
+        def update(frame, decision_horizon_predictions, timestamps):
             data, _ = sock.recvfrom(1024)
             data = str(data.decode('utf-8'))
             predictions, timestamp = self.parse_output(data)
@@ -1181,20 +1185,20 @@ class OnlineEMGRegressor(OnlineStreamer):
             timestamps = timestamps[-max_len:]
             decision_horizon_predictions = decision_horizon_predictions[-max_len:]
 
-            if plt.fignum_exists(fig.number):
-                ax.clear()
-                ax.set_xlabel('Time (s)')
-                ax.set_ylabel('Prediction')
-                for dof_idx in range(len(predictions)):
-                    ax.scatter(timestamps, np.array(decision_horizon_predictions)[:, dof_idx], color=cmap.colors[dof_idx], s=4, alpha=0.8)
+            for dof_idx in range(len(predictions)):
+                plots[dof_idx].set_xdata(timestamps)
+                plots[dof_idx].set_ydata(np.array(decision_horizon_predictions)[:, dof_idx])
 
-                if legend:
-                    ax.legend(handles=handles, loc='upper right')
-                plt.draw()
-                plt.pause(0.01)
-            else:
-                # Figure was closed
-                return
+
+            if legend:
+                ax.legend(handles=handles, loc='upper right')
+
+            ax.relim()
+            ax.autoscale_view()
+            return plots
+        
+        _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
+        plt.show()
 
     @staticmethod
     def parse_output(message):
