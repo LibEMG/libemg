@@ -1152,6 +1152,17 @@ class OnlineEMGRegressor(OnlineStreamer):
             self.conn.sendall(str.encode(message))
 
     def visualize(self, max_len = 50, legend = False):
+        """Plot a live visualization of the online regressor's predictions. Please note that the animation updates every 5 milliseconds,
+        so keep this in mind when choosing window size and increment. For example, a window increment that's too small may cause delay in the plotting
+        if the regressor is making predictions faster than the plot can be updated.
+
+        Parameters
+        ----------
+        max_len: int (optional), default = 50
+            Maximum number of predictions to plot at a time. Defaults to 50.
+        legend: bool (optional), default = False
+            True if a legend should be shown, otherwise False. Defaults to False.
+        """
         plt.style.use('ggplot')
         fig, ax = plt.subplots(layout='constrained')
         fig.suptitle('Live Regressor Output', fontsize=16)
