@@ -787,8 +787,8 @@ class OnlineDataHandler(DataHandler):
                 data = data[:num_samples]
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
-            fe = FeatureExtractor(feature_list)
-            feature_set_dict = fe(windows, array=False)
+            fe = FeatureExtractor()
+            feature_set_dict = fe.extract_features(feature_list, windows, array=False)
             assert isinstance(feature_set_dict, dict), f"Expected dictionary of features. Got: {type(feature_set_dict)}."
             if remap_function is not None:
                 # Remap raw data to image format
