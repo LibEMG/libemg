@@ -337,7 +337,7 @@ def oymotion_streamer(shared_memory_items : list | None = None,
     operating_system = platform.system().lower()
 
     # I'm only addressing this atm.
-    if operating_system == "windows" or operating_system == 'mac':
+    if operating_system == "windows" or operating_system == 'darwin':
         oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
         oym.start()
     else:
