@@ -8,22 +8,6 @@ from typing import overload
 class Controller(ABC, Process):
     def __init__(self):
         super().__init__(daemon=True)
-        self.action = None
-
-    @abstractmethod
-    def parse_predictions(self) -> list[float]:
-        # Grab latest prediction (should we keep track of all or deque?)
-        ...
-
-    @abstractmethod
-    def parse_proportional_control(self) -> list[float]:
-        # Grab latest prediction (should we keep track of all or deque?)
-        ...
-
-    @abstractmethod
-    def get_action(self):
-        # Freeze single action so all data is parsed from that
-        ...
 
     @overload
     def get_data(self, info: list[str]) -> tuple:
@@ -33,7 +17,7 @@ class Controller(ABC, Process):
     def get_data(self, info: str) -> list[float]:
         ...
 
-    def get_data(self, info: list[str] | str) -> tuple | list[float]:
+    def get_data(self, info: list[str] | str) -> tuple | list[float] | None:
         # Take in which types of info you need (predictions, PC), call the methods, then return
         # This method was needed because we're making this a process, so it's possible that separate calls to
         # parse_predictions and parse_proportional_control would operate on different packets
@@ -42,7 +26,9 @@ class Controller(ABC, Process):
             info = [info]
 
         action = self.get_action()
-        self.action = action
+        if action is None:
+            # Action didn't occur
+            return None
         
         info_function_map = {
             'predictions': self.parse_predictions,
@@ -53,7 +39,7 @@ class Controller(ABC, Process):
         for info_type in info:
             try:
                 parse_function = info_function_map[info_type]
-                result = parse_function()           
+                result = parse_function(action)           
             except KeyError as e:
                 raise ValueError(f"Unexpected value for info type. Accepted parameters are: {list(info_function_map.keys())}. Got: {info_type}.") from e
 
@@ -64,6 +50,26 @@ class Controller(ABC, Process):
             data = data[0]
         return data
 
+    @abstractmethod
+    def parse_predictions(self, action: str) -> list[float]:
+        # Grab latest prediction (should we keep track of all or deque?)
+        ...
+
+    @abstractmethod
+    def parse_proportional_control(self, action: str) -> list[float]:
+        # Grab latest prediction (should we keep track of all or deque?)
+        ...
+
+    @abstractmethod
+    def parse_timestamp(self, action: str) -> float:
+        # Grab latest timestamp
+        ...
+    
+    @abstractmethod
+    def get_action(self) -> str | None:
+        # Freeze single action so all data is parsed from that
+        ...
+
 
 class SocketController(Controller):
     def __init__(self, ip: str = '127.0.0.1', port: int = 12346) -> None:
@@ -73,21 +79,27 @@ class SocketController(Controller):
         self.data = deque(maxlen=1) # only want to read a single message at a time
 
     @abstractmethod
-    def parse_predictions(self) -> list[float]:
+    def parse_predictions(self, action: str) -> list[float]:
         # Grab latest prediction (should we keep track of all or deque?)
         # Will be specific to controller
         ...
 
     @abstractmethod
-    def parse_proportional_control(self) -> list[float]:
+    def parse_proportional_control(self, action: str) -> list[float]:
         # Grab latest prediction (should we keep track of all or deque?)
         # Will be specific to controller
+        ...
+
+    @abstractmethod
+    def parse_timestamp(self, action: str) -> float:
+        # Grab latest timestamp
         ...
 
     def get_action(self):
         if len(self.data) > 0:
             # Grab latest prediction and remove from queue so it isn't repeated
             return self.data.pop()
+        return None
 
     def run(self) -> None:
         # Create UDP port for reading predictions
