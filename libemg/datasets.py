@@ -174,9 +174,12 @@ class NinaproDB8(Ninapro):
             return odh
 
 class NinaproDB2(Ninapro):
+    EMG_LEN = 12
+    DATAGLOVE_LEN = 22
+
     def __init__(self, save_dir='.', dataset_name="NinaproDB2", dataglove=False):
         if dataglove:
-            dataglove = 22 # Number of dataglove ccolumns in DB2
+            dataglove = type(self).DATAGLOVE_LEN # Number of dataglove ccolumns in DB2
         Ninapro.__init__(self, save_dir, dataset_name, dataglove)
         self.class_list = ["TODO"]
         self.exercise_step = [0,0,0]
@@ -191,8 +194,9 @@ class NinaproDB2(Ninapro):
                 RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
                 RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
             ]
-            odh = OfflineDataHandler(self.dataglove)
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+            odh = OfflineDataHandler(self, self.dataglove)
+            column = slice(0, type(self).EMG_LEN) if not self.dataglove else None
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",", data_column=column)
             return odh
 
 # given a directory, return a list of files in that directory matching a format

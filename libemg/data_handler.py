@@ -234,9 +234,10 @@ class OfflineDataHandler(DataHandler):
     The purpose of this class is to facilitate the process of accumulating offline training
     and testing data. This class is extensible to a wide range of file and folder structures. 
     """
-    def __init__(self, dataglove):
+    def __init__(self, dataset=None, dataglove=False):
         super().__init__()
         self.dataglove = dataglove
+        self.dataset = dataset
     
     def __add__(self, other):
         # Concatenate two OfflineDataHandlers together
@@ -458,7 +459,7 @@ class OfflineDataHandler(DataHandler):
                     metadata_[k] = np.concatenate((metadata_[k], file_metadata))
 
             
-        return (windows_[:, :-self.dataglove, :], windows_[:, -self.dataglove:, :], metadata_) if self.dataglove else (windows_, metadata_)
+        return (windows_[:, :-self.dataglove, :], windows_[:, -self.dataglove:, -1], metadata_) if self.dataglove else (windows_, metadata_)
 
     
     def isolate_channels(self, channels):
