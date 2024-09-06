@@ -613,7 +613,7 @@ class OnlineStreamer(ABC):
         self.ip = ip
         self.predictor = offline_predictor
         self.feature_queue_length = feature_queue_length
-        self.queue = deque() if self.feature_queue_length > 0 else None
+        self.queue = deque(maxlen=feature_queue_length) if self.feature_queue_length > 0 else None
         self.scaler = None
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
@@ -762,10 +762,7 @@ class OnlineStreamer(ABC):
 
                     if self.queue is not None:
                         # Queue features from previous windows
-                        if len(self.queue) == self.feature_queue_length:
-                            # Remove oldest window
-                            self.queue.popleft()
-                        self.queue.append(model_input)
+                        self.queue.append(model_input)  # oldest windows will automatically be dequeued if length exceeds maxlen
 
                         if len(self.queue) < self.feature_queue_length:
                             # Skip until buffer fills up
