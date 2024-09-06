@@ -3,6 +3,9 @@ import socket
 from multiprocessing import Process
 from collections import deque
 from typing import overload
+import re
+
+from libemg.emg_predictor import OnlineEMGRegressor, OnlineEMGClassifier
 
 
 class Controller(ABC, Process):
@@ -114,6 +117,27 @@ class SocketController(Controller):
                 self.data.append(message)
     
 
+class RegressorController(SocketController):
+    def __init__(self, model: OnlineEMGRegressor) -> None:
+        super().__init__(model.ip, model.port)
+        self.model = model
+        # TODO: Figure out how to handle parse_output in the OnlineEMGRegressor... can't pull from this module b/c would create a circular import
+
+    def parse_predictions(self, action: str) -> list[float]:
+        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", action)
+        outputs = list(map(float, outputs))
+        return outputs[:-1]
+
+    def parse_timestamp(self, action: str) -> float:
+        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", action)
+        outputs = list(map(float, outputs))
+        return outputs[-1]
+
+    def parse_proportional_control(self, action: str) -> list[float]:
+        predictions = self.parse_predictions(action)
+        return [1. for _ in predictions]    # proportional control is built into prediction, so return 1 for each DOF
+
+        
 # Not sure if controllers should go in here or have their own file...
 # Environment base class that takes in controller and has a run method (likely some sort of map parameter to determine which class corresponds to which control action)
 
