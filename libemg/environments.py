@@ -103,6 +103,6 @@ class SocketController(Controller):
     
 
 # Not sure if controllers should go in here or have their own file...
-# Environment base class that takes in controller and has a run method
+# Environment base class that takes in controller and has a run method (likely some sort of map parameter to determine which class corresponds to which control action)
 
 # Fitts should have the option for rotational.
