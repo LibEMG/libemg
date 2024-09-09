@@ -63,7 +63,7 @@ class _3DCDataset(Dataset):
             return odh
 
 class Ninapro(Dataset):
-    def __init__(self, save_dir='.', dataset_name="Ninapro", dataglove=False):
+    def __init__(self, save_dir='.', dataset_name="Ninapro"):
         # downloading the Ninapro dataset is not supported (no permission given from the authors)'
         # however, you can download it from http://ninapro.hevs.ch/DB8
         # the subject zip files should be placed at: <save_dir>/NinaproDB8/DB8_s#.zip
@@ -71,7 +71,6 @@ class Ninapro(Dataset):
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, "")
         self.exercise_step = []
-        self.dataglove = dataglove
     
     def convert_to_compatible(self):
         # get the zip files (original format they're downloaded in)
@@ -164,9 +163,20 @@ class NinaproDB2(Ninapro):
     DATAGLOVE_LEN = 22
 
     def __init__(self, save_dir='.', dataset_name="NinaproDB2", dataglove=False):
-        if dataglove:
-            dataglove = self.DATAGLOVE_LEN # Number of dataglove ccolumns in DB2
-        Ninapro.__init__(self, save_dir, dataset_name, dataglove)
+        """Ninapro DB2 class to fetch data from DB2 dataset matlab file for processing.
+
+        Parameters
+        ----------
+        dataglove: bool
+            If True, cyberglove data will also be fetched from matlab files in convert_to_compatible method, and will set 
+            metadata_fetchers in OfflineDataHandler.get_data() to put cyberglove data into metadata (for regression). Use the following
+            code for OfflineDataHandler().parse_windows():
+            >>> metadata_operations = {'cyberglove': lambda x: x[-1]} # fetch the last sample for regression in time window
+            >>> inputs, metadata = odh.parse_windows(<window_size>, <window_increment>, metadata_operations=metadata_operations)
+            >>> regression_targets = metadata['cyberglove']
+        """
+        self.dataglove = self.DATAGLOVE_LEN if dataglove else False
+        Ninapro.__init__(self, save_dir, dataset_name)
         self.class_list = ["TODO"]
         self.exercise_step = [0,0,0]
 
