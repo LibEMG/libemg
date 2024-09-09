@@ -5,9 +5,6 @@ from collections import deque
 from typing import overload
 import re
 
-from libemg.emg_predictor import OnlineEMGRegressor, OnlineEMGClassifier
-
-
 class Controller(ABC, Process):
     def __init__(self):
         super().__init__(daemon=True)
@@ -118,11 +115,6 @@ class SocketController(Controller):
     
 
 class RegressorController(SocketController):
-    def __init__(self, model: OnlineEMGRegressor) -> None:
-        super().__init__(model.ip, model.port)
-        self.model = model
-        # TODO: Figure out how to handle parse_output in the OnlineEMGRegressor... can't pull from this module b/c would create a circular import
-
     def parse_predictions(self, action: str) -> list[float]:
         outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", action)
         outputs = list(map(float, outputs))
