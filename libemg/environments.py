@@ -35,7 +35,8 @@ class Controller(ABC, Process):
         
         info_function_map = {
             'predictions': self.parse_predictions,
-            'pc': self.parse_proportional_control
+            'pc': self.parse_proportional_control,
+            'timestamp': self.parse_timestamp
         }
 
         data = []
