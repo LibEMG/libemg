@@ -28,6 +28,7 @@ from matplotlib.animation import FuncAnimation
 from functools import partial
 
 from libemg.utils import get_windows
+from libemg.environments import RegressorController
 
 class EMGPredictor:
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
@@ -1158,14 +1159,8 @@ class OnlineEMGRegressor(OnlineStreamer):
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Prediction')
 
-        # Make local UDP socket whose purpose is to read from regressor output
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((self.ip, self.port))
-        
-        # Grab sample data to determine # of DOFs
-        data, _ = sock.recvfrom(1024)
-        data = str(data.decode('utf-8'))
-        predictions = self.parse_output(data)[0]
+        controller = RegressorController(ip=self.ip, port=self.port)
+        predictions = controller.get_data('predictions')
         cmap = cm.get_cmap('turbo', len(predictions))
 
         plots = [ax.plot([], [], '.', color=cmap.colors[dof_idx], alpha=0.8)[0] for dof_idx in range(len(predictions))]
@@ -1176,9 +1171,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         start_time = time.time()
 
         def update(frame, decision_horizon_predictions, timestamps):
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode('utf-8'))
-            predictions, timestamp = self.parse_output(data)
+            predictions, timestamp = controller.get_data(['predictions', 'timestamp'])
             timestamps.append(timestamp - start_time)
             decision_horizon_predictions.append(predictions)
 
@@ -1199,11 +1192,3 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
         plt.show()
-
-    @staticmethod
-    def parse_output(message):
-        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", message)
-        outputs = list(map(float, outputs))
-        predictions = outputs[:-1]
-        timestamp = outputs[-1]
-        return predictions, timestamp
