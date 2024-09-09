@@ -43,6 +43,8 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field.
         """
+        if values is None:
+            raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
@@ -234,10 +236,8 @@ class OfflineDataHandler(DataHandler):
     The purpose of this class is to facilitate the process of accumulating offline training
     and testing data. This class is extensible to a wide range of file and folder structures. 
     """
-    def __init__(self, dataset=None, dataglove=False):
+    def __init__(self):
         super().__init__()
-        self.dataglove = dataglove
-        self.dataset = dataset
     
     def __add__(self, other):
         # Concatenate two OfflineDataHandlers together
@@ -319,8 +319,7 @@ class OfflineDataHandler(DataHandler):
         print(f"{len(data_files)} data files fetched out of {len(all_files)} files.")
 
         # Read data from files
-        for f_num, file in enumerate(data_files):
-            print(f_num, len(data_files))
+        for file in data_files:
             if '.hea' in file:
                 # The key is the emg key that is in the mrdf file
                 file_data = (wfdb.rdrecord(file.replace('.hea',''))).__getattribute__(mrdf_key)
@@ -389,7 +388,7 @@ class OfflineDataHandler(DataHandler):
             print(f"{num_relabeled} of {len(active_labels)} active class windows were relabelled to no motion.")
         return active_labels
     
-    def parse_windows(self, window_size, window_increment, metadata_operations=None, dataglove=False):
+    def parse_windows(self, window_size, window_increment, metadata_operations=None):
         """Parses windows based on the acquired data from the get_data function.
 
         Parameters
@@ -422,10 +421,9 @@ class OfflineDataHandler(DataHandler):
             'median': np.median,
             'last_sample': lambda x: x[-1]
         }
-        
+
         metadata_ = {}
         for i, file in enumerate(self.data):
-            print(i, len(self.data))
             # emg data windowing
             windows = get_windows(file,window_size,window_increment)
             if "windows_" in locals():
@@ -448,7 +446,6 @@ class OfflineDataHandler(DataHandler):
                                 except KeyError as e:
                                     raise KeyError(f"Unexpected metadata operation string. Please pass in a function or an accepted string {tuple(common_metadata_operations.keys())}. Got: {operation}.")
                             file_metadata = _get_fn_windows(getattr(self,k)[i], window_size, window_increment, operation)
-                        
                         else:
                             file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                     else:
@@ -459,7 +456,7 @@ class OfflineDataHandler(DataHandler):
                     metadata_[k] = np.concatenate((metadata_[k], file_metadata))
 
             
-        return (windows_[:, :-self.dataglove, :], windows_[:, -self.dataglove:, -1], metadata_) if self.dataglove else (windows_, metadata_)
+        return windows_, metadata_
 
     
     def isolate_channels(self, channels):
@@ -561,13 +558,17 @@ class OnlineDataHandler(DataHandler):
     ----------
     shared_memory_items: Object
         The shared memory object returned from the streamer.
+    channel_mask: list or None (optional), default=None
+        Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+        Defaults to None.
     """
-    def __init__(self, shared_memory_items):
+    def __init__(self, shared_memory_items, channel_mask = None):
         self.shared_memory_items = shared_memory_items
         self.prepare_smm()
         self.log_signal = Event()
         self.visualize_signal = Event()        
         self.fi = None
+        self.channel_mask = channel_mask
     
     def prepare_smm(self):
         self.modalities = []
@@ -608,6 +609,17 @@ class OnlineDataHandler(DataHandler):
             The filter object that you'd like to run on the online data.
         """
         self.fi = fi
+
+    def install_channel_mask(self, mask):
+        """Install a channel mask to isolate certain channels for online streaming.
+
+        Parameters
+        ----------
+        mask: list or None (optional), default=None
+            Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+            Defaults to None.
+        """
+        self.channel_mask = mask
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -796,7 +808,8 @@ class OnlineDataHandler(DataHandler):
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
-            feature_set_dict = fe.extract_features(feature_list, windows)
+            feature_set_dict = fe.extract_features(feature_list, windows, array=False)
+            assert isinstance(feature_set_dict, dict), f"Expected dictionary of features. Got: {type(feature_set_dict)}."
             if remap_function is not None:
                 # Remap raw data to image format
                 for key in feature_set_dict:
@@ -974,6 +987,8 @@ class OnlineDataHandler(DataHandler):
                 val[mod]   = data[:N,:]
             else:
                 val[mod]   = data[:,:]
+            if self.channel_mask is not None:
+                val[mod] = val[mod][:, self.channel_mask]
             count[mod] = self.smm.get_variable(mod+"_count")
         return val,count
 
