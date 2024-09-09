@@ -15,13 +15,13 @@ from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 
-def sifibridge_streamer(version="1_1",
+def sifi_biopoint_streamer(name="BioPoint_v1_3",
                  shared_memory_items = None,
-                 ecg=False,
+                 ecg=True,
                  emg=True, 
-                 eda=False,
-                 imu=False,
-                 ppg=False,
+                 eda=True,
+                 imu=True,
+                 ppg=True,
                  notch_on=True, notch_freq=60,
                  emg_fir_on = True,
                  emg_fir=[20,450],
@@ -30,26 +30,140 @@ def sifibridge_streamer(version="1_1",
                  fc_hp = 5, # high pass eda
                  freq = 250,# eda sampling frequency
                  streaming=False,
-                 mac= None):
-    """The streamer for the sifi armband. 
+                 mac= None,
+                 bridge_version = "0.6.4"): # TODO, replace bridge_version with none after Sifi updates
+    """The streamer for the sifi biopoint. 
     This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
-    for the SiFi biopoint and bioarmband.
+    for the SiFi biopoint.
     Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
     Parameters
     ----------
-    version: string (option), default = '1_1'
-        The version for the sifi streamer.
+    name: string (option), default = 'BioPoint_v1_3'
+        The name for the sifi device.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
-    ecg, default = False
+    ecg, default = True
         The flag to enable electrocardiography recording from the main sensor unit.
     emg, default = True
         The flag to enable electromyography recording.
-    eda, default = False
+    eda, default = True
         The flag to enable electrodermal recording.
-    imu, default = False
+    imu, default = True
         The flag to enable inertial measurement unit recording
-    ppg, default = False
+    ppg, default = True
+        The flag to enable photoplethysmography recording
+    notch_on, default = True
+        The flag to enable a fc Hz notch filter on device (firmware).
+    notch_freq, default = 60
+        The cutoff frequency of the notch filter specified by notch_on.
+    emg_fir_on, default = True
+        The flag to enable a bandpass filter on device (firmware).
+    emg_fir, default = [20, 450]
+        The low and high cutoff frequency of the bandpass filter specified by emg_fir_on.
+    eda_cfg, default = True
+        The flag to specify if using high or low frequency current for EDA or bioimpedance.
+    fc_lp, default = 0
+        The low cutoff frequency for the bioimpedance.
+    fc_hp, default = 5
+        The high cutoff frequency for the bioimpedance.
+    freq, default = 250
+        The sampling frequency for bioimpedance.
+    streaming, default = False
+        Whether to package the modalities together within packets for lower latency.
+    mac, default = None:  
+        mac address of the device to be connected to
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer process object.
+    Object: shared memory
+        The shared memory items list to be passed to the OnlineDataHandler.
+    
+    Examples
+    ---------
+    >>> streamer, shared_memory = sifibridge_streamer()
+    """
+
+    if shared_memory_items is None:
+        shared_memory_items = []
+        if emg:
+            shared_memory_items.append(["emg",       (4000,1), np.double])
+            shared_memory_items.append(["emg_count", (1,1),    np.int32])
+        if imu:
+            shared_memory_items.append(["imu",       (200,7), np.double])
+            shared_memory_items.append(["imu_count", (1,1),    np.int32])
+        if ecg:
+            shared_memory_items.append(["ecg",       (1000,1), np.double])
+            shared_memory_items.append(["ecg_count", (1,1),    np.int32])
+        if eda:
+            shared_memory_items.append(["eda",       (200,1), np.double])
+            shared_memory_items.append(["eda_count", (1,1),    np.int32])
+        if ppg:
+            shared_memory_items.append(["ppg",       (200,4), np.double])
+            shared_memory_items.append(["ppg_count", (1,1),    np.int32])
+
+    for item in shared_memory_items:
+        item.append(Lock())
+    sb = SiFiBridgeStreamer(name=name,
+                            shared_memory_items=shared_memory_items,
+                            notch_on=notch_on,
+                            ecg=ecg,
+                            emg=emg,
+                            eda=eda,
+                            imu=imu,
+                            ppg=ppg,
+                            notch_freq=notch_freq,
+                            emgfir_on=emg_fir_on,
+                            emg_fir = emg_fir,
+                            eda_cfg = eda_cfg,
+                            fc_lp = fc_lp, # low pass eda
+                            fc_hp = fc_hp, # high pass eda
+                            freq = freq,# eda sampling frequency
+                            streaming=streaming,
+                            mac = mac,
+                            bridge_version=bridge_version)
+    sb.start()
+    return sb, shared_memory_items
+
+
+
+def sifi_bioarmband_streamer(name="BioPoint_v1_1",
+                 shared_memory_items = None,
+                 ecg=True,
+                 emg=True, 
+                 eda=True,
+                 imu=True,
+                 ppg=True,
+                 notch_on=False,#I'm pretty sure these aren't configured right for 1500Hz
+                 notch_freq=60,
+                 emg_fir_on = False,#I'm pretty sure these aren't configured right for 1500Hz
+                 emg_fir=[20,450],
+                 eda_cfg = True,
+                 fc_lp = 0, # low pass eda
+                 fc_hp = 5, # high pass eda
+                 freq = 250,# eda sampling frequency
+                 streaming=False,
+                 mac= None,
+                 bridge_version = "0.6.4"):# TODO, replace bridge_version with none after Sifi updates
+    """The streamer for the sifi armband. 
+    This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
+    for the SiFi bioarmband.
+    Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
+    Parameters
+    ----------
+    name: string (option), default = 'BioPoint_v1_1'
+        The name for the sifi device.
+    shared_memory_items, default = []
+        The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
+    ecg, default = True
+        The flag to enable electrocardiography recording from the main sensor unit.
+    emg, default = True
+        The flag to enable electromyography recording.
+    eda, default = True
+        The flag to enable electrodermal recording.
+    imu, default = True
+        The flag to enable inertial measurement unit recording
+    ppg, default = True
         The flag to enable photoplethysmography recording
     notch_on, default = True
         The flag to enable a fc Hz notch filter on device (firmware).
@@ -89,21 +203,21 @@ def sifibridge_streamer(version="1_1",
             shared_memory_items.append(["emg",       (3000,8), np.double])
             shared_memory_items.append(["emg_count", (1,1),    np.int32])
         if imu:
-            shared_memory_items.append(["imu",       (100,10), np.double])
+            shared_memory_items.append(["imu",       (200,7), np.double])
             shared_memory_items.append(["imu_count", (1,1),    np.int32])
         if ecg:
-            shared_memory_items.append(["ecg",       (100,10), np.double])
+            shared_memory_items.append(["ecg",       (1000,1), np.double])
             shared_memory_items.append(["ecg_count", (1,1),    np.int32])
         if eda:
-            shared_memory_items.append(["eda",       (100,10), np.double])
+            shared_memory_items.append(["eda",       (200,1), np.double])
             shared_memory_items.append(["eda_count", (1,1),    np.int32])
         if ppg:
-            shared_memory_items.append(["ppg",       (100,10), np.double])
+            shared_memory_items.append(["ppg",       (200,4), np.double])
             shared_memory_items.append(["ppg_count", (1,1),    np.int32])
 
     for item in shared_memory_items:
         item.append(Lock())
-    sb = SiFiBridgeStreamer(version=version,
+    sb = SiFiBridgeStreamer(name=name,
                             shared_memory_items=shared_memory_items,
                             notch_on=notch_on,
                             ecg=ecg,
@@ -119,9 +233,13 @@ def sifibridge_streamer(version="1_1",
                             fc_hp = fc_hp, # high pass eda
                             freq = freq,# eda sampling frequency
                             streaming=streaming,
-                            mac = mac)
+                            mac = mac,
+                            bridge_version=bridge_version)
     sb.start()
     return sb, shared_memory_items
+
+
+
 
 def myo_streamer(
     shared_memory_items : list | None = None,
@@ -263,7 +381,7 @@ def delsys_api_streamer(license             : str = None,
     Returns
     ----------
     Object: streamer
-        The sifi streamer object.
+        The delsys streamer object.
     Object: shared memory
         The shared memory object.
     Examples
@@ -308,7 +426,7 @@ def oymotion_streamer(shared_memory_items : list | None = None,
     Returns
     ----------
     Object: streamer
-        The sifi streamer object
+        The oymotion streamer object
     Object: shared memory
         The shared memory object
     Examples
@@ -362,7 +480,7 @@ def emager_streamer(shared_memory_items = None):
     Returns
     ----------
     Object: streamer
-        The sifi streamer object.
+        The emager streamer object.
     Object: shared memory
         The shared memory object.
     Examples
