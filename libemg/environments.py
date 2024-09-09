@@ -5,6 +5,9 @@ from collections import deque
 from typing import overload
 import re
 
+import numpy as np
+
+
 class Controller(ABC, Process):
     def __init__(self):
         super().__init__(daemon=True)
@@ -113,6 +116,43 @@ class SocketController(Controller):
                 # Data received
                 self.data.append(message)
     
+
+class ClassifierController(SocketController):
+    def __init__(self, output_format: str, ip: str = '127.0.0.1', port: int = 12346) -> None:
+        super().__init__(ip, port)
+        self.output_format = output_format
+        self.error_message = f"Unexpected value for output_format. Accepted values are 'predictions' or 'probabilities'. Got: {output_format}."
+        if output_format not in ['predictions', 'probabilities']:
+            raise ValueError(self.error_message)
+        
+    def parse_predictions(self, action: str) -> list[float]:
+        if self.output_format == 'predictions':
+            return [float(action.split(' ')[0])]
+        elif self.output_format == 'probabilities':
+            probabilities = self.parse_probabilities(action)
+            return [float(np.argmax(probabilities))]
+
+        raise ValueError(self.error_message)
+
+    def parse_timestamp(self, action: str) -> float:
+        if self.output_format == 'predictions':
+            raise ValueError("Output format is set to 'predictions', so timestamp cannot be parsed because timestamp is not sent when output_format='predictions'.")
+        return float(action.split(' ')[-1])
+
+    def parse_proportional_control(self, action: str) -> list[float]:
+        if self.output_format == 'predictions':
+            return [float(action.split(' ')[1])]
+        elif self.output_format == 'probabilities':
+            return [float(action.split(' ')[-2])]
+
+        raise ValueError(self.error_message)
+
+    def parse_probabilities(self, action: str) -> list[float]:
+        if self.output_format == 'predictions':
+            raise ValueError("Output format is set to 'predictions', so probabilities cannot be parsed. Set output_format='probabilities' if this functionality is needed.")
+
+        return [float(prob) for prob in action.split(' ')[:-2]]
+
 
 class RegressorController(SocketController):
     def parse_predictions(self, action: str) -> list[float]:
