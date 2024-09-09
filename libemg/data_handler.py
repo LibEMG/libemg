@@ -43,6 +43,8 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field.
         """
+        if values is None:
+            raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
@@ -556,13 +558,17 @@ class OnlineDataHandler(DataHandler):
     ----------
     shared_memory_items: Object
         The shared memory object returned from the streamer.
+    channel_mask: list or None (optional), default=None
+        Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+        Defaults to None.
     """
-    def __init__(self, shared_memory_items):
+    def __init__(self, shared_memory_items, channel_mask = None):
         self.shared_memory_items = shared_memory_items
         self.prepare_smm()
         self.log_signal = Event()
         self.visualize_signal = Event()        
         self.fi = None
+        self.channel_mask = channel_mask
     
     def prepare_smm(self):
         self.modalities = []
@@ -603,6 +609,17 @@ class OnlineDataHandler(DataHandler):
             The filter object that you'd like to run on the online data.
         """
         self.fi = fi
+
+    def install_channel_mask(self, mask):
+        """Install a channel mask to isolate certain channels for online streaming.
+
+        Parameters
+        ----------
+        mask: list or None (optional), default=None
+            Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+            Defaults to None.
+        """
+        self.channel_mask = mask
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -791,7 +808,8 @@ class OnlineDataHandler(DataHandler):
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
-            feature_set_dict = fe.extract_features(feature_list, windows)
+            feature_set_dict = fe.extract_features(feature_list, windows, array=False)
+            assert isinstance(feature_set_dict, dict), f"Expected dictionary of features. Got: {type(feature_set_dict)}."
             if remap_function is not None:
                 # Remap raw data to image format
                 for key in feature_set_dict:
@@ -969,6 +987,8 @@ class OnlineDataHandler(DataHandler):
                 val[mod]   = data[:N,:]
             else:
                 val[mod]   = data[:,:]
+            if self.channel_mask is not None:
+                val[mod] = val[mod][:, self.channel_mask]
             count[mod] = self.smm.get_variable(mod+"_count")
         return val,count
 
