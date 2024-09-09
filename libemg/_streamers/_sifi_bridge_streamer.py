@@ -22,8 +22,8 @@ class SiFiBridgeStreamer(Process):
     Parameters
     ----------
     
-    version : str
-        The version of the devie ('1_1 for bioarmband, 1_2 or 1_3 for biopoint).
+    name : str
+        The name of the device.
     shared_memory_items : list
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype, Lock()].
@@ -62,7 +62,7 @@ class SiFiBridgeStreamer(Process):
     
     """
     def __init__(self, 
-                 version:              str  = '1_2',
+                 name:                 str | None  = None,
                  shared_memory_items:  list = [],
                  ecg:                  bool = False,
                  emg:                  bool = True, 
@@ -96,7 +96,7 @@ class SiFiBridgeStreamer(Process):
         self.prepare_config_message(ecg, emg, eda, imu, ppg, 
                                     notch_on, notch_freq, emgfir_on, emg_fir,
                                     eda_cfg, fc_lp, fc_hp, freq, streaming)
-        self.prepare_connect_message(version, mac)
+        self.prepare_connect_message(name, mac)
         self.prepare_executable(bridge_version)
         
 
@@ -139,12 +139,12 @@ class SiFiBridgeStreamer(Process):
         self.config_message = bytes(self.config_message,"UTF-8")
 
     def prepare_connect_message(self, 
-                                version: str,
+                                name: str,
                                 mac : str):
         if mac is not None:
             self.connect_message = '-c ' + str(mac) + '\n'
         else:
-            self.connect_message = '-c BioPoint_v' + str(version) + '\n'
+            self.connect_message = '-c ' + str(name) + '\n'
         self.connect_message = bytes(self.connect_message,"UTF-8")
     
     def prepare_executable(self,
