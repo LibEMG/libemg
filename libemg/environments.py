@@ -28,15 +28,15 @@ class Controller(ABC, Process):
             # Cast to list
             info = [info]
 
-        action = self.get_action()
+        action = self._get_action()
         if action is None:
             # Action didn't occur
             return None
         
         info_function_map = {
-            'predictions': self.parse_predictions,
-            'pc': self.parse_proportional_control,
-            'timestamp': self.parse_timestamp
+            'predictions': self._parse_predictions,
+            'pc': self._parse_proportional_control,
+            'timestamp': self._parse_timestamp
         }
 
         data = []
@@ -55,22 +55,22 @@ class Controller(ABC, Process):
         return data
 
     @abstractmethod
-    def parse_predictions(self, action: str) -> list[float]:
+    def _parse_predictions(self, action: str) -> list[float]:
         # Grab latest prediction (should we keep track of all or deque?)
         ...
 
     @abstractmethod
-    def parse_proportional_control(self, action: str) -> list[float]:
+    def _parse_proportional_control(self, action: str) -> list[float]:
         # Grab latest prediction (should we keep track of all or deque?)
         ...
 
     @abstractmethod
-    def parse_timestamp(self, action: str) -> float:
+    def _parse_timestamp(self, action: str) -> float:
         # Grab latest timestamp
         ...
     
     @abstractmethod
-    def get_action(self) -> str | None:
+    def _get_action(self) -> str | None:
         # Freeze single action so all data is parsed from that
         ...
 
@@ -83,23 +83,23 @@ class SocketController(Controller):
         self.data = deque(maxlen=1) # only want to read a single message at a time
 
     @abstractmethod
-    def parse_predictions(self, action: str) -> list[float]:
+    def _parse_predictions(self, action: str) -> list[float]:
         # Grab latest prediction (should we keep track of all or deque?)
         # Will be specific to controller
         ...
 
     @abstractmethod
-    def parse_proportional_control(self, action: str) -> list[float]:
+    def _parse_proportional_control(self, action: str) -> list[float]:
         # Grab latest prediction (should we keep track of all or deque?)
         # Will be specific to controller
         ...
 
     @abstractmethod
-    def parse_timestamp(self, action: str) -> float:
+    def _parse_timestamp(self, action: str) -> float:
         # Grab latest timestamp
         ...
 
-    def get_action(self):
+    def _get_action(self):
         if len(self.data) > 0:
             # Grab latest prediction and remove from queue so it isn't repeated
             return self.data.pop()
@@ -126,7 +126,7 @@ class ClassifierController(SocketController):
         if output_format not in ['predictions', 'probabilities']:
             raise ValueError(self.error_message)
         
-    def parse_predictions(self, action: str) -> list[float]:
+    def _parse_predictions(self, action: str) -> list[float]:
         if self.output_format == 'predictions':
             return [float(action.split(' ')[0])]
         elif self.output_format == 'probabilities':
@@ -135,12 +135,12 @@ class ClassifierController(SocketController):
 
         raise ValueError(self.error_message)
 
-    def parse_timestamp(self, action: str) -> float:
+    def _parse_timestamp(self, action: str) -> float:
         if self.output_format == 'predictions':
             raise ValueError("Output format is set to 'predictions', so timestamp cannot be parsed because timestamp is not sent when output_format='predictions'.")
         return float(action.split(' ')[-1])
 
-    def parse_proportional_control(self, action: str) -> list[float]:
+    def _parse_proportional_control(self, action: str) -> list[float]:
         if self.output_format == 'predictions':
             return [float(action.split(' ')[1])]
         elif self.output_format == 'probabilities':
@@ -156,18 +156,18 @@ class ClassifierController(SocketController):
 
 
 class RegressorController(SocketController):
-    def parse_predictions(self, action: str) -> list[float]:
+    def _parse_predictions(self, action: str) -> list[float]:
         outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", action)
         outputs = list(map(float, outputs))
         return outputs[:-1]
 
-    def parse_timestamp(self, action: str) -> float:
+    def _parse_timestamp(self, action: str) -> float:
         outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", action)
         outputs = list(map(float, outputs))
         return outputs[-1]
 
-    def parse_proportional_control(self, action: str) -> list[float]:
-        predictions = self.parse_predictions(action)
+    def _parse_proportional_control(self, action: str) -> list[float]:
+        predictions = self._parse_predictions(action)
         return [1. for _ in predictions]    # proportional control is built into prediction, so return 1 for each DOF
 
         
