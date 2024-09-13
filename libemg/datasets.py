@@ -197,19 +197,6 @@ class NinaproDB2(Ninapro):
             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",", data_column=emg_column_mask, metadata_fetchers=metadata_fetchers)
             return odh
         
-    def convert_to_compatible(self):
-        # get the zip files (original format they're downloaded in)
-        zip_files = find_all_files_of_type_recursively(self.dataset_folder,".zip")
-        # unzip the files -- if any are there (successive runs skip this)
-        for zip_file in zip_files:
-            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                zip_ref.extractall(zip_file[:-4]+'/')
-            os.remove(zip_file)
-        # get the mat files (the files we want to convert to csv)
-        mat_files = find_all_files_of_type_recursively(self.dataset_folder,".mat")
-        for mat_file in mat_files:
-            self.convert_to_csv(mat_file)
-        
     def convert_to_csv(self, mat_file):
         # read the mat file
         mat_file = mat_file.replace("\\", "/")
