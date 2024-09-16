@@ -42,7 +42,7 @@ class GRABMyoCrossDay(GRABMyo):
         reps_values = ["1","2","3","4","5","6","7"]
 
         regex_filters = [
-            RegexFilter(left_bound = "session", right_bound="_", values = sessions, description='session'),
+            RegexFilter(left_bound = "session", right_bound="_", values = sessions, description='sessions'),
             RegexFilter(left_bound = "_gesture", right_bound="_", values = classes_values, description='classes'),
             RegexFilter(left_bound = "trial", right_bound=".hea", values = reps_values, description='reps'),
             RegexFilter(left_bound="participant", right_bound="_",values=subjects, description='subjects')
@@ -52,8 +52,8 @@ class GRABMyoCrossDay(GRABMyo):
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
 
         forearm_data = odh.isolate_channels(list(range(0,16)))
-        train_data = forearm_data.isolate_data('sets', [0])
-        test_data = forearm_data.isolate_data('sets', [1])
+        train_data = forearm_data.isolate_data('sessions', [0])
+        test_data = forearm_data.isolate_data('sessions', [1,2])
 
         data = forearm_data
         if split:
