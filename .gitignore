@@ -53,3 +53,4 @@ FORS-EMG/*
 MyoDisCo/*
 NinaProDB1/*
 *.zip
+libemg/_datasets/__pycache__/*
