@@ -3,10 +3,7 @@ from libemg.data_handler import OfflineDataHandler
 # this assumes you have git downloaded (not pygit, but the command line program git)
 
 class Dataset:
-    def __init__(self, sampling, num_channels, recording_device, num_subjects, gestures, num_reps, description, citation, save_dir='.', redownload=False):
-        self.save_dir = save_dir
-        self.redownload=redownload
-
+    def __init__(self, sampling, num_channels, recording_device, num_subjects, gestures, num_reps, description, citation):
         # Every class should have this 
         self.sampling=sampling
         self.num_channels=num_channels 

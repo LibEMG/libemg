@@ -3,7 +3,7 @@ from libemg.data_handler import OfflineDataHandler, RegexFilter
 import os
 
 class CIIL_MinimalData(Dataset):
-    def __init__(self, save_dir='.'):
+    def __init__(self, dataset_folder='CIILData/'):
         Dataset.__init__(self, 
                          200, 
                          8, 
@@ -12,10 +12,9 @@ class CIIL_MinimalData(Dataset):
                          {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
                          '1 Train (1s), 15 Test',
                          "The goal of this Myo dataset is to explore how well models perform when they have a limited amount of training data (1s per class).", 
-                         'https://ieeexplore.ieee.org/abstract/document/10394393', 
-                         save_dir)
+                         'https://ieeexplore.ieee.org/abstract/document/10394393')
         self.url = "https://github.com/LibEMG/CIILData"
-        self.dataset_folder = os.path.join(self.save_dir , 'CIILData')
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')
@@ -42,7 +41,7 @@ class CIIL_MinimalData(Dataset):
         return {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1])}
     
 class CIIL_ElectrodeShift(Dataset):
-    def __init__(self, save_dir='.'):
+    def __init__(self, dataset_folder='CIILData/'):
         Dataset.__init__(self, 
                          200, 
                          8, 
@@ -51,10 +50,9 @@ class CIIL_ElectrodeShift(Dataset):
                          {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
                          '5 Train (Before Shift), 8 Test (After Shift)',
                          "An electrode shift confounding factors dataset.", 
-                         'https://link.springer.com/article/10.1186/s12984-024-01355-4', 
-                         save_dir)
+                         'https://link.springer.com/article/10.1186/s12984-024-01355-4')
         self.url = "https://github.com/LibEMG/CIILData"
-        self.dataset_folder = os.path.join(self.save_dir , 'CIILData')
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')

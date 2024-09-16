@@ -5,7 +5,7 @@ import scipy.io
 import numpy as np
 
 class FORSEMG(Dataset):
-    def __init__(self):
+    def __init__(self, dataset_folder='FORS-EMG/'):
         Dataset.__init__(self, 
                          985, 
                          8, 
@@ -15,8 +15,7 @@ class FORSEMG(Dataset):
                          '5 Train, 10 Test (2 Forarm Orientations x 5 Reps)', 
                          "FORS-EMG: Twelve gestures elicited in three forearm orientations (neutral, pronation, and supination).", 
                          'https://arxiv.org/abs/2409.07484t')
-        self.dataset_name = 'FORS-EMG'
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')

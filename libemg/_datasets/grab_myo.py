@@ -6,7 +6,7 @@ class GRABMyo(Dataset):
     """
     By default this just uses the 16 forearm electrodes. 
     """
-    def __init__(self, save_dir='.', version='1.0.2', dataset_name="grabmyo", baseline=False):
+    def __init__(self, dataset_folder='GRABMyo/', baseline=False):
         split = '7 Train, 14 Test (2 Seperate Days x 7 Reps)'
         if baseline:
             split = '5 Train, 2 Test (Basline)'
@@ -14,14 +14,13 @@ class GRABMyo(Dataset):
                          2048, 
                          16, 
                          'EMGUSB2+ device (OT Bioelletronica, Italy)', 
-                         19, 
+                         43, 
                          {0: 'Lateral Prehension', 1: 'Thumb Adduction', 2: 'Thumb and Little Finger Opposition', 3: 'Thumb and Index Finger Opposition', 4: 'Thumb and Index Finger Extension', 5: 'Thumb and Little Finger Extension', 6: 'Index and Middle Finger Extension',
                             7: 'Little Finger Extension', 8: 'Index Finger Extension', 9: 'Thumb Finger Extension', 10: 'Wrist Extension', 11: 'Wrist Flexion', 12: 'Forearm Supination', 13: 'Forearm Pronation', 14: 'Hand Open', 15: 'Hand Close', 16: 'Rest'},
                          split, 
                          "GrabMyo: A large cross session dataset including 17 gestures elicited across 3 seperate sessions.", 
                          'https://www.nature.com/articles/s41597-022-01836-y')
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(save_dir , self.dataset_name, version)
+        self.dataset_folder = dataset_folder
 
     def check_if_exist(self):
         if (not self.check_exists(self.dataset_folder)):
@@ -31,8 +30,8 @@ class GRABMyo(Dataset):
 
 
 class GRABMyoCrossDay(GRABMyo):
-    def __init__(self, save_dir='.', version='1.0.2', dataset_name="grabmyo"):
-        GRABMyo.__init__(self, save_dir=save_dir, version=version, dataset_name=dataset_name, baseline=False)
+    def __init__(self, dataset_folder="GRABMyo"):
+        GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=False)
         
     def prepare_data(self):
         self.check_if_exist()
@@ -58,8 +57,8 @@ class GRABMyoCrossDay(GRABMyo):
         return {'All': forearm_data, 'Train': train_data, 'Test': test_data}
 
 class GRABMyoBaseline(GRABMyo):
-    def __init__(self, save_dir='.', version='1.0.2', dataset_name="grabmyo"):
-        GRABMyo.__init__(self, save_dir=save_dir, version=version, dataset_name=dataset_name, baseline=True)
+    def __init__(self, dataset_folder="GRABMyo"):
+        GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=True)
         
     def prepare_data(self):
         self.check_if_exist()

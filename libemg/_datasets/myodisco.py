@@ -5,7 +5,7 @@ from libemg.feature_extractor import FeatureExtractor
 import os
 
 class MyoDisCo(Dataset):
-    def __init__(self, save_dir='.', redownload=False, dataset_name="MyoDisCo", cross_day=False):
+    def __init__(self, dataset_folder="MyoDisCo/", cross_day=False):
         self.cross_day = cross_day
         desc = 'The MyoDisCo dataset which includes both the across day and limb position confounds. (Limb Position Version)'
         if self.cross_day:
@@ -18,11 +18,9 @@ class MyoDisCo(Dataset):
                         {0: "Wrist Extension", 1: "Finger Gun", 2: "Wrist Flexion", 3: "Hand Close", 4: "Hand Open", 5: "Thumbs Up", 6: "Rest"}, 
                         '20 (Train) and 20 (Test) - Each gesture ~0.5s',
                         desc,
-                        "https://iopscience.iop.org/article/10.1088/1741-2552/ad4915/meta",
-                        save_dir, redownload)
+                        "https://iopscience.iop.org/article/10.1088/1741-2552/ad4915/meta")
         self.url = "https://github.com/libemg/MyoDisCo"
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')

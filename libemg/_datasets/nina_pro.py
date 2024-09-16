@@ -19,14 +19,12 @@ def find_all_files_of_type_recursively(dir, terminator):
 class Ninapro(Dataset):
     def __init__(self, 
                  sampling, num_channels, recording_device, num_subjects, gestures, num_reps, description, citation,
-                 save_dir='.', 
-                 dataset_name="Ninapro"):
+                 dataset_folder="Ninapro"):
         # downloading the Ninapro dataset is not supported (no permission given from the authors)'
         # however, you can download it from http://ninapro.hevs.ch/DB8
         # the subject zip files should be placed at: <save_dir>/NinaproDB8/DB8_s#.zip
-        Dataset.__init__(self, sampling, num_channels, recording_device, num_subjects, gestures, num_reps, description, citation, save_dir)
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, "")
+        Dataset.__init__(self, sampling, num_channels, recording_device, num_subjects, gestures, num_reps, description, citation)
+        self.dataset_folder = dataset_folder
         self.exercise_step = []
     
     def convert_to_compatible(self):
@@ -94,29 +92,29 @@ class Ninapro(Dataset):
             tail = head
         os.remove(mat_file)
 
-class NinaproDB8(Ninapro):
-    def __init__(self, save_dir='.', dataset_name="NinaProDB8"):
-        Ninapro.__init__(self, save_dir, dataset_name)
-        self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
-         "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
-        self.exercise_step = [0,10,20]
+# class NinaproDB8(Ninapro):
+#     def __init__(self, save_dir='.', dataset_name="NinaProDB8"):
+#         Ninapro.__init__(self, save_dir, dataset_name)
+#         self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
+#          "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
+#         self.exercise_step = [0,10,20]
 
-    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
-                                                      reps_values = [str(i) for i in range(22)],
-                                                      classes_values = [str(i) for i in range(9)]):
+#     def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
+#                                                       reps_values = [str(i) for i in range(22)],
+#                                                       classes_values = [str(i) for i in range(9)]):
         
-        if format == OfflineDataHandler:
-            regex_filters = [
-                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
-                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
-                RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-            return odh
+#         if format == OfflineDataHandler:
+#             regex_filters = [
+#                 RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
+#                 RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+#                 RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
+#             ]
+#             odh = OfflineDataHandler()
+#             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+#             return odh
 
 class NinaproDB2(Ninapro):
-    def __init__(self, save_dir='.', dataset_name="NinaProDB2"):
+    def __init__(self, dataset_folder="NinaProDB2/"):
         Ninapro.__init__(self, 
                          2000, 
                          12, 
@@ -126,7 +124,7 @@ class NinaproDB2(Ninapro):
                          '4 Train, 2 Test',
                          "NinaProb DB2.", 
                          'https://ninapro.hevs.ch/',
-                         save_dir, dataset_name)
+                         dataset_folder = dataset_folder)
         self.exercise_step = [0,0,0]
 
     def prepare_data(self, subjects_values = [str(i) for i in range(1,41)],

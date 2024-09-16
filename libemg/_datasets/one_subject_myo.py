@@ -3,7 +3,7 @@ from libemg.data_handler import OfflineDataHandler, RegexFilter
 import os
 
 class OneSubjectMyoDataset(Dataset):
-    def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
+    def __init__(self, dataset_folder="OneSubjectMyoDataset/"):
         Dataset.__init__(self, 
                          200, 
                          8, 
@@ -12,10 +12,9 @@ class OneSubjectMyoDataset(Dataset):
                          {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
                          '6 (4 Train, 2 Test)',
                          "A simple Myo dataset that is used for some of the LibEMG offline demos.", 
-                         'N/A', save_dir, redownload)
+                         'N/A')
         self.url = "https://github.com/libemg/OneSubjectMyoDataset"
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self, format=OfflineDataHandler):
         if (not self.check_exists(self.dataset_folder)):

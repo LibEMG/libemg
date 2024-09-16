@@ -6,7 +6,7 @@ import json
 import numpy as np
 
 class EMGEPN612(Dataset):
-    def __init__(self):
+    def __init__(self, dataset_file='EMGEPN612.pkl'):
         Dataset.__init__(self, 
                          200, 
                          8, 
@@ -17,8 +17,7 @@ class EMGEPN612(Dataset):
                          "A large 612 user dataset for developing cross user models.", 
                          'https://doi.org/10.5281/zenodo.4421500')
         self.url = "https://github.com/libemg/OneSubjectMyoDataset"
-        self.dataset_name = 'EMGEPN612.pkl'
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.dataset_name = dataset_file
 
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')

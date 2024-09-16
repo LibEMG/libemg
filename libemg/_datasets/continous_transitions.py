@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 
 class ContinuousTransitions(Dataset):
-    def __init__(self, save_dir='.', redownload=False, dataset_name="ContinuousTransitions"):
+    def __init__(self, dataset_folder="ContinuousTransitions/"):
         Dataset.__init__(self, 
                         2000, 
                         6, 
@@ -15,10 +15,8 @@ class ContinuousTransitions(Dataset):
                         {0: 'No Motion', 1: 'Wrist Flexion', 2: 'Wrist Extension', 3: 'Wrist Pronation', 4: 'Wrist Supination', 5: 'Hand Close', 6: 'Hand Open'}, 
                         '6 Training (Ramp), 42 Transitions (All combinations of Transitions) x 6 Reps',
                         "The testing set in this dataset has continuous transitions between classes which is a more realistic offline evaluation standard for myoelectric control.",
-                        "https://ieeexplore.ieee.org/document/10254242",
-                        save_dir, redownload)
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+                        "https://ieeexplore.ieee.org/document/10254242")
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')

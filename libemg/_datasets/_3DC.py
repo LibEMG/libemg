@@ -3,7 +3,7 @@ from libemg.data_handler import OfflineDataHandler, RegexFilter
 import os
 
 class _3DCDataset(Dataset):
-    def __init__(self, save_dir='.', redownload=False, dataset_name="_3DCDataset"):
+    def __init__(self, dataset_folder="_3DCDataset/"):
         Dataset.__init__(self, 
                         1000, 
                         10, 
@@ -12,11 +12,9 @@ class _3DCDataset(Dataset):
                         {0: "Neutral", 1: "Radial Deviation", 2: "Wrist Flexion", 3: "Ulnar Deviation", 4: "Wrist Extension", 5: "Supination", 6: "Pronation", 7: "Power Grip", 8: "Open Hand", 9: "Chuck Grip", 10: "Pinch Grip"}, 
                         '8 (4 Train, 4 Test)',
                         "The 3DC dataset including 11 classes.",
-                        "https://ieeexplore.ieee.org/document/8630679",
-                        save_dir, redownload)
+                        "https://ieeexplore.ieee.org/document/8630679")
         self.url = "https://github.com/libemg/3DCDataset"
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
+        self.dataset_folder = dataset_folder
 
     def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,23)],
                                                       sets_values = ["train", "test"],
