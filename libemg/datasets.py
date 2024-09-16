@@ -19,7 +19,6 @@ def get_dataset_list():
     return {
         'OneSubjectMyo': OneSubjectMyoDataset,
         '3DC': _3DCDataset,
-        'EMGEPN612': EMGEPN612,
         'CIIL_MinimalData': CIIL_MinimalData,
         'CIIL_ElectrodeShift': CIIL_ElectrodeShift,
         'GRABMyoBaseline': GRABMyoBaseline,
@@ -28,6 +27,7 @@ def get_dataset_list():
         'NinaProDB2': NinaproDB2,
         'MyoDisCo': MyoDisCo,
         'FORS-EMG': FORSEMG,
+        'EMGEPN612': EMGEPN612,
     }
     
 def get_dataset_info(dataset):

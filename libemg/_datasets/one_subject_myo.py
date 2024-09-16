@@ -1,6 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
-import os
+import numpy as np
 
 class OneSubjectMyoDataset(Dataset):
     def __init__(self, dataset_folder="OneSubjectMyoDataset/"):
@@ -30,6 +30,9 @@ class OneSubjectMyoDataset(Dataset):
         ]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+        odh.subjects = []
+        odh.subjects = [np.zeros((len(d), 1)) for d in odh.data]
+        odh.extra_attributes.append('subjects')
         data = odh
         if split:
             data = {'All': odh, 'Train': odh.isolate_data("sets", [0,1,2,3,4]), 'Test': odh.isolate_data("sets", [5,6])}
