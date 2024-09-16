@@ -127,9 +127,14 @@ class NinaproDB2(Ninapro):
                          dataset_folder = dataset_folder)
         self.exercise_step = [0,0,0]
 
-    def prepare_data(self, subjects_values = [str(i) for i in range(1,41)],
-                                                      reps_values = [str(i) for i in range(6)],
-                                                      classes_values = [str(i) for i in range(50)]):
+    def prepare_data(self, split = False, subjects_values = None, reps_values = None, classes_values = None):
+        if subjects_values is None:
+            subjects_values = [str(i) for i in range(1,41)]
+        if reps_values is None:
+            reps_values = [str(i) for i in range(6)]
+        if classes_values is None:
+            classes_values = [str(i) for i in range(50)]
+
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the NinaProDB2 dataset from: https://ninapro.hevs.ch/instructions/DB2.html") 
@@ -142,4 +147,8 @@ class NinaproDB2(Ninapro):
         ]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-        return {'All': odh, 'Train': odh.isolate_data('reps', [0,1,2,3]), 'Test': odh.isolate_data('reps', [4,5])}
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data('reps', [0,1,2,3]), 'Test': odh.isolate_data('reps', [4,5])}
+
+        return data

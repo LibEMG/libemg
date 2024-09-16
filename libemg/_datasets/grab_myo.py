@@ -33,7 +33,7 @@ class GRABMyoCrossDay(GRABMyo):
     def __init__(self, dataset_folder="GRABMyo"):
         GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=False)
         
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         self.check_if_exist()
 
         sessions = ["1", "2", "3"]
@@ -54,13 +54,18 @@ class GRABMyoCrossDay(GRABMyo):
         forearm_data = odh.isolate_channels(list(range(0,16)))
         train_data = forearm_data.isolate_data('sets', [0])
         test_data = forearm_data.isolate_data('sets', [1])
-        return {'All': forearm_data, 'Train': train_data, 'Test': test_data}
+
+        data = forearm_data
+        if split:
+            data = {'All': forearm_data, 'Train': train_data, 'Test': test_data}
+
+        return data
 
 class GRABMyoBaseline(GRABMyo):
     def __init__(self, dataset_folder="GRABMyo"):
         GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=True)
         
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         self.check_if_exist()
 
         sessions = ["1"]
@@ -81,4 +86,9 @@ class GRABMyoBaseline(GRABMyo):
         forearm_data = odh.isolate_channels(list(range(0,16)))
         train_data = forearm_data.isolate_data('reps', [0,1,2,3,4])
         test_data = forearm_data.isolate_data('reps', [5,6])
-        return {'All': forearm_data, 'Train': train_data, 'Test': test_data}
+
+        data = forearm_data
+        if split:
+            data = {'All': forearm_data, 'Train': train_data, 'Test': test_data}
+
+        return data

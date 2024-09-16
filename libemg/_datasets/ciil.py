@@ -16,12 +16,9 @@ class CIIL_MinimalData(Dataset):
         self.url = "https://github.com/LibEMG/CIILData"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            self.download(self.url, self.dataset_folder)
-        elif (self.redownload):
-            self.remove_dataset(self.dataset_folder)
             self.download(self.url, self.dataset_folder)
 
         subfolder = 'MinimalTrainingData'
@@ -38,7 +35,11 @@ class CIIL_MinimalData(Dataset):
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder + '/' + subfolder, regex_filters=regex_filters, delimiter=",")
 
-        return {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1])}
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1])}
+
+        return data
     
 class CIIL_ElectrodeShift(Dataset):
     def __init__(self, dataset_folder='CIILData/'):
@@ -54,12 +55,9 @@ class CIIL_ElectrodeShift(Dataset):
         self.url = "https://github.com/LibEMG/CIILData"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            self.download(self.url, self.dataset_folder)
-        elif (self.redownload):
-            self.remove_dataset(self.dataset_folder)
             self.download(self.url, self.dataset_folder)
 
         subfolder = 'ElectrodeShift'
@@ -76,4 +74,8 @@ class CIIL_ElectrodeShift(Dataset):
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder + '/' + subfolder, regex_filters=regex_filters, delimiter=",")
 
-        return {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1,2,3,4])}
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1,2,3,4])}
+
+        return data

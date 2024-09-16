@@ -19,7 +19,7 @@ class OneSubjectEMaGerDataset(Dataset):
         self.url = 'https://github.com/LibEMG/OneSubjectEMaGerDataset'
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
         regex_filters = [
@@ -30,4 +30,8 @@ class OneSubjectEMaGerDataset(Dataset):
         metadata_fetchers = [FilePackager(RegexFilter(left_bound='/', right_bound='.txt', values=['labels'], description='labels'), package_function)]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
-        return {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2, 3]), 'Test': odh.isolate_data('reps', [4])}
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2, 3]), 'Test': odh.isolate_data('reps', [4])}
+
+        return data

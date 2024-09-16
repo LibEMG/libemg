@@ -25,7 +25,7 @@ class Dataset:
     def check_exists(self, dataset_folder):
         return os.path.exists(dataset_folder)
 
-    def prepare_data(self, format=OfflineDataHandler):
+    def prepare_data(self, split = False):
         pass
 
     def get_info(self):

@@ -22,12 +22,9 @@ class MyoDisCo(Dataset):
         self.url = "https://github.com/libemg/MyoDisCo"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            self.download(self.url, self.dataset_folder)
-        elif (self.redownload):
-            self.remove_dataset(self.dataset_folder)
             self.download(self.url, self.dataset_folder)
     
         
@@ -68,7 +65,16 @@ class MyoDisCo(Dataset):
             odh.reps[i] = np.ones((len(odh.data[i]), 1)) * odh.reps[i][0][0]
             odh.subjects[i] = np.ones((len(odh.data[i]), 1)) * odh.subjects[i][0][0]
 
+
         if self.cross_day:
-            return {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1])}
-        
-        return {'All': odh, 'Train': odh.isolate_data("sets", [1]), 'Test': odh.isolate_data("sets", [2])}
+            odh_train = odh.isolate_data('sets', [0])
+            odh_test = odh.isolate_data('sets', [1])
+        else:
+            odh_train = odh.isolate_data('sets', [1])
+            odh_test = odh.isolate_data('sets', [2])
+
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh_train, 'Test': odh_test}
+
+        return data

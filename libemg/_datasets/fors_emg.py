@@ -17,7 +17,7 @@ class FORSEMG(Dataset):
                          'https://arxiv.org/abs/2409.07484t')
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the pickled dataset from: https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset?resource=download")
@@ -40,4 +40,9 @@ class FORSEMG(Dataset):
                         odh.subjects.append(np.ones((len(odh.data[-1]), 1)) * s-1)
                         odh.reps.append(np.ones((len(odh.data[-1]), 1)) * r-1)
                         odh.orientation.append(np.ones((len(odh.data[-1]), 1)) * o_i)
-        return {'All': odh, 'Train': odh.isolate_data('orientation', [0]), 'Test': odh.isolate_data('orientation', [1,2])}
+
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data('orientation', [0]), 'Test': odh.isolate_data('orientation', [1,2])}
+
+        return data

@@ -18,7 +18,7 @@ class ContinuousTransitions(Dataset):
                         "https://ieeexplore.ieee.org/document/10254242")
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the dataset from: ") #TODO: Update
@@ -57,4 +57,9 @@ class ContinuousTransitions(Dataset):
                 odh_tr.classes.append(np.expand_dims(ramp_labels[r_chg_idxs[i]+1:r_chg_idxs[i+1]]-1, axis=1))
                 odh_tr.subjects.append(np.ones((len(odh_tr.data[-1]), 1)) * s-2) 
             
-        return {'All': odh_tr+odh_te, 'Train': odh_tr, 'Test': odh_te}
+        odh_all = odh_tr + odh_te
+        data = odh_all
+        if split:
+            data = {'All': odh_all, 'Train': odh_tr, 'Test': odh_te}
+
+        return data

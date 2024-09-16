@@ -19,13 +19,13 @@ class EMGEPN612(Dataset):
         self.url = "https://github.com/libemg/OneSubjectMyoDataset"
         self.dataset_name = dataset_file
 
-    def prepare_data(self):
+    def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
-        if (not self.check_exists(self.dataset_folder)):
+        if (not self.check_exists(self.dataset_name)):
             print("Please download the pickled dataset from: https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBDXh4xNst3FAXV0lNoodrAA?e=t6HPaR") 
             return 
         
-        file = open(self.dataset_folder, 'rb')
+        file = open(self.dataset_name, 'rb')
         data = pickle.load(file)
 
         emg = data[0]
@@ -48,4 +48,9 @@ class EMGEPN612(Dataset):
             odh_te.classes.append(np.ones((len(e), 1)) * labels['testing'][i])
             odh_te.subjects.append(np.ones((len(e), 1)) * (i//150 + 306))
 
-        return {'All': odh_tr+odh_te, 'Train': odh_tr, 'Test': odh_te}
+        odh_all = odh_tr + odh_te
+        data = odh_all
+        if split:
+            data = {'All': odh_all, 'Train': odh_tr, 'Test': odh_te}
+
+        return data
