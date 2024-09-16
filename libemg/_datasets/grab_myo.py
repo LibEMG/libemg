@@ -35,7 +35,7 @@ class GRABMyoCrossDay(GRABMyo):
         GRABMyo.__init__(self, save_dir=save_dir, version=version, dataset_name=dataset_name, baseline=False)
         
     def prepare_data(self):
-        self.check_exists()
+        self.check_if_exist()
 
         sessions = ["1", "2", "3"]
         subjects = [str(i) for i in range(1,44)]
@@ -62,7 +62,7 @@ class GRABMyoBaseline(GRABMyo):
         GRABMyo.__init__(self, save_dir=save_dir, version=version, dataset_name=dataset_name, baseline=True)
         
     def prepare_data(self):
-        self.check_exists()
+        self.check_if_exist()
 
         sessions = ["1"]
         subjects = [str(i) for i in range(1,44)]
