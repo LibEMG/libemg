@@ -9,7 +9,7 @@ class OneSubjectMyoDataset(Dataset):
                          8, 
                          'Myo Armband', 
                          1, 
-                         ['Close', 'Open', 'Rest', 'Flexion', 'Extension'], 
+                         {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
                          '6 (4 Train, 2 Test)',
                          "A simple Myo dataset that is used for some of the LibEMG offline demos.", 
                          'N/A', save_dir, redownload)
@@ -24,15 +24,14 @@ class OneSubjectMyoDataset(Dataset):
             self.remove_dataset(self.dataset_folder)
             self.download(self.url, self.dataset_folder)
 
-        if format == OfflineDataHandler:
-            sets_values = ["1","2","3","4","5","6"]
-            classes_values = ["0","1","2","3","4"]
-            reps_values = ["0","1"]
-            regex_filters = [
-                RegexFilter(left_bound = "/trial_", right_bound="/", values = sets_values, description='sets'),
-                RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes'),
-                RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps')
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-            return {'All': odh, 'Train': odh.isolate_data("sets", [0,1,2,3,4]), 'Test': odh.isolate_data("sets", [5,6])}
+        sets_values = ["1","2","3","4","5","6"]
+        classes_values = ["0","1","2","3","4"]
+        reps_values = ["0","1"]
+        regex_filters = [
+            RegexFilter(left_bound = "/trial_", right_bound="/", values = sets_values, description='sets'),
+            RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes'),
+            RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps')
+        ]
+        odh = OfflineDataHandler()
+        odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+        return {'All': odh, 'Train': odh.isolate_data("sets", [0,1,2,3,4]), 'Test': odh.isolate_data("sets", [5,6])}

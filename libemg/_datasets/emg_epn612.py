@@ -12,8 +12,8 @@ class EMGEPN612(Dataset):
                          8, 
                          'Myo Armband', 
                          612, 
-                         ['Close', 'Open', 'Rest', 'Flexion', 'Extension'], 
-                         '50 (For 306 Users), 25 (For 306 Users)',
+                         {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
+                         '50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test)',
                          "A large 612 user dataset for developing cross user models.", 
                          'https://doi.org/10.5281/zenodo.4421500')
         self.url = "https://github.com/libemg/OneSubjectMyoDataset"
@@ -23,7 +23,7 @@ class EMGEPN612(Dataset):
     def prepare_data(self):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            print("Please download the pickled dataset from: https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBDXh4xNst3FAXV0lNoodrAA?e=t6HPaR") #TODO: Fill this in
+            print("Please download the pickled dataset from: https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBDXh4xNst3FAXV0lNoodrAA?e=t6HPaR") 
             return 
         
         file = open(self.dataset_folder, 'rb')

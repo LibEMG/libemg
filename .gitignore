@@ -46,3 +46,10 @@ test_*.py
 .vscode/*
 test_delsys_api.py
 resources/
+*.csv 
+*.txt
+ContinuousTransitions/*
+FORS-EMG/*
+MyoDisCo/*
+NinaProDB1/*
+*.zip

@@ -9,7 +9,7 @@ class CIIL_MinimalData(Dataset):
                          8, 
                          'Myo Armband', 
                          11, 
-                         ['Close', 'Open', 'Rest', 'Flexion', 'Extension'], 
+                         {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
                          '1 Train (1s), 15 Test',
                          "The goal of this Myo dataset is to explore how well models perform when they have a limited amount of training data (1s per class).", 
                          'https://ieeexplore.ieee.org/abstract/document/10394393', 
@@ -48,9 +48,9 @@ class CIIL_ElectrodeShift(Dataset):
                          8, 
                          'Myo Armband', 
                          21, 
-                         ['Close', 'Open', 'Rest', 'Flexion', 'Extension'], 
-                         '5 Train, 8 Test',
-                         "An Electrode Shift confounding factors dataset.", 
+                         {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
+                         '5 Train (Before Shift), 8 Test (After Shift)',
+                         "An electrode shift confounding factors dataset.", 
                          'https://link.springer.com/article/10.1186/s12984-024-01355-4', 
                          save_dir)
         self.url = "https://github.com/LibEMG/CIILData"

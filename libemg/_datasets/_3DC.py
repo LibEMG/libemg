@@ -9,10 +9,10 @@ class _3DCDataset(Dataset):
                         10, 
                         '3DC Armband (Prototype)', 
                         22, 
-                        ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Supination", "Pronation", "Power Grip", "Open Hand", "Chuck Grip", "Pinch Grip"], 
+                        {0: "Neutral", 1: "Radial Deviation", 2: "Wrist Flexion", 3: "Ulnar Deviation", 4: "Wrist Extension", 5: "Supination", 6: "Pronation", 7: "Power Grip", 8: "Open Hand", 9: "Chuck Grip", 10: "Pinch Grip"}, 
                         '8 (4 Train, 4 Test)',
                         "The 3DC dataset including 11 classes.",
-                        "@article{cote2019deep, title={Deep learning for electromyographic hand gesture signal classification using transfer learning}, author={C{^o}t{'e}-Allard, Ulysse and Fall, Cheikh Latyr and Drouin, Alexandre and Campeau-Lecours, Alexandre and Gosselin, Cl{'e}ment and Glette, Kyrre and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit}, journal={IEEE transactions on neural systems and rehabilitation engineering}, volume={27}, number={4}, pages={760--771}, year={2019}, publisher={IEEE} }",
+                        "https://ieeexplore.ieee.org/document/8630679",
                         save_dir, redownload)
         self.url = "https://github.com/libemg/3DCDataset"
         self.dataset_name = dataset_name

@@ -20,16 +20,13 @@ class GRABMyo(Dataset):
         self.dataset_name = dataset_name
         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, version)
         
-    def download_data(self):
-        print('\nPlease cite: ' + self.citation+'\n')
-        if (not self.check_exists(self.dataset_folder)):
-            print("Please download the GRABMyo dataset from: https://physionet.org/content/grabmyo/1.0.2/") #TODO: Fill this in
-            return 
-
     def prepare_data(self, subjects=[str(i) for i in range(1,44)], sessions=["1"]):
+        if (not self.check_exists(self.dataset_folder)):
+            print("Please download the GRABMyo dataset from: https://physionet.org/content/grabmyo/1.0.2/") 
+            return 
         print('\nPlease cite: ' + self.citation+'\n')
-        sessions = ["1"] # ["1", "2", "3"]
-        subjects = ["1", "2", "3", "4", "5"] #[str(i) for i in range(1,44)]
+        sessions = ["1", "2", "3"]
+        subjects = [str(i) for i in range(1,44)]
         classes_values = ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17"]
         reps_values = ["1","2","3","4","5","6","7"]
 
@@ -47,12 +44,3 @@ class GRABMyo(Dataset):
         train_data = forearm_data.isolate_data('reps', [0,1,2,3,4])
         test_data = forearm_data.isolate_data('reps', [5,6])
         return {'All': forearm_data, 'Train': train_data, 'Test': test_data}
-
-#     def print_info(self):
-#         print('Reference: https://www.physionet.org/content/grabmyo/1.0.2/') 
-#         print('Name: ' + self.dataset_name)
-#         print('Gestures: 17')
-#         print('Trials: 7')
-#         print('Time Per Rep: 5s')
-#         print('Subjects: 43')
-#         print("Forearm EMG (16): Columns 0-15\nWrist EMG (12): 18-23 and 26-31\nUnused (4): 16,23,24,31")

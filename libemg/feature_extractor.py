@@ -1397,15 +1397,18 @@ class FeatureExtractor:
         list
             The computed features associated with each window. Size: Wx((order+1)*Nchannels)
         """
-        # get the highest power of 2 the nyquist rate is divisible by
-        order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
-        # Khushaba et al suggests using sym8
-        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
-        # original paper suggests using as the order.
-        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
-        # for every order, compute the energy (sum of DWT) - total of the squared signal
-        features = np.hstack([np.log(np.sum(i**2, axis=2)+1e-10) for i in wavelets])
-        return features
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # get the highest power of 2 the nyquist rate is divisible by
+            order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
+            # Khushaba et al suggests using sym8
+            # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
+            # original paper suggests using as the order.
+            wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+            # for every order, compute the energy (sum of DWT) - total of the squared signal
+            features = np.hstack([np.log(np.sum(i**2, axis=2)+1e-10) for i in wavelets])
+            return features
 
 
     def getWVfeat(self, windows, WV_fs=1000):
