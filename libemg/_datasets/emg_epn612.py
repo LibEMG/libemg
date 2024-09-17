@@ -40,9 +40,11 @@ class EMGEPN612(Dataset):
         for i, e in enumerate(emg['training']):
             odh_tr.data.append(e)
             odh_tr.classes.append(np.ones((len(e), 1)) * labels['training'][i])
-            odh_tr.subjects.append(np.ones((len(e), 1)) * i//150)
+            odh_tr.subjects.append(np.ones((len(e), 1)) * i//300)
             odh_tr.reps.append(np.ones((len(e), 1)) * tr_reps[labels['training'][i]])
             tr_reps[labels['training'][i]] += 1
+            if i % 300 == 0:
+                tr_reps = [0,0,0,0,0,0]
         odh_te = OfflineDataHandler()
         odh_te.subjects = []
         odh_te.classes = []
@@ -54,7 +56,9 @@ class EMGEPN612(Dataset):
             odh_te.classes.append(np.ones((len(e), 1)) * labels['testing'][i])
             odh_te.subjects.append(np.ones((len(e), 1)) * (i//150 + 306))
             odh_te.reps.append(np.ones((len(e), 1)) * te_reps[labels['training'][i]])
-            tr_reps[labels['training'][i]] += 1
+            te_reps[labels['training'][i]] += 1
+            if i % 150 == 0:
+                te_reps = [0,0,0,0,0,0]
         odh_all = odh_tr + odh_te
         data = odh_all
         if split:

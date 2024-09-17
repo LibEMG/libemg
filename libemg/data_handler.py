@@ -483,7 +483,7 @@ class OfflineDataHandler(DataHandler):
             new_odh.data[i] = new_odh.data[i][:,channels]
         return new_odh
     
-    def isolate_data(self, key, values):
+    def isolate_data(self, key, values, fast=False):
         """Entry point for isolating a single key of data within the offline data handler. First, error checking is performed within this method, then
         if it passes, the isolate_data_helper is called to make a new OfflineDataHandler that contains only that data.
 
@@ -493,6 +493,8 @@ class OfflineDataHandler(DataHandler):
             The metadata key that will be used to filter (e.g., "subject", "rep", "class", "set", whatever you'd like).
         values: list
             A list of values that you want to isolate. (e.g. [0,1,2,3]). Indexing starts at 0.
+        fast: Boolean (default=False)
+            If true, it iterates over the median value for each EMG element. This should be used when parsing on things like reps, subjects, classes, etc.
             
         Returns
         ----------
@@ -501,47 +503,31 @@ class OfflineDataHandler(DataHandler):
         """
         assert key in self.extra_attributes
         assert type(values) == list 
-        return self._isolate_data_helper(key,values)
+        return self._isolate_data_helper(key,values,fast)
 
-    def _isolate_data_helper(self, key, values):
+    def _isolate_data_helper(self, key, values,fast):
         new_odh = OfflineDataHandler()
         setattr(new_odh, "extra_attributes", self.extra_attributes)
         key_attr = getattr(self, key)
-        
-        # if these end up being ndarrays, it means that the metadata was IN the csv file.
-        
-        if type(key_attr[0]) == np.ndarray:
-            # for every file (list element)
-            data = []
-            for f in range(len(key_attr)):
-                # get the keep_mask
-                keep_mask = list([i in values for i in key_attr[f]])
-                # append the valid data
-                if self.data[f][keep_mask,:].shape[0]> 0:
-                    data.append(self.data[f][keep_mask,:])
-            setattr(new_odh, "data", data)
-
-            for k in self.extra_attributes:
-                key_value = getattr(self, k)
-                if type(key_value[0]) == np.ndarray:
-                    # the other metadata that is in the csv file should be sliced the same way as the ndarray
-                    key = []
-                    for f in range(len(key_attr)):
-                        keep_mask = list([i in values for i in key_attr[f]])
-                        if key_value[f][keep_mask,:].shape[0]>0:
-                            key.append(key_value[f][keep_mask,:])
-                    setattr(new_odh, k, key)
-                    
+        for e in self.extra_attributes:
+            setattr(new_odh, e, [])
+                
+        for f in range(len(key_attr)):
+            if fast:
+                if key_attr[f][0][0] in values:
+                    keep_mask = [True] * len(key_attr[f])
                 else:
-                    assert False # we should never get here
-                    # # if the other metadata was not in the csv file (i.e. subject label in filename but classes in csv), then just keep it
-                    # setattr(new_odh, k, key_value)
-        else:
-            assert False # we should never get here
-            # keep_mask = list([i in values for i in key_attr])
-            # setattr(new_odh, "data", list(compress(self.data, keep_mask)))
-            # for k in self.extra_attributes:
-            #     setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
+                    keep_mask = [False] * len(key_attr[f])
+            else:
+                keep_mask = list([i in values for i in key_attr[f]])
+            
+            if self.data[f][keep_mask,:].shape[0]> 0:
+                new_odh.data.append(self.data[f][keep_mask,:])
+                for e in self.extra_attributes:
+                    updated_arr = getattr(new_odh, e)
+                    updated_arr.append(getattr(self, e)[f][keep_mask])
+                    setattr(new_odh, e, updated_arr)
+
         return new_odh
     
     def visualize():
