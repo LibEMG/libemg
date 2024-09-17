@@ -37,7 +37,7 @@ class CIIL_MinimalData(Dataset):
 
         data = odh
         if split:
-            data = {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1])}
+            data = {'All': odh, 'Train': odh.isolate_data("sets", [0], fast=True), 'Test': odh.isolate_data("sets", [1], fast=True)}
 
         return data
     

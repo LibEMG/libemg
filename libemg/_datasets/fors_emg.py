@@ -43,6 +43,6 @@ class FORSEMG(Dataset):
 
         data = odh
         if split:
-            data = {'All': odh, 'Train': odh.isolate_data('orientation', [0]), 'Test': odh.isolate_data('orientation', [1,2])}
+            data = {'All': odh, 'Train': odh.isolate_data('orientation', [0], fast=True), 'Test': odh.isolate_data('orientation', [1,2], fast=True)}
 
         return data

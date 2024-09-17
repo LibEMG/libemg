@@ -35,6 +35,6 @@ class OneSubjectMyoDataset(Dataset):
         odh.extra_attributes.append('subjects')
         data = odh
         if split:
-            data = {'All': odh, 'Train': odh.isolate_data("sets", [0,1,2,3,4]), 'Test': odh.isolate_data("sets", [5,6])}
+            data = {'All': odh, 'Train': odh.isolate_data("sets", [0,1,2,3,4], fast=True), 'Test': odh.isolate_data("sets", [5,6], fast=True)}
 
         return data

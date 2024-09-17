@@ -67,11 +67,11 @@ class MyoDisCo(Dataset):
 
 
         if self.cross_day:
-            odh_train = odh.isolate_data('sets', [0])
-            odh_test = odh.isolate_data('sets', [1])
+            odh_train = odh.isolate_data('sets', [0], fast=True)
+            odh_test = odh.isolate_data('sets', [1], fast=True)
         else:
-            odh_train = odh.isolate_data('sets', [1])
-            odh_test = odh.isolate_data('sets', [2])
+            odh_train = odh.isolate_data('sets', [1], fast=True)
+            odh_test = odh.isolate_data('sets', [2], fast=True)
 
         data = odh
         if split:

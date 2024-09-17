@@ -52,8 +52,8 @@ class GRABMyoCrossDay(GRABMyo):
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
 
         forearm_data = odh.isolate_channels(list(range(0,16)))
-        train_data = forearm_data.isolate_data('sessions', [0])
-        test_data = forearm_data.isolate_data('sessions', [1,2])
+        train_data = forearm_data.isolate_data('sessions', [0], fast=True)
+        test_data = forearm_data.isolate_data('sessions', [1,2], fast=True)
 
         data = forearm_data
         if split:
@@ -84,8 +84,8 @@ class GRABMyoBaseline(GRABMyo):
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
 
         forearm_data = odh.isolate_channels(list(range(0,16)))
-        train_data = forearm_data.isolate_data('reps', [0,1,2,3,4])
-        test_data = forearm_data.isolate_data('reps', [5,6])
+        train_data = forearm_data.isolate_data('reps', [0,1,2,3,4], fast=True)
+        test_data = forearm_data.isolate_data('reps', [5,6], fast=True)
 
         data = forearm_data
         if split:

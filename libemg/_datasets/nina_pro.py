@@ -149,6 +149,6 @@ class NinaproDB2(Ninapro):
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
         data = odh
         if split:
-            data = {'All': odh, 'Train': odh.isolate_data('reps', [0,1,2,3]), 'Test': odh.isolate_data('reps', [4,5])}
+            data = {'All': odh, 'Train': odh.isolate_data('reps', [0,1,2,3], fast=True), 'Test': odh.isolate_data('reps', [4,5], fast=True)}
 
         return data
