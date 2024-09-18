@@ -61,7 +61,6 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
     for d in included_datasets:
         print('Evaluating ' + d + ' dataset...')
         dataset = get_dataset_list()[d]()
-        dataset.get_info()
         data = dataset.prepare_data(split=True)
         
         train_data = data['Train']
@@ -83,13 +82,13 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
             train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
             test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
-            model = EMGClassifier(model)
+            clf = EMGClassifier(model)
             ds = {
                 'training_features': train_feats,
                 'training_labels': train_meta['classes']
             }
-            model.fit(ds)
+            clf.fit(ds)
         
-            preds, _ = model.run(test_feats)
+            preds, _ = clf.run(test_feats)
             om = OfflineMetrics()
             print(om.get_CA(test_meta['classes'], preds))    
