@@ -421,19 +421,15 @@ class OfflineDataHandler(DataHandler):
             'median': np.median,
             'last_sample': lambda x: x[-1]
         }
-
-        metadata_ = {}
+        window_data = []
+        metadata = {k: [] for k in self.extra_attributes}
         for i, file in enumerate(self.data):
             # emg data windowing
-            windows = get_windows(file,window_size,window_increment)
-            if "windows_" in locals():
-                windows_ = np.concatenate((windows_, windows))
-            else:
-                windows_ = windows
-            # metadata windowing
+            window_data.append(get_windows(file,window_size,window_increment))
+    
             for k in self.extra_attributes:
                 if type(getattr(self,k)[i]) != np.ndarray:
-                    file_metadata = np.ones((windows.shape[0])) * getattr(self, k)[i]
+                    file_metadata = np.ones((window_data[-1].shape[0])) * getattr(self, k)[i]
                 else:
                     if metadata_operations is not None:
                         if k in metadata_operations.keys():
@@ -450,13 +446,10 @@ class OfflineDataHandler(DataHandler):
                             file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                     else:
                         file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
-                if k not in metadata_.keys():
-                    metadata_[k] = file_metadata
-                else:
-                    metadata_[k] = np.concatenate((metadata_[k], file_metadata))
-
+                
+                metadata[k].append(file_metadata)
             
-        return windows_, metadata_
+        return np.vstack(window_data), {np.hstack(metadata[k]) for k in metadata.keys()}
 
     
     def isolate_channels(self, channels):
