@@ -12,7 +12,7 @@ class _3DCDataset(Dataset):
                         {0: "Neutral", 1: "Radial Deviation", 2: "Wrist Flexion", 3: "Ulnar Deviation", 4: "Wrist Extension", 5: "Supination", 6: "Pronation", 7: "Power Grip", 8: "Open Hand", 9: "Chuck Grip", 10: "Pinch Grip"}, 
                         '8 (4 Train, 4 Test)',
                         "The 3DC dataset including 11 classes.",
-                        "https://ieeexplore.ieee.org/document/8630679")
+                        "https://doi.org/10.3389/fbioe.2020.00158")
         self.url = "https://github.com/libemg/3DCDataset"
         self.dataset_folder = dataset_folder
 
