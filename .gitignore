@@ -54,3 +54,7 @@ MyoDisCo/*
 NinaProDB1/*
 *.zip
 libemg/_datasets/__pycache__/*
+CIILData/*
+EMGEPN612.pkl
+OneSubjectMyoDataset/
+_3DCDataset/

@@ -41,6 +41,6 @@ class _3DCDataset(Dataset):
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
         data = odh
         if split:
-            data = {'All': odh, 'Train': odh.isolate_data("sets", [0]), 'Test': odh.isolate_data("sets", [1])}
+            data = {'All': odh, 'Train': odh.isolate_data("sets", [0], fast=True), 'Test': odh.isolate_data("sets", [1], fast=True)}
 
         return data
