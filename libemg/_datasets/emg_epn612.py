@@ -77,14 +77,6 @@ class EMGEPN612(Dataset):
             if odh.classes[i_e][0][0] == 0: 
                 # It is no motion and we need to crop it (make datset even)
                 odh.data[i_e] = e[100:100+random.randint(min(lens), max(lens))]
-            else:
-                # Crop first and last 20% of each gesture 
-                start_idx = int(len(e) * 0.2)
-                end_idx = len(e) - int(len(e) * 0.2)
-                odh.data[i_e] = e[start_idx:end_idx]
-                odh.subjects[i_e] = odh.subjects[i_e][start_idx:end_idx]
-                odh.classes[i_e] = odh.classes[i_e][start_idx:end_idx]
-                odh.reps[i_e] = odh.reps[i_e][start_idx:end_idx]
         return odh 
 
         
