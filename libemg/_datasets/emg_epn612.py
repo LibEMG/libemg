@@ -77,6 +77,9 @@ class EMGEPN612(Dataset):
             if odh.classes[i_e][0][0] == 0: 
                 # It is no motion and we need to crop it (make datset even)
                 odh.data[i_e] = e[100:100+random.randint(min(lens), max(lens))]
+                odh.subjects[i_e] = odh.subjects[i_e][100:100+random.randint(min(lens), max(lens))]
+                odh.classes[i_e] = odh.classes[i_e][100:100+random.randint(min(lens), max(lens))]
+                odh.reps[i_e] = odh.reps[i_e][100:100+random.randint(min(lens), max(lens))]
         return odh 
 
         
