@@ -1,8 +1,7 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
-import os
 import pickle
-import json
+import random
 import numpy as np
 
 class EMGEPN612(Dataset):
@@ -20,6 +19,7 @@ class EMGEPN612(Dataset):
         self.dataset_name = dataset_file
 
     def prepare_data(self, split = False):
+        random.seed(1)
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_name)):
             print("Please download the pickled dataset from: https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBDXh4xNst3FAXV0lNoodrAA?e=t6HPaR") 
@@ -59,9 +59,32 @@ class EMGEPN612(Dataset):
             te_reps[labels['training'][i]] += 1
             if i % 150 == 0:
                 te_reps = [0,0,0,0,0,0]
-        odh_all = odh_tr + odh_te
+
+        odh_all = odh_tr + odh_te # Has no cropping 
+        odh_tr = self._update_odh(odh_tr)
+        odh_te = self._update_odh(odh_te)
+
         data = odh_all
         if split:
             data = {'All': odh_all, 'Train': odh_tr, 'Test': odh_te}
 
         return data
+    
+    def _update_odh(self, odh):
+        active = [c[0][0] != 0 for c in odh.classes]
+        lens = [len(e) for e in np.array(odh.data, dtype='object')[active]]
+        for i_e, e in enumerate(odh.data):
+            if odh.classes[i_e][0][0] == 0: 
+                # It is no motion and we need to crop it (make datset even)
+                odh.data[i_e] = e[100:100+random.randint(min(lens), max(lens))]
+            else:
+                # Crop first and last 20% of each gesture 
+                start_idx = int(len(e) * 0.2)
+                end_idx = len(e) - int(len(e) * 0.2)
+                odh.data[i_e] = e[start_idx:end_idx]
+                odh.subjects[i_e] = odh.subjects[i_e][start_idx:end_idx]
+                odh.classes[i_e] = odh.classes[i_e][start_idx:end_idx]
+                odh.reps[i_e] = odh.reps[i_e][start_idx:end_idx]
+        return odh 
+
+        
