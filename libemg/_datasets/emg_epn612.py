@@ -59,10 +59,10 @@ class EMGEPN612(Dataset):
             te_reps[labels['training'][i]] += 1
             if i % 150 == 0:
                 te_reps = [0,0,0,0,0,0]
-
-        odh_all = odh_tr + odh_te # Has no cropping 
+ 
         odh_tr = self._update_odh(odh_tr)
         odh_te = self._update_odh(odh_te)
+        odh_all = odh_tr + odh_te
 
         data = odh_all
         if split:
@@ -75,11 +75,12 @@ class EMGEPN612(Dataset):
         lens = [len(e) for e in np.array(odh.data, dtype='object')[active]]
         for i_e, e in enumerate(odh.data):
             if odh.classes[i_e][0][0] == 0: 
+                idx = random.randint(min(lens), max(lens))
                 # It is no motion and we need to crop it (make datset even)
-                odh.data[i_e] = e[100:100+random.randint(min(lens), max(lens))]
-                odh.subjects[i_e] = odh.subjects[i_e][100:100+random.randint(min(lens), max(lens))]
-                odh.classes[i_e] = odh.classes[i_e][100:100+random.randint(min(lens), max(lens))]
-                odh.reps[i_e] = odh.reps[i_e][100:100+random.randint(min(lens), max(lens))]
+                odh.data[i_e] = e[100:100+idx]
+                odh.subjects[i_e] = odh.subjects[i_e][100:100+idx]
+                odh.classes[i_e] = odh.classes[i_e][100:100+idx]
+                odh.reps[i_e] = odh.reps[i_e][100:100+idx]
         return odh 
 
         
