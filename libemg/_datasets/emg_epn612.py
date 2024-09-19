@@ -81,6 +81,14 @@ class EMGEPN612(Dataset):
                 odh.subjects[i_e] = odh.subjects[i_e][100:100+idx]
                 odh.classes[i_e] = odh.classes[i_e][100:100+idx]
                 odh.reps[i_e] = odh.reps[i_e][100:100+idx]
+            else:
+                # It is an active class and we are croppign it 
+                min_idx = int(len(e) * 0.2)
+                max_idx = len(e) - int(len(e) * 0.2)
+                odh.data[i_e] = e[min_idx:max_idx]
+                odh.subjects[i_e] = odh.subjects[i_e][min_idx:max_idx]
+                odh.classes[i_e] = odh.classes[i_e][min_idx:max_idx]
+                odh.reps[i_e] = odh.reps[i_e][min_idx:max_idx]
         return odh 
 
         
