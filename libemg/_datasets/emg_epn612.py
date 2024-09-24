@@ -72,6 +72,7 @@ class EMGEPN612(Dataset):
         return data
     
     def _update_odh(self, odh):
+        fe = FeatureExtractor()
         for i_e, e in enumerate(odh.data):
             if odh.classes[i_e][0][0] == 0: 
                 # It is no motion and we need to crop it (make datset even)
@@ -79,6 +80,18 @@ class EMGEPN612(Dataset):
                 odh.subjects[i_e] = odh.subjects[i_e][100:300]
                 odh.classes[i_e] = odh.classes[i_e][100:300]
                 odh.reps[i_e] = odh.reps[i_e][100:300]
+            else:
+                # It is an active class and we are croppign it
+                if len(e) > 100:
+                    windows = get_windows(e, 20, 5)
+                    feats = fe.extract_features(['MAV'], windows, array=True)
+                    mval = np.argmax(np.mean(feats, axis=1)) * 5
+                    max_idx = min([len(e), mval + 50])
+                    min_idx = max([0, mval - 50])
+                    odh.data[i_e] = e[min_idx:max_idx]
+                    odh.subjects[i_e] = odh.subjects[i_e][min_idx:max_idx]
+                    odh.classes[i_e] = odh.classes[i_e][min_idx:max_idx]
+                    odh.reps[i_e] = odh.reps[i_e][min_idx:max_idx]
         return odh 
 
         
