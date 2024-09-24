@@ -373,7 +373,7 @@ class SiFiBridgeStreamer(Process):
         print("LibEMG -> SiFiBridgeStreamer (device sleeped).")
         self.disconnect() # disconnect
         print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
-        self.proc.kill()
+        self.sb._bridge.kill()
         print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
         self.smm.cleanup()
         print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
