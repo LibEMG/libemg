@@ -230,7 +230,7 @@ class SiFiBridgeStreamer(Process):
             
     def connect(self):
         while not self.sb.connect(self.handle):
-                print("Could not connect. Retrying.")
+                print(f"Could not connect to {self.handle}. Retrying.")
                 
         self.connected = True
         print("Connected to Sifi device.")
@@ -259,12 +259,7 @@ class SiFiBridgeStreamer(Process):
         self.eda_handlers.append(closure)
 
     def process_packet(self,
-                       data: str):
-        packet = np.zeros((14,8))
-        if data == "" or data.startswith("sending cmd"):
-            return
-        data = json.loads(data)
-        
+                       data: dict):
         if "data" in list(data.keys()):
             if "emg0" in list(data["data"].keys()): # this is multi-channel (armband) emg
                 emg = np.stack((data["data"]["emg0"],
@@ -284,13 +279,13 @@ class SiFiBridgeStreamer(Process):
                 for h in self.emg_handlers:
                     h(emg)
             if "acc_x" in list(data["data"].keys()):
-                imu = np.stack((data["data"]["acc_x"],
-                                data["data"]["acc_y"],
-                                data["data"]["acc_z"],
-                                data["data"]["w"],
-                                data["data"]["x"],
-                                data["data"]["y"],
-                                data["data"]["z"]
+                imu = np.stack((data["data"]["ax"],
+                                data["data"]["ay"],
+                                data["data"]["az"],
+                                data["data"]["qw"],
+                                data["data"]["qx"],
+                                data["data"]["qy"],
+                                data["data"]["qz"]
                                 )).T
                 for h in self.imu_handlers:
                     h(imu)
@@ -363,8 +358,8 @@ class SiFiBridgeStreamer(Process):
         self.old_ppg_packet = None # required for now since ppg sends non-uniform packet length
         while True:
             try:
-                data_from_processess = self.proc.stdout.readline().decode()
-                self.process_packet(data_from_processess)
+                new_packet = self.sb.get_data()
+                self.process_packet(new_packet)
             except Exception as e:
                 print("Error Occurred: " + str(e))
                 continue
@@ -374,32 +369,21 @@ class SiFiBridgeStreamer(Process):
         print("LibEMG -> SiFiBridgeStreamer (process ended).")
 
     def stop_sampling(self):
-        self.proc.stdin.write(b'-cmd 1\n')
-        self.proc.stdin.flush()
+        self.sb.stop()
         return
 
     def turnoff(self):
-        self.proc.stdin.write(b'-cmd 13\n')
-        self.proc.stdin.flush()
+        self.sb.send_command(sbp.DeviceCommand.POWER_OFF)
         return
     
     def disconnect(self):
-        self.proc.stdin.write(b'-d\n')
-        self.proc.stdin.flush()
-        while self.connected:
-            ret = self.proc.stdout.readline().decode()
-            dat = json.loads(ret)
-            if 'connected' in dat.keys():
-                if dat["connected"] == 0:
-                    self.connected = False
+        self.connected = self.sb.disconnect()["connected"]
         return self.connected
 
     def deep_sleep(self):
-        self.proc.stdin.write(b'-cmd 14\n')
-        self.proc.stdin.flush()
+        self.sb.send_command(sbp.DeviceCommand.POWER_DEEP_SLEEP)
 
     def cleanup(self):
-        
         self.stop_sampling()  # stop sampling
         print("LibEMG -> SiFiBridgeStreamer (sampling stopped).")
         self.deep_sleep() # stops status packets
@@ -410,11 +394,3 @@ class SiFiBridgeStreamer(Process):
         print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
         self.smm.cleanup()
         print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
-
-    def __del__(self):
-        # self.proc.stdin.write(b"-d -q\n")
-        # print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
-        # print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
-        # self.smm.cleanup()
-        # print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
-        pass
