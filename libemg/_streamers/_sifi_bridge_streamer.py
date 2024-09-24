@@ -2,10 +2,8 @@ import os
 import requests
 from multiprocessing import Process, Event, Lock
 import subprocess
-import json
 import numpy as np
 import shutil
-import json
 from semantic_version import Version
 from collections.abc import Callable
 from platform import system
@@ -39,10 +37,10 @@ class SiFiBridgeStreamer(Process):
         Turn IMU modality on or off.
     ppg : bool
         Turn PPG modality on or off
-    notch_on : bool
-        Turn on-system EMG notch filtering on or off.
-    notch_freq : int
-        Specify the frequency of the on-system notch filter.
+    filtering, default = True
+        Enable on-device filtering, including bandpass filters and notch filters.
+    emg_notch_freq, default = 60
+        EMG notch filter frequency, useful for eliminating Mains power interference. Can be {None, 50, 60} Hz.
     emg_bandpass: tuple
         The (lower, higher) cutoff frequencies of the on-system EMG bandpass filter.
     eda_bandpass: tuple
@@ -51,9 +49,9 @@ class SiFiBridgeStreamer(Process):
         EDA/Bioimpedance injected signal frequency. 0 for DC.
     streaming : bool
         Reduce latency by joining packets of different modalities together.
-    bridge_version : str
-        Version of sifi bridge to use for PIPE.
-    mac : str
+    bridge_version : str | None
+        SiFi Bridge executable version to use (and fetch if not found).
+    mac : str | None
         MAC address of the device to be connected with.
     
     """
@@ -66,9 +64,8 @@ class SiFiBridgeStreamer(Process):
         eda:                  bool = False,
         imu:                  bool = False,
         ppg:                  bool = False,
-        notch_on:             bool = True,
-        notch_freq:           int  = 60,
-        emgfir_on:            bool = True,
+        filtering:            bool = True,
+        emg_notch_freq:       int  = 60,
         emg_bandpass:         tuple = (20, 450),
         eda_bandpass:         tuple = (0, 5),
         eda_freq:             int  = 250,
@@ -98,9 +95,8 @@ class SiFiBridgeStreamer(Process):
             eda, 
             imu, 
             ppg, 
-            notch_on, 
-            notch_freq, 
-            emgfir_on, 
+            filtering, 
+            emg_notch_freq,
             emg_bandpass,
             eda_bandpass, 
             eda_freq,
@@ -115,18 +111,17 @@ class SiFiBridgeStreamer(Process):
         eda:                  bool = False,
         imu:                  bool = False,
         ppg:                  bool = False,
-        notch_on:             bool = True,
+        filtering:            bool = True,
         notch_freq:           int  = 60,
-        emgfir_on:            bool = True,
         emg_bandpass:         tuple = (20, 450),
         eda_bandpass:         tuple = (0, 5),
         eda_freq:             int  = 250,
         streaming:            bool = False,
     ):
         self.sb.set_channels(ecg, emg, eda, imu, ppg)
-        self.sb.set_filters(notch_on or emgfir_on)
+        self.sb.set_filters(filtering)
         
-        self.sb.configure_emg(emg_bandpass, notch_freq if notch_on else None)
+        self.sb.configure_emg(emg_bandpass, notch_freq)
         self.sb.configure_eda(eda_bandpass, eda_freq)
         
         self.sb.set_low_latency_mode(streaming)
