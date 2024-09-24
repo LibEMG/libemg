@@ -43,18 +43,12 @@ class SiFiBridgeStreamer(Process):
         Turn on-system EMG notch filtering on or off.
     notch_freq : int
         Specify the frequency of the on-system notch filter.
-    emgfir_on : bool
-        Turn on-system EMG bandpass filter on or off.
-    emg_fir : list
-        The cutoff frequencies of the on-system bandpass filter.
-    eda_cfg : bool
-        Turn EDA into high sampling frequency mode (Bioimpedance at high frequency).
-    fc_lp : int
-        Bioimpedance bandpass low cutoff frequency.
-    fc_hp : int
-        Bioimpedance bandpass upper cutoff frequency.
-    freq : int
-        EDA/Bioimpedance sampling frequency.
+    emg_bandpass: tuple
+        The (lower, higher) cutoff frequencies of the on-system EMG bandpass filter.
+    eda_bandpass: tuple
+        The (lower, higher) cutoff frequencies of the on-system EDA/BIOZ bandpass filter.
+    eda_freq : int
+        EDA/Bioimpedance injected signal frequency. 0 for DC.
     streaming : bool
         Reduce latency by joining packets of different modalities together.
     bridge_version : str
@@ -63,26 +57,26 @@ class SiFiBridgeStreamer(Process):
         MAC address of the device to be connected with.
     
     """
-    def __init__(self, 
-                 device:               str  = 'BioArmband',
-                 shared_memory_items:  list = [],
-                 ecg:                  bool = False,
-                 emg:                  bool = True, 
-                 eda:                  bool = False,
-                 imu:                  bool = False,
-                 ppg:                  bool = False,
-                 notch_on:             bool = True,
-                 notch_freq:           int  = 60,
-                 emgfir_on:            bool = True,
-                 emg_fir:              list = [20, 450],
-                 eda_cfg:              bool = True,
-                 fc_lp:                int  = 0, # low pass eda
-                 fc_hp:                int  = 5, # high pass eda
-                 freq:                 int  = 250,# eda sampling frequency
-                 streaming:            bool = False,
-                 bridge_version:       str | None = None,
-                 mac:                  str | None = None):
-        
+    def __init__(
+        self, 
+        device:               str  = 'BioArmband',
+        shared_memory_items:  list = [],
+        ecg:                  bool = False,
+        emg:                  bool = True, 
+        eda:                  bool = False,
+        imu:                  bool = False,
+        ppg:                  bool = False,
+        notch_on:             bool = True,
+        notch_freq:           int  = 60,
+        emgfir_on:            bool = True,
+        emg_bandpass:         tuple = (20, 450),
+        eda_bandpass:         tuple = (0, 5),
+        eda_freq:             int  = 250,
+        streaming:            bool = False,
+        bridge_version:       str | None = None,
+        mac:                  str | None = None
+    ):
+
         Process.__init__(self, daemon=True)
 
         self.connected=False
@@ -95,59 +89,49 @@ class SiFiBridgeStreamer(Process):
         self.ecg_handlers = []
         self.ppg_handlers = []
         
-        self.prepare_config_message(ecg, emg, eda, imu, ppg, 
-                                    notch_on, notch_freq, emgfir_on, emg_fir,
-                                    eda_cfg, fc_lp, fc_hp, freq, streaming)
-        self.prepare_connect_message(device, mac)
         self.prepare_executable(bridge_version)
+        self.sb = sbp.SifiBridge(self.executable)
         
+        self.configure(
+            ecg, 
+            emg, 
+            eda, 
+            imu, 
+            ppg, 
+            notch_on, 
+            notch_freq, 
+            emgfir_on, 
+            emg_bandpass,
+            eda_bandpass, 
+            eda_freq,
+            streaming
+        )
+        self.handle = mac if mac is not None else device
 
-
-    def prepare_config_message(self, 
-                               ecg:                  bool = False,
-                               emg:                  bool = True, 
-                               eda:                  bool = False,
-                               imu:                  bool = False,
-                               ppg:                  bool = False,
-                               notch_on:             bool = True,
-                               notch_freq:           int  = 60,
-                               emgfir_on:            bool = True,
-                               emg_fir:              list = [20, 450],
-                               eda_cfg:              bool = True,
-                               fc_lp:                int  = 0, # low pass eda
-                               fc_hp:                int  = 5, # high pass eda
-                               freq:                 int  = 250,# eda sampling frequency
-                               streaming:            bool = False,):
-        self.config_message = "-s ch " +  str(int(ecg)) +","+str(int(emg))+","+str(int(eda))+","+str(int(imu))+","+str(int(ppg))
-        if notch_on or emgfir_on:
-            self.config_message += " enable_filters 1 "
-            if notch_on:
-                self.config_message += " emg_notch " + str(notch_freq)
-            else:
-                self.config_message += " emg_notch 0"
-            if emgfir_on:
-                self.config_message += " emg_fir " + str(emg_fir[0]) + "," + str(emg_fir[1]) + ""
-        else:
-            self.config_message += " enable_filters 0"
-
-        if eda_cfg:
-            self.config_message += " eda_cfg " + str(int(fc_lp)) + "," + str(int(fc_hp)) + "," + str(int(freq))
-
-        if streaming:
-            self.config_message += " data_mode 1"
+    def configure(
+        self, 
+        ecg:                  bool = False,
+        emg:                  bool = True, 
+        eda:                  bool = False,
+        imu:                  bool = False,
+        ppg:                  bool = False,
+        notch_on:             bool = True,
+        notch_freq:           int  = 60,
+        emgfir_on:            bool = True,
+        emg_bandpass:         tuple = (20, 450),
+        eda_bandpass:         tuple = (0, 5),
+        eda_freq:             int  = 250,
+        streaming:            bool = False,
+    ):
+        self.sb.set_channels(ecg, emg, eda, imu, ppg)
+        self.sb.set_filters(notch_on or emgfir_on)
         
-        self.config_message += "  tx_power 2"
-        self.config_message += "\n"
-        self.config_message = bytes(self.config_message,"UTF-8")
-
-    def prepare_connect_message(self, 
-                                version: str,
-                                mac : str):
-        if mac is not None:
-            self.connect_message = '-c ' + str(mac) + '\n'
-        else:
-            self.connect_message = '-c BioPoint_v' + str(version) + '\n'
-        self.connect_message = bytes(self.connect_message,"UTF-8")
+        self.sb.configure_emg(emg_bandpass, notch_freq if notch_on else None)
+        self.sb.configure_eda(eda_bandpass, eda_freq)
+        
+        self.sb.set_low_latency_mode(streaming)
+        self.sb.set_ble_power(sbp.BleTxPower.HIGH)
+        self.sb.set_memory_mode(sbp.MemoryMode.BOTH)
     
     def prepare_executable(self,
                            bridge_version: str):
@@ -245,27 +229,14 @@ class SiFiBridgeStreamer(Process):
 
             
     def connect(self):
-        while not self.connected:
-            self.proc.stdin.write(self.connect_message)
-            self.proc.stdin.flush()
-
-            ret = self.proc.stdout.readline().decode()
-
-            dat = json.loads(ret)
-
-            if dat["connected"] == 1:
-                self.connected = True
-                print("Connected to Sifi device.")
-            else:
+        while not self.sb.connect(self.handle):
                 print("Could not connect. Retrying.")
-        # Setup channels
-        self.proc.stdin.write(self.config_message)
-        self.proc.stdin.flush()
+                
+        self.connected = True
+        print("Connected to Sifi device.")
 
-        self.proc.stdin.write(b'-cmd 1\n')
-        self.proc.stdin.flush()
-        self.proc.stdin.write(b'-cmd 0\n')
-        self.proc.stdin.flush()
+        self.sb.stop()
+        self.sb.start()
 
     def add_emg_handler(self, 
                         closure: Callable):
