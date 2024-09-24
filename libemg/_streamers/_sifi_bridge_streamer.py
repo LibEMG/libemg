@@ -87,7 +87,7 @@ class SiFiBridgeStreamer(Process):
         self.ppg_handlers = []
         
         self.prepare_executable(bridge_version)
-        self.sb = sbp.SifiBridge(self.executable)
+        self.sb = sbp.SifiBridge("./" + self.executable)
         
         self.configure(
             ecg, 
@@ -210,18 +210,6 @@ class SiFiBridgeStreamer(Process):
                 shutil.move(extracted_path + file, f"./{self.executable}")
             shutil.rmtree(extracted_path)
 
-        
-
-    def start_pipe(self):
-        # note, for linux you may need to use sudo chmod +x sifi_bridge_linux
-        self.proc = subprocess.Popen(
-            ["./" + self.executable],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-        )
-
-        assert self.proc is not None
-
             
     def connect(self):
         while not self.sb.connect(self.handle):
@@ -311,7 +299,7 @@ class SiFiBridgeStreamer(Process):
         self.smm = SharedMemoryManager()
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
-        self.start_pipe()
+            
         def write_emg(emg):
             # update the samples in "emg"
             self.smm.modify_variable("emg", lambda x: np.vstack((np.flip(emg,0), x))[:x.shape[0],:])

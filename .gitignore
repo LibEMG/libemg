@@ -46,3 +46,4 @@ test_*.py
 .vscode/*
 test_delsys_api.py
 resources/
+./sifibridge-*
