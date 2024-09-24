@@ -1,6 +1,5 @@
 import os
 import requests
-from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process, Event, Lock
 import subprocess
 import json
@@ -11,6 +10,9 @@ from semantic_version import Version
 from collections.abc import Callable
 from platform import system
 
+import sifi_bridge_py as sbp
+
+from libemg.shared_memory_manager import SharedMemoryManager
 
 class SiFiBridgeStreamer(Process):
     """
@@ -22,8 +24,8 @@ class SiFiBridgeStreamer(Process):
     Parameters
     ----------
     
-    version : str
-        The version of the devie ('1_1 for bioarmband, 1_2 or 1_3 for biopoint).
+    device : str
+        The name of the devie (eg BioArmband, BioPoint_v1_2, BioPoint_v1_3, etc.).
     shared_memory_items : list
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype, Lock()].
@@ -62,7 +64,7 @@ class SiFiBridgeStreamer(Process):
     
     """
     def __init__(self, 
-                 version:              str  = '1_2',
+                 device:               str  = 'BioArmband',
                  shared_memory_items:  list = [],
                  ecg:                  bool = False,
                  emg:                  bool = True, 
@@ -96,7 +98,7 @@ class SiFiBridgeStreamer(Process):
         self.prepare_config_message(ecg, emg, eda, imu, ppg, 
                                     notch_on, notch_freq, emgfir_on, emg_fir,
                                     eda_cfg, fc_lp, fc_hp, freq, streaming)
-        self.prepare_connect_message(version, mac)
+        self.prepare_connect_message(device, mac)
         self.prepare_executable(bridge_version)
         
 
@@ -150,7 +152,7 @@ class SiFiBridgeStreamer(Process):
     def prepare_executable(self,
                            bridge_version: str):
         pltfm = system()
-        self.executable = f"sifi_bridge%s-{pltfm.lower()}" + (
+        self.executable = f"sifibridge%s-{pltfm.lower()}" + (
             ".exe" if pltfm == "Windows" else ""
         )
         if bridge_version is None:
@@ -165,9 +167,9 @@ class SiFiBridgeStreamer(Process):
                 )
             except Exception:
                 # Probably some network error, so try to find an existing version
-                # Expected to find sifi_bridge-V.V.V-platform in the current directory
+                # Expected to find sifibridge-V.V.V-platform in the current directory
                 for file in os.listdir():
-                    if not file.startswith("sifi_bridge"):
+                    if not file.startswith("sifibridge"):
                         continue
                     bridge_version = file.split("-")[1].replace(".exe", "")
                 if bridge_version is None:
@@ -211,20 +213,20 @@ class SiFiBridgeStreamer(Process):
                 archive_url = asset["browser_download_url"]
             if not archive_url:
                 ValueError(f"No upstream version found for {self.executable}")
-            print(f"Fetching sifi_bridge from {archive_url}")
+            print(f"Fetching sifibridge from {archive_url}")
 
             # Fetch and write to disk as a zip file
             r = requests.get(archive_url)
-            zip_path = "sifi_bridge" + ext
+            zip_path = "sifibridge" + ext
             with open(zip_path, "wb") as file:
                 file.write(r.content)
 
             # Unpack & delete the archive
             shutil.unpack_archive(zip_path, "./")
             os.remove(zip_path)
-            extracted_path = f"sifi_bridge-{bridge_version}-{arch}/"
+            extracted_path = f"sifibridge-{bridge_version}-{arch}/"
             for file in os.listdir(extracted_path):
-                if not file.startswith("sifi_bridge"):
+                if not file.startswith("sifibridge"):
                     continue
                 shutil.move(extracted_path + file, f"./{self.executable}")
             shutil.rmtree(extracted_path)

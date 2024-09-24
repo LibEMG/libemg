@@ -28,3 +28,4 @@ dearpygui
 opencv-python
 datetime
 websockets==8.1
+sifi-bridge-py==1.1.3

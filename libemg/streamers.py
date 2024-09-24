@@ -3,6 +3,7 @@ import socket
 import pickle
 import platform
 import numpy as np
+
 from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
@@ -15,14 +16,15 @@ from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 
-def sifibridge_streamer(version="1_1",
+def sifibridge_streamer(device="BioArmband",
                  shared_memory_items = None,
                  ecg=False,
                  emg=True, 
                  eda=False,
                  imu=False,
                  ppg=False,
-                 notch_on=True, notch_freq=60,
+                 notch_on=True, 
+                 notch_freq=60,
                  emg_fir_on = True,
                  emg_fir=[20,450],
                  eda_cfg = True,
@@ -103,7 +105,7 @@ def sifibridge_streamer(version="1_1",
 
     for item in shared_memory_items:
         item.append(Lock())
-    sb = SiFiBridgeStreamer(version=version,
+    sb = SiFiBridgeStreamer(device=device,
                             shared_memory_items=shared_memory_items,
                             notch_on=notch_on,
                             ecg=ecg,
