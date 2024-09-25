@@ -117,31 +117,50 @@ class MetadataFetcher(ABC):
 
 
 class FilePackager(MetadataFetcher):
-    def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool], align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load = None, column_mask = None):
+    def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool] | Sequence[RegexFilter], 
+                 align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load: Callable[[str], npt.NDArray] | str | None = None, column_mask: Sequence[int] | None = None):
         """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
         that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
 
         Parameters
         ----------
         regex_filter: RegexFilter
-            Used to find the type of metadata files.
-        package_function: callable
+            Used to find the type of metadata files. The description of this RegexFilter is used to assign the name of the field for this metadata in the OfflineDataHandler.
+        package_function: callable or Sequence[RegexFilter]
             Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
             Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
+            Alternatively, a list of RegexFilters can be passed in and a function will be created that packages files only if the regex metadata of the data filename
+            and metadata filename match.
         align_method: str or callable, default='zoom'
             Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
             pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
-        load: callable or None, default=None
-            Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
+        load: callable, str, or None, default=None
+            Determines how metadata file is loaded. If a custom loading function, should take in the filename and return an array. If a string, 
+            it is assumed to be the MRDF key of a .hea file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
         column_mask: list or None, default=None
             List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
         """
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
+        self.package_filters = None
+
+        if isinstance(package_function, Sequence):
+            # Create function to ensure metadata matches
+            self.package_filters = copy.deepcopy(package_function)
+            package_function = self._match_regex_patterns
         self.package_function = package_function
         self.align_method = align_method
         self.load = load
         self.column_mask = column_mask
+
+    def _match_regex_patterns(self, metadata_file: str, data_file: str):
+        assert self.package_filters is not None, 'Attempting to match package filters, but None found.'
+        for filter in self.package_filters:
+            matching_metadata = filter.get_metadata(metadata_file) == filter.get_metadata(data_file)
+            if not matching_metadata:
+                return False
+        return True
+        
 
     def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
         potential_files = self.regex_filter.get_matching_files(all_files)
@@ -150,13 +169,19 @@ class FilePackager(MetadataFetcher):
             # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
             raise ValueError(f"Found {len(packaged_files)} files to be packaged with {filename} when trying to package {self.regex_filter.description} file (1 file should be found). Please check filter and package functions.")
         packaged_file = packaged_files[0]
+        suffix = packaged_file.suffix
+        packaged_file = packaged_file.as_posix()
 
         if callable(self.load):
             # Passed in a custom loading function
             packaged_file_data = self.load(packaged_file)
-        elif packaged_file.suffix == '.txt':
+        elif isinstance(self.load, str):
+            # Passed in a MRDF key
+            assert suffix == '.hea', f"Provided string for load parameter, but packaged file doesn't have extension .hea. Please pass in a custom load function and/or ensure the correct file is packaged."
+            packaged_file_data = (wfdb.rdrecord(packaged_file.replace('.hea', ''))).__getattribute__(self.load)
+        elif suffix == '.txt':
             packaged_file_data = np.loadtxt(packaged_file, delimiter=',')
-        elif packaged_file.suffix == '.csv':
+        elif suffix == '.csv':
             packaged_file_data = pd.read_csv(packaged_file)
             packaged_file_data = packaged_file_data.to_numpy()
         else:
