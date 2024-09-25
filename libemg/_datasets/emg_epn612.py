@@ -76,10 +76,10 @@ class EMGEPN612(Dataset):
         for i_e, e in enumerate(odh.data):
             if odh.classes[i_e][0][0] == 0: 
                 # It is no motion and we need to crop it (make datset even)
-                odh.data[i_e] = e[100:300]
-                odh.subjects[i_e] = odh.subjects[i_e][100:300]
-                odh.classes[i_e] = odh.classes[i_e][100:300]
-                odh.reps[i_e] = odh.reps[i_e][100:300]
+                odh.data[i_e] = e[100:200]
+                odh.subjects[i_e] = odh.subjects[i_e][100:200]
+                odh.classes[i_e] = odh.classes[i_e][100:200]
+                odh.reps[i_e] = odh.reps[i_e][100:200]
             else:
                 # It is an active class and we are croppign it
                 if len(e) > 100:
