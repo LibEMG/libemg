@@ -156,6 +156,9 @@ class FilePackager(MetadataFetcher):
     def _match_regex_patterns(self, metadata_file: str, data_file: str):
         assert self.package_filters is not None, 'Attempting to match package filters, but None found.'
         for filter in self.package_filters:
+            if len(filter.get_matching_files([metadata_file])) == 0:
+                # Doesn't match filters
+                return False
             matching_metadata = filter.get_metadata(metadata_file) == filter.get_metadata(data_file)
             if not matching_metadata:
                 return False
