@@ -165,7 +165,7 @@ class FilePackager(MetadataFetcher):
         # Align with EMG data
         if self.align_method == 'zoom':
             zoom_rate = file_data.shape[0] / packaged_file_data.shape[0]
-            zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(packaged_file_data.shape[1])]  # only align the 0th axis (samples)
+            zoom_factor = (zoom_rate, 1)    # only align the 0th axis (samples)
             packaged_file_data = zoom(packaged_file_data, zoom=zoom_factor)
         elif callable(self.align_method):
             packaged_file_data = self.align_method(packaged_file_data, file_data)
