@@ -7,10 +7,12 @@ from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2
 from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.fors_emg import FORSEMG
+from libemg._datasets.intensity import ContractionIntensity
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
+import numpy as np
 
 def get_dataset_list():
     """Gets a list of all available datasets.
@@ -32,6 +34,7 @@ def get_dataset_list():
         'MyoDisCo': MyoDisCo,
         'FORS-EMG': FORSEMG,
         'EMGEPN612': EMGEPN612,
+        'ContractionIntensity': ContractionIntensity,
     }
     
 def get_dataset_info(dataset):
@@ -77,6 +80,12 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
             s_test_dh = test_data.isolate_data('subjects', [s])
             train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
             test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+            
+            # This means that we need to relabel the dataset labels to start at 0 instead of 1 
+            if 0 not in train_meta['classes']:
+                train_meta['classes'] = np.array([c-min(train_meta['classes']) for c in train_meta['classes']])
+                test_meta['classes'] = np.array([c-min(test_meta['classes']) for c in test_meta['classes']])
+
 
             fe = FeatureExtractor()
             train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
