@@ -80,12 +80,6 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
             s_test_dh = test_data.isolate_data('subjects', [s])
             train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
             test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
-            
-            # This means that we need to relabel the dataset labels to start at 0 instead of 1 
-            if 0 not in train_meta['classes']:
-                train_meta['classes'] = np.array([c-min(train_meta['classes']) for c in train_meta['classes']])
-                test_meta['classes'] = np.array([c-min(test_meta['classes']) for c in test_meta['classes']])
-
 
             fe = FeatureExtractor()
             train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)

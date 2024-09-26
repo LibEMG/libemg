@@ -19,8 +19,8 @@ class ContractionIntensity(Dataset):
     def prepare_data(self, split = False):
         subjects_values = [str(i) for i in range(1,11)]
         intensity_values = ["Ramp", "20P", "30P", "40P", "50P", "60P", "70P", "80P", "MVC"]
-        classes_values = [str(i) for i in range(7)]
-        reps_values = ["0","1","2","3"]
+        classes_values = [str(i) for i in range(1,8)]
+        reps_values = ["1","2","3","4"]
 
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
