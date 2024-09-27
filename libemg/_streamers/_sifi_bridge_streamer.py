@@ -22,8 +22,8 @@ class SiFiBridgeStreamer(Process):
     Parameters
     ----------
     
-    device : str
-        The name of the devie (eg BioArmband, BioPoint_v1_2, BioPoint_v1_3, etc.).
+    name : str
+        The name of the devie (eg BioArmband, BioPoint_v1_2, BioPoint_v1_3, etc.). None to auto-connect to any device.
     shared_memory_items : list
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype, Lock()].
@@ -57,7 +57,7 @@ class SiFiBridgeStreamer(Process):
     """
     def __init__(
         self, 
-        device:               str  = 'BioArmband',
+        name:                 str | None  = None,
         shared_memory_items:  list = [],
         ecg:                  bool = False,
         emg:                  bool = True, 
@@ -102,7 +102,7 @@ class SiFiBridgeStreamer(Process):
             eda_freq,
             streaming
         )
-        self.handle = mac if mac is not None else device
+        self.handle = mac if mac is not None else name
 
     def configure(
         self, 
