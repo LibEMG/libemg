@@ -70,8 +70,8 @@ class SiFiBridgeStreamer(Process):
         eda_bandpass:         tuple = (0, 5),
         eda_freq:             int  = 250,
         streaming:            bool = False,
-        bridge_version:       str | None = None,
-        mac:                  str | None = None
+        mac:                  str | None = None,
+        bridge_version:       str | None = None
     ):
 
         Process.__init__(self, daemon=True)
