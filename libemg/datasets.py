@@ -7,9 +7,10 @@ from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2
 from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.fors_emg import FORSEMG
-from libemg._datasets.radman_lp import RadmanLP
+from libemg._datasets.radmand_lp import RadmandLP
 from libemg._datasets.fougner_lp import FougnerLP
 from libemg._datasets.intensity import ContractionIntensity
+from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier
 from libemg.offline_metrics import OfflineMetrics
@@ -37,8 +38,9 @@ def get_dataset_list():
         'FORS-EMG': FORSEMG,
         'EMGEPN612': EMGEPN612,
         'ContractionIntensity': ContractionIntensity,
-        'RadmandLP': RadmanLP,
+        'RadmandLP': RadmandLP,
         'FougnerLP': FougnerLP,
+        "KaufmannMD": KaufmannMD
     }
     
 def get_dataset_info(dataset):
