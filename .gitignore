@@ -60,3 +60,5 @@ OneSubjectMyoDataset/
 _3DCDataset/
 ContractionIntensity/
 CIILData/
+*.pkl
+LimbPosition/

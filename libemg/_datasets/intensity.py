@@ -8,7 +8,7 @@ class ContractionIntensity(Dataset):
                         8, 
                         'BE328 by Liberating Technologies, Inc', 
                         10, 
-                        {0: "No Motion", 1: "Wrist Flexion", 2: "Wrist Flexion", 3: "Wrist Pronation", 4: "Wrist Supination", 5: "Chuck Grip", 6: "Hand Open"}, 
+                        {0: "No Motion", 1: "Wrist Flexion", 2: "Wrist Extension", 3: "Wrist Pronation", 4: "Wrist Supination", 5: "Chuck Grip", 6: "Hand Open"}, 
                         '4 Ramp Reps (Train), 4 Reps x 20%, 30%, 40%, 50%, 60%, 70%, 80%, MVC (Test)',
                         "A contraction intensity dataset.",
                         "https://pubmed.ncbi.nlm.nih.gov/23894224/")

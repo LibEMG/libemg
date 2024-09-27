@@ -7,12 +7,14 @@ from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2
 from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.fors_emg import FORSEMG
+from libemg._datasets.radman_lp import RadmanLP
+from libemg._datasets.fougner_lp import FougnerLP
 from libemg._datasets.intensity import ContractionIntensity
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier
 from libemg.offline_metrics import OfflineMetrics
-from libemg.filtering import Filter
-import numpy as np
+import pickle
+import time
 
 def get_dataset_list():
     """Gets a list of all available datasets.
@@ -35,6 +37,8 @@ def get_dataset_list():
         'FORS-EMG': FORSEMG,
         'EMGEPN612': EMGEPN612,
         'ContractionIntensity': ContractionIntensity,
+        'RadmandLP': RadmanLP,
+        'FougnerLP': FougnerLP,
     }
     
 def get_dataset_info(dataset):
@@ -50,7 +54,7 @@ def get_dataset_info(dataset):
     else:
         print("ERROR: Invalid dataset name")
 
-def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC']):
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], save_dir=None):
     """Evaluates an algorithm against all included datasets.
     
     Parameters
@@ -65,7 +69,8 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         A dictionary of parameters for the passed in features.
     included_dataasets: list
         The name of the datasets you want to evaluate your model on. 
-
+    save_dir: string (default=None)
+        The name of the directory you want to incrementally save the results to (it will be a pickle file).
     Returns
     ----------
     dictionary
@@ -79,11 +84,6 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         
         train_data = data['Train']
         test_data = data['Test']
-
-        filter = Filter(dataset.sampling)
-        filter.install_common_filters()
-        filter.filter(train_data)
-        filter.filter(test_data)
         
         accs = []
         for s in range(0, dataset.num_subjects):
@@ -110,4 +110,10 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             accs.append(ca)
             print(ca)    
         accuracies[d] = accs
+
+        # Save to pickle file 
+        if save_dir is not None:
+            with open(save_dir + str(time.time()) + '.pkl', 'wb') as handle:
+                pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
+
     return accuracies
