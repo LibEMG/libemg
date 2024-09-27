@@ -1,6 +1,5 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
-import os
 
 class _3DCDataset(Dataset):
     def __init__(self, dataset_folder="_3DCDataset/"):

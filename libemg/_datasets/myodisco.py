@@ -2,7 +2,6 @@ from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
 from libemg.utils import *
 from libemg.feature_extractor import FeatureExtractor
-import os
 
 class MyoDisCo(Dataset):
     def __init__(self, dataset_folder="MyoDisCo/", cross_day=False):

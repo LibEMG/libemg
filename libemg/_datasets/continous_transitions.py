@@ -1,7 +1,5 @@
 from libemg._datasets.dataset import Dataset
-from libemg.data_handler import OfflineDataHandler, RegexFilter
-import os
-import pandas as pd
+from libemg.data_handler import OfflineDataHandler
 import h5py
 import numpy as np
 

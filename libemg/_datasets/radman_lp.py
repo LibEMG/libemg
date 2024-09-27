@@ -1,6 +1,7 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
 
+# TODO: Update
 class ContractionIntensity(Dataset):
     def __init__(self, dataset_folder="ContractionIntensity/"):
         Dataset.__init__(self, 
@@ -12,7 +13,7 @@ class ContractionIntensity(Dataset):
                         '4 Ramp Reps (Train), 4 Reps x 20%, 30%, 40%, 50%, 60%, 70%, 80%, MVC (Test)',
                         "A contraction intensity dataset.",
                         "https://pubmed.ncbi.nlm.nih.gov/23894224/")
-        self.url = "https://github.com/libemg/ContractionIntensity"
+        self.url = "https://github.com/libemg/LimbPosition"
         self.dataset_folder = dataset_folder
 
     def prepare_data(self, split = False):
