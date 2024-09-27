@@ -1,7 +1,7 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
 
-class RadmanLP(Dataset):
+class RadmandLP(Dataset):
     def __init__(self, dataset_folder="LimbPosition/"):
         Dataset.__init__(self, 
                         1000, 
