@@ -12,6 +12,7 @@ wfdb
 bleak
 semantic-version
 requests
+h5py
 # For Docs
 sphinx==5.0.0
 sphinx_rtd_theme==1.0.0

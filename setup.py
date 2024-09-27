@@ -40,7 +40,8 @@ setup(
         "opencv-python",
         "pythonnet",
         "bleak",
-        "dearpygui"
+        "dearpygui",
+        "h5py"
     ],
     keywords=[
         "emg",
