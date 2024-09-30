@@ -43,9 +43,9 @@ class MyoDisCo(Dataset):
         fe = FeatureExtractor()
         # We need to parse each item to remove no motion 
         for i, d in enumerate(odh.data):
-            w = get_windows(d, 20, 10)
+            w = get_windows(d, 20, 5)
             mav = fe.extract_features(['MAV'], w, array=True)
-            max_idx = np.argmax(np.mean(mav, axis=1)) * 10 + 20
+            max_idx = np.argmax(np.mean(mav, axis=1)) * 5
             if odh.classes[i][0][0] == 6:
                 odh.data[i] = d[100:200]
             else:
