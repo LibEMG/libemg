@@ -1,7 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler
 import pickle
-import random
 import numpy as np
 from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import *

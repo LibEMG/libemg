@@ -7,10 +7,12 @@ from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2
 from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.fors_emg import FORSEMG
+from libemg._datasets.intensity import ContractionIntensity
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
+import numpy as np
 
 def get_dataset_list():
     """Gets a list of all available datasets.
@@ -32,6 +34,7 @@ def get_dataset_list():
         'MyoDisCo': MyoDisCo,
         'FORS-EMG': FORSEMG,
         'EMGEPN612': EMGEPN612,
+        'ContractionIntensity': ContractionIntensity,
     }
     
 def get_dataset_info(dataset):
@@ -47,8 +50,7 @@ def get_dataset_info(dataset):
     else:
         print("ERROR: Invalid dataset name")
 
-#TODO: Update docs
-def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_datasets=['OneSubjectMyo', '3DC', 'CIIL_ElectrodeShift', 'GRABMyoCrossDay'], feature_dic={}):
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC']):
     """Evaluates an algorithm against all included datasets.
     
     Parameters
@@ -57,7 +59,19 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
         The window size (**in ms**). 
     window_inc: int
         The window increment (**in ms**). 
+    feature_list: list (default=['MAV'])
+        A list of features.
+    feature_dic: dic (default={})
+        A dictionary of parameters for the passed in features.
+    included_dataasets: list
+        The name of the datasets you want to evaluate your model on. 
+
+    Returns
+    ----------
+    dictionary
+        A dictionary with a set of accuracies for different datasets
     """
+    accuracies = {}
     for d in included_datasets:
         print('Evaluating ' + d + ' dataset...')
         dataset = get_dataset_list()[d]()
@@ -71,6 +85,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
         filter.filter(train_data)
         filter.filter(test_data)
         
+        accs = []
         for s in range(0, dataset.num_subjects):
             print(str(s) + '/' + str(dataset.num_subjects) + ' completed.')
             s_train_dh = train_data.isolate_data('subjects', [s])
@@ -91,4 +106,8 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], included_data
         
             preds, _ = clf.run(test_feats)
             om = OfflineMetrics()
-            print(om.get_CA(test_meta['classes'], preds))    
+            ca = om.get_CA(test_meta['classes'], preds)
+            accs.append(ca)
+            print(ca)    
+        accuracies[d] = accs
+    return accuracies
