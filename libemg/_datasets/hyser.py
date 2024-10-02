@@ -7,8 +7,9 @@ import numpy as np
 from libemg.data_handler import RegexFilter, FilePackager, OfflineDataHandler, MetadataFetcher
 from libemg._datasets.dataset import Dataset
 
+
 class Hyser(Dataset, ABC):
-    def __init__(self, gestures, num_reps, description, dataset_folder, analysis = 'baseline'):
+    def __init__(self, gestures, num_reps, description, dataset_folder, analysis = 'baseline', subjects = None):
         super().__init__(
             sampling=2048,
             num_channels=256,
@@ -20,13 +21,16 @@ class Hyser(Dataset, ABC):
             citation='https://doi.org/10.13026/ym7v-bh53'
         )
 
+        if subjects is None:
+            subjects = [str(idx + 1).zfill(2) for idx in range(self.num_subjects)]
+
         self.url = 'https://www.physionet.org/content/hd-semg/1.0.0/'
         self.dataset_folder = dataset_folder
         self.analysis = analysis
         
         sessions_values = ['1', '2'] if self.analysis == 'sessions' else ['1']   # only grab first session unless both are desired
         self.common_regex_filters = [
-            RegexFilter(left_bound='subject', right_bound='_session', values=[str(idx + 1).zfill(2) for idx in range(self.num_subjects)], description='subjects'),   # +1 due to Python indexing
+            RegexFilter(left_bound='subject', right_bound='_session', values=subjects, description='subjects'),   # +1 due to Python indexing
             RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions')
         ]
 
@@ -126,7 +130,8 @@ class HyserRandom(Hyser):
     def __init__(self, dataset_folder = 'HyserRandom', analysis = 'baseline'):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis) 
+        subjects = [str(idx + 1).zfill(2) for idx in range(20) if idx != 9] # subject 10 is missing the labels file for sample1
+        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
