@@ -96,8 +96,9 @@ class MetadataFetcher(ABC):
         self.description = description
 
     @abstractmethod
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]) -> npt.NDArray:
         """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
+        If a single value array is returned (0D or 1D), it will be cast to a N x 1 array where all values are the original value.
 
         Parameters
         ----------
@@ -375,6 +376,9 @@ class OfflineDataHandler(DataHandler):
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
                 metadata = metadata_fetcher(file, file_data, all_files)
+                if metadata.ndim == 0 or metadata.shape[0] == 1:
+                    # Cast to array with the same # of samples as EMG data
+                    metadata = np.full((file_data.shape[0], 1), fill_value=metadata)
                 if metadata.ndim == 1:
                     # Ensure that output is always 2D array
                     metadata = np.expand_dims(metadata, axis=1)
