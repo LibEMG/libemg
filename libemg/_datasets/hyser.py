@@ -8,7 +8,7 @@ from libemg.data_handler import RegexFilter, FilePackager, OfflineDataHandler, M
 from libemg._datasets.dataset import Dataset
 
 
-class Hyser(Dataset, ABC):
+class _Hyser(Dataset, ABC):
     def __init__(self, gestures, num_reps, description, dataset_folder, analysis = 'baseline', subjects = None):
         super().__init__(
             sampling=2048,
@@ -45,7 +45,7 @@ class Hyser(Dataset, ABC):
         ...
 
 
-class Hyser1DOF(Hyser):
+class Hyser1DOF(_Hyser):
     def __init__(self, dataset_folder = 'Hyser1DOF', analysis = 'baseline'):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
@@ -76,7 +76,7 @@ class Hyser1DOF(Hyser):
         return data
 
         
-class HyserNDOF(Hyser):
+class HyserNDOF(_Hyser):
     def __init__(self, dataset_folder = 'HyserNDOF', analysis = 'baseline'):
         # TODO: Add a 'regression' flag... maybe add a 'DOFs' parameter instead of just gestures?
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
@@ -126,7 +126,7 @@ class HyserNDOF(Hyser):
         return data
         
 
-class HyserRandom(Hyser):
+class HyserRandom(_Hyser):
     def __init__(self, dataset_folder = 'HyserRandom', analysis = 'baseline'):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
@@ -205,7 +205,7 @@ class _PRRepFetcher(_PRLabelsFetcher):
         return np.array(rep_idx)
 
         
-class HyserPR(Hyser):
+class HyserPR(_Hyser):
     def __init__(self, dataset_folder = 'HyserPR', analysis = 'baseline'):
         gestures = {
             1: 'Thumb Extension',
