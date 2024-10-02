@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from pathlib import Path
 
-from libemg.data_handler import RegexFilter, FilePackager, OfflineDataHandler
+import numpy as np
+
+from libemg.data_handler import RegexFilter, FilePackager, OfflineDataHandler, MetadataFetcher
 from libemg._datasets.dataset import Dataset
 
 class Hyser(Dataset, ABC):
@@ -24,8 +27,7 @@ class Hyser(Dataset, ABC):
         sessions_values = ['1', '2'] if self.analysis == 'sessions' else ['1']   # only grab first session unless both are desired
         self.common_regex_filters = [
             RegexFilter(left_bound='subject', right_bound='_session', values=[str(idx + 1).zfill(2) for idx in range(self.num_subjects)], description='subjects'),   # +1 due to Python indexing
-            RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions'),
-            RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps') 
+            RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions')
         ]
 
     def prepare_data(self, split = False):
@@ -42,11 +44,12 @@ class Hyser(Dataset, ABC):
 class Hyser1DOF(Hyser):
     def __init__(self, dataset_folder = 'Hyser1DOF', analysis = 'baseline'):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
-        definition = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=3, description=definition, dataset_folder=dataset_folder, analysis=analysis)
+        description = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
+        super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis)
 
     def _prepare_data_helper(self, split = False):
         filename_filters = deepcopy(self.common_regex_filters)
+        filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps'))
         filename_filters.append(RegexFilter(left_bound='_finger', right_bound='_sample', values=['1', '2', '3', '4', '5'], description='finger'))
 
         regex_filters = deepcopy(filename_filters)
@@ -65,7 +68,7 @@ class Hyser1DOF(Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1], fast=True), 'Test': odh.isolate_data('reps', [2], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are session, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
         return data
 
         
@@ -73,8 +76,8 @@ class HyserNDOF(Hyser):
     def __init__(self, dataset_folder = 'HyserNDOF', analysis = 'baseline'):
         # TODO: Add a 'regression' flag... maybe add a 'DOFs' parameter instead of just gestures?
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
-        definition = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=2, description=definition, dataset_folder=dataset_folder, analysis=analysis) 
+        description = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
+        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis) 
         self.finger_combinations = {
             1: 'Thumb + Index',
             2: 'Thumb + Middle',
@@ -95,6 +98,7 @@ class HyserNDOF(Hyser):
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
+        filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps'))
         filename_filters.append(RegexFilter(left_bound='_combination', right_bound='_sample', values=[str(idx + 1) for idx in range(len(self.finger_combinations))], description='finger_combinations'))
 
         regex_filters = deepcopy(filename_filters)
@@ -113,7 +117,7 @@ class HyserNDOF(Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0], fast=True), 'Test': odh.isolate_data('reps', [1], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are session, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
             
         return data
         
@@ -121,11 +125,12 @@ class HyserNDOF(Hyser):
 class HyserRandom(Hyser):
     def __init__(self, dataset_folder = 'HyserRandom', analysis = 'baseline'):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
-        definition = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=5, description=definition, dataset_folder=dataset_folder, analysis=analysis) 
+        description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
+        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis) 
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
+        filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps'))
 
         regex_filters = deepcopy(filename_filters)
         regex_filters.append(RegexFilter(left_bound='/random_', right_bound='_sample', values=['raw'], description='data_type'))
@@ -143,6 +148,120 @@ class HyserRandom(Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2], fast=True), 'Test': odh.isolate_data('reps', [3, 4], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are session, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
+            
+        return data
+
+        
+class _PRLabelsFetcher(MetadataFetcher):
+    def __init__(self):
+        super().__init__(description='labels')
+        self.sample_regex = RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(204)], description='samples')
+
+    def _get_labels(self, filename):
+        label_filename_map = {
+            'dynamic': 'label_dynamic.txt',
+            'maintenance': 'label_maintenance.txt'
+        }
+        matches = []
+        for task_type, labels_file in label_filename_map.items():
+            if task_type in filename:
+                matches.append(labels_file)
+
+        assert len(matches) == 1, f"Expected a single label file for this file, but got {len(matches)}. Got filename: {filename}. Filename should contain either 'dynamic' or 'maintenance'."
+        
+        labels_file = matches[0]
+        parent = Path(filename).absolute().parent
+        labels_file = Path(parent, labels_file).as_posix()
+        return np.loadtxt(labels_file, delimiter=',', dtype=int)
+
+    def __call__(self, filename, file_data, all_files):
+        labels = self._get_labels(filename)       
+        sample_idx = self.sample_regex.get_metadata(filename)
+        return labels[sample_idx]
+        
+
+class _PRRepFetcher(_PRLabelsFetcher):
+    def __init__(self):
+        super().__init__()
+        self.description = 'reps'
+
+    def __call__(self, filename, file_data, all_files):
+        label = super().__call__(filename, file_data, all_files)
+        labels = self._get_labels(filename)
+        same_label_mask = np.where(labels == label)[0]
+        sample_idx = self.sample_regex.get_metadata(filename)
+        rep_idx = list(same_label_mask).index(sample_idx)
+        if 'dynamic' in filename:
+            # Each trial is 3 dynamic reps, 1 maintenance rep
+            rep_idx = rep_idx // 3
+
+        assert rep_idx <= 1, f"Rep values should be 0 or 1 (2 total reps). Got: {rep_idx}."
+        return np.array(rep_idx)
+
+        
+class HyserPR(Hyser):
+    def __init__(self, dataset_folder = 'HyserPR', analysis = 'baseline'):
+        gestures = {
+            1: 'Thumb Extension',
+            2: 'Index Finger Extension',
+            3: 'Middle Finger Extension',
+            4: 'Ring Finger Extension',
+            5: 'Little Finger Extension',
+            6: 'Wrist Flexion',
+            7: 'Wrist Extension',
+            8: 'Wrist Radial',
+            9: 'Wrist Ulnar',
+            10: 'Wrist Pronation',
+            11: 'Wrist Supination',
+            12: 'Extension of Thumb and Index Fingers',
+            13: 'Extension of Index and Middle Fingers',
+            14: 'Wrist Flexion Combined with Hand Close',
+            15: 'Wrist Extension Combined with Hand Close',
+            16: 'Wrist Radial Combined with Hand Close',
+            17: 'Wrist Ulnar Combined with Hand Close',
+            18: 'Wrist Pronation Combined with Hand Close',
+            19: 'Wrist Supination Combined with Hand Close',
+            20: 'Wrist Flexion Combined with Hand Open',
+            21: 'Wrist Extension Combined with Hand Open',
+            22: 'Wrist Radial Combined with Hand Open',
+            23: 'Wrist Ulnar Combined with Hand Open',
+            24: 'Wrist Pronation Combined with Hand Open',
+            25: 'Wrist Supination Combined with Hand Open',
+            26: 'Extension of Thumb, Index and Middle Fingers',
+            27: 'Extension of Index, Middle and Ring Fingers',
+            28: 'Extension of Middle, Ring and Little Fingers',
+            29: 'Extension of Index, Middle, Ring and Little Fingers',
+            30: 'Hand Close',
+            31: 'Hand Open',
+            32: 'Thumb and Index Fingers Pinch',
+            33: 'Thumb, Index and Middle Fingers Pinch',
+            34: 'Thumb and Middle Fingers Pinch'
+        }
+        description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
+        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis)  # num_reps=2 b/c 2 trials
+
+    def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
+        filename_filters = deepcopy(self.common_regex_filters)
+        filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(204)], description='samples')) # max # of dynamic tasks
+        filename_filters.append(RegexFilter(left_bound='/', right_bound='_', values=['dynamic', 'maintenance'], description='tasks'))
+
+        regex_filters = deepcopy(filename_filters)
+        regex_filters.append(RegexFilter(left_bound='_', right_bound='_sample', values=['raw'], description='data_type'))
+
+        metadata_fetchers = [
+            _PRLabelsFetcher(),
+            _PRRepFetcher()
+        ]
+        odh = OfflineDataHandler()
+        odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
+        data = odh
+        if split:
+            if self.analysis == 'sessions':
+                data = {'All': odh, 'Train': odh.isolate_data('sessions', [0], fast=True), 'Test': odh.isolate_data('sessions', [1], fast=True)}
+            elif self.analysis == 'baseline':
+                data = {'All': odh, 'Train': odh.isolate_data('reps', [0], fast=True), 'Test': odh.isolate_data('reps', [1], fast=True)}
+            else:
+                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
             
         return data
