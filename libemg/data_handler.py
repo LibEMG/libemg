@@ -29,7 +29,7 @@ from scipy.signal import welch
 from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: Sequence, description: str):
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str], description: str):
         """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
         Parameters
