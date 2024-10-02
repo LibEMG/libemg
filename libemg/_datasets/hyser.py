@@ -47,6 +47,16 @@ class _Hyser(Dataset, ABC):
 
 class Hyser1DOF(_Hyser):
     def __init__(self, dataset_folder = 'Hyser1DOF', analysis = 'baseline'):
+        """1 degree of freedom (DOF) Hyser dataset.
+
+        Parameters
+        ----------
+        dataset_folder: str, default='Hyser1DOF'
+            Directory that contains Hyser 1 DOF dataset.
+        analysis: str, default='baseline'
+            Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
+            reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
         super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis)
@@ -78,6 +88,16 @@ class Hyser1DOF(_Hyser):
         
 class HyserNDOF(_Hyser):
     def __init__(self, dataset_folder = 'HyserNDOF', analysis = 'baseline'):
+        """N degree of freedom (DOF) Hyser dataset.
+
+        Parameters
+        ----------
+        dataset_folder: str, default='HyserNDOF'
+            Directory that contains Hyser N DOF dataset.
+        analysis: str, default='baseline'
+            Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
+            reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        """
         # TODO: Add a 'regression' flag... maybe add a 'DOFs' parameter instead of just gestures?
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
@@ -128,6 +148,16 @@ class HyserNDOF(_Hyser):
 
 class HyserRandom(_Hyser):
     def __init__(self, dataset_folder = 'HyserRandom', analysis = 'baseline'):
+        """Random task (DOF) Hyser dataset.
+
+        Parameters
+        ----------
+        dataset_folder: str, default='HyserRandom'
+            Directory that contains Hyser random task dataset.
+        analysis: str, default='baseline'
+            Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
+            reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
         subjects = [str(idx + 1).zfill(2) for idx in range(20) if idx != 9] # subject 10 is missing the labels file for sample1
@@ -207,6 +237,16 @@ class _PRRepFetcher(_PRLabelsFetcher):
         
 class HyserPR(_Hyser):
     def __init__(self, dataset_folder = 'HyserPR', analysis = 'baseline'):
+        """Pattern recognition (PR) Hyser dataset.
+
+        Parameters
+        ----------
+        dataset_folder: str, default='HyserPR'
+            Directory that contains Hyser PR dataset.
+        analysis: str, default='baseline'
+            Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
+            reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        """
         gestures = {
             1: 'Thumb Extension',
             2: 'Index Finger Extension',
