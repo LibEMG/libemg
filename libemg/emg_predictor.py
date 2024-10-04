@@ -28,7 +28,7 @@ from matplotlib.animation import FuncAnimation
 from functools import partial
 
 from libemg.utils import get_windows
-from libemg.environments import RegressorController
+from libemg.environments import RegressorController, ClassifierController
 
 class EMGPredictor:
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
@@ -979,16 +979,14 @@ class OnlineEMGClassifier(OnlineStreamer):
             The legend to display on the plot
         """
         #### NOT CURRENTLY WORKING
-        assert 1==0, "Method not ready"
+        # TODO: STILL NEED TO TEST THAT THIS WORKS
         plt.style.use("ggplot")
         figure, ax = plt.subplots()
         figure.suptitle("Live Classifier Output", fontsize=16)
         plot_handle = ax.scatter([],[],c=[])
         
 
-        # make a new socket that subscribes to the libemg events
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind(('127.0.0.1', 12346))
+        controller = ClassifierController(output_format='probabilities')
         num_classes = len(self.predictor.model.classes_)
         cmap = cm.get_cmap('turbo', num_classes)
 
@@ -1002,14 +1000,15 @@ class OnlineEMGClassifier(OnlineStreamer):
         timestamps = []
         start_time = time.time()
         while True:
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode("utf-8"))
-            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
+            data = controller.get_data(['probabilities', 'timestamp'])
+            if data is None:
+                continue
+            probabilities, timestamp = data
             max_prob = np.max(probabilities)
             prediction = np.argmax(probabilities)
             decision_horizon_classes.append(prediction)
             decision_horizon_probabilities.append(max_prob)
-            timestamps.append(float(data.split(" ")[-1]) - start_time)
+            timestamps.append(timestamp - start_time)
 
             decision_horizon_classes = decision_horizon_classes[-max_len:]
             decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
