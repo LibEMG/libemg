@@ -421,3 +421,190 @@ class FittsLawTest:
             self.clock.tick(self.fps)
             pygame.display.set_caption(str(self.clock.get_fps()))
         pygame.quit()
+
+
+# -----EMG hero code (needs to be converted to an environment)----
+
+"""
+This is the pygame guitar hero file. All code relevant to playing the game is here. 
+
+Author: Ethan Eddy 
+"""
+
+import numpy as np
+import os 
+
+TEST_TIME = 120
+MAX_SPEED = 7.5
+MIN_SPEED = 2.5
+MIN_TIME = 0.6
+MAX_TIME = 2.2
+
+log = {
+    "times": [],
+    "notes": [],
+    "button_pressed": []
+}
+
+
+class Note:
+    def __init__(self, type):
+        self.type = type 
+        assert self.type in [0,1,2,3]
+        y_poses = [75, 200, 325, 450]
+        colors = [(255, 0, 0),(0, 255, 0),(0, 0, 255),(255, 165, 0)]
+        # Based on the type, set up the note 
+        self.x_pos = y_poses[self.type]          
+        self.y_pos = 0
+        self.color = colors[self.type]
+        self.length = 35 * (5 * np.random.random()) # Random integer between 1 and 5 
+
+    def move_note(self, speed=5):
+        self.y_pos += speed
+        if self.y_pos > 1000:
+            return -1
+        return 0
+    
+def handle_emg(sock):
+    try:
+        data, _ = sock.recvfrom(1024)
+    except:
+        return None
+    
+    data = str(data.decode("utf-8"))
+    if data:
+        input_class = float(data.split(' ')[0])
+        # 0 = Hand Closed 
+        if input_class == 0:
+            return 2
+        # 1 = Hand Open
+        elif input_class == 1:
+            return 1
+        # 3 = Extension 
+        elif input_class == 3:
+            return 3
+        # 4 = Flexion
+        elif input_class == 4:
+            return 0
+        else:
+            return -1 
+
+def start_game(keyboard=True, img_files=[], savelocation=None):
+    pygame.init()
+    pygame.font.init()
+    pygame.mixer.init() 
+    pygame.display.set_caption('Testing Environment')
+    font = pygame.font.SysFont('Comic Sans MS', 30)
+    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode([525, 700])
+
+    imgs = []
+    if len(img_files) > 0:
+        assert len(img_files) == 4
+        for i in img_files:
+            imgs.append(pygame.transform.smoothscale(pygame.image.load(i), (100,100)))
+
+    if not keyboard:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        sock.bind(('127.0.0.1', 12346))
+        sock.setblocking(0)
+
+    last_note = time.time()
+    start_time = time.time() + TEST_TIME
+
+    notes = []
+    key_pressed = -1 
+
+    # Run until the user asks to quit
+    running = True
+    while running:
+        clock.tick(60)
+
+        gen_time = ((start_time - time.time())/TEST_TIME) * (MAX_TIME - MIN_TIME) + MIN_TIME
+        if time.time() - last_note > gen_time: # Generation
+            new_note = np.random.randint(0,4)
+            notes.append(Note(new_note))
+            last_note = time.time()
+
+        if start_time - time.time() <= 0:
+            running = False
+
+        # Fill the background with white
+        screen.fill((255, 255, 255))
+
+        # Update time remaining 
+        text = font.render('{0:.1f}'.format(start_time - time.time()), True, (0,0,0), (255,255,255))
+        textRect = text.get_rect()
+        textRect.center = (470, 25)
+        screen.blit(text, textRect)
+
+        # Did the user click the window close button?
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        
+        # Deal with key presses 
+        if keyboard:
+            keys=pygame.key.get_pressed()
+            key_pressed = -1 
+            if keys[pygame.K_1]:
+                key_pressed = 0 
+            elif keys[pygame.K_2]:
+                key_pressed = 1 
+            elif keys[pygame.K_3]:
+                key_pressed = 2 
+            elif keys[pygame.K_4]:
+                key_pressed = 3 
+        
+        if not keyboard:
+            val = handle_emg(sock)
+            if val is not None:
+                key_pressed = val
+
+        # Draw notes on bottom of screen 
+        pygame.draw.circle(screen, (255, 0, 0), (75, 500), 35, width=8 - (key_pressed==0) * 8)
+        pygame.draw.circle(screen, (0, 255, 0), (200, 500), 35, width=8  - (key_pressed==1) * 8)
+        pygame.draw.circle(screen, (0, 0, 255), (325, 500), 35, width=8  - (key_pressed==2) * 8)
+        pygame.draw.circle(screen, (255, 165, 0), (450, 500), 35, width=8  - (key_pressed==3) * 8)
+
+        # Move and deal with notes coming down 
+        for n in notes:
+            speed = (1 - (start_time - time.time())/TEST_TIME) * (MAX_SPEED - MIN_SPEED) + MIN_SPEED
+            if n.move_note(speed=speed) == -1:
+                notes.remove(n)
+            # Check to see if the shape is over top of the note 
+            w = 0
+            if n.type == key_pressed and n.y_pos >= 500 and n.y_pos - 60 - n.length <= 500:
+                w = 5
+            pygame.draw.circle(screen, n.color, (n.x_pos, n.y_pos), 35, width=w)
+            pygame.draw.rect(screen, n.color, (n.x_pos - 20, n.y_pos - 30 - n.length, 40, n.length), width=w)
+            pygame.draw.circle(screen, n.color, (n.x_pos, n.y_pos - 60 - n.length), 35, width=w)
+
+        pygame.draw.rect(screen, (255,255,255), (0, 550, 1000, 300))
+
+        # Draw images on screen 
+        if len(imgs) > 0:
+            screen.blit(imgs[0], (25,550))
+            screen.blit(imgs[1], (150,550))
+            screen.blit(imgs[2], (275,550))
+            screen.blit(imgs[3], (400,550))
+
+        # Log everything 
+        log['times'].append(time.time())
+        log['notes'].append([[n.type, n.y_pos, n.length] for n in notes])
+        log['button_pressed'].append(key_pressed)
+        
+        # Flip the display
+        pygame.display.flip()
+
+    import pickle 
+    file_parts = savelocation.split("/")
+    for f, fi in enumerate(file_parts[:-1]):
+        if not os.path.exists("/".join(file_parts[:f+1])):
+            os.mkdir("/".join(file_parts[:f+1]))
+    with open(savelocation, 'wb') as f:
+        pickle.dump(log, f)
+    
+
+    # Done! Time to quit.
+    pygame.quit()
