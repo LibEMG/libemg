@@ -1170,7 +1170,10 @@ class OnlineEMGRegressor(OnlineStreamer):
         start_time = time.time()
 
         def update(frame, decision_horizon_predictions, timestamps):
-            predictions, timestamp = controller.get_data(['predictions', 'timestamp'])
+            data = controller.get_data(['predictions', 'timestamp'])
+            if data is None:
+                return
+            predictions, timestamp = data
             timestamps.append(timestamp - start_time)
             decision_horizon_predictions.append(predictions)
 
