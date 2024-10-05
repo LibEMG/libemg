@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 import socket
-from multiprocessing import Process
-from collections import deque
+from multiprocessing import Process, Queue
 from typing import overload
 import re
 import time
@@ -83,7 +82,7 @@ class SocketController(Controller):
         super().__init__()
         self.ip = ip
         self.port = port
-        self.data = deque(maxlen=1) # only want to read a single message at a time
+        self.queue = Queue(maxsize=1)   # only want to read a single message at a time
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
@@ -103,10 +102,7 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
-        if len(self.data) > 0:
-            # Grab latest prediction and remove from queue so it isn't repeated
-            return self.data.pop()
-        return None
+        return self.queue.get(block=True)   # will block until a value is added to queue
 
     def run(self) -> None:
         # Create UDP port for reading predictions
@@ -118,7 +114,9 @@ class SocketController(Controller):
             message = str(bytes.decode('utf-8'))
             if message:
                 # Data received
-                self.data.append(message)
+                if self.queue.full():
+                    self.queue.get(block=True)  # setting block=False may throw an Empty error
+                self.queue.put(message, block=False)    # don't want to wait to add most recent message
     
 
 class ClassifierController(SocketController):
