@@ -5,6 +5,7 @@ from typing import overload
 import re
 import time
 import math
+import pickle
 
 import numpy as np
 import pygame
@@ -18,6 +19,7 @@ class Controller(ABC, Process):
             'pc': self._parse_proportional_control,
             'timestamp': self._parse_timestamp
         }
+        # TODO: Maybe add a flag for continuous vs. not continuous... not sure if that's needed though
 
     @overload
     def get_data(self, info: list[str]) -> tuple | None:
@@ -208,11 +210,22 @@ class Environment(ABC):
 
 
 # Should probably move environments to a submodule where each one has their own file...
-class FittsLawTest:
-    def __init__(self, controller: Controller, num_circles: int = 30, num_trials: int = 15, savefile: str = "out.pkl",
+class FittsLawTest(Environment):
+    def __init__(self, controller: Controller, prediction_map = None, num_circles: int = 30, num_trials: int = 15, savefile: str = "out.pkl",
                   logging: bool = True, width: int = 1250, height: int = 750):
         pygame.init()
-        self.controller = controller
+        super().__init__(controller)
+        if prediction_map is None:
+            prediction_map = {
+                'N': 0,
+                'E': 3,
+                'S': 1,
+                'W': 4,
+                'NM': 2
+            }
+        self.prediction_map = prediction_map
+
+
         self.font = pygame.font.SysFont('helvetica', 40)
         self.screen = pygame.display.set_mode([width, height])
         self.clock = pygame.time.Clock()
@@ -262,8 +275,6 @@ class FittsLawTest:
         self.window_checkpoint = time.time()
 
         # Socket for reading EMG
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        self.sock.bind(('127.0.0.1', 12346))
         self.timeout_timer = None
         self.timeout = 30   # (seconds)
         self.trial_duration = 0
@@ -328,21 +339,36 @@ class FittsLawTest:
         data = self.controller.get_data(['predictions', 'pc'])
         self.window_checkpoint = time.time()
         
-        self.current_direction = [0,0]
+        self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
             # TODO: Fix this for classification
             predictions, pc = data
             if len(predictions) == 1 and len(pc) == 1:
-                # Output class
+                # Output is a class/action, not a set of DOFs
                 prediction = predictions[0]
-                predictions = [0, 0]
-                predictions[prediction] = 1.    # this won't work because there will be more classes than DOFs... somehow need to map classes to DOFs. probably need a map parameter that the user can pass in or something?
+                pc = pc[0]
+                direction = [direction for direction, message in self.prediction_map.items() if message == prediction]
+                assert len(direction) == 1, f"Expected a single direction, but got {len(direction)}. Please ensure all keys in prediction_map are unique and all keys ('N', 'E', 'S', 'W', and 'NM') are in prediction_map."
+                direction = direction[0]
 
+                if direction == 'N':
+                    predictions = [0, 1]
+                elif direction == 'E':
+                    predictions = [1, 0]
+                elif direction == 'S':
+                    predictions = [0, -1]
+                elif direction == 'W':
+                    predictions = [-1, 0]
+                elif direction == 'NM':
+                    predictions = [0, 0]
+                else:
+                    raise ValueError(f"Expected prediction map to have keys 'N', 'E', 'S', 'W', and 'NM', but found key: {direction}.")
+                
                 pc = [pc, pc]
 
             self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
-            self.current_direction[1] -= self.VEL * float(predictions[1]) * pc[1]
+            self.current_direction[1] += self.VEL * float(predictions[1]) * pc[1]
 
             if self.logging:
                 self.log(str(predictions), time.time())
