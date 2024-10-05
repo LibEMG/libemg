@@ -13,6 +13,11 @@ import pygame
 class Controller(ABC, Process):
     def __init__(self):
         super().__init__(daemon=True)
+        self.info_function_map = {
+            'predictions': self._parse_predictions,
+            'pc': self._parse_proportional_control,
+            'timestamp': self._parse_timestamp
+        }
 
     @overload
     def get_data(self, info: list[str]) -> tuple | None:
@@ -26,6 +31,7 @@ class Controller(ABC, Process):
         # Take in which types of info you need (predictions, PC), call the methods, then return
         # This method was needed because we're making this a process, so it's possible that separate calls to
         # parse_predictions and parse_proportional_control would operate on different packets
+        # Add note to tell user that velocity control must be turned on when using proportional control for classifier
         if isinstance(info, str):
             # Cast to list
             info = [info]
@@ -35,19 +41,14 @@ class Controller(ABC, Process):
             # Action didn't occur
             return None
         
-        info_function_map = {
-            'predictions': self._parse_predictions,
-            'pc': self._parse_proportional_control,
-            'timestamp': self._parse_timestamp
-        }
 
         data = []
         for info_type in info:
             try:
-                parse_function = info_function_map[info_type]
+                parse_function = self.info_function_map[info_type]
                 result = parse_function(action)           
             except KeyError as e:
-                raise ValueError(f"Unexpected value for info type. Accepted parameters are: {list(info_function_map.keys())}. Got: {info_type}.") from e
+                raise ValueError(f"Unexpected value for info type. Accepted parameters are: {list(self.info_function_map.keys())}. Got: {info_type}.") from e
 
             data.append(result)
 
@@ -120,9 +121,11 @@ class SocketController(Controller):
     
 
 class ClassifierController(SocketController):
-    def __init__(self, output_format: str, ip: str = '127.0.0.1', port: int = 12346) -> None:
+    def __init__(self, output_format: str, num_classes: int, ip: str = '127.0.0.1', port: int = 12346) -> None:
         super().__init__(ip, port)
+        self.info_function_map['probabilities'] = self._parse_probabilities  # add option for classifier to parse probabilities
         self.output_format = output_format
+        self.num_classes = num_classes  # could remove this parameter if we always sent a velocity value (e.g., set it to -1 if velocity control is not enabled)
         self.error_message = f"Unexpected value for output_format. Accepted values are 'predictions' or 'probabilities'. Got: {output_format}."
         if output_format not in ['predictions', 'probabilities']:
             raise ValueError(self.error_message)
@@ -131,7 +134,7 @@ class ClassifierController(SocketController):
         if self.output_format == 'predictions':
             return [float(action.split(' ')[0])]
         elif self.output_format == 'probabilities':
-            probabilities = self.parse_probabilities(action)
+            probabilities = self._parse_probabilities(action)
             return [float(np.argmax(probabilities))]
 
         raise ValueError(self.error_message)
@@ -142,18 +145,25 @@ class ClassifierController(SocketController):
         return float(action.split(' ')[-1])
 
     def _parse_proportional_control(self, action: str) -> list[float]:
+        components = action.split(' ')
         if self.output_format == 'predictions':
-            return [float(action.split(' ')[1])]
+            try:
+                return [float(components[1])]
+            except IndexError as e:
+                raise IndexError('Attempted to parse proportional control, but no velocity value was found. Please enable velocity control in the EMGClassifier.') from e
         elif self.output_format == 'probabilities':
-            return [float(action.split(' ')[-2])]
+            # Assume that user has enabled velocity control and take the value before the timestamp
+            if len(components) < (self.num_classes + 2):
+                raise ValueError('Did not find velocity value in message. Please enable velocity control in the EMGClassifier.')
+            return [float(components[-2])]
 
         raise ValueError(self.error_message)
 
-    def parse_probabilities(self, action: str) -> list[float]:
+    def _parse_probabilities(self, action: str) -> list[float]:
         if self.output_format == 'predictions':
             raise ValueError("Output format is set to 'predictions', so probabilities cannot be parsed. Set output_format='probabilities' if this functionality is needed.")
 
-        return [float(prob) for prob in action.split(' ')[:-2]]
+        return [float(prob) for prob in action.split(' ')[:self.num_classes]]
 
 
 class RegressorController(SocketController):
