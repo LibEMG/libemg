@@ -210,7 +210,7 @@ class Environment(ABC):
 
 
 # Should probably move environments to a submodule where each one has their own file...
-class FittsLawTest(Environment):
+class IsoFitts(Environment):
     def __init__(self, controller: Controller, prediction_map = None, num_circles: int = 30, num_trials: int = 15, savefile: str = "out.pkl",
                   logging: bool = True, width: int = 1250, height: int = 750):
         pygame.init()
