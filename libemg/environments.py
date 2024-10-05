@@ -194,12 +194,18 @@ class Environment(ABC):
         # Not totally sure that this class is needed
         # Only thing I think they have in common is if they all use pygame and have some common methods there...
         self.controller = controller
-        # Maybe move this to run method...
+        self.done = False   # flag to determine when loop should be exited
+
+    def run(self):
         if not self.controller.is_alive():
             self.controller.start()
 
+        while not self.done:
+            self._run_helper()
+        pygame.quit()
+
     @abstractmethod
-    def run(self):
+    def _run_helper(self):
         # If there's a use case, we could a block = True flag so we'd put this in a different thread if False
         ...
 
@@ -251,7 +257,6 @@ class IsoFitts(Environment):
         self.pos_factor1 = self.big_rad/2
         self.pos_factor2 = (self.big_rad * math.sqrt(3))//2
 
-        self.done = False
         self.VEL = 25
         self.dwell_time = 3
         self.num_of_circles = num_circles 
@@ -450,14 +455,12 @@ class IsoFitts(Environment):
         with open(self.savefile, 'wb') as f:
             pickle.dump(self.log_dictionary, f)
 
-    def run(self):
-        while not self.done:
-            # updated frequently for graphics & gameplay
-            self.update_game()
-            pygame.display.update()
-            self.clock.tick(self.fps)
-            pygame.display.set_caption(str(self.clock.get_fps()))
-        pygame.quit()
+    def _run_helper(self):
+        # updated frequently for graphics & gameplay
+        self.update_game()
+        pygame.display.update()
+        self.clock.tick(self.fps)
+        pygame.display.set_caption(str(self.clock.get_fps()))
 
 
 # -----EMG hero code (needs to be converted to an environment)----
