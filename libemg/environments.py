@@ -192,6 +192,9 @@ class Environment(ABC):
         # Not totally sure that this class is needed
         # Only thing I think they have in common is if they all use pygame and have some common methods there...
         self.controller = controller
+        # Maybe move this to run method...
+        if not self.controller.is_alive():
+            self.controller.start()
 
     @abstractmethod
     def run(self):
