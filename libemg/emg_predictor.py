@@ -961,6 +961,7 @@ class OnlineEMGClassifier(OnlineStreamer):
             message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
         else:
             raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
+
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
@@ -978,17 +979,17 @@ class OnlineEMGClassifier(OnlineStreamer):
         legend: (list) (optional)
             The legend to display on the plot
         """
-        #### NOT CURRENTLY WORKING
-        # TODO: STILL NEED TO TEST THAT THIS WORKS
+        if self.output_format != 'probabilities':
+            raise ValueError(f"OnlineEMGClassifier output_format must be 'probabailities' for visualize() method to work, but current value is {self.output_format}.")
         plt.style.use("ggplot")
         figure, ax = plt.subplots()
         figure.suptitle("Live Classifier Output", fontsize=16)
         plot_handle = ax.scatter([],[],c=[])
-        
-
-        controller = ClassifierController(output_format='probabilities')
-        num_classes = len(self.predictor.model.classes_)
+        num_classes = len(self.predictor.model.classes_)    # assumes that user is using an sklearn model
         cmap = cm.get_cmap('turbo', num_classes)
+
+        controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=self.ip, port=self.port)
+        controller.start()
 
         if legend is not None:
             for i in range(num_classes):
