@@ -100,7 +100,7 @@ class SocketController(Controller):
 
     def _get_action(self):
         try:
-            action = self.queue.get(block=False)   # will block until a value is added to queue
+            action = self.queue.get(block=False)
         except Empty:
             action = None
         return action
@@ -557,9 +557,9 @@ class EMGHero(Environment):
         self.start_time = time.time() + self.test_time
 
         self.notes = []
+        self.key_pressed = -1
 
     def _run_helper(self):
-
         # Run until the user asks to quit
         gen_time = ((self.start_time - time.time())/self.test_time) * (self.max_time - self.min_time) + self.min_time
         if time.time() - self.last_note > gen_time: # Generation
@@ -585,43 +585,18 @@ class EMGHero(Environment):
             if event.type == pygame.QUIT:
                 self.done = True
         
-        # Deal with key presses 
-        # if keyboard:
-        #     keys=pygame.key.get_pressed()
-        #     key_pressed = -1 
-        #     if keys[pygame.K_1]:
-        #         key_pressed = 0 
-        #     elif keys[pygame.K_2]:
-        #         key_pressed = 1 
-        #     elif keys[pygame.K_3]:
-        #         key_pressed = 2 
-        #     elif keys[pygame.K_4]:
-        #         key_pressed = 3 
-        
-        # if not keyboard:
-        #     val = handle_emg(sock)
-        #     if val is not None:
-        #         key_pressed = val
-
         predictions = self.controller.get_data('predictions')
-        if predictions is None:
-            predictions = [-1]
-        assert len(predictions) == 1, f"Expected a single prediction, but got {len(predictions)}. Controllers that produce multiple predictions, like RegressionController, are not currently supported."
 
-        # prediction = predictions[0]
-        # if predictions in self.prediction_map.keys():
-        #     key_pressed = self.prediction_map[prediction]
-        # else:
-        #     # Do nothing
-        #     key_pressed = -1
-
-        key_pressed = self.prediction_map[predictions[0]]
+        if predictions is not None:
+            # Received data
+            assert len(predictions) == 1, f"Expected a single prediction, but got {len(predictions)}. Controllers that produce multiple predictions, like RegressionController, are not currently supported."
+            self.key_pressed = self.prediction_map[predictions[0]]
 
         # Draw notes on bottom of screen 
-        pygame.draw.circle(self.screen, (255, 0, 0), (75, 500), 35, width=8 - (key_pressed==0) * 8)
-        pygame.draw.circle(self.screen, (0, 255, 0), (200, 500), 35, width=8  - (key_pressed==1) * 8)
-        pygame.draw.circle(self.screen, (0, 0, 255), (325, 500), 35, width=8  - (key_pressed==2) * 8)
-        pygame.draw.circle(self.screen, (255, 165, 0), (450, 500), 35, width=8  - (key_pressed==3) * 8)
+        pygame.draw.circle(self.screen, (255, 0, 0), (75, 500), 35, width=8 - (self.key_pressed==0) * 8)
+        pygame.draw.circle(self.screen, (0, 255, 0), (200, 500), 35, width=8  - (self.key_pressed==1) * 8)
+        pygame.draw.circle(self.screen, (0, 0, 255), (325, 500), 35, width=8  - (self.key_pressed==2) * 8)
+        pygame.draw.circle(self.screen, (255, 165, 0), (450, 500), 35, width=8  - (self.key_pressed==3) * 8)
 
         # Move and deal with notes coming down 
         for n in self.notes:
@@ -630,7 +605,7 @@ class EMGHero(Environment):
                 self.notes.remove(n)
             # Check to see if the shape is over top of the note 
             w = 0
-            if n.type == key_pressed and n.y_pos >= 500 and n.y_pos - 60 - n.length <= 500:
+            if n.type == self.key_pressed and n.y_pos >= 500 and n.y_pos - 60 - n.length <= 500:
                 w = 5
             pygame.draw.circle(self.screen, n.color, (n.x_pos, n.y_pos), 35, width=w)
             pygame.draw.rect(self.screen, n.color, (n.x_pos - 20, n.y_pos - 30 - n.length, 40, n.length), width=w)
@@ -648,29 +623,5 @@ class EMGHero(Environment):
         # Log everything 
         self.log_dictionary['times'].append(time.time())
         self.log_dictionary['notes'].append([[n.type, n.y_pos, n.length] for n in self.notes])
-        self.log_dictionary['button_pressed'].append(key_pressed)
+        self.log_dictionary['button_pressed'].append(self.key_pressed)
         
-# def handle_emg(sock):
-#     try:
-#         data, _ = sock.recvfrom(1024)
-#     except:
-#         return None
-    
-#     data = str(data.decode("utf-8"))
-#     if data:
-#         input_class = float(data.split(' ')[0])
-#         # 0 = Hand Closed 
-#         if input_class == 0:
-#             return 2
-#         # 1 = Hand Open
-#         elif input_class == 1:
-#             return 1
-#         # 3 = Extension 
-#         elif input_class == 3:
-#             return 3
-#         # 4 = Flexion
-#         elif input_class == 4:
-#             return 0
-#         else:
-#             return -1 
-
