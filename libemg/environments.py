@@ -250,14 +250,14 @@ class IsoFitts(Environment):
         super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
         if prediction_map is None:
             prediction_map = {
-                'N': 0,
-                'E': 3,
-                'S': 1,
-                'W': 4,
-                'NM': 2
+                0: 'N',
+                1: 'S',
+                2: 'NM',
+                3: 'E',
+                4: 'W'
             }
+        assert set(np.unique(list(prediction_map.values()))) == set(['N', 'E', 'S', 'W', 'NM']), f"Did not find all commands ('N', 'E', 'S', 'W', and 'NM') represented as values in prediction_map. Got: {prediction_map}."
         self.prediction_map = prediction_map
-
 
         self.font = pygame.font.SysFont('helvetica', 40)
         self.screen = pygame.display.set_mode([width, height])
@@ -359,15 +359,12 @@ class IsoFitts(Environment):
         self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
-            # TODO: Fix this for classification
             predictions, pc = data
             if len(predictions) == 1 and len(pc) == 1:
                 # Output is a class/action, not a set of DOFs
                 prediction = predictions[0]
                 pc = pc[0]
-                direction = [direction for direction, message in self.prediction_map.items() if message == prediction]
-                assert len(direction) == 1, f"Expected a single direction, but got {len(direction)}. Please ensure all keys in prediction_map are unique and all keys ('N', 'E', 'S', 'W', and 'NM') are in prediction_map."
-                direction = direction[0]
+                direction = self.prediction_map[prediction]
 
                 if direction == 'N':
                     predictions = [0, 1]
