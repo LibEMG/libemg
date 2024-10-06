@@ -6,6 +6,8 @@ import re
 import time
 import math
 import pickle
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'   # hide pygame welcome message
 
 import numpy as np
 import pygame
