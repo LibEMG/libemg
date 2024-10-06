@@ -9,6 +9,7 @@ import pickle
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'   # hide pygame welcome message
 from pathlib import Path
+from queue import Empty
 
 import numpy as np
 import pygame
@@ -108,7 +109,11 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
-        return self.queue.get(block=True)   # will block until a value is added to queue
+        try:
+            action = self.queue.get(block=False)   # will block until a value is added to queue
+        except Empty:
+            action = None
+        return action
 
     def run(self) -> None:
         # Create UDP port for reading predictions
