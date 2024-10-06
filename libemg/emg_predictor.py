@@ -977,7 +977,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         max_len: (int) (optional) 
             number of decisions to visualize
         legend: (list) (optional)
-            The legend to display on the plot
+            Labels used to populate legend. Must be passed in order of output classes.
         """
         if self.output_format != 'probabilities':
             raise ValueError(f"OnlineEMGClassifier output_format must be 'probabailities' for visualize() method to work, but current value is {self.output_format}.")
