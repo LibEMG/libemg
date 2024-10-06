@@ -181,7 +181,40 @@ class RegressorController(SocketController):
         predictions = self._parse_predictions(action)
         return [1. for _ in predictions]    # proportional control is built into prediction, so return 1 for each DOF
 
-        
+
+class KeyboardController(Controller):
+    def __init__(self) -> None:
+        # No run method b/c using pygame events in another thread doesn't work (pygame.init is required but isn't thread-safe)
+        super().__init__()
+        self.queue = Queue(maxsize=1)   # only want to read a single message at a time
+        self.keys = [
+            pygame.K_LEFT,
+            pygame.K_RIGHT,
+            pygame.K_UP,
+            pygame.K_DOWN,
+            pygame.K_1,
+            pygame.K_2,
+            pygame.K_3,
+            pygame.K_4
+        ]
+
+    def _parse_predictions(self, action: str) -> list[float]:
+        return [float(action)]
+
+    def _parse_proportional_control(self, action: str) -> list[float]:
+        predictions = self._parse_predictions(action)
+        return [1. for _ in predictions]    # proportional control is built into prediction, so return 1 for each key pressed
+
+    def _get_action(self):
+        keys = pygame.key.get_pressed()
+        keys_pressed = [key for key in self.keys if keys[key]]
+        if len(keys_pressed) == 0:
+            # No data received
+            keys_pressed = [-1]
+
+        key_pressed = keys_pressed[0]   # take the first value, maybe change later to support combined keys
+        return str(key_pressed)
+
 # Not sure if controllers should go in here or have their own file...
 # Environment base class that takes in controller and has a run method (likely some sort of map parameter to determine which class corresponds to which control action)
 
