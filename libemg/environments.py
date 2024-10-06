@@ -245,8 +245,8 @@ class IsoFitts(Environment):
         super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
         if prediction_map is None:
             prediction_map = {
-                0: 'N',
-                1: 'S',
+                0: 'S',
+                1: 'N',
                 2: 'NM',
                 3: 'E',
                 4: 'W'
@@ -362,11 +362,11 @@ class IsoFitts(Environment):
                 direction = self.prediction_map[prediction]
 
                 if direction == 'N':
-                    predictions = [0, 1]
+                    predictions = [0, -1]   # -ve b/c pygame origin pixel is at top left of screen
                 elif direction == 'E':
                     predictions = [1, 0]
                 elif direction == 'S':
-                    predictions = [0, -1]
+                    predictions = [0, 1]    # +ve b/c pygame origin pixel is at top left of screen
                 elif direction == 'W':
                     predictions = [-1, 0]
                 elif direction == 'NM':
