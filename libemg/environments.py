@@ -8,6 +8,7 @@ import math
 import pickle
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide'   # hide pygame welcome message
+from pathlib import Path
 
 import numpy as np
 import pygame
@@ -192,11 +193,17 @@ class RegressorController(SocketController):
 # Fitts should have the option for rotational.
 
 class Environment(ABC):
-    def __init__(self, controller: Controller):
-        # Not totally sure that this class is needed
-        # Only thing I think they have in common is if they all use pygame and have some common methods there...
+    def __init__(self, controller: Controller, fps: int, log_dictionary: dict, save_file: str | None = None):
+        # Assumes this is a pygame environment
         self.controller = controller
         self.done = False   # flag to determine when loop should be exited
+        self.clock = pygame.time.Clock()
+        self.fps = fps
+        self.log_dictionary = log_dictionary
+        self.save_file = save_file
+        pygame.init()
+        pygame.font.init()
+        pygame.mixer.init() 
 
     def run(self):
         if not self.controller.is_alive():
@@ -204,6 +211,10 @@ class Environment(ABC):
 
         while not self.done:
             self._run_helper()
+            pygame.display.update()
+            self.clock.tick(self.fps)
+
+        self.save_results()
         pygame.quit()
 
     @abstractmethod
@@ -211,18 +222,32 @@ class Environment(ABC):
         # If there's a use case, we could a block = True flag so we'd put this in a different thread if False
         ...
 
-    @abstractmethod
-    def log(self):
-        ...
+    def save_results(self):
+        if self.save_file is None:
+            # Don't log anything
+            return
 
+        file = Path(self.save_file).absolute()
+        file.parent.mkdir(parents=True, exist_ok=True) # create parent directories if they don't exist
+        with open(self.save_file, 'wb') as f:
+            pickle.dump(self.log_dictionary, f)
 
 
 # Should probably move environments to a submodule where each one has their own file...
 class IsoFitts(Environment):
-    def __init__(self, controller: Controller, prediction_map = None, num_circles: int = 30, num_trials: int = 15, savefile: str = "out.pkl",
-                  logging: bool = True, width: int = 1250, height: int = 750):
-        pygame.init()
-        super().__init__(controller)
+    def __init__(self, controller: Controller, prediction_map = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
+                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60):
+        # logging information
+        log_dictionary = {
+            'time_stamp':        [],
+            'trial_number':      [],
+            'goal_circle' :      [],
+            'global_clock' :     [],
+            'cursor_position':   [],
+            'class_label':       [],
+            'current_direction': []
+        }
+        super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
         if prediction_map is None:
             prediction_map = {
                 'N': 0,
@@ -236,18 +261,7 @@ class IsoFitts(Environment):
 
         self.font = pygame.font.SysFont('helvetica', 40)
         self.screen = pygame.display.set_mode([width, height])
-        self.clock = pygame.time.Clock()
         
-        # logging information
-        self.log_dictionary = {
-            'time_stamp':        [],
-            'trial_number':      [],
-            'goal_circle' :      [],
-            'global_clock' :     [],
-            'cursor_position':   [],
-            'class_label':       [],
-            'current_direction': []
-        }
 
         # gameplay parameters
         self.BLACK = (0,0,0)
@@ -259,16 +273,12 @@ class IsoFitts(Environment):
         self.pos_factor1 = self.big_rad/2
         self.pos_factor2 = (self.big_rad * math.sqrt(3))//2
 
-        self.VEL = 25
-        self.dwell_time = 3
+        self.VEL = velocity
+        self.dwell_time = dwell_time
         self.num_of_circles = num_circles 
         self.max_trial = num_trials
         self.width = width
         self.height = height
-        # self.fps = 1/(config.window_increment / 200)
-        self.fps = 60
-        self.savefile = savefile
-        self.logging = logging
         self.trial = 0
 
         # interface objects
@@ -283,7 +293,7 @@ class IsoFitts(Environment):
 
         # Socket for reading EMG
         self.timeout_timer = None
-        self.timeout = 30   # (seconds)
+        self.timeout = timeout   # (seconds)
         self.trial_duration = 0
 
     def draw(self):
@@ -377,8 +387,7 @@ class IsoFitts(Environment):
             self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
             self.current_direction[1] += self.VEL * float(predictions[1]) * pc[1]
 
-            if self.logging:
-                self.log(str(predictions), time.time())
+            self.log(str(predictions), time.time())
             
         
 
@@ -395,8 +404,6 @@ class IsoFitts(Environment):
                 if self.trial < self.max_trial-1: # -1 because max_trial is 1 indexed
                     self.trial += 1
                 else:
-                    if self.logging:
-                        self.save_log()
                     self.done = True
         elif event.type == pygame.USEREVENT + self.num_of_circles:
             if self.Event_Flag == False:
@@ -414,8 +421,6 @@ class IsoFitts(Environment):
             if self.trial < self.max_trial-1: # -1 because max_trial is 1 indexed
                 self.trial += 1
             else:
-                if self.logging:
-                    self.save_log()
                 self.done = True
 
     def move(self):
@@ -441,7 +446,6 @@ class IsoFitts(Environment):
         self.timeout_timer = None
         self.trial_duration = 0
 
-
     def log(self, label, timestamp):
         circle = self.circles[self.goal_circle]
         self.log_dictionary['time_stamp'].append(timestamp)
@@ -452,16 +456,9 @@ class IsoFitts(Environment):
         self.log_dictionary['class_label'].append(label) 
         self.log_dictionary['current_direction'].append(self.current_direction)
 
-    def save_log(self):
-        # Adding timestamp
-        with open(self.savefile, 'wb') as f:
-            pickle.dump(self.log_dictionary, f)
-
     def _run_helper(self):
         # updated frequently for graphics & gameplay
         self.update_game()
-        pygame.display.update()
-        self.clock.tick(self.fps)
         pygame.display.set_caption(str(self.clock.get_fps()))
 
 
