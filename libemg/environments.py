@@ -20,8 +20,7 @@ class Controller(ABC, Process):
         super().__init__(daemon=True)
         self.info_function_map = {
             'predictions': self._parse_predictions,
-            'pc': self._parse_proportional_control,
-            'timestamp': self._parse_timestamp
+            'pc': self._parse_proportional_control
         }
         # TODO: Maybe add a flag for continuous vs. not continuous... not sure if that's needed though
 
@@ -74,11 +73,6 @@ class Controller(ABC, Process):
         ...
 
     @abstractmethod
-    def _parse_timestamp(self, action: str) -> float:
-        # Grab latest timestamp
-        ...
-    
-    @abstractmethod
     def _get_action(self) -> str | None:
         # Freeze single action so all data is parsed from that
         ...
@@ -87,25 +81,21 @@ class Controller(ABC, Process):
 class SocketController(Controller):
     def __init__(self, ip: str = '127.0.0.1', port: int = 12346) -> None:
         super().__init__()
+        self.info_function_map['timestamp'] = self._parse_timestamp
         self.ip = ip
         self.port = port
         self.queue = Queue(maxsize=1)   # only want to read a single message at a time
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
-        # Grab latest prediction (should we keep track of all or deque?)
-        # Will be specific to controller
         ...
 
     @abstractmethod
     def _parse_proportional_control(self, action: str) -> list[float]:
-        # Grab latest prediction (should we keep track of all or deque?)
-        # Will be specific to controller
         ...
 
     @abstractmethod
     def _parse_timestamp(self, action: str) -> float:
-        # Grab latest timestamp
         ...
 
     def _get_action(self):
