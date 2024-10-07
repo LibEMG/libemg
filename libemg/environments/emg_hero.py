@@ -30,10 +30,34 @@ class _Note:
 class EMGHero(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, test_time: int = 120, min_speed: float = 2.5, max_speed: float = 7.5, min_time: float = 0.6, max_time: float = 2.2,
                  img_files: Sequence | None = None, save_file: str | None = None, fps: int = 60):
-        """
-        This is the pygame guitar hero file. All code relevant to playing the game is here. 
+        """Guitar Hero style game that tests user's ability to elicit contractions at specific times. Game speed progressively gets quicker over the course of the task.
+        Simultaneous contractions, such as with regression, are not currently supported.
 
-        Author: Ethan Eddy 
+        Parameters
+        ----------
+        controller : Controller
+            Interface to parse predictions which determine the notes being played.
+        prediction_map : dict | None, optional
+            Maps received control commands to notes being played. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to 0, 1, -1, 2, and 3, respectively.
+            For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and values map to actions in the environment.
+            Accepted actions are: -1 (play nothing), 0 (first note), 1 (second note), 2 (third note), 3 (fourth note). All of these actions must be represented by a single key in the dictionary.
+            Defaults to None.
+        test_time : int, optional
+            Amount of time test will take (in seconds). Defaults to 120.
+        min_speed : float, optional
+            Minimum game speed. Defaults to 2.5.
+        max_speed : float, optional
+            Maximum game speed. Defaults to 7.5.
+        min_time : float, optional
+            Minimum time between notes (in seconds).
+        max_time : float, optional
+            Maximum time between notes (in seconds).
+        img_files : Sequence | None, optional
+            List of image filenames to put at the bottom of the display to show users which notes are represented by which gestures. If None, no images are shown. Defaults to None.
+        save_file : str | None, optional
+            Path to save file for logging metrics. If None, no results are logged. Defaults to None.
+        fps : int, optional
+            Frames per second (in Hz). Defaults to 60.
         """
         if prediction_map is None:
             prediction_map = {

@@ -9,8 +9,24 @@ import numpy as np
 import pygame
 
 
+"""Base class for EMG prediction.
+
+        Parameters
+        ----------
+        model: custom model (must have fit, predict and predict_proba functions)
+            Object that will be used to fit and provide predictions.
+        model_parameters: dictionary, default=None
+            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+        random_seed: int, default=0
+            Constant value to control randomization seed.
+        fix_feature_errors: bool (default=False)
+            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+        silent: bool (default=False)
+            If True, the outputs from the fix_feature_errors parameter will be silenced. 
+        """
 class Controller(ABC, Process):
     def __init__(self):
+        """Abstract controller interface for controlling environments. Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals."""
         super().__init__(daemon=True)
         self.info_function_map = {
             'predictions': self._parse_predictions,
@@ -27,10 +43,13 @@ class Controller(ABC, Process):
         ...
 
     def get_data(self, info: list[str] | str) -> tuple | list[float] | None:
-        # Take in which types of info you need (predictions, PC), call the methods, then return
-        # This method was needed because we're making this a process, so it's possible that separate calls to
-        # parse_predictions and parse_proportional_control would operate on different packets
-        # Add note to tell user that velocity control must be turned on when using proportional control for classifier
+        """Get data from current action. This method should be used to access data to ensure that all parsing happens on the same action. Velocity control must be enabled when using proportional control.
+
+        Parameters
+        ----------
+        info: list[str] or str
+            Type of data requested. Must be a string in info_function_map.
+        """
         if isinstance(info, str):
             # Cast to list
             info = [info]
@@ -58,22 +77,60 @@ class Controller(ABC, Process):
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
-        # Grab latest prediction (should we keep track of all or deque?)
+        """Parse the latest prediction from a message.
+
+        Parameters
+        ----------
+        action: str
+            Message to parse.
+
+        Returns
+        ----------
+        list[float]
+            List of predictions.
+        """
         ...
 
     @abstractmethod
     def _parse_proportional_control(self, action: str) -> list[float]:
-        # Grab latest prediction (should we keep track of all or deque?)
+        """Parse the latest proportional control info from a message.
+
+        Parameters
+        ----------
+        action: str
+            Message to parse.
+
+        Returns
+        ----------
+        list[float]
+            List of proportional control values.
+        """
         ...
 
     @abstractmethod
     def _get_action(self) -> str | None:
-        # Freeze single action so all data is parsed from that
+        """Grab the latest action.
+
+        Returns
+        ----------
+        str or None
+            Latest action or None if no action has occurred.
+        """
         ...
 
 
 class SocketController(Controller):
     def __init__(self, ip: str = '127.0.0.1', port: int = 12346) -> None:
+        """Controller interface for controlling environments using a UDP socket. 
+        Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals.
+
+        Parameters
+        ----------
+        ip: str
+            IP address for UDP socket used to read messages.
+        port: int
+            Port for UDP socket used to read messages.
+        """
         super().__init__()
         self.info_function_map['timestamp'] = self._parse_timestamp
         self.ip = ip
@@ -116,6 +173,20 @@ class SocketController(Controller):
 
 class ClassifierController(SocketController):
     def __init__(self, output_format: str, num_classes: int, ip: str = '127.0.0.1', port: int = 12346) -> None:
+        """Controller interface for controlling environments using a classifier.
+        Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals.
+
+        Parameters
+        ----------
+        output_format: str
+            Output format of classifier. Accepted values are 'probabliities' and 'predictions.
+        num_classes: int
+            Number of classes in classification problem.
+        ip: str
+            IP address for UDP socket used to read messages.
+        port: int
+            Port for UDP socket used to read messages.
+        """
         super().__init__(ip, port)
         self.info_function_map['probabilities'] = self._parse_probabilities  # add option for classifier to parse probabilities
         self.output_format = output_format
@@ -161,6 +232,16 @@ class ClassifierController(SocketController):
 
 
 class RegressorController(SocketController):
+    """Controller interface for controlling environments using a regressor.
+        Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals.
+
+        Parameters
+        ----------
+        ip: str
+            IP address for UDP socket used to read messages.
+        port: int
+            Port for UDP socket used to read messages.
+        """
     def _parse_predictions(self, action: str) -> list[float]:
         outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", action)
         outputs = list(map(float, outputs))
@@ -178,6 +259,7 @@ class RegressorController(SocketController):
 
 class KeyboardController(Controller):
     def __init__(self) -> None:
+        """Controller interface for controlling environments using a keyboard. start() method is not required because this doesn't run in a separate thread."""
         # No run method b/c using pygame events in another thread doesn't work (pygame.init is required but isn't thread-safe)
         super().__init__()
         self.queue = Queue(maxsize=1)   # only want to read a single message at a time

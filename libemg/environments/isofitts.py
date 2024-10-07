@@ -8,8 +8,37 @@ from libemg.environments.controllers import Controller
 from libemg.environments._base import Environment
 
 class IsoFitts(Environment):
-    def __init__(self, controller: Controller, prediction_map = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
+    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60):
+        """Iso Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
+
+        Parameters
+        ----------
+        controller : Controller
+            Interface to parse predictions which determine the direction of the cursor.
+        prediction_map : dict | None, optional
+            Maps received control commands to cursor movement. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to down, up, no motion, right, and left, respectively.
+            For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and values map to actions in the environment.
+            Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be represented by a single key in the dictionary. Defaults to None.
+        num_circles : int, optional
+            Number of targets in task. Defaults to 30.
+        num_trials : int, optional
+            Number of trials user must complete. Defaults to 15.
+        dwell_time : float, optional
+            Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
+        timeout : float, optional
+            Time limit (in seconds) that signifies a failed trial. Defaults to 30.
+        velocity : float, optional
+            Velocity scalar that controls the max speed of the cursor. Defaults to 25.
+        save_file : str | None, optional
+            Path to save file for logging metrics. If None, no results are logged. Defaults to None.
+        width : int, optional
+            Width of display (in pixels). Defaults to 1250.
+        height : int, optional
+            Height of display (in pixels). Defaults to 750.
+        fps : int, optional
+            Frames per second (in Hz). Defaults to 60.
+        """
         # logging information
         log_dictionary = {
             'time_stamp':        [],

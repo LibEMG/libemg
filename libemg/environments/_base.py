@@ -10,7 +10,19 @@ from libemg.environments.controllers import Controller
 
 class Environment(ABC):
     def __init__(self, controller: Controller, fps: int, log_dictionary: dict, save_file: str | None = None):
-        # Assumes this is a pygame environment
+        """Abstract environment interface for pygame environments.
+
+        Parameters
+        ----------
+        controller : Controller
+            Controller instance that defines how control actions are parsed.
+        fps : int
+            Frames per second (Hz).
+        log_dictionary : dict
+            Dictionary containing metrics to log.
+        save_file : str | None, optional
+            Name of save file. If None, no results are saved. Defaults to None.
+        """        # Assumes this is a pygame environment
         self.controller = controller
         self.done = False   # flag to determine when loop should be exited
         self.clock = pygame.time.Clock()
@@ -22,6 +34,7 @@ class Environment(ABC):
         pygame.mixer.init() 
 
     def run(self):
+        """Run environment in main loop. Blocks all further execution. Results are saved after task is completed."""        
         if not self.controller.is_alive():
             self.controller.start()
 
