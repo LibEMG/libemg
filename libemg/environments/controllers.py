@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Manager
 from typing import overload
-from queue import Empty
 import socket
 import re
 
@@ -135,7 +134,8 @@ class SocketController(Controller):
         self.info_function_map['timestamp'] = self._parse_timestamp
         self.ip = ip
         self.port = port
-        self.queue = Queue(maxsize=1)   # only want to read a single message at a time
+        manager = Manager()  # can't pickle a Manager, so don't make it a field
+        self.action = manager.Value('s', '')    # maybe change to Array of bytes at some point
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
@@ -150,10 +150,10 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
-        try:
-            action = self.queue.get(block=False)
-        except Empty:
-            action = None
+        action = self.action.value
+        if action == '':
+            return None
+        self.action.value = ''  # indicate action has been consumed
         return action
 
     def run(self) -> None:
@@ -162,13 +162,11 @@ class SocketController(Controller):
         self.sock.bind((self.ip, self.port))
 
         while True:
-            bytes, _ = self.sock.recvfrom(1024)
-            message = str(bytes.decode('utf-8'))
-            if message:
+            data, _ = self.sock.recvfrom(1024)
+            message = str(data.decode('utf-8'))
+            if data:
                 # Data received
-                if self.queue.full():
-                    self.queue.get(block=True)  # setting block=False may throw an Empty error
-                self.queue.put(message, block=False)    # don't want to wait to add most recent message
+                self.action.value = message
     
 
 class ClassifierController(SocketController):
@@ -262,7 +260,6 @@ class KeyboardController(Controller):
         """Controller interface for controlling environments using a keyboard. start() method is not required because this doesn't run in a separate thread."""
         # No run method b/c using pygame events in another thread doesn't work (pygame.init is required but isn't thread-safe)
         super().__init__()
-        self.queue = Queue(maxsize=1)   # only want to read a single message at a time
         self.keys = [
             pygame.K_LEFT,
             pygame.K_RIGHT,
