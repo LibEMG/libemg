@@ -140,11 +140,11 @@ class IsoFitts(Environment):
                 direction = self.prediction_map[prediction]
 
                 if direction == 'N':
-                    predictions = [0, -1]   # -ve b/c pygame origin pixel is at top left of screen
+                    predictions = [0, 1]
                 elif direction == 'E':
                     predictions = [1, 0]
                 elif direction == 'S':
-                    predictions = [0, 1]    # +ve b/c pygame origin pixel is at top left of screen
+                    predictions = [0, -1]
                 elif direction == 'W':
                     predictions = [-1, 0]
                 elif direction == 'NM':
@@ -155,7 +155,7 @@ class IsoFitts(Environment):
                 pc = [pc, pc]
 
             self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
-            self.current_direction[1] += self.VEL * float(predictions[1]) * pc[1]
+            self.current_direction[1] -= self.VEL * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
             self.log(str(predictions), time.time())
             
