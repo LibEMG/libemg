@@ -28,7 +28,7 @@ from matplotlib.animation import FuncAnimation
 from functools import partial
 
 from libemg.utils import get_windows
-from libemg.environments import RegressorController, ClassifierController
+from libemg.environments.controllers import RegressorController, ClassifierController
 
 class EMGPredictor:
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
