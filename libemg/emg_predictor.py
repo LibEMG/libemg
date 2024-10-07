@@ -1160,7 +1160,12 @@ class OnlineEMGRegressor(OnlineStreamer):
         ax.set_ylabel('Prediction')
 
         controller = RegressorController(ip=self.ip, port=self.port)
-        predictions = controller.get_data('predictions')
+        controller.start()
+
+        # Wait for controller to start receiving data
+        predictions = None
+        while predictions is None:
+            predictions = controller.get_data('predictions')
         cmap = cm.get_cmap('turbo', len(predictions))
 
         plots = [ax.plot([], [], '.', color=cmap.colors[dof_idx], alpha=0.8)[0] for dof_idx in range(len(predictions))]
