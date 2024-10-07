@@ -58,7 +58,7 @@ class IsoFitts(Environment):
         self.circles = []
         self.cursor = pygame.Rect(self.width//2 - 7, self.height//2 - 7, 14, 14)
         self.goal_circle = -1
-        self.get_new_goal_circle()
+        self._get_new_goal_circle()
         self.current_direction = [0,0]
 
         # timer for checking socket
@@ -69,13 +69,13 @@ class IsoFitts(Environment):
         self.timeout = timeout   # (seconds)
         self.trial_duration = 0
 
-    def draw(self):
+    def _draw(self):
         self.screen.fill(self.BLACK)
-        self.draw_circles()
-        self.draw_cursor()
-        self.draw_timer()
+        self._draw_circles()
+        self._draw_cursor()
+        self._draw_timer()
     
-    def draw_circles(self):
+    def _draw_circles(self):
         if not len(self.circles):
             self.angle = 0
             self.angle_increment = 360 // self.num_of_circles
@@ -89,10 +89,10 @@ class IsoFitts(Environment):
         goal_circle = self.circles[self.goal_circle]
         pygame.draw.circle(self.screen, self.RED, (goal_circle.x + self.small_rad, goal_circle.y + self.small_rad), self.small_rad)
             
-    def draw_cursor(self):
+    def _draw_cursor(self):
         pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.left + 7, self.cursor.top + 7), 7)
 
-    def draw_timer(self):
+    def _draw_timer(self):
         if hasattr(self, 'dwell_timer'):
             if self.dwell_timer is not None:
                 toc = time.perf_counter()
@@ -101,16 +101,16 @@ class IsoFitts(Environment):
                 draw_text = self.font.render(time_str, 1, self.BLUE)
                 self.screen.blit(draw_text, (10, 10))
 
-    def update_game(self):
-        self.draw()
-        self.run_game_process()
-        self.move()
+    def _update_game(self):
+        self._draw()
+        self._run_game_process()
+        self._move()
     
-    def run_game_process(self):
-        self.check_collisions()
-        self.check_events()
+    def _run_game_process(self):
+        self._check_collisions()
+        self._check_events()
 
-    def check_collisions(self):
+    def _check_collisions(self):
         circle = self.circles[self.goal_circle]
         if math.sqrt((circle.centerx - self.cursor.centerx)**2 + (circle.centery - self.cursor.centery)**2) < (circle[2]/2 + self.cursor[2]/2):
             pygame.event.post(pygame.event.Event(pygame.USEREVENT + self.goal_circle))
@@ -119,7 +119,7 @@ class IsoFitts(Environment):
             pygame.event.post(pygame.event.Event(pygame.USEREVENT + self.num_of_circles))
             self.Event_Flag = False
 
-    def check_events(self):
+    def _check_events(self):
         # closing window
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -157,7 +157,7 @@ class IsoFitts(Environment):
             self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
             self.current_direction[1] -= self.VEL * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
-            self.log(str(predictions), time.time())
+            self._log(str(predictions), time.time())
             
         
 
@@ -169,7 +169,7 @@ class IsoFitts(Environment):
                 toc = time.perf_counter()
                 self.duration = round((toc - self.dwell_timer), 2)
             if self.duration >= self.dwell_time:
-                self.get_new_goal_circle()
+                self._get_new_goal_circle()
                 self.dwell_timer = None
                 if self.trial < self.max_trial-1: # -1 because max_trial is 1 indexed
                     self.trial += 1
@@ -186,21 +186,21 @@ class IsoFitts(Environment):
             self.trial_duration = round((toc - self.timeout_timer), 2)
         if self.trial_duration >= self.timeout:
             # Timeout
-            self.get_new_goal_circle()
+            self._get_new_goal_circle()
             self.timeout_timer = None
             if self.trial < self.max_trial-1: # -1 because max_trial is 1 indexed
                 self.trial += 1
             else:
                 self.done = True
 
-    def move(self):
+    def _move(self):
         # Making sure its within the bounds of the screen
         if self.cursor.left + self.current_direction[0] > 0 and self.cursor.left + self.current_direction[0] < self.width:
             self.cursor.left += self.current_direction[0]
         if self.cursor.top + self.current_direction[1] > 0 and self.cursor.top + self.current_direction[1] < self.height:
             self.cursor.top += self.current_direction[1]
     
-    def get_new_goal_circle(self):
+    def _get_new_goal_circle(self):
         if self.goal_circle == -1:
             self.goal_circle = 0
             self.next_circle_in = self.num_of_circles//2
@@ -216,7 +216,7 @@ class IsoFitts(Environment):
         self.timeout_timer = None
         self.trial_duration = 0
 
-    def log(self, label, timestamp):
+    def _log(self, label, timestamp):
         circle = self.circles[self.goal_circle]
         self.log_dictionary['time_stamp'].append(timestamp)
         self.log_dictionary['trial_number'].append(self.trial)
@@ -228,5 +228,5 @@ class IsoFitts(Environment):
 
     def _run_helper(self):
         # updated frequently for graphics & gameplay
-        self.update_game()
+        self._update_game()
         pygame.display.set_caption(str(self.clock.get_fps()))
