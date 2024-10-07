@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 import pickle
+import os
 
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"   # hide pygame welcome message
 import pygame
 
 from libemg.environments.controllers import Controller
