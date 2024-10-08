@@ -167,6 +167,11 @@ class SocketController(Controller):
             if data:
                 # Data received
                 self.action.value = message
+
+    def terminate(self) -> None:
+        # Add some cleanup
+        self.sock.close()
+        super().terminate()
     
 
 class ClassifierController(SocketController):
