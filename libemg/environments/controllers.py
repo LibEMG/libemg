@@ -1,11 +1,13 @@
+import time
 from abc import ABC, abstractmethod
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Lock
 from typing import overload
 import socket
 import re
 
 import numpy as np
 import pygame
+from libemg.shared_memory_manager import SharedMemoryManager
 
 
 """Base class for EMG prediction.
@@ -134,8 +136,24 @@ class SocketController(Controller):
         self.info_function_map['timestamp'] = self._parse_timestamp
         self.ip = ip
         self.port = port
-        manager = Manager()  # can't pickle a Manager, so don't make it a field
-        self.action = manager.Value('s', '')    # maybe change to Array of bytes at some point
+        self.smm = SharedMemoryManager()
+        self.lock = Lock()
+        self.smm_prepared = False
+        self.message_dtype = np.dtype('U400')
+
+    def _prepare_smm(self):
+        if self.smm_prepared:
+            return
+
+        # Need to find the variable first so it's set in the smm
+        start_time = time.time()
+        while not self.smm.find_variable('message', (1, 1), self.message_dtype, self.lock):
+            if (time.time() - start_time) > 1:
+                print("Not finding key 'message' in shared memory when setting up SocketController...waiting.")
+                start_time = time.time()
+
+        self.smm_prepared = True
+            
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
@@ -150,13 +168,20 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
-        action = self.action.value
+        self._prepare_smm()
+        action = self.smm.get_variable('message')[0][0]
         if action == '':
+            # No new data has been received
             return None
-        self.action.value = ''  # indicate action has been consumed
+        self.smm.modify_variable('message', lambda _: '')   # indicate action has been consumed
         return action
 
     def run(self) -> None:
+        # self.smm won't be shared properly across processes, so we make one in the run method
+        smm = SharedMemoryManager()
+        smm.create_variable('message', (1, 1), self.message_dtype, Lock())
+        smm.modify_variable('message', lambda _: '')    # initialize to empty string
+
         # Create UDP port for reading predictions
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.ip, self.port))
@@ -166,7 +191,7 @@ class SocketController(Controller):
             message = str(data.decode('utf-8'))
             if data:
                 # Data received
-                self.action.value = message
+                smm.modify_variable('message', lambda _: message)
 
     def terminate(self) -> None:
         # Add some cleanup
