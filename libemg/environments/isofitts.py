@@ -9,7 +9,7 @@ from libemg.environments._base import Environment
 
 class IsoFitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
-                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60):
+                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True):
         """Iso Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -38,6 +38,8 @@ class IsoFitts(Environment):
             Height of display (in pixels). Defaults to 750.
         fps : int, optional
             Frames per second (in Hz). Defaults to 60.
+        proportional_control : bool, optional
+            True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
         """
         # logging information
         log_dictionary = {
@@ -97,6 +99,11 @@ class IsoFitts(Environment):
         self.timeout_timer = None
         self.timeout = timeout   # (seconds)
         self.trial_duration = 0
+        self.proportional_control = proportional_control
+        if self.proportional_control:
+            self._info = ['predictions', 'pc']
+        else:
+            self._info = 'predictions'
 
     def _draw(self):
         self.screen.fill(self.BLACK)
@@ -155,13 +162,18 @@ class IsoFitts(Environment):
                 self.done = True
                 return
             
-        data = self.controller.get_data(['predictions', 'pc'])
+        data = self.controller.get_data(self._info)
         self.window_checkpoint = time.time()
         
         self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
-            predictions, pc = data
+            if isinstance(data, tuple):
+                predictions, pc = data
+            else:
+                predictions = data
+                pc = [1. for _ in predictions]
+
             if len(predictions) == 1 and len(pc) == 1:
                 # Output is a class/action, not a set of DOFs
                 prediction = predictions[0]
