@@ -29,6 +29,7 @@ from matplotlib.animation import FuncAnimation
 from functools import partial
 
 from libemg.utils import get_windows
+from libemg.environments.controllers import RegressorController, ClassifierController
 
 class EMGPredictor:
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
@@ -959,6 +960,7 @@ class OnlineEMGClassifier(OnlineStreamer):
             message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
         else:
             raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
+
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
@@ -974,21 +976,19 @@ class OnlineEMGClassifier(OnlineStreamer):
         max_len: (int) (optional) 
             number of decisions to visualize
         legend: (list) (optional)
-            The legend to display on the plot
+            Labels used to populate legend. Must be passed in order of output classes.
         """
-        #### NOT CURRENTLY WORKING
-        assert 1==0, "Method not ready"
+        if self.output_format != 'probabilities':
+            raise ValueError(f"OnlineEMGClassifier output_format must be 'probabailities' for visualize() method to work, but current value is {self.output_format}.")
         plt.style.use("ggplot")
         figure, ax = plt.subplots()
         figure.suptitle("Live Classifier Output", fontsize=16)
         plot_handle = ax.scatter([],[],c=[])
-        
-
-        # make a new socket that subscribes to the libemg events
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.predictor.model.classes_)
+        num_classes = len(self.predictor.model.classes_)    # assumes that user is using an sklearn model
         cmap = cm.get_cmap('turbo', num_classes)
+
+        controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=self.ip, port=self.port)
+        controller.start()
 
         if legend is not None:
             for i in range(num_classes):
@@ -1000,14 +1000,15 @@ class OnlineEMGClassifier(OnlineStreamer):
         timestamps = []
         start_time = time.time()
         while True:
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode("utf-8"))
-            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
+            data = controller.get_data(['probabilities', 'timestamp'])
+            if data is None:
+                continue
+            probabilities, timestamp = data
             max_prob = np.max(probabilities)
             prediction = np.argmax(probabilities)
             decision_horizon_classes.append(prediction)
             decision_horizon_probabilities.append(max_prob)
-            timestamps.append(float(data.split(" ")[-1]) - start_time)
+            timestamps.append(timestamp - start_time)
 
             decision_horizon_classes = decision_horizon_classes[-max_len:]
             decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
@@ -1166,20 +1167,20 @@ class OnlineEMGRegressor(OnlineStreamer):
         legend: bool (optional), default = False
             True if a legend should be shown, otherwise False. Defaults to False.
         """
+
         plt.style.use('ggplot')
         fig, ax = plt.subplots(layout='constrained')
         fig.suptitle('Live Regressor Output', fontsize=16)
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Prediction')
 
-        # Make local UDP socket whose purpose is to read from regressor output
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((self.ip, self.port))
-        
-        # Grab sample data to determine # of DOFs
-        data, _ = sock.recvfrom(1024)
-        data = str(data.decode('utf-8'))
-        predictions = self.parse_output(data)[0]
+        controller = RegressorController(ip=self.ip, port=self.port)
+        controller.start()
+
+        # Wait for controller to start receiving data
+        predictions = None
+        while predictions is None:
+            predictions = controller.get_data('predictions')
         cmap = cm.get_cmap('turbo', len(predictions))
 
         plots = [ax.plot([], [], '.', color=cmap.colors[dof_idx], alpha=0.8)[0] for dof_idx in range(len(predictions))]
@@ -1190,9 +1191,11 @@ class OnlineEMGRegressor(OnlineStreamer):
         start_time = time.time()
 
         def update(frame, decision_horizon_predictions, timestamps):
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode('utf-8'))
-            predictions, timestamp = self.parse_output(data)
+            data = controller.get_data(['predictions', 'timestamp'])
+            if data is None:
+                return
+            predictions, timestamp = data
+
             timestamps.append(timestamp - start_time)
             decision_horizon_predictions.append(predictions)
 
@@ -1203,7 +1206,6 @@ class OnlineEMGRegressor(OnlineStreamer):
                 plots[dof_idx].set_xdata(timestamps)
                 plots[dof_idx].set_ydata(np.array(decision_horizon_predictions)[:, dof_idx])
 
-
             if legend:
                 ax.legend(handles=handles, loc='upper right')
 
@@ -1213,11 +1215,3 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
         plt.show()
-
-    @staticmethod
-    def parse_output(message):
-        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", message)
-        outputs = list(map(float, outputs))
-        predictions = outputs[:-1]
-        timestamp = outputs[-1]
-        return predictions, timestamp
