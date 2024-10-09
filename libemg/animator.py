@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 from typing import Callable, Sequence
 import warnings
@@ -340,8 +341,8 @@ class PlotAnimator(Animator):
         """
         if save_coordinates:
             # Save coordinates in .txt file
-            filename_no_extension = os.path.splitext(self.output_filepath)[0]
-            labels_filepath = filename_no_extension + '.txt'
+            labels_filepath = Path(self.output_filepath).with_suffix('.txt')
+            labels_filepath.parent.mkdir(parents=True, exist_ok=True)
             np.savetxt(labels_filepath, coordinates, delimiter=',')
         
         # Format figure
