@@ -2,7 +2,7 @@ import os
 import numpy as np
 import zipfile
 import scipy.io as sio
-from libemg.data_handler import ColumnFetch, MetadataFetcher, OfflineDataHandler, RegexFilter, FilePackager
+from libemg.data_handler import ColumnFetcher, MetadataFetcher, OfflineDataHandler, RegexFilter, FilePackager
 from libemg.utils import make_regex
 from glob import glob
 from os import walk
@@ -159,7 +159,23 @@ class NinaproDB8(Ninapro):
             return odh
 
 class NinaproDB2(Ninapro):
-    def __init__(self, save_dir='.', dataset_name="NinaproDB2"):
+    EMG_LEN = 12
+    DATAGLOVE_LEN = 22
+
+    def __init__(self, save_dir='.', dataset_name="NinaproDB2", dataglove=False):
+        """Ninapro DB2 class to fetch data from DB2 dataset matlab file for processing.
+
+        Parameters
+        ----------
+        dataglove: bool
+            If True, cyberglove data will also be fetched from matlab files in convert_to_compatible method, and will set 
+            metadata_fetchers in OfflineDataHandler.get_data() to put cyberglove data into metadata (for regression). Use the following
+            code for OfflineDataHandler().parse_windows():
+            >>> metadata_operations = {'cyberglove': lambda x: x[-1]} # fetch the last sample for regression in time window
+            >>> inputs, metadata = odh.parse_windows(<window_size>, <window_increment>, metadata_operations=metadata_operations)
+            >>> regression_targets = metadata['cyberglove']
+        """
+        self.dataglove = self.DATAGLOVE_LEN if dataglove else False
         Ninapro.__init__(self, save_dir, dataset_name)
         self.class_list = ["TODO"]
         self.exercise_step = [0,0,0]
@@ -175,8 +191,77 @@ class NinaproDB2(Ninapro):
                 RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
             ]
             odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+            metadata_fetchers = None if not self.dataglove else [ColumnFetcher('cyberglove', column_mask=
+                                [idx for idx in range(self.EMG_LEN, self.EMG_LEN + self.dataglove)])]
+            emg_column_mask = [idx for idx in range(self.EMG_LEN)]
+            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",", data_column=emg_column_mask, metadata_fetchers=metadata_fetchers)
             return odh
+        
+    def convert_to_csv(self, mat_file):
+        # read the mat file
+        mat_file = mat_file.replace("\\", "/")
+        mat_dir = mat_file.split('/')
+        mat_dir = os.path.join(*mat_dir[:-1],"")
+        mat = sio.loadmat(mat_file)
+        # get the data
+        exercise = int(mat_file.split('_')[3][1])
+        exercise_offset = self.exercise_step[exercise-1] # 0 reps already included
+        data = mat['emg']
+        if self.dataglove:
+            try:
+                target = mat['glove']
+            except:
+                return
+        restimulus = mat['restimulus']
+        rerepetition = mat['rerepetition']
+        if data.shape[0] != restimulus.shape[0]: # this happens in some cases
+            min_shape = min([data.shape[0], restimulus.shape[0]])
+            data = data[:min_shape,:]
+            if self.dataglove:
+                target = target[:min_shape,]
+            restimulus = restimulus[:min_shape,]
+            rerepetition = rerepetition[:min_shape,]
+        # remove 0 repetition - collection buffer
+        remove_mask = (rerepetition != 0).squeeze()
+        data = data[remove_mask,:]
+        if self.dataglove:
+            target = target[remove_mask,:]
+        restimulus = restimulus[remove_mask]
+        rerepetition = rerepetition[remove_mask]
+        # important little not here: 
+        # the "rest" really is only the rest between motions, not a dedicated rest class.
+        # there will be many more rest repetitions (as it is between every class)
+        # so usually we really care about classifying rest as its important (most of the time we do nothing)
+        # but for this dataset it doesn't make sense to include (and not its just an offline showcase of the library)
+        # I encourage you to plot the restimulus to see what I mean. -> plt.plot(restimulus)
+        # so we remove the rest class too
+        remove_mask = (restimulus != 0).squeeze()
+        data = data[remove_mask,:]
+        if self.dataglove:
+            target = target[remove_mask,:]
+        restimulus = restimulus[remove_mask]
+        rerepetition = rerepetition[remove_mask]
+        tail = 0
+        while tail < data.shape[0]-1:
+            rep = rerepetition[tail][0] # remove the 1 offset (0 was the collection buffer)
+            motion = restimulus[tail][0] # remove the 1 offset (0 was between motions "rest")
+            # find head
+            head = np.where(rerepetition[tail:] != rep)[0]
+            if head.shape == (0,): # last segment of data
+                head = data.shape[0] -1
+            else:
+                head = head[0] + tail
+            # downsample to 1kHz from 2kHz using decimation
+            if self.dataglove:
+                data_for_file = np.concatenate((data[tail:head,:], target[tail:head,:]), 1)
+            else:
+                data_for_file = data[tail:head,:]
+            data_for_file = data_for_file[::2, :]
+            # write to csv
+            csv_file = mat_dir + 'C' + str(motion-1) + 'R' + str(rep-1 + exercise_offset) + '.csv'
+            np.savetxt(csv_file, data_for_file, delimiter=',')
+            tail = head
+        os.remove(mat_file)
 
 # given a directory, return a list of files in that directory matching a format
 # can be nested
@@ -243,7 +328,7 @@ class _SessionFetcher(MetadataFetcher):
         return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
 
 
-class _RepFetcher(ColumnFetch):
+class _RepFetcher(ColumnFetcher):
     def __call__(self, filename, file_data, all_files):
         column_data = super().__call__(filename, file_data, all_files)
         
@@ -318,7 +403,7 @@ class PutEMGForceDataset(Dataset):
             ]
             metadata_fetchers = [
                 _SessionFetcher(),
-                ColumnFetch('labels', column_mask),
+                ColumnFetcher('labels', column_mask),
                 _RepFetcher('reps', list(range(36, 40)))
             ]
             odh = OfflineDataHandler()

@@ -228,6 +228,7 @@ def sifi_bioarmband_streamer(
 
     for item in shared_memory_items:
         item.append(Lock())
+
         
     sb = SiFiBridgeStreamer(
         name,
@@ -246,9 +247,9 @@ def sifi_bioarmband_streamer(
         mac,
         bridge_version
     )
+
     sb.start()
     return sb, shared_memory_items
-
 
 def myo_streamer(
     shared_memory_items : list | None = None,
@@ -390,7 +391,7 @@ def delsys_api_streamer(license             : str = None,
     Returns
     ----------
     Object: streamer
-        The sifi streamer object.
+        The delsys streamer object.
     Object: shared memory
         The shared memory object.
     Examples
@@ -435,7 +436,7 @@ def oymotion_streamer(shared_memory_items : list | None = None,
     Returns
     ----------
     Object: streamer
-        The sifi streamer object
+        The oymotion streamer object
     Object: shared memory
         The shared memory object
     Examples
@@ -464,7 +465,7 @@ def oymotion_streamer(shared_memory_items : list | None = None,
     operating_system = platform.system().lower()
 
     # I'm only addressing this atm.
-    if operating_system == "windows" or operating_system == 'mac':
+    if operating_system == "windows" or operating_system == 'darwin':
         oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
         oym.start()
     else:
@@ -489,7 +490,7 @@ def emager_streamer(shared_memory_items = None):
     Returns
     ----------
     Object: streamer
-        The sifi streamer object.
+        The emager streamer object.
     Object: shared memory
         The shared memory object.
     Examples

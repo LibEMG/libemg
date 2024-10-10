@@ -22,7 +22,6 @@ class SiFiBridgeStreamer(Process):
 
     Parameters
     ----------
-
     name : str
         The name of the devie (eg BioArmband, BioPoint_v1_2, BioPoint_v1_3, etc.). None to auto-connect to any device.
     shared_memory_items : list
@@ -61,18 +60,18 @@ class SiFiBridgeStreamer(Process):
         self,
         name: str | None = None,
         shared_memory_items: list = [],
-        ecg: bool = False,
-        emg: bool = True,
-        eda: bool = False,
-        imu: bool = False,
-        ppg: bool = False,
-        filtering: bool = True,
+        ecg:            bool = False,
+        emg:            bool = True,
+        eda:            bool = False,
+        imu:            bool = False,
+        ppg:            bool = False,
+        filtering:      bool = True,
         emg_notch_freq: int = 60,
-        emg_bandpass: tuple = (20, 450),
-        eda_bandpass: tuple = (0, 5),
-        eda_freq: int = 250,
-        streaming: bool = False,
-        mac: str | None = None,
+        emg_bandpass:   tuple = (20, 450),
+        eda_bandpass:   tuple = (0, 5),
+        eda_freq:       int = 250,
+        streaming:      bool = False,
+        mac:            str | None = None,
         bridge_version: str | None = None,
     ):
 
@@ -87,6 +86,7 @@ class SiFiBridgeStreamer(Process):
         self.eda_handlers = []
         self.ecg_handlers = []
         self.ppg_handlers = []
+
 
         self.name = name
         self.ecg = ecg

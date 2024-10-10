@@ -43,6 +43,8 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field.
         """
+        if values is None:
+            raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
@@ -181,7 +183,7 @@ class FilePackager(MetadataFetcher):
         return packaged_file_data
 
 
-class ColumnFetch(MetadataFetcher):
+class ColumnFetcher(MetadataFetcher):
     def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         """Fetch metadata from columns within data file.
 
@@ -395,6 +397,13 @@ class OfflineDataHandler(DataHandler):
             The number of samples in a window. 
         window_increment: int
             The number of samples that advances before next window.
+        metadata_operations: dict or None (optional),default=None
+            Specifies which operations should be performed on metadata attributes when performing windowing. By default,
+            all metadata is stored as its mode in a window. To change this behaviour, specify the metadata attribute as the key and
+            the operation as the value in the dictionary. The operation (value) should either be an accepted string (mean, median, last_sample) or
+            a function handle that takes in an ndarray of size (window_size, ) and returns a single value to represent the metadata for that window. Passing in a string
+            will map from that string to the specified operation. The windowing of only the attributes specified in this dictionary will be modified - all other
+            attributes will default to the mode. If None, all attributes default to the mode. Defaults to None.
         
         Returns
         ----------
@@ -407,6 +416,12 @@ class OfflineDataHandler(DataHandler):
         return self._parse_windows_helper(window_size, window_increment, metadata_operations)
 
     def _parse_windows_helper(self, window_size, window_increment, metadata_operations):
+        common_metadata_operations = {
+            'mean': np.mean,
+            'median': np.median,
+            'last_sample': lambda x: x[-1]
+        }
+
         metadata_ = {}
         for i, file in enumerate(self.data):
             # emg data windowing
@@ -423,7 +438,14 @@ class OfflineDataHandler(DataHandler):
                     if metadata_operations is not None:
                         if k in metadata_operations.keys():
                             # do the specified operation
-                            file_metadata = _get_fn_windows(getattr(self,k)[i], window_size, window_increment, metadata_operations[k])
+                            operation = metadata_operations[k]
+                            
+                            if isinstance(operation, str):
+                                try:
+                                    operation = common_metadata_operations[operation]
+                                except KeyError as e:
+                                    raise KeyError(f"Unexpected metadata operation string. Please pass in a function or an accepted string {tuple(common_metadata_operations.keys())}. Got: {operation}.")
+                            file_metadata = _get_fn_windows(getattr(self,k)[i], window_size, window_increment, operation)
                         else:
                             file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                     else:
@@ -536,13 +558,17 @@ class OnlineDataHandler(DataHandler):
     ----------
     shared_memory_items: Object
         The shared memory object returned from the streamer.
+    channel_mask: list or None (optional), default=None
+        Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+        Defaults to None.
     """
-    def __init__(self, shared_memory_items):
+    def __init__(self, shared_memory_items, channel_mask = None):
         self.shared_memory_items = shared_memory_items
         self.prepare_smm()
         self.log_signal = Event()
         self.visualize_signal = Event()        
         self.fi = None
+        self.channel_mask = channel_mask
     
     def prepare_smm(self):
         self.modalities = []
@@ -583,6 +609,17 @@ class OnlineDataHandler(DataHandler):
             The filter object that you'd like to run on the online data.
         """
         self.fi = fi
+
+    def install_channel_mask(self, mask):
+        """Install a channel mask to isolate certain channels for online streaming.
+
+        Parameters
+        ----------
+        mask: list or None (optional), default=None
+            Mask of active channels to use online. Allows certain channels to be ignored when streaming in real-time. If None, all channels are used.
+            Defaults to None.
+        """
+        self.channel_mask = mask
 
 
     def analyze_hardware(self, analyze_time=10):
@@ -771,7 +808,8 @@ class OnlineDataHandler(DataHandler):
             # Extract features along each channel
             windows = data[np.newaxis].transpose(0, 2, 1)   # add axis and tranpose to convert to (windows x channels x samples)
             fe = FeatureExtractor()
-            feature_set_dict = fe.extract_features(feature_list, windows)
+            feature_set_dict = fe.extract_features(feature_list, windows, array=False)
+            assert isinstance(feature_set_dict, dict), f"Expected dictionary of features. Got: {type(feature_set_dict)}."
             if remap_function is not None:
                 # Remap raw data to image format
                 for key in feature_set_dict:
@@ -949,6 +987,8 @@ class OnlineDataHandler(DataHandler):
                 val[mod]   = data[:N,:]
             else:
                 val[mod]   = data[:,:]
+            if self.channel_mask is not None:
+                val[mod] = val[mod][:, self.channel_mask]
             count[mod] = self.smm.get_variable(mod+"_count")
         return val,count
 

@@ -47,3 +47,4 @@ test_*.py
 test_delsys_api.py
 resources/
 sifibridge-*
+*.pyc
