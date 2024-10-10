@@ -134,7 +134,7 @@ def sifi_biopoint_streamer(
 
 
 def sifi_bioarmband_streamer(
-    name = "BioArmband",
+    name = "BioPoint_v1_1",
     shared_memory_items = None,
     ecg = True,
     emg = True, 
