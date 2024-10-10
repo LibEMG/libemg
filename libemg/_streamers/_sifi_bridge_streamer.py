@@ -88,23 +88,21 @@ class SiFiBridgeStreamer(Process):
         self.ecg_handlers = []
         self.ppg_handlers = []
 
-        self.prepare_executable(bridge_version)
-        self.sb = sbp.SifiBridge("./" + self.executable)
+        self.name = name
+        self.ecg = ecg
+        self.emg = emg
+        self.eda = eda
+        self.imu = imu
+        self.ppg = ppg
+        self.filtering = filtering
+        self.emg_notch_freq = emg_notch_freq
+        self.emg_bandpass = emg_bandpass
+        self.eda_bandpass = eda_bandpass
+        self.eda_freq = eda_freq
+        self.streaming = streaming
+        self.mac = mac
 
-        self.configure(
-            ecg,
-            emg,
-            eda,
-            imu,
-            ppg,
-            filtering,
-            emg_notch_freq,
-            emg_bandpass,
-            eda_bandpass,
-            eda_freq,
-            streaming,
-        )
-        self.handle = mac if mac is not None else name
+        self.prepare_executable(bridge_version)
 
     def configure(
         self,
@@ -300,6 +298,23 @@ class SiFiBridgeStreamer(Process):
 
     def run(self):
         # process is started beyond this point!
+        self.sb = sbp.SifiBridge("./" + self.executable)
+
+        self.configure(
+            self.ecg,
+            self.emg,
+            self.eda,
+            self.imu,
+            self.ppg,
+            self.filtering,
+            self.emg_notch_freq,
+            self.emg_bandpass,
+            self.eda_bandpass,
+            self.eda_freq,
+            self.streaming,
+        )
+        self.handle = self.mac if self.mac is not None else self.name
+
         self.smm = SharedMemoryManager()
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
