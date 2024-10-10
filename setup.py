@@ -40,7 +40,8 @@ setup(
         "opencv-python",
         "pythonnet",
         "bleak",
-        "dearpygui"
+        "dearpygui",
+        "sifi-bridge-py==1.1.3"
     ],
     keywords=[
         "emg",

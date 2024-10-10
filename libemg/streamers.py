@@ -3,6 +3,7 @@ import socket
 import pickle
 import platform
 import numpy as np
+
 from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
@@ -15,65 +16,70 @@ from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 
-def sifi_biopoint_streamer(name="BioPoint_v1_3",
-                 shared_memory_items = None,
-                 ecg=True,
-                 emg=True, 
-                 eda=True,
-                 imu=True,
-                 ppg=True,
-                 notch_on=True, notch_freq=60,
-                 emg_fir_on = True,
-                 emg_fir=[20,450],
-                 eda_cfg = True,
-                 fc_lp = 0, # low pass eda
-                 fc_hp = 5, # high pass eda
-                 freq = 250,# eda sampling frequency
-                 streaming=False,
-                 mac= None,
-                 bridge_version = "0.6.4"): # TODO, replace bridge_version with none after Sifi updates
-    """The streamer for the sifi biopoint. 
-    This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
-    for the SiFi biopoint.
-    Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
+def sifi_biopoint_streamer(
+    name = "BioPoint_v1_3",
+    shared_memory_items = None,
+    ecg = True,
+    emg = True, 
+    eda = True,
+    imu = True,
+    ppg = True,
+    filtering = True, 
+    emg_notch_freq = 60,
+    emg_bandpass = (20,450),
+    eda_bandpass = (0,5),
+    eda_freq = 250,
+    streaming=False,
+    mac= None,
+    bridge_version = None
+):
+    """
+    The streamer for the SiFi BioPoint. 
+    
+    This function connects to SiFi Bridge and streams its data to the SharedMemory.
+    
+    **Note**: The IMU keys are:
+    
+    - Acceleration: ax, ay, az
+    - Quaternions: qw, qx, qy, qz
+    
     Parameters
     ----------
-    name: string (option), default = 'BioPoint_v1_3'
-        The name for the sifi device.
+    
+    device: string, default = BioPoint_v1_3
+        The name or MAC of the device.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
     ecg, default = True
-        The flag to enable electrocardiography recording from the main sensor unit.
+        Enable electrocardiography recording from the main sensor unit.
     emg, default = True
-        The flag to enable electromyography recording.
+        Enable electromyography recording.
     eda, default = True
-        The flag to enable electrodermal recording.
+        Enable electrodermal recording.
     imu, default = True
-        The flag to enable inertial measurement unit recording
+        Enable inertial measurement unit recording
     ppg, default = True
         The flag to enable photoplethysmography recording
-    notch_on, default = True
-        The flag to enable a fc Hz notch filter on device (firmware).
-    notch_freq, default = 60
-        The cutoff frequency of the notch filter specified by notch_on.
-    emg_fir_on, default = True
-        The flag to enable a bandpass filter on device (firmware).
-    emg_fir, default = [20, 450]
-        The low and high cutoff frequency of the bandpass filter specified by emg_fir_on.
-    eda_cfg, default = True
-        The flag to specify if using high or low frequency current for EDA or bioimpedance.
-    fc_lp, default = 0
-        The low cutoff frequency for the bioimpedance.
-    fc_hp, default = 5
-        The high cutoff frequency for the bioimpedance.
-    freq, default = 250
-        The sampling frequency for bioimpedance.
+    filtering, default = True
+        Enable on-device filtering, including bandpass filters and notch filters.
+    emg_notch_freq, default = 60
+        EMG notch filter frequency, useful for eliminating Mains power interference. Can be {None, 50, 60} Hz.
+    emg_bandpass, default = (20, 450)
+        The low and high cutoff frequency of the EMG bandpass filter.
+    eda_bandpass, default = (0, 5)
+        The low and high cutoff frequency of the EDA bandpass filter.
+    eda_freq, default = 250
+        The excitation signal frequency for EDA/BIOZ.
     streaming, default = False
-        Whether to package the modalities together within packets for lower latency.
+        Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
     mac, default = None:  
-        mac address of the device to be connected to
+        Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
+    bridge_version, default = None:
+        Version of SiFi Bridge to use. Defaults to the latest version.
+          
     Returns
     ----------
+    
     Object: streamer
         The sifi streamer process object.
     Object: shared memory
@@ -81,6 +87,7 @@ def sifi_biopoint_streamer(name="BioPoint_v1_3",
     
     Examples
     ---------
+    
     >>> streamer, shared_memory = sifibridge_streamer()
     """
 
@@ -104,89 +111,92 @@ def sifi_biopoint_streamer(name="BioPoint_v1_3",
 
     for item in shared_memory_items:
         item.append(Lock())
-    sb = SiFiBridgeStreamer(name=name,
-                            shared_memory_items=shared_memory_items,
-                            notch_on=notch_on,
-                            ecg=ecg,
-                            emg=emg,
-                            eda=eda,
-                            imu=imu,
-                            ppg=ppg,
-                            notch_freq=notch_freq,
-                            emgfir_on=emg_fir_on,
-                            emg_fir = emg_fir,
-                            eda_cfg = eda_cfg,
-                            fc_lp = fc_lp, # low pass eda
-                            fc_hp = fc_hp, # high pass eda
-                            freq = freq,# eda sampling frequency
-                            streaming=streaming,
-                            mac = mac,
-                            bridge_version=bridge_version)
+        
+    sb = SiFiBridgeStreamer(
+        name,
+        shared_memory_items,
+        ecg,
+        emg,
+        eda,
+        imu,
+        ppg,
+        filtering,
+        emg_notch_freq,
+        emg_bandpass,
+        eda_bandpass,
+        eda_freq,
+        streaming,
+        mac,
+        bridge_version
+    )
     sb.start()
     return sb, shared_memory_items
 
 
-
-def sifi_bioarmband_streamer(name="BioPoint_v1_1",
-                 shared_memory_items = None,
-                 ecg=True,
-                 emg=True, 
-                 eda=True,
-                 imu=True,
-                 ppg=True,
-                 notch_on=False,#I'm pretty sure these aren't configured right for 1500Hz
-                 notch_freq=60,
-                 emg_fir_on = False,#I'm pretty sure these aren't configured right for 1500Hz
-                 emg_fir=[20,450],
-                 eda_cfg = True,
-                 fc_lp = 0, # low pass eda
-                 fc_hp = 5, # high pass eda
-                 freq = 250,# eda sampling frequency
-                 streaming=False,
-                 mac= None,
-                 bridge_version = "0.6.4"):# TODO, replace bridge_version with none after Sifi updates
-    """The streamer for the sifi armband. 
-    This function connects to the sifi bridge and streams its data to the SharedMemory. This is used
-    for the SiFi bioarmband.
-    Note that the IMU is acc_x, acc_y, acc_z, quat_w, quat_x, quat_y, quat_z.
+def sifi_bioarmband_streamer(
+    name = "BioArmband",
+    shared_memory_items = None,
+    ecg = True,
+    emg = True, 
+    eda = True,
+    imu = True,
+    ppg = True,
+    filtering = True, 
+    emg_notch_freq = 60,
+    emg_bandpass = (20,450),
+    eda_bandpass = (0,5),
+    eda_freq = 250,
+    streaming = False,
+    mac = None,
+    bridge_version = None
+):
+    """
+    The streamer for the SiFi BioArmband. 
+    
+    This function connects to SiFi Bridge and streams its data to the SharedMemory.
+    
+    **Note**: The IMU keys are:
+    
+    - Acceleration: ax, ay, az
+    - Quaternions: qw, qx, qy, qz
+        
     Parameters
     ----------
-    name: string (option), default = 'BioPoint_v1_1'
-        The name for the sifi device.
+    
+    name: string, default = BioArmband
+        The name of the Sifi Device. For example: BioArmband, BioPoint_v1_3, etc.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
     ecg, default = True
-        The flag to enable electrocardiography recording from the main sensor unit.
+        Enable electrocardiography recording from the main sensor unit.
     emg, default = True
-        The flag to enable electromyography recording.
+        Enable electromyography recording.
     eda, default = True
-        The flag to enable electrodermal recording.
+        Enable electrodermal recording.
     imu, default = True
-        The flag to enable inertial measurement unit recording
+        Enable inertial measurement unit recording
     ppg, default = True
         The flag to enable photoplethysmography recording
-    notch_on, default = True
-        The flag to enable a fc Hz notch filter on device (firmware).
-    notch_freq, default = 60
-        The cutoff frequency of the notch filter specified by notch_on.
-    emg_fir_on, default = True
-        The flag to enable a bandpass filter on device (firmware).
-    emg_fir, default = [20, 450]
-        The low and high cutoff frequency of the bandpass filter specified by emg_fir_on.
-    eda_cfg, default = True
-        The flag to specify if using high or low frequency current for EDA or bioimpedance.
-    fc_lp, default = 0
-        The low cutoff frequency for the bioimpedance.
-    fc_hp, default = 5
-        The high cutoff frequency for the bioimpedance.
-    freq, default = 250
-        The sampling frequency for bioimpedance.
+    filtering, default = True
+        Enable on-device filtering, including bandpass filters and notch filters.
+    emg_notch_freq, default = 60
+        EMG notch filter frequency, useful for eliminating Mains power interference. Can be {None, 50, 60} Hz.
+    emg_bandpass, default = (20, 450)
+        The low and high cutoff frequency of the EMG bandpass filter.
+    eda_bandpass, default = (0, 5)
+        The low and high cutoff frequency of the EDA bandpass filter.
+    eda_freq, default = 250
+        The excitation signal frequency for EDA/BIOZ.
     streaming, default = False
-        Whether to package the modalities together within packets for lower latency.
+        Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
     mac, default = None:  
-        mac address of the device to be connected to
+        Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
+    bridge_version, default = None:
+        Version of SiFi Bridge to use. Defaults to the latest version.
+         
     Returns
     ----------
+    
     Object: streamer
         The sifi streamer process object.
     Object: shared memory
@@ -194,6 +204,7 @@ def sifi_bioarmband_streamer(name="BioPoint_v1_1",
     
     Examples
     ---------
+    
     >>> streamer, shared_memory = sifibridge_streamer()
     """
 
@@ -217,29 +228,28 @@ def sifi_bioarmband_streamer(name="BioPoint_v1_1",
 
     for item in shared_memory_items:
         item.append(Lock())
-    sb = SiFiBridgeStreamer(name=name,
-                            shared_memory_items=shared_memory_items,
-                            notch_on=notch_on,
-                            ecg=ecg,
-                            emg=emg,
-                            eda=eda,
-                            imu=imu,
-                            ppg=ppg,
-                            notch_freq=notch_freq,
-                            emgfir_on=emg_fir_on,
-                            emg_fir = emg_fir,
-                            eda_cfg = eda_cfg,
-                            fc_lp = fc_lp, # low pass eda
-                            fc_hp = fc_hp, # high pass eda
-                            freq = freq,# eda sampling frequency
-                            streaming=streaming,
-                            mac = mac,
-                            bridge_version=bridge_version)
+
+        
+    sb = SiFiBridgeStreamer(
+        name,
+        shared_memory_items,
+        ecg,
+        emg,
+        eda,
+        imu,
+        ppg,
+        filtering,
+        emg_notch_freq,
+        emg_bandpass,
+        eda_bandpass,
+        eda_freq,
+        streaming,
+        mac,
+        bridge_version
+    )
+
     sb.start()
     return sb, shared_memory_items
-
-
-
 
 def myo_streamer(
     shared_memory_items : list | None = None,
