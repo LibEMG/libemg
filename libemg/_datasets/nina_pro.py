@@ -138,6 +138,7 @@ class NinaproDB2(Ninapro):
 
 class NinaproDB8(Ninapro):
     def __init__(self, dataset_folder="NinaProDB8/"):
+        # NOTE: This expects each subject's data to be in its own zip file, so the data files for one subject end up in a single directory once we unzip them
         gestures = {
             0: "rest",
             1: "thumb flexion/extension",
