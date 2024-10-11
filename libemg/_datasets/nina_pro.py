@@ -47,7 +47,7 @@ class Ninapro(Dataset):
         mat_dir = os.path.join(*mat_dir[:-1],"")
         mat = sio.loadmat(mat_file)
         # get the data
-        exercise = int(mat_file.split('_')[3][1])
+        exercise = int(mat_file.split('_')[-1][1])
         exercise_offset = self.exercise_step[exercise-1] # 0 reps already included
         data = mat['emg']
         restimulus = mat['restimulus']
@@ -92,26 +92,6 @@ class Ninapro(Dataset):
             tail = head
         os.remove(mat_file)
 
-# class NinaproDB8(Ninapro):
-#     def __init__(self, save_dir='.', dataset_name="NinaProDB8"):
-#         Ninapro.__init__(self, save_dir, dataset_name)
-#         self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
-#          "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
-#         self.exercise_step = [0,10,20]
-
-#     def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
-#                                                       reps_values = [str(i) for i in range(22)],
-#                                                       classes_values = [str(i) for i in range(9)]):
-        
-#         if format == OfflineDataHandler:
-#             regex_filters = [
-#                 RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
-#                 RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
-#                 RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
-#             ]
-#             odh = OfflineDataHandler()
-#             odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-#             return odh
 
 class NinaproDB2(Ninapro):
     def __init__(self, dataset_folder="NinaProDB2/"):
@@ -135,6 +115,9 @@ class NinaproDB2(Ninapro):
         if classes_values is None:
             classes_values = [str(i) for i in range(50)]
 
+
+        # TODO: Ensure dataglove changes are implemented here
+
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the NinaProDB2 dataset from: https://ninapro.hevs.ch/instructions/DB2.html") 
@@ -151,4 +134,54 @@ class NinaproDB2(Ninapro):
         if split:
             data = {'All': odh, 'Train': odh.isolate_data('reps', [0,1,2,3], fast=True), 'Test': odh.isolate_data('reps', [4,5], fast=True)}
 
+        return data
+
+class NinaproDB8(Ninapro):
+    def __init__(self, dataset_folder="NinaProDB8/"):
+        gestures = {
+            0: "rest",
+            1: "thumb flexion/extension",
+            2: "thumb abduction/adduction",
+            3: "index finger flexion/extension",
+            4: "middle finger flexion/extension",
+            5: "combined ring and little fingers flexion/extension",
+            6: "index pointer",
+            7: "cylindrical grip",
+            8: "lateral grip",
+            9: "tripod grip"
+        }
+
+        super().__init__(
+            sampling=1111,
+            num_channels=16,
+            recording_device='Delsys Trigno',
+            num_subjects=12,
+            gestures=gestures,
+            num_reps=22,
+            description='Ninapro DB8 - designed for regression of finger kinematics. Ground truth labels are provided via cyberglove data.',
+            citation='https://ninapro.hevs.ch/',
+            dataset_folder=dataset_folder
+        )
+        self.exercise_step = [0,10,20]
+
+    def prepare_data(self, split = False, subjects_values = None, reps_values = None, classes_values = None):
+        if subjects_values is None:
+            subjects_values = [str(i) for i in range(1,self.num_subjects + 1)]
+        if reps_values is None:
+            reps_values = [str(i) for i in range(self.num_reps)]
+        if classes_values is None:
+            classes_values = [str(i) for i in range(9)]
+
+        self.convert_to_compatible()
+
+        regex_filters = [
+            RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
+            RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+            RegexFilter(left_bound="s", right_bound="/",values=subjects_values, description='subjects')
+        ]
+        odh = OfflineDataHandler()
+        odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2, 3], fast=True), 'Test': odh.isolate_data('reps', [4, 5], fast=True)}
         return data
