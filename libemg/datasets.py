@@ -4,7 +4,7 @@ from libemg._datasets.emg_epn612 import EMGEPN612
 from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift
 from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
 from libemg._datasets.continous_transitions import ContinuousTransitions
-from libemg._datasets.nina_pro import NinaproDB2
+from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
 from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.fors_emg import FORSEMG
 from libemg._datasets.intensity import ContractionIntensity
