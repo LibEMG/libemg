@@ -36,6 +36,7 @@ def get_dataset_list():
         'FORS-EMG': FORSEMG,
         'EMGEPN612': EMGEPN612,
         'ContractionIntensity': ContractionIntensity,
+        'OneSubjectEMaGer': OneSubjectEMaGerDataset
     }
     
 def get_dataset_info(dataset):
