@@ -1,5 +1,6 @@
 from libemg._datasets._3DC import _3DCDataset
 from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
+from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
 from libemg._datasets.emg_epn612 import EMGEPN612
 from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift
 from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
