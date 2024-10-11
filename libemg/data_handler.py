@@ -481,7 +481,7 @@ class OfflineDataHandler(DataHandler):
                 
                 metadata[k].append(file_metadata)
             
-        return np.vstack(window_data), {k: np.hstack(metadata[k]) for k in metadata.keys()}
+        return np.vstack(window_data), {k: np.concatenate(metadata[k], axis=0) for k in metadata.keys()}
 
     
     def isolate_channels(self, channels):
