@@ -9,6 +9,12 @@ class SharedMemoryManager:
         if tag in self.variables.keys():
             print(f"Already have access to this variable: {tag}")
             return True
+        
+        # if tag exists already
+        if self.find_variable(tag, shape, type, lock):
+            print(f'{tag} already exists in shared memory, found variable.')
+            return True
+        
         try:
             sm = SharedMemory(tag, create=False)
             sm.unlink()
