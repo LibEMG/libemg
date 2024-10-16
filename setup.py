@@ -41,7 +41,7 @@ setup(
         "pythonnet",
         "bleak",
         "dearpygui",
-        "sifi-bridge-py==1.1.3"
+        "sifi-bridge-py"
     ],
     keywords=[
         "emg",
