@@ -41,7 +41,8 @@ setup(
         "pythonnet",
         "bleak",
         "dearpygui",
-        "sifi-bridge-py"
+        "sifi-bridge-py",
+        "pygame"
     ],
     keywords=[
         "emg",
