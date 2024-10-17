@@ -352,16 +352,23 @@ class PlotAnimator(Animator):
         fig.suptitle(title)
         fig.tight_layout()
 
-        # Calculate steady states
-        diff = np.diff(coordinates, axis=0)
-        max_diff = np.max(np.abs(diff), axis=1)
-        all_steady_state_indices = np.where(max_diff < 0.01)[0] # find where the differences at each frame is less than some threshold
-        # Only take starts and ends of each segment
-        split_steady_state_indices = np.split(all_steady_state_indices, np.where(np.diff(all_steady_state_indices) != 1)[0] + 1)    # add 1 to align diff with original
-        split_steady_state_indices.append(np.array([coordinates.shape[0] - 1])) # append last frame
-        steady_state_start_indices = np.array([segment[0] for segment in split_steady_state_indices])
-        steady_state_end_indices = np.array([segment[-1] for segment in split_steady_state_indices])
-        
+        split_steady_state_indices = None
+        steady_state_start_indices = None
+        steady_state_end_indices = None
+        if self.show_direction or self.show_countdown:
+            # Calculate steady states
+            diff = np.diff(coordinates, axis=0)
+            max_diff = np.max(np.abs(diff), axis=1)
+            all_steady_state_indices = np.where(max_diff < 0.01)[0] # find where the differences at each frame is less than some threshold
+            try:
+                # Only take starts and ends of each segment
+                split_steady_state_indices = np.split(all_steady_state_indices, np.where(np.diff(all_steady_state_indices) != 1)[0] + 1)    # add 1 to align diff with original
+                split_steady_state_indices.append(np.array([coordinates.shape[0] - 1])) # append last frame
+                steady_state_start_indices = np.array([segment[0] for segment in split_steady_state_indices])
+                steady_state_end_indices = np.array([segment[-1] for segment in split_steady_state_indices])
+            except IndexError as e:
+                raise IndexError('Could not find steady state frames. If these features are desired, please pass in steady state frames (i.e., consecutive frames with the same value).') from e
+                
         # Adjust coordinates if desired
         coordinates = self._preprocess_coordinates(coordinates)
         
@@ -372,31 +379,33 @@ class PlotAnimator(Animator):
             if verbose and frame_idx % 10 == 0:
                 print(f'Frame {frame_idx} / {coordinates.shape[0]}')
             
-            # Calculate next steady state frame
-            next_steady_state_idx = min(current_steady_state_idx, len(steady_state_end_indices) - 1)    # limit max index
-            if frame_idx > steady_state_end_indices[current_steady_state_idx]:
-                current_steady_state_idx += 1
-                target_alpha = 0.05 # reset alpha
             # Plot additional information
             if self.show_boundary:
                 # Show boundaries
                 self._show_boundary()
             
-            if self.show_direction:
-                # Show path until a change in direction
-                next_steady_state_idx = current_steady_state_idx + 1 if frame_idx > steady_state_start_indices[current_steady_state_idx] else current_steady_state_idx
-                next_steady_state_start = steady_state_start_indices[next_steady_state_idx]
-                target_alpha += 0.01    # add in fade
-                target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
-                self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
+            if (self.show_direction or self.show_countdown) and split_steady_state_indices is not None and steady_state_start_indices is not None and steady_state_end_indices is not None:
+                # Calculate next steady state frame
+                next_steady_state_idx = min(current_steady_state_idx, len(steady_state_end_indices) - 1)    # limit max index
+                if frame_idx > steady_state_end_indices[current_steady_state_idx]:
+                    current_steady_state_idx += 1
+                    target_alpha = 0.05 # reset alpha
                 
-            if self.show_countdown:
-                # Show countdown during steady state
-                steady_state_end = steady_state_end_indices[current_steady_state_idx]
-                time_until_movement = (steady_state_end - frame_idx) * self.duration / 1000   # convert from frames to seconds
-                if time_until_movement >= 0.25 and frame_idx in split_steady_state_indices[current_steady_state_idx]:
-                    # Only show countdown if the steady state is longer than 1 second
-                    self._show_countdown(frame_coordinates, str(int(time_until_movement)))
+                if self.show_direction:
+                    # Show path until a change in direction
+                    next_steady_state_idx = current_steady_state_idx + 1 if frame_idx > steady_state_start_indices[current_steady_state_idx] else current_steady_state_idx
+                    next_steady_state_start = steady_state_start_indices[next_steady_state_idx]
+                    target_alpha += 0.01    # add in fade
+                    target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
+                    self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
+                    
+                if self.show_countdown:
+                    # Show countdown during steady state
+                    steady_state_end = steady_state_end_indices[current_steady_state_idx]
+                    time_until_movement = (steady_state_end - frame_idx) * self.duration / 1000   # convert from frames to seconds
+                    if time_until_movement >= 0.25 and frame_idx in split_steady_state_indices[current_steady_state_idx]:
+                        # Only show countdown if the steady state is longer than 1 second
+                        self._show_countdown(frame_coordinates, str(int(time_until_movement)))
                 
             # Plot icon
             self.plot_icon(frame_coordinates)
