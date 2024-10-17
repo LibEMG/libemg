@@ -41,7 +41,7 @@ class RegexFilter:
         values: list
             The values between the two regexes.
         description: str
-            Description of filter - used to name the metadata field.
+            Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
         """
         if values is None:
             raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
@@ -325,6 +325,9 @@ class OfflineDataHandler(DataHandler):
             Raises ValueError if folder_location is not a valid directory.
         """
         def append_to_attribute(name, value):
+            if name == '':
+                # Don't want this data saved to data handler, so skip it
+                return
             if not hasattr(self, name):
                 setattr(self, name, [])
                 self.extra_attributes.append(name)
