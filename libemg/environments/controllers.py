@@ -1,4 +1,3 @@
-import time
 from abc import ABC, abstractmethod
 from typing import overload
 import socket
@@ -6,7 +5,6 @@ import re
 
 import numpy as np
 import pygame
-from libemg.shared_memory_manager import SharedMemoryManager
 
 
 """Base class for EMG prediction.
@@ -136,8 +134,7 @@ class SocketController(Controller):
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.ip, self.port))
-
-            
+        self.sock.setblocking(False)
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
@@ -152,10 +149,12 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
-        data, _ = self.sock.recvfrom(1024)
-        action = str(data.decode('utf-8'))
+        try:
+            data, _ = self.sock.recvfrom(1024)
+            action = str(data.decode('utf-8'))
+        except BlockingIOError:
+            action = None
         return action
-
     
 
 class ClassifierController(SocketController):
