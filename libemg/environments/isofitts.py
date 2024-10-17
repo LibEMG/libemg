@@ -92,18 +92,13 @@ class IsoFitts(Environment):
         self._get_new_goal_circle()
         self.current_direction = [0,0]
 
-        # timer for checking socket
-        self.window_checkpoint = time.time()
-
-        # Socket for reading EMG
         self.timeout_timer = None
         self.timeout = timeout   # (seconds)
         self.trial_duration = 0
         self.proportional_control = proportional_control
+        self._info = ['predictions', 'timestamp']
         if self.proportional_control:
-            self._info = ['predictions', 'pc']
-        else:
-            self._info = 'predictions'
+            self._info.append('pc')
 
     def _draw(self):
         self.screen.fill(self.BLACK)
@@ -163,15 +158,15 @@ class IsoFitts(Environment):
                 return
             
         data = self.controller.get_data(self._info)
-        self.window_checkpoint = time.time()
         
         self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
-            if isinstance(data, tuple):
-                predictions, pc = data
+            predictions = data[0]
+            timestamp = data[1]
+            if len(data) == 3:
+                pc = data[2]
             else:
-                predictions = data
                 pc = [1. for _ in predictions]
 
             if len(predictions) == 1 and len(pc) == 1:
@@ -198,8 +193,7 @@ class IsoFitts(Environment):
             self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
             self.current_direction[1] -= self.VEL * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
-            self._log(str(predictions), time.time())
-            
+            self._log(str(predictions), timestamp)
         
 
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
