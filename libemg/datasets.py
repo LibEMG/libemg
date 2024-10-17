@@ -1,10 +1,11 @@
 from libemg._datasets._3DC import _3DCDataset
 from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
+from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
 from libemg._datasets.emg_epn612 import EMGEPN612
 from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift
 from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
 from libemg._datasets.continous_transitions import ContinuousTransitions
-from libemg._datasets.nina_pro import NinaproDB2
+from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
 from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.fors_emg import FORSEMG
 from libemg._datasets.radmand_lp import RadmandLP
@@ -40,7 +41,8 @@ def get_dataset_list():
         'ContractionIntensity': ContractionIntensity,
         'RadmandLP': RadmandLP,
         'FougnerLP': FougnerLP,
-        "KaufmannMD": KaufmannMD
+        "KaufmannMD": KaufmannMD,
+        'OneSubjectEMaGer': OneSubjectEMaGerDataset
     }
     
 def get_dataset_info(dataset):

@@ -29,7 +29,7 @@ from scipy.signal import welch
 from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: Sequence, description: str):
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str], description: str):
         """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
         Parameters
@@ -41,7 +41,7 @@ class RegexFilter:
         values: list
             The values between the two regexes.
         description: str
-            Description of filter - used to name the metadata field.
+            Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
         """
         if values is None:
             raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
@@ -96,8 +96,9 @@ class MetadataFetcher(ABC):
         self.description = description
 
     @abstractmethod
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]) -> npt.NDArray:
         """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
+        If a single value array is returned (0D or 1D), it will be cast to a N x 1 array where all values are the original value.
 
         Parameters
         ----------
@@ -324,6 +325,9 @@ class OfflineDataHandler(DataHandler):
             Raises ValueError if folder_location is not a valid directory.
         """
         def append_to_attribute(name, value):
+            if name == '':
+                # Don't want this data saved to data handler, so skip it
+                return
             if not hasattr(self, name):
                 setattr(self, name, [])
                 self.extra_attributes.append(name)
@@ -375,6 +379,9 @@ class OfflineDataHandler(DataHandler):
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
                 metadata = metadata_fetcher(file, file_data, all_files)
+                if metadata.ndim == 0 or metadata.shape[0] == 1:
+                    # Cast to array with the same # of samples as EMG data
+                    metadata = np.full((file_data.shape[0], 1), fill_value=metadata)
                 if metadata.ndim == 1:
                     # Ensure that output is always 2D array
                     metadata = np.expand_dims(metadata, axis=1)
@@ -477,7 +484,7 @@ class OfflineDataHandler(DataHandler):
                 
                 metadata[k].append(file_metadata)
             
-        return np.vstack(window_data), {k: np.hstack(metadata[k]) for k in metadata.keys()}
+        return np.vstack(window_data), {k: np.concatenate(metadata[k], axis=0) for k in metadata.keys()}
 
     
     def isolate_channels(self, channels):
