@@ -137,7 +137,7 @@ class SocketController(Controller):
         self.ip = ip
         self.port = port
         self.smm = SharedMemoryManager()
-        self.lock = Lock()
+        self.lock = Lock()  # must be shared across processes so we can't read in one and write in the other simultaneously
         self.smm_prepared = False
         self.message_dtype = np.dtype('U400')
 
@@ -179,7 +179,7 @@ class SocketController(Controller):
     def run(self) -> None:
         # self.smm won't be shared properly across processes, so we make one in the run method
         smm = SharedMemoryManager()
-        smm.create_variable('message', (1, 1), self.message_dtype, Lock())
+        smm.create_variable('message', (1, 1), self.message_dtype, self.lock)
         smm.modify_variable('message', lambda _: '')    # initialize to empty string
 
         # Create UDP port for reading predictions
