@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter, ColumnFetcher
 import os
@@ -54,9 +56,11 @@ class Ninapro(Dataset):
         rerepetition = mat['rerepetition']
         try:
             cyberglove_data = mat['glove']
+            cyberglove_directory = 'cyberglove'
         except KeyError:
             # No cyberglove data
             cyberglove_data = None
+            cyberglove_directory = ''
         if data.shape[0] != restimulus.shape[0]: # this happens in some cases
             min_shape = min([data.shape[0], restimulus.shape[0]])
             data = data[:min_shape,:]
@@ -103,14 +107,15 @@ class Ninapro(Dataset):
             # downsample to 1kHz from 2kHz using decimation
             data_for_file = data_for_file[::2, :]
             # write to csv
-            csv_file = mat_dir + 'C' + str(motion-1) + 'R' + str(rep-1 + exercise_offset) + '.csv'
+            csv_file = Path(mat_dir, cyberglove_directory, f"C{motion - 1}R{rep - 1 + exercise_offset}.csv")
+            csv_file.parent.mkdir(parents=True, exist_ok=True)
             np.savetxt(csv_file, data_for_file, delimiter=',')
             tail = head
         os.remove(mat_file)
 
 
 class NinaproDB2(Ninapro):
-    def __init__(self, dataset_folder="NinaProDB2/"):
+    def __init__(self, dataset_folder="NinaProDB2/", use_cyberglove: bool = False):
         Ninapro.__init__(self, 
                          2000, 
                          12, 
@@ -123,6 +128,7 @@ class NinaproDB2(Ninapro):
                          dataset_folder = dataset_folder)
         self.exercise_step = [0,0,0]
         self.num_cyberglove_dofs = 22
+        self.use_cyberglove = use_cyberglove    # needed b/c some files have EMG but no cyberglove
 
     def prepare_data(self, split = False, subjects_values = None, reps_values = None, classes_values = None):
         if subjects_values is None:
@@ -134,17 +140,23 @@ class NinaproDB2(Ninapro):
 
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            print("Please download the NinaProDB2 dataset from: https://ninapro.hevs.ch/instructions/DB2.html") 
-            return 
+            raise FileNotFoundError("Please download the NinaProDB2 dataset from: https://ninapro.hevs.ch/instructions/DB2.html") 
         self.convert_to_compatible()
         regex_filters = [
             RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
-            RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
+            RegexFilter(left_bound="R", right_bound=".csv", values=reps_values, description='reps'),
             RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
         ]
-        metadata_fetchers = [
-            ColumnFetcher('cyberglove', column_mask=[idx for idx in range(self.num_channels, self.num_channels + self.num_cyberglove_dofs)])
-        ]
+
+        if self.use_cyberglove:
+            # Only want cyberglove files
+            regex_filters.append(RegexFilter(left_bound="/", right_bound="/C", values=['cyberglove'], description=''))
+            metadata_fetchers = [
+                ColumnFetcher('cyberglove', column_mask=[idx for idx in range(self.num_channels, self.num_channels + self.num_cyberglove_dofs)])
+            ]
+        else:
+            metadata_fetchers = None
+
         emg_column_mask = [idx for idx in range(self.num_channels)] # first columns should be EMG
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=",", data_column=emg_column_mask)
