@@ -1,13 +1,10 @@
-import time
 from abc import ABC, abstractmethod
-from multiprocessing import Process, Lock
 from typing import overload
 import socket
 import re
 
 import numpy as np
 import pygame
-from libemg.shared_memory_manager import SharedMemoryManager
 
 
 """Base class for EMG prediction.
@@ -25,10 +22,9 @@ from libemg.shared_memory_manager import SharedMemoryManager
         silent: bool (default=False)
             If True, the outputs from the fix_feature_errors parameter will be silenced. 
         """
-class Controller(ABC, Process):
+class Controller(ABC):
     def __init__(self):
         """Abstract controller interface for controlling environments. Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals."""
-        super().__init__(daemon=True)
         self.info_function_map = {
             'predictions': self._parse_predictions,
             'pc': self._parse_proportional_control
@@ -136,24 +132,9 @@ class SocketController(Controller):
         self.info_function_map['timestamp'] = self._parse_timestamp
         self.ip = ip
         self.port = port
-        self.smm = SharedMemoryManager()
-        self.lock = Lock()  # must be shared across processes so we can't read in one and write in the other simultaneously
-        self.smm_prepared = False
-        self.message_dtype = np.dtype('U400')
-
-    def _prepare_smm(self):
-        if self.smm_prepared:
-            return
-
-        # Need to find the variable first so it's set in the smm
-        start_time = time.time()
-        while not self.smm.find_variable('message', (1, 1), self.message_dtype, self.lock):
-            if (time.time() - start_time) > 1:
-                print("Not finding key 'message' in shared memory when setting up SocketController...waiting.")
-                start_time = time.time()
-
-        self.smm_prepared = True
-            
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((self.ip, self.port))
+        self.sock.setblocking(False)
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
@@ -168,35 +149,12 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
-        self._prepare_smm()
-        action = self.smm.get_variable('message')[0][0]
-        if action == '':
-            # No new data has been received
-            return None
-        self.smm.modify_variable('message', lambda _: '')   # indicate action has been consumed
-        return action
-
-    def run(self) -> None:
-        # self.smm won't be shared properly across processes, so we make one in the run method
-        smm = SharedMemoryManager()
-        smm.create_variable('message', (1, 1), self.message_dtype, self.lock)
-        smm.modify_variable('message', lambda _: '')    # initialize to empty string
-
-        # Create UDP port for reading predictions
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((self.ip, self.port))
-
-        while True:
+        try:
             data, _ = self.sock.recvfrom(1024)
-            message = str(data.decode('utf-8'))
-            if data:
-                # Data received
-                smm.modify_variable('message', lambda _: message)
-
-    def terminate(self) -> None:
-        # Add some cleanup
-        self.sock.close()
-        super().terminate()
+            action = str(data.decode('utf-8'))
+        except BlockingIOError:
+            action = None
+        return action
     
 
 class ClassifierController(SocketController):
