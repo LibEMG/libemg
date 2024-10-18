@@ -35,9 +35,6 @@ class Environment(ABC):
 
     def run(self):
         """Run environment in main loop. Blocks all further execution. Results are saved after task is completed."""        
-        if not self.controller.is_alive():
-            self.controller.start()
-
         while not self.done:
             self._run_helper()
             pygame.display.update()
