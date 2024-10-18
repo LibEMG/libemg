@@ -14,3 +14,4 @@ from libemg._datasets import nina_pro
 from libemg._datasets import one_subject_emager
 from libemg._datasets import one_subject_myo
 from libemg._datasets import radmand_lp
+from libemg._datasets import tmr_shirleyryanabilitylab

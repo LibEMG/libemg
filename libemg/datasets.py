@@ -12,6 +12,7 @@ from libemg._datasets.radmand_lp import RadmandLP
 from libemg._datasets.fougner_lp import FougnerLP
 from libemg._datasets.intensity import ContractionIntensity
 from libemg._datasets.kaufmann_md import KaufmannMD
+from libemg._datasets.tmr_shirleyryanabilitylab import TMRShirleyRyanAbilityLab
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier
 from libemg.offline_metrics import OfflineMetrics
@@ -41,8 +42,9 @@ def get_dataset_list():
         'ContractionIntensity': ContractionIntensity,
         'RadmandLP': RadmandLP,
         'FougnerLP': FougnerLP,
-        "KaufmannMD": KaufmannMD,
-        'OneSubjectEMaGer': OneSubjectEMaGerDataset
+        'KaufmannMD': KaufmannMD,
+        'OneSubjectEMaGer': OneSubjectEMaGerDataset,
+        'TMRShirleyRyanAbilityLab' : TMRShirleyRyanAbilityLab
     }
     
 def get_dataset_info(dataset):
