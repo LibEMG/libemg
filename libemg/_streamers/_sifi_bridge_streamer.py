@@ -258,7 +258,7 @@ class SiFiBridgeStreamer(Process):
                 emg = np.expand_dims(np.array(data["data"]["emg"]), 0).T
                 for h in self.emg_handlers:
                     h(emg)
-            if "acc_x" in list(data["data"].keys()):
+            if "ax" in list(data["data"].keys()):
                 imu = np.stack(
                     (
                         data["data"]["ax"],
