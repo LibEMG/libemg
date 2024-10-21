@@ -19,7 +19,7 @@ class FORSEMG(Dataset):
     def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            print("Please download the pickled dataset from: https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset?resource=download")
+            print("Please download the dataset from: https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset?resource=download")
             return 
         
         odh = OfflineDataHandler()

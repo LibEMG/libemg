@@ -11,6 +11,7 @@ from libemg._datasets.fors_emg import FORSEMG
 from libemg._datasets.radmand_lp import RadmandLP
 from libemg._datasets.fougner_lp import FougnerLP
 from libemg._datasets.intensity import ContractionIntensity
+from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR
 from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg._datasets.tmr_shirleyryanabilitylab import TMRShirleyRyanAbilityLab
 from libemg.feature_extractor import FeatureExtractor
@@ -19,15 +20,25 @@ from libemg.offline_metrics import OfflineMetrics
 import pickle
 import time
 
-def get_dataset_list():
+def get_dataset_list(type='CLASSIFICATION'):
     """Gets a list of all available datasets.
+
+    Parameters
+    ----------
+    type: str (default='CLASSIFICATION')
+        The type of datasets to return. Valid Options: 'CLASSIFICATION', 'REGRESSION', and 'ALL'.
     
     Returns
     ----------
     dictionary
         A dictionary with the all available datasets and their respective classes.
     """
-    return {
+    type = type.upper()
+    if type not in ['CLASSIFICATION', 'REGRESSION', 'ALL']:
+        print('Valid Options for type parameter: \'CLASSIFICATION\', \'REGRESSION\', or \'ALL\'.')
+        return {}
+    
+    classification = {
         'OneSubjectMyo': OneSubjectMyoDataset,
         '3DC': _3DCDataset,
         'CIIL_MinimalData': CIIL_MinimalData,
@@ -36,16 +47,32 @@ def get_dataset_list():
         'GRABMyoCrossDay': GRABMyoCrossDay,
         'ContinuousTransitions': ContinuousTransitions,
         'NinaProDB2': NinaproDB2,
-        'MyoDisCo': MyoDisCo,
         'FORS-EMG': FORSEMG,
         'EMGEPN612': EMGEPN612,
         'ContractionIntensity': ContractionIntensity,
         'RadmandLP': RadmandLP,
         'FougnerLP': FougnerLP,
         'KaufmannMD': KaufmannMD,
-        'OneSubjectEMaGer': OneSubjectEMaGerDataset,
-        'TMRShirleyRyanAbilityLab' : TMRShirleyRyanAbilityLab
+        'TMRShirleyRyanAbilityLab' : TMRShirleyRyanAbilityLab,
+        'HyserPR': HyserPR,
     }
+
+    regression = {
+        'OneSubjectEMaGer': OneSubjectEMaGerDataset,
+        'NinaProDB8': NinaproDB8,
+        'Hyser1DOF': HyserPR,
+        'HyserNDOF': HyserNDOF, 
+        'HyserRandom': HyserRandom,
+    }
+    
+    if type == 'CLASSIFICATION':
+        return classification
+    elif type == 'REGRESSION':
+        return regression 
+    else:
+        # Concatenate all datasets
+        classification.update(regression)
+        return classification
     
 def get_dataset_info(dataset):
     """Prints out the information about a certain dataset. 
@@ -60,7 +87,7 @@ def get_dataset_info(dataset):
     else:
         print("ERROR: Invalid dataset name")
 
-def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], save_dir=None):
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], save_dir='.'):
     """Evaluates an algorithm against all included datasets.
     
     Parameters
@@ -77,6 +104,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         The name of the datasets you want to evaluate your model on. 
     save_dir: string (default=None)
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
+
     Returns
     ----------
     dictionary
