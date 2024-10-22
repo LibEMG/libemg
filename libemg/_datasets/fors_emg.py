@@ -32,8 +32,13 @@ class FORSEMG(Dataset):
         for s in range(1, 20):
             for g_i, g in enumerate(['Thumb_UP', 'Index', 'Right_Angle', 'Peace', 'Index_Little', 'Thumb_Little', 'Hand_Close', 'Hand_Open', 'Wrist_Flexion', 'Wrist_Extension', 'Radial_Deviation']):
                 for r in [1,2,3,4,5]:
-                    for o_i, o in enumerate(['rest', 'pronation', 'supination']):
-                        mat = scipy.io.loadmat('FORS-EMG/Subject' + str(s) + '/' + o + '/' + g + '-' + str(r) + '.mat')
+                    for o_i, o in enumerate(['Rest', 'Pronation', 'Supination']):
+                        try:
+                            mat = scipy.io.loadmat('FORS-EMG/Subject' + str(s) + '/' + o + '/' + g + '-' + str(r) + '.mat')
+                        except:
+                            o = o.lower()
+                            mat = scipy.io.loadmat('FORS-EMG/Subject' + str(s) + '/' + o + '/' + g + '-' + str(r) + '.mat')
+
                         odh.data.append(mat['value'].T)
                         odh.classes.append(np.ones((len(odh.data[-1]), 1)) * g_i)
                         odh.subjects.append(np.ones((len(odh.data[-1]), 1)) * s-1)

@@ -32,10 +32,8 @@ class Ninapro(Dataset):
     def convert_to_compatible(self):
         # get the zip files (original format they're downloaded in)
         zip_files = find_all_files_of_type_recursively(self.dataset_folder,".zip")
-        print(zip_files)
         # unzip the files -- if any are there (successive runs skip this)
         for zip_file in zip_files:
-            print(zip_file)
             with zipfile.ZipFile(zip_file, 'r') as zip_ref:
                 zip_ref.extractall(zip_file[:-4]+'/')
             os.remove(zip_file)
