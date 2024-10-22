@@ -7,6 +7,7 @@ from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
 from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
 from libemg._datasets.myodisco import MyoDisCo
+from libemg._datasets.user_compliance import UserComplianceDataset
 from libemg._datasets.fors_emg import FORSEMG
 from libemg._datasets.radmand_lp import RadmandLP
 from libemg._datasets.fougner_lp import FougnerLP
@@ -60,9 +61,10 @@ def get_dataset_list(type='CLASSIFICATION'):
     regression = {
         'OneSubjectEMaGer': OneSubjectEMaGerDataset,
         'NinaProDB8': NinaproDB8,
-        'Hyser1DOF': HyserPR,
+        'Hyser1DOF': Hyser1DOF,
         'HyserNDOF': HyserNDOF, 
         'HyserRandom': HyserRandom,
+        'UserCompliance': UserComplianceDataset
     }
     
     if type == 'CLASSIFICATION':
