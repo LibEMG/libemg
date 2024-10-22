@@ -102,7 +102,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         A dictionary of parameters for the passed in features.
     included_dataasets: list
         The name of the datasets you want to evaluate your model on. 
-    save_dir: string (default=None)
+    save_dir: string (default='.')
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
 
     Returns
@@ -145,9 +145,8 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             print(ca)    
         accuracies[d] = accs
 
-        # Save to pickle file 
-        if save_dir is not None:
-            with open(save_dir + str(time.time()) + '.pkl', 'wb') as handle:
-                pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
+        print(save_dir + str(time.time()) + '.pkl')
+        with open(save_dir + str(time.time()) + '.pkl', 'wb') as handle:
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
     return accuracies
