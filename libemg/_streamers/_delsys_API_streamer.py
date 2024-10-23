@@ -1,6 +1,8 @@
 from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process, Event, Lock
 
+import numpy as np
+
 class DataKernel():
     def __init__(self, trigno_base):
         self.TrigBase = trigno_base
