@@ -9,7 +9,8 @@ from libemg.environments._base import Environment
 
 class IsoFitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
-                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True):
+                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
+                 target_radius: int = 40, target_distance_radius: int = 275):
         """Iso Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -40,6 +41,10 @@ class IsoFitts(Environment):
             Frames per second (in Hz). Defaults to 60.
         proportional_control : bool, optional
             True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
+        target_radius : int, optional
+            Radius (in pixels) of each individual target. Defaults to 40.
+        target_distance_radius : int, optional
+            Radius (in pixels) of circle of targets in Iso Fitts' environment. Defaults to 275.
         """
         # logging information
         log_dictionary = {
@@ -72,8 +77,8 @@ class IsoFitts(Environment):
         self.RED   = (255,0,0)
         self.YELLOW = (255,255,0)
         self.BLUE   = (0,102,204)
-        self.small_rad = 40
-        self.big_rad   = 275
+        self.small_rad = target_radius
+        self.big_rad = target_distance_radius
         self.pos_factor1 = self.big_rad/2
         self.pos_factor2 = (self.big_rad * math.sqrt(3))//2
 
