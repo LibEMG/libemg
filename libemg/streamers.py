@@ -331,7 +331,7 @@ def delsys_streamer(shared_memory_items : list | None = None,
     Returns
     ----------
     Object: streamer
-        The sifi streamer object.
+        The delsys streamer object.
     Object: shared memory
         The shared memory object.
     Examples
@@ -362,9 +362,9 @@ def delsys_streamer(shared_memory_items : list | None = None,
     return delsys, shared_memory_items
 
 
-def delsys_api_streamer(license             : str = None,
-                        key                 : str = None,
-                        num_channels        : int = None,
+def delsys_api_streamer(license             : str,
+                        key                 : str,
+                        num_channels        : int | None = None,
                         dll_folder          : str = 'resources/',
                         shared_memory_items : list | None = None,
                         emg                 : bool = True):
@@ -380,7 +380,7 @@ def delsys_api_streamer(license             : str = None,
     key : str
         Delsys key
     num_channels: int
-        The number of delsys sensors you are using.
+        The number of delsys sensors you are using. Not used if shared_memory_items is passed, otherwise is a required parameter.
     dll_folder: string : optional (default='resources/')
         The location of the DLL files installed from the Delsys Github.
     shared_memory_items : list (optional)
@@ -396,11 +396,10 @@ def delsys_api_streamer(license             : str = None,
         The shared memory object.
     Examples
     ---------
-    >>> streamer, shared_memory = delsys_streamer()
+    >>> streamer, shared_memory = delsys_api_streamer(LICENSE, KEY, num_channels=4)
     """
-    assert license is not None
-    assert key is not None
     if shared_memory_items is None:
+        assert num_channels is not None, f"No shared memory items were passed, so num_channels must be set. Please set num_channels to the number of Delsys sensors. Got: {num_channels}."
         shared_memory_items = []
         if emg:
             shared_memory_items.append(["emg",       (5300,num_channels), np.double])

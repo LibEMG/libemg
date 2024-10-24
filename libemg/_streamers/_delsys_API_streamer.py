@@ -1,11 +1,7 @@
-"""
-This is the class that handles the data that is output from the Delsys Trigno Base.
-Create an instance of this and pass it a reference to the Trigno base for initialization.
-See CollectDataController.py for a usage example.
-"""
-import numpy as np
 from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process, Event, Lock
+
+import numpy as np
 
 class DataKernel():
     def __init__(self, trigno_base):
