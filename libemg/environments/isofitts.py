@@ -31,7 +31,7 @@ class IsoFitts(Environment):
         velocity : float, optional
             Velocity scalar that controls the max speed of the cursor. Defaults to 25.
         save_file : str | None, optional
-            Path to save file for logging metrics. If None, no results are logged. Defaults to None.
+            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
         width : int, optional
             Width of display (in pixels). Defaults to 1250.
         height : int, optional

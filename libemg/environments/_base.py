@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
 import pickle
@@ -21,7 +22,7 @@ class Environment(ABC):
         log_dictionary : dict
             Dictionary containing metrics to log.
         save_file : str | None, optional
-            Name of save file. If None, no results are saved. Defaults to None.
+            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
         """        # Assumes this is a pygame environment
         self.controller = controller
         self.done = False   # flag to determine when loop should be exited
@@ -55,5 +56,12 @@ class Environment(ABC):
 
         file = Path(self.save_file).absolute()
         file.parent.mkdir(parents=True, exist_ok=True) # create parent directories if they don't exist
-        with open(self.save_file, 'wb') as f:
-            pickle.dump(self.log_dictionary, f)
+
+        if file.suffix == '.pkl':
+            with open(self.save_file, 'wb') as f:
+                pickle.dump(self.log_dictionary, f)
+        elif file.suffix == '.json':
+            with open(self.save_file, 'w') as f:
+                json.dump(self.log_dictionary, f)
+        else:
+            raise ValueError(f"Unexpected file format '{file.suffix}'. Choose from '.pkl' or '.json'.")
