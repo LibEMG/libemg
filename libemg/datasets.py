@@ -115,7 +115,10 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
     accuracies = {}
     for d in included_datasets:
         print('Evaluating ' + d + ' dataset...')
-        dataset = get_dataset_list()[d]()
+        if isinstance(d, str):
+            dataset = get_dataset_list()[d]()
+        else:
+            dataset = d
         data = dataset.prepare_data(split=True)
         
         train_data = data['Train']
