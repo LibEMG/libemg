@@ -102,8 +102,8 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         A list of features.
     feature_dic: dic (default={})
         A dictionary of parameters for the passed in features.
-    included_dataasets: list
-        The name of the datasets you want to evaluate your model on. 
+    included_dataasets: list (str) or list (DataSets)
+        The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
     output_file: string (default='out.pkl')
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
 
