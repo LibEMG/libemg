@@ -41,7 +41,8 @@ setup(
         "pythonnet",
         "bleak",
         "dearpygui",
-        "h5py"
+        "h5py",
+        "onedrivedownloader"
     ],
     keywords=[
         "emg",

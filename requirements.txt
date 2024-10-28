@@ -30,3 +30,4 @@ opencv-python
 datetime
 websockets==8.1
 h5py
+onedrivedownloader
