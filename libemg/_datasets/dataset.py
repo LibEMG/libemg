@@ -1,5 +1,6 @@
 import os
 from libemg.data_handler import OfflineDataHandler
+from onedrivedownloader import download as onedrive_download
 # this assumes you have git downloaded (not pygit, but the command line program git)
 
 class Dataset:
@@ -17,6 +18,12 @@ class Dataset:
     def download(self, url, dataset_name):
         clone_command = "git clone " + url + " " + dataset_name
         os.system(clone_command)
+    
+    def download_via_onedrive(self, url, dataset_name):
+        onedrive_download(url=url,
+                          filename = dataset_name,
+                          unzip=True,
+                          clean=True)
     
     def remove_dataset(self, dataset_folder):
         remove_command = "rm -rf " + dataset_folder
