@@ -16,14 +16,13 @@ class EMGEPN612(Dataset):
                          '50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test)',
                          "A large 612 user dataset for developing cross user models.", 
                          'https://doi.org/10.5281/zenodo.4421500')
-        self.url = "https://github.com/libemg/OneSubjectMyoDataset"
+        self.url = "https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBLyFv6UrPYGwAISPDW9dBXw?e=vjCA14"
         self.dataset_name = dataset_file
 
     def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_name)):
-            print("Please download the pickled dataset from: https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBDXh4xNst3FAXV0lNoodrAA?e=t6HPaR") 
-            return 
+            self.download_via_onedrive(self.url, self.dataset_name, unzip=False, clean=False)
         
         file = open(self.dataset_name, 'rb')
         data = pickle.load(file)
