@@ -2,7 +2,7 @@ from libemg._datasets._3DC import _3DCDataset
 from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
 from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
 from libemg._datasets.emg_epn612 import EMGEPN612
-from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift
+from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift, CIIL_WeaklySupervised
 from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
 from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
@@ -35,7 +35,7 @@ def get_dataset_list(type='CLASSIFICATION'):
         A dictionary with the all available datasets and their respective classes.
     """
     type = type.upper()
-    if type not in ['CLASSIFICATION', 'REGRESSION', 'ALL']:
+    if type not in ['CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', 'ALL']:
         print('Valid Options for type parameter: \'CLASSIFICATION\', \'REGRESSION\', or \'ALL\'.')
         return {}
     
@@ -66,14 +66,21 @@ def get_dataset_list(type='CLASSIFICATION'):
         'HyserRandom': HyserRandom,
         'UserCompliance': UserComplianceDataset
     }
+
+    weaklysupervised = {
+        'CIILWeaklySupervised': CIIL_WeaklySupervised
+    }
     
     if type == 'CLASSIFICATION':
         return classification
     elif type == 'REGRESSION':
         return regression 
+    elif type == "WEAKLYSUPERVISED":
+        return weaklysupervised
     else:
         # Concatenate all datasets
         classification.update(regression)
+        classification.update(weaklysupervised)
         return classification
     
 def get_dataset_info(dataset):
@@ -116,7 +123,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
     for d in included_datasets:
         print('Evaluating ' + d + ' dataset...')
         if isinstance(d, str):
-            dataset = get_dataset_list()[d]()
+            dataset = get_dataset_list('ALL')[d]()
         else:
             dataset = d
         data = dataset.prepare_data(split=True)
