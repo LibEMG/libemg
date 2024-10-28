@@ -190,7 +190,7 @@ class HyserRandom(_Hyser):
         
 class _PRLabelsFetcher(MetadataFetcher):
     def __init__(self):
-        super().__init__(description='labels')
+        super().__init__(description='classes')
         self.sample_regex = RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(204)], description='samples')
 
     def _get_labels(self, filename):
