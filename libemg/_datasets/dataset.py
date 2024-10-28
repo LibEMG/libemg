@@ -19,11 +19,11 @@ class Dataset:
         clone_command = "git clone " + url + " " + dataset_name
         os.system(clone_command)
     
-    def download_via_onedrive(self, url, dataset_name):
+    def download_via_onedrive(self, url, dataset_name, unzip=True, clean=True):
         onedrive_download(url=url,
                           filename = dataset_name,
-                          unzip=True,
-                          clean=True)
+                          unzip=unzip,
+                          clean=clean)
     
     def remove_dataset(self, dataset_folder):
         remove_command = "rm -rf " + dataset_folder
