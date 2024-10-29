@@ -171,6 +171,9 @@ class DataCollectionPanel:
                 dpg.add_spacer(height=20,width=self.video_player_width/2+30-(7*len("Collection Menu"))/2)
                 dpg.add_text(default_value="Collection Menu")
             with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_rep_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
+                dpg.add_text(f"Rep 1 of {self.num_reps}", tag="__dc_rep")
+            with dpg.group(horizontal=True):
                 dpg.add_spacer(tag="__dc_prompt_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
             with dpg.group(horizontal=True):
@@ -218,13 +221,15 @@ class DataCollectionPanel:
             self.save_data(output_path)
             last_rep = media_list[self.i][3]
             self.i = self.i+1
-            if self.i  != len(media_list):
+            is_final_media = self.i == len(media_list)
+            if is_final_media:
+                # At the end of the list, so we must be finished a rep
+                rep_is_finished = True
+                current_rep = self.num_reps - 1
+            else:
                 # Check if we've finished a rep
                 current_rep = media_list[self.i][3]
                 rep_is_finished = last_rep != current_rep
-            else:
-                # At the end of the list, so we must be finished a rep
-                rep_is_finished = True
 
             # pause / redo goes here!
             if rep_is_finished  or (not self.auto_advance):
@@ -238,6 +243,8 @@ class DataCollectionPanel:
                     jobs = dpg.get_callback_queue()
                     dpg.run_callbacks(jobs)
                 dpg.configure_app(manual_callback_management=False)
+                if not is_final_media:
+                    dpg.set_value('__dc_rep', value=f"Rep {media_list[self.i][3] + 1} of {self.num_reps}")
         
     def redo_collection_callback(self):
         if self.auto_advance:
