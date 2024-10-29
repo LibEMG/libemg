@@ -218,11 +218,17 @@ class DataCollectionPanel:
             self.save_data(output_path)
             last_rep = media_list[self.i][3]
             self.i = self.i+1
-            if self.i  == len(media_list):
-                break
-            current_rep = media_list[self.i][3]
+            if self.i  != len(media_list):
+                # Check if we've finished a rep
+                current_rep = media_list[self.i][3]
+                rep_is_finished = last_rep != current_rep
+            else:
+                # At the end of the list, so we must be finished a rep
+                rep_is_finished = True
+
             # pause / redo goes here!
-            if last_rep != current_rep  or (not self.auto_advance):
+            if rep_is_finished  or (not self.auto_advance):
+                # Show redo / continue buttons
                 self.advance = False
                 dpg.show_item(item="__dc_redo_button")
                 dpg.show_item(item="__dc_continue_button")
