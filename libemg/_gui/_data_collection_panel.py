@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -129,8 +130,8 @@ class DataCollectionPanel:
         # find everything in the media folder
         files = os.listdir(self.media_folder)
         files = sorted(files)
-        valid_files = [file.endswith((".gif",".png",".mp4","jpg")) for file in files]
-        files = list(compress(files, valid_files))
+        labels_files = [file for file in files if file.endswith(('.txt', '.csv'))]
+        files = [file for file in files if file.endswith((".gif",".png",".mp4","jpg"))]
         self.num_motions = len(files)
         collection_conf = []
         # make the collection_details.json file
@@ -144,6 +145,17 @@ class DataCollectionPanel:
             os.makedirs(self.output_folder)
         with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
             json.dump(collection_details, f)
+
+        for media_file in files:
+            matching_labels_files = [labels_file for labels_file in labels_files if Path(labels_file).stem == Path(media_file).stem]
+            if len(matching_labels_files) == 1:
+                # Copy labels file to data directory
+                labels_file = matching_labels_files[0]
+                class_index = [idx for idx, filename in collection_details['class_map'].items() if filename == Path(labels_file).stem]
+                assert len(class_index) == 1, f"Expected a single matching filename in collection_details.json, but got {len(class_index)} for {labels_file}."
+                class_index = class_index[0]
+                labels_new_filename = Path(labels_file).with_stem(f"C_{class_index}").name
+                shutil.copy(Path(self.media_folder, labels_file).absolute(), Path(self.data_folder, labels_new_filename).absolute())
 
         # make the media list for SGT progression
         for rep_index in range(self.num_reps):
