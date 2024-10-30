@@ -108,15 +108,17 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values())):
-            self.get_settings()
-            dpg.delete_item("__dc_configuration_window")
-            self.cleanup_window("configuration")
-            media_list = self.gather_media()
+        if not (self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values()))):
+            raise ConnectionError('Attempted to start data collection, but data are not being received. Please ensure the OnlineDataHandler is receiving data.')
 
-            self.spawn_collection_thread = threading.Thread(target=self.spawn_collection_window, args=(media_list,))
-            self.spawn_collection_thread.start()
-            # self.spawn_collection_window(media_list)
+        self.get_settings()
+        dpg.delete_item("__dc_configuration_window")
+        self.cleanup_window("configuration")
+        media_list = self.gather_media()
+
+        self.spawn_collection_thread = threading.Thread(target=self.spawn_collection_window, args=(media_list,))
+        self.spawn_collection_thread.start()
+        # self.spawn_collection_window(media_list)
 
     def get_settings(self):
         self.num_reps      = int(dpg.get_value("__dc_num_reps"))
