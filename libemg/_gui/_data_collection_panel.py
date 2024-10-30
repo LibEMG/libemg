@@ -151,7 +151,13 @@ class DataCollectionPanel:
                 # entry for collection of rep
                 media = Media()
                 media.from_file(Path(self.media_folder, motion_class).absolute().as_posix())
-                collection_conf.append([media,motion_class.split('.')[0],class_index,rep_index,self.rep_time])
+
+                if media.type in ('mp4', 'gif'):
+                    # Automatically calculate length of video
+                    rep_time = media.n_frames / media.fps
+                else:
+                    rep_time = self.rep_time
+                collection_conf.append([media, motion_class.split('.')[0], class_index, rep_index, rep_time])
         return collection_conf
 
     def spawn_collection_window(self, media_list):
@@ -262,7 +268,7 @@ class DataCollectionPanel:
 
     def play_collection_visual(self, media, active=True):
         if active:
-            timer_duration = self.rep_time
+            timer_duration = media[-1]
             dpg.set_value("__dc_prompt", value=media[1])
             dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len(media[1]))/2)
         else:
