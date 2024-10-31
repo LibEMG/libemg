@@ -79,11 +79,20 @@ class RegexFilter:
         """
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
         val = re.findall(self.pattern, filename)[0]
-        if self.values is None:
-            metadata = val
+        if (self.values is None) or self.return_value:
+            # We want to store as a number if at all possible to save on memory
+            try:
+                return int(val)
+            except ValueError:
+                ...
+
+            try:
+                return float(val)
+            except ValueError:
+                # Can't cast to a number, so we return a string
+                return val
         else:
-            metadata = self.values.index(val)
-        return metadata
+            return self.values.index(val)
 
 
 class MetadataFetcher(ABC):
