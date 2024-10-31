@@ -34,7 +34,7 @@ class ContinuousTransitions(Dataset):
         odh_te.classes = []
         odh_te.extra_attributes = ['subjects', 'classes']
 
-        for s in [2,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20,21,22,23,25,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]:
+        for s_i, s in enumerate([2,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20,21,22,23,25,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47]):
             data = h5py.File('ContinuousTransitions/P' + f"{s:02}" + '.hdf5', "r")
             cont_labels = data['continuous']['emg']['prompt'][()]
             cont_labels = np.hstack([np.ones((1000)) * cont_labels[0], cont_labels[0:len(cont_labels)-1000]]) # Rolling about 0.5s as per Shri's suggestion
@@ -44,7 +44,7 @@ class ContinuousTransitions(Dataset):
             for i in range(0, len(cont_chg_idxs)-1):
                 odh_te.data.append(cont_emg[cont_chg_idxs[i]+1:cont_chg_idxs[i+1]])
                 odh_te.classes.append(np.expand_dims(cont_labels[cont_chg_idxs[i]+1:cont_chg_idxs[i+1]]-1, axis=1))
-                odh_te.subjects.append(np.ones((len(odh_te.data[-1]), 1)) * s-2) 
+                odh_te.subjects.append(np.ones((len(odh_te.data[-1]), 1)) * s_i) #TODO: update this I think!
             
             ramp_emg = data['ramp']['emg']['signal'][()]
             ramp_labels = data['ramp']['emg']['prompt'][()]
@@ -53,7 +53,7 @@ class ContinuousTransitions(Dataset):
             for i in range(0, len(r_chg_idxs)-1):
                 odh_tr.data.append(ramp_emg[r_chg_idxs[i]+1:r_chg_idxs[i+1]])
                 odh_tr.classes.append(np.expand_dims(ramp_labels[r_chg_idxs[i]+1:r_chg_idxs[i+1]]-1, axis=1))
-                odh_tr.subjects.append(np.ones((len(odh_tr.data[-1]), 1)) * s-2) 
+                odh_tr.subjects.append(np.ones((len(odh_tr.data[-1]), 1)) * s_i) 
             
         odh_all = odh_tr + odh_te
         data = odh_all
