@@ -28,9 +28,9 @@ class _Hyser(Dataset, ABC):
         self.subjects = subjects
         
         sessions_values = ['1', '2'] if self.analysis == 'sessions' else ['1']   # only grab first session unless both are desired
-        subjects_values = [str(idx + 1).zfill(2) for idx in range(self.num_subjects)]   # +1 due to Python indexing
+        self._subjects_values = [str(idx + 1).zfill(2) for idx in range(self.num_subjects)]   # +1 due to Python indexing
         self.common_regex_filters = [
-            RegexFilter(left_bound='subject', right_bound='_session', values=subjects_values, description='subjects'),
+            RegexFilter(left_bound='subject', right_bound='_session', values=self._subjects_values, description='subjects'),
             RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions')
         ]
 
@@ -170,10 +170,11 @@ class HyserRandom(_Hyser):
         """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
-        # if subjects is None:
-        #     subjects = [str(idx + 1).zfill(2) for idx in range(20) if idx != 9] # subject 10 is missing the labels file for sample1
         super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
-        self.subjects = [s for s in self.subjects if s != '10'] # subject 10 is missing the labels file for sample1
+
+        if subjects is None:
+            subjects = deepcopy(self._subjects_values)
+        self.subjects = [s for s in subjects if s != '10'] # subject 10 is missing the labels file for sample1
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
@@ -300,7 +301,9 @@ class HyserPR(_Hyser):
         }
         description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
         super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
-        self.subjects = [s for s in self.subjects if s not in ('03', '11')] # subjects 3 and 11 are missing classes
+        if subjects is None:
+            subjects = deepcopy(self._subjects_values)
+        self.subjects = [s for s in subjects if s not in ('03', '11')] # subjects 3 and 11 are missing classes
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
