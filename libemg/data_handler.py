@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -29,7 +29,7 @@ from scipy.signal import welch
 from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str], description: str):
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str] | None = None, description: str | None = None):
         """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
         Parameters
@@ -43,8 +43,8 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
         """
-        if values is None:
-            raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
+        # if values is None:
+        #     raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
@@ -80,8 +80,11 @@ class RegexFilter:
         """
         # this is how it should work to be the same as the ODH, but we can maybe discuss redoing this so it saves the actual value instead of the indices. might be confusing to pass values to get data but indices to isolate it. also not sure if it needs to be arrays
         val = re.findall(self.pattern, filename)[0]
-        idx = self.values.index(val)
-        return idx
+        if self.values is None:
+            metadata = val
+        else:
+            metadata = self.values.index(val)
+        return metadata
 
 
 class MetadataFetcher(ABC):
@@ -96,7 +99,7 @@ class MetadataFetcher(ABC):
         self.description = description
 
     @abstractmethod
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]) -> npt.NDArray:
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]) -> Any:
         """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
         If a single value array is returned (0D or 1D), it will be cast to a N x 1 array where all values are the original value.
 
@@ -114,7 +117,7 @@ class MetadataFetcher(ABC):
         metadata: np.ndarray
             Array containing the metadata corresponding to the provided file.
         """
-        raise NotImplementedError("Must implement __call__ method.")
+        ...
 
 
 class FilePackager(MetadataFetcher):
@@ -141,6 +144,7 @@ class FilePackager(MetadataFetcher):
         column_mask: list or None, default=None
             List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
         """
+        assert regex_filter.description is not None, 'RegexFilter must have a description, otherwise metadata will not be stored.'
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
         self.package_filters = None
@@ -291,6 +295,17 @@ class OfflineDataHandler(DataHandler):
             setattr(new_odh, self_attribute, new_value)
         return new_odh
         
+    def _append_to_attribute(self, name, value):
+        if name is None:
+            # Don't want this data saved to data handler, so skip it
+            return
+        if not hasattr(self, name):
+            setattr(self, name, [])
+            self.extra_attributes.append(name)
+        current_value = getattr(self, name)
+        setattr(self, name, current_value + [value])
+
+
     def get_data(self, folder_location: str, regex_filters: Sequence[RegexFilter], metadata_fetchers: Sequence[MetadataFetcher] | None = None, delimiter: str = ',',
                  mrdf_key: str = 'p_signal', skiprows: int = 0, data_column: Sequence[int] | None = None, downsampling_factor: int | None = None):
         """Method to collect data from a folder into the OfflineDataHandler object. The relevant data files can be selected based on passing in 
@@ -324,15 +339,6 @@ class OfflineDataHandler(DataHandler):
         ValueError:
             Raises ValueError if folder_location is not a valid directory.
         """
-        def append_to_attribute(name, value):
-            if name == '':
-                # Don't want this data saved to data handler, so skip it
-                return
-            if not hasattr(self, name):
-                setattr(self, name, [])
-                self.extra_attributes.append(name)
-            current_value = getattr(self, name)
-            setattr(self, name, current_value + [value])
 
         if not os.path.isdir(folder_location):
             raise ValueError(f"Folder location {folder_location} is not a directory.")
@@ -372,20 +378,16 @@ class OfflineDataHandler(DataHandler):
 
             # Fetch metadata from filename
             for regex_filter in regex_filters:
-                metadata_idx = regex_filter.get_metadata(file)
-                metadata = metadata_idx * np.ones((file_data.shape[0], 1), dtype=int)
-                append_to_attribute(regex_filter.description, metadata)
+                metadata = regex_filter.get_metadata(file)
+                self._append_to_attribute(regex_filter.description, metadata)
 
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
                 metadata = metadata_fetcher(file, file_data, all_files)
-                if metadata.ndim == 0 or metadata.shape[0] == 1:
-                    # Cast to array with the same # of samples as EMG data
-                    metadata = np.full((file_data.shape[0], 1), fill_value=metadata)
-                if metadata.ndim == 1:
+                if isinstance(metadata, np.ndarray) and metadata.ndim == 1:
                     # Ensure that output is always 2D array
                     metadata = np.expand_dims(metadata, axis=1)
-                append_to_attribute(metadata_fetcher.description, metadata)
+                self._append_to_attribute(metadata_fetcher.description, metadata)
             
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
         """Returns an update label list of the active labels for a ramp contraction.
@@ -463,8 +465,9 @@ class OfflineDataHandler(DataHandler):
             window_data.append(get_windows(file,window_size,window_increment))
     
             for k in self.extra_attributes:
-                if type(getattr(self,k)[i]) != np.ndarray:
-                    file_metadata = np.ones((window_data[-1].shape[0])) * getattr(self, k)[i]
+                file_attribute = getattr(self, k)[i]
+                if not isinstance(file_attribute, np.ndarray):
+                    file_metadata = np.full(window_data[-1].shape[0], fill_value=file_attribute)
                 else:
                     if metadata_operations is not None:
                         if k in metadata_operations.keys():
@@ -476,11 +479,11 @@ class OfflineDataHandler(DataHandler):
                                     operation = common_metadata_operations[operation]
                                 except KeyError as e:
                                     raise KeyError(f"Unexpected metadata operation string. Please pass in a function or an accepted string {tuple(common_metadata_operations.keys())}. Got: {operation}.")
-                            file_metadata = _get_fn_windows(getattr(self,k)[i], window_size, window_increment, operation)
+                            file_metadata = _get_fn_windows(file_attribute, window_size, window_increment, operation)
                         else:
-                            file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
+                            file_metadata = _get_mode_windows(file_attribute, window_size, window_increment)
                     else:
-                        file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
+                        file_metadata = _get_mode_windows(file_attribute, window_size, window_increment)
                 
                 metadata[k].append(file_metadata)
             
@@ -539,22 +542,26 @@ class OfflineDataHandler(DataHandler):
         key_attr = getattr(self, key)
         for e in self.extra_attributes:
             setattr(new_odh, e, [])
-                
-        for f in range(len(key_attr)):
-            if fast:
-                if key_attr[f][0][0] in values:
-                    keep_mask = [True] * len(key_attr[f])
-                else:
-                    keep_mask = [False] * len(key_attr[f])
+
+        for file_idx in range(len(key_attr)):
+            file_data = self.data[file_idx]
+            file_metadata = key_attr[file_idx]
+            if isinstance(file_metadata, np.ndarray):
+                # Maybe loop through then and each mask with previous mask to speed up
+                keep_mask = np.array([i in values for i in file_metadata])
+                    
             else:
-                keep_mask = list([i in values for i in key_attr[f]])
-            
-            if self.data[f][keep_mask,:].shape[0]> 0:
-                new_odh.data.append(self.data[f][keep_mask,:])
+                keep = file_metadata in values
+                keep_mask = np.full(file_data.shape[0], fill_value=keep)
+
+            if file_data[keep_mask].shape[0] > 0:
+                new_odh.data.append(file_data[keep_mask])
                 for e in self.extra_attributes:
-                    updated_arr = getattr(new_odh, e)
-                    updated_arr.append(getattr(self, e)[f][keep_mask])
-                    setattr(new_odh, e, updated_arr)
+                    new_metadata = getattr(self, e)[file_idx]
+                    if isinstance(new_metadata, np.ndarray):
+                        new_metadata = new_metadata[keep_mask]
+                    new_odh._append_to_attribute(e, new_metadata)
+                
 
         return new_odh
     
