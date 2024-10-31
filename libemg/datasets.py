@@ -132,7 +132,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
     metadata_operations = None 
     label_val = 'classes'
     if regression:
-        metadata_operations = {'labels': lambda x: x[-1]}
+        metadata_operations = {'labels': 'last_sample'}
         label_val = 'labels'
 
     om = OfflineMetrics()

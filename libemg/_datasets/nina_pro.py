@@ -212,7 +212,7 @@ class NinaproDB8(Ninapro):
             RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
         ]
         metadata_fetchers = [
-            ColumnFetcher('cyberglove', column_mask=[idx for idx in range(self.num_channels, self.num_channels + self.num_cyberglove_dofs)])
+            ColumnFetcher('labels', column_mask=[idx for idx in range(self.num_channels, self.num_channels + self.num_cyberglove_dofs)])
         ]
         emg_column_mask = [idx for idx in range(self.num_channels)] # first columns should be EMG
         odh = OfflineDataHandler()
