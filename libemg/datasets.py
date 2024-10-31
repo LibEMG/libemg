@@ -15,7 +15,7 @@ from libemg._datasets.intensity import ContractionIntensity
 from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR
 from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg._datasets.tmr_shirleyryanabilitylab import TMRShirleyRyanAbilityLab
-from libemg._datasets.one_site_biopoint import One_Site_Biopoint
+from libemg._datasets.one_site_biopoint import OneSiteBiopoint
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier
 from libemg.offline_metrics import OfflineMetrics
