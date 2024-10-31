@@ -29,7 +29,7 @@ from scipy.signal import welch
 from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str] | None = None, description: str | None = None):
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str] | None = None, description: str | None = None, return_value = False):
         """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
         Parameters
@@ -43,11 +43,10 @@ class RegexFilter:
         description: str
             Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
         """
-        # if values is None:
-        #     raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
         self.values = values
         self.description = description
+        self.return_value = return_value
 
     def get_matching_files(self, files: Sequence[str]):
         """Filter out files that don't match the regex pattern and return the matching files.
