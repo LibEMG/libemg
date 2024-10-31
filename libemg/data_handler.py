@@ -392,9 +392,12 @@ class OfflineDataHandler(DataHandler):
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
                 metadata = metadata_fetcher(file, file_data, all_files)
-                if isinstance(metadata, np.ndarray) and metadata.ndim == 1:
-                    # Ensure that output is always 2D array
-                    metadata = np.expand_dims(metadata, axis=1)
+                if isinstance(metadata, np.ndarray):
+                    if metadata.ndim == 0 or metadata.shape[0] == 1:
+                        metadata = metadata.item()
+                    elif metadata.ndim == 1:
+                        # Ensure that output is always 2D array
+                        metadata = np.expand_dims(metadata, axis=1)
                 self._append_to_attribute(metadata_fetcher.description, metadata)
             
     def active_threshold(self, nm_windows, active_windows, active_labels, num_std=3, nm_label=0, silent=True):
