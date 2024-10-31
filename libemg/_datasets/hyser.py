@@ -213,7 +213,7 @@ class _PRLabelsFetcher(MetadataFetcher):
     def __call__(self, filename, file_data, all_files):
         labels = self._get_labels(filename)       
         sample_idx = self.sample_regex.get_metadata(filename)
-        return labels[sample_idx]
+        return labels[sample_idx] - 1   # -1 to produce 0-indexed labels
         
 
 class _PRRepFetcher(_PRLabelsFetcher):
@@ -222,7 +222,7 @@ class _PRRepFetcher(_PRLabelsFetcher):
         self.description = 'reps'
 
     def __call__(self, filename, file_data, all_files):
-        label = super().__call__(filename, file_data, all_files)
+        label = super().__call__(filename, file_data, all_files) + 1    # +1 b/c this returns 0-indexed labels, but the files are 1-indexed
         labels = self._get_labels(filename)
         same_label_mask = np.where(labels == label)[0]
         sample_idx = self.sample_regex.get_metadata(filename)
