@@ -653,7 +653,7 @@ class OnlineStreamer(ABC):
         for item in self.smm_items:
             smm.create_variable(*item)
         self.options['smm'] = smm
-        self.options['classifier_smm_writes'] = 0
+        self.options['model_smm_writes'] = 0
 
     def analyze_predictor(self, analyze_time=10):
         """Analyzes the latency of the designed predictor. 
@@ -947,7 +947,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                                                 insert_classifier_input)
             self.options['smm'].modify_variable("classifier_output",
                                                 insert_classifier_output)
-            self.options['classifier_smm_writes'] += 1
+            self.options['model_smm_writes'] += 1
 
         if self.output_format == "predictions":
             message = str(prediction) + calculated_velocity + '\n'

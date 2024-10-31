@@ -9,7 +9,8 @@ from libemg.environments._base import Environment
 
 class IsoFitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
-                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True):
+                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
+                 target_radius: int = 40, target_distance_radius: int = 275):
         """Iso Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -31,7 +32,7 @@ class IsoFitts(Environment):
         velocity : float, optional
             Velocity scalar that controls the max speed of the cursor. Defaults to 25.
         save_file : str | None, optional
-            Path to save file for logging metrics. If None, no results are logged. Defaults to None.
+            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
         width : int, optional
             Width of display (in pixels). Defaults to 1250.
         height : int, optional
@@ -40,6 +41,10 @@ class IsoFitts(Environment):
             Frames per second (in Hz). Defaults to 60.
         proportional_control : bool, optional
             True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
+        target_radius : int, optional
+            Radius (in pixels) of each individual target. Defaults to 40.
+        target_distance_radius : int, optional
+            Radius (in pixels) of circle of targets in Iso Fitts' environment. Defaults to 275.
         """
         # logging information
         log_dictionary = {
@@ -72,8 +77,8 @@ class IsoFitts(Environment):
         self.RED   = (255,0,0)
         self.YELLOW = (255,255,0)
         self.BLUE   = (0,102,204)
-        self.small_rad = 40
-        self.big_rad   = 275
+        self.small_rad = target_radius
+        self.big_rad = target_distance_radius
         self.pos_factor1 = self.big_rad/2
         self.pos_factor2 = (self.big_rad * math.sqrt(3))//2
 
@@ -92,18 +97,13 @@ class IsoFitts(Environment):
         self._get_new_goal_circle()
         self.current_direction = [0,0]
 
-        # timer for checking socket
-        self.window_checkpoint = time.time()
-
-        # Socket for reading EMG
         self.timeout_timer = None
         self.timeout = timeout   # (seconds)
         self.trial_duration = 0
         self.proportional_control = proportional_control
+        self._info = ['predictions', 'timestamp']
         if self.proportional_control:
-            self._info = ['predictions', 'pc']
-        else:
-            self._info = 'predictions'
+            self._info.append('pc')
 
     def _draw(self):
         self.screen.fill(self.BLACK)
@@ -163,15 +163,15 @@ class IsoFitts(Environment):
                 return
             
         data = self.controller.get_data(self._info)
-        self.window_checkpoint = time.time()
         
         self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
-            if isinstance(data, tuple):
-                predictions, pc = data
+            predictions = data[0]
+            timestamp = data[1]
+            if len(data) == 3:
+                pc = data[2]
             else:
-                predictions = data
                 pc = [1. for _ in predictions]
 
             if len(predictions) == 1 and len(pc) == 1:
@@ -198,8 +198,7 @@ class IsoFitts(Environment):
             self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
             self.current_direction[1] -= self.VEL * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
-            self._log(str(predictions), time.time())
-            
+            self._log(str(predictions), timestamp)
         
 
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
