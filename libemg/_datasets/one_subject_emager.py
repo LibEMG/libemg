@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np 
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter, FilePackager
 
@@ -30,6 +31,9 @@ class OneSubjectEMaGerDataset(Dataset):
         metadata_fetchers = [FilePackager(RegexFilter(left_bound='/', right_bound='.txt', values=['labels'], description='labels'), package_function)]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
+        odh.subjects = []
+        odh.subjects = [np.zeros((len(d), 1)) for d in odh.data]
+        odh.extra_attributes.append('subjects')
         data = odh
         if split:
             data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2, 3], fast=True), 'Test': odh.isolate_data('reps', [4], fast=True)}
