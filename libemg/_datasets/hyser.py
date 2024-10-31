@@ -33,7 +33,7 @@ class _Hyser(Dataset, ABC):
     def common_regex_filters(self):
         sessions_values = ['1', '2'] if self.analysis == 'sessions' else ['1']   # only grab first session unless both are desired
         filters = [
-            RegexFilter(left_bound='subject', right_bound='_session', values=self.subjects, description='subjects'),
+            RegexFilter(left_bound='subject', right_bound='_session', values=self.subjects, description='subjects', return_value=True),
             RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions')
         ]
         return filters
@@ -88,7 +88,7 @@ class Hyser1DOF(_Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1], fast=True), 'Test': odh.isolate_data('reps', [2], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Supported values are sessions, baseline. Got: {self.analysis}.")
         return data
 
         
@@ -149,7 +149,7 @@ class HyserNDOF(_Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0], fast=True), 'Test': odh.isolate_data('reps', [1], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Supported values are sessions, baseline. Got: {self.analysis}.")
             
         return data
         
@@ -171,7 +171,6 @@ class HyserRandom(_Hyser):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
         super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
-
         self.subjects = [s for s in self.subjects if s != '10']
 
 
@@ -188,11 +187,6 @@ class HyserRandom(_Hyser):
         ]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
-        for idx, subject in enumerate(odh.subjects):
-            if (len(self.subjects) == self.num_subjects) and (int(self.subjects[subject[0, 0]]) > 10):
-                # Add 1 to align with proper subject ID
-                odh.subjects[idx] += 1
-                
         data = odh
         if split:
             if self.analysis == 'sessions':
@@ -200,7 +194,7 @@ class HyserRandom(_Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2], fast=True), 'Test': odh.isolate_data('reps', [3, 4], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Supported values are sessions, baseline. Got: {self.analysis}.")
             
         return data
 
@@ -230,6 +224,7 @@ class _PRLabelsFetcher(MetadataFetcher):
     def __call__(self, filename, file_data, all_files):
         labels = self._get_labels(filename)       
         sample_idx = self.sample_regex.get_metadata(filename)
+        assert isinstance(sample_idx, int), f"Expected index, but got value of type {type(sample_idx)}."
         return labels[sample_idx] - 1   # -1 to produce 0-indexed labels
         
 
@@ -304,6 +299,7 @@ class HyserPR(_Hyser):
         }
         description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
         super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
+        self.subjects = [s for s in self.subjects if s not in ('03', '11')] # subjects 3 and 11 are missing classes
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
@@ -320,9 +316,6 @@ class HyserPR(_Hyser):
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
 
-        # Need to remove subjects 3 and 11 b/c they're missing classes
-        subject_mask = [self.subjects.index(s) for s in self.subjects if s not in ('03', '11')]
-        odh = odh.isolate_data('subjects', subject_mask, fast=True)
         data = odh
         if split:
             if self.analysis == 'sessions':
@@ -330,6 +323,6 @@ class HyserPR(_Hyser):
             elif self.analysis == 'baseline':
                 data = {'All': odh, 'Train': odh.isolate_data('reps', [0], fast=True), 'Test': odh.isolate_data('reps', [1], fast=True)}
             else:
-                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
+                raise ValueError(f"Unexpected value for analysis. Supported values are sessions, baseline. Got: {self.analysis}.")
             
         return data
