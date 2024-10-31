@@ -555,9 +555,9 @@ class OfflineDataHandler(DataHandler):
             file_data = self.data[file_idx]
             file_metadata = key_attr[file_idx]
             if isinstance(file_metadata, np.ndarray):
-                # Maybe loop through then and each mask with previous mask to speed up
-                keep_mask = np.array([i in values for i in file_metadata])
-                    
+                keep_mask = np.full(file_metadata.shape[0], fill_value=False)
+                for value in values:
+                    keep_mask = keep_mask | (file_metadata == value)
             else:
                 keep = file_metadata in values
                 keep_mask = np.full(file_data.shape[0], fill_value=keep)
