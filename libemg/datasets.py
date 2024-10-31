@@ -17,7 +17,7 @@ from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg._datasets.tmr_shirleyryanabilitylab import TMRShirleyRyanAbilityLab
 from libemg._datasets.one_site_biopoint import OneSiteBiopoint
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_predictor import EMGClassifier
+from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 import pickle
 import time
@@ -98,7 +98,7 @@ def get_dataset_info(dataset):
     else:
         print("ERROR: Invalid dataset name")
 
-def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl'):
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl', regression=False, metrics=['CA']):
     """Evaluates an algorithm against all included datasets.
     
     Parameters
@@ -115,12 +115,29 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
     output_file: string (default='out.pkl')
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
-
+    regression: boolean (default=False)
+        If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
+    metrics: list (default=['CA']/['MSE'])
+        The metrics to extract from each dataset.
     Returns
     ----------
     dictionary
         A dictionary with a set of accuracies for different datasets
     """
+
+    # -------------- Setup -------------------
+    if metrics == ['CA'] and regression:
+        metrics = ['MSE']
+
+    metadata_operations = None 
+    label_val = 'classes'
+    if regression:
+        metadata_operations = {'labels': lambda x: x[-1]}
+        label_val = 'labels'
+
+    om = OfflineMetrics()
+
+    # --------------- Run -----------------
     accuracies = {}
     for d in included_datasets:
         print('Evaluating ' + d + ' dataset...')
@@ -128,6 +145,11 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             dataset = get_dataset_list('ALL')[d]()
         else:
             dataset = d
+
+        if isinstance(dataset, EMGEPN612):
+            print('EMGEPN612 Dataset is meant for cross user modelling... Skipping.')
+            continue
+        
         data = dataset.prepare_data(split=True)
         
         train_data = data['Train']
@@ -138,25 +160,34 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             print(str(s) + '/' + str(dataset.num_subjects) + ' completed.')
             s_train_dh = train_data.isolate_data('subjects', [s])
             s_test_dh = test_data.isolate_data('subjects', [s])
-            train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
-            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+            
+            train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
 
             fe = FeatureExtractor()
             train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
             test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
-            clf = EMGClassifier(model)
             ds = {
                 'training_features': train_feats,
-                'training_labels': train_meta['classes']
+                'training_labels': train_meta[label_val]
             }
+
+            if not regression:
+                clf = EMGClassifier(model)
+            else:
+                clf = EMGRegressor(model)
             clf.fit(ds)
-        
-            preds, _ = clf.run(test_feats)
-            om = OfflineMetrics()
-            ca = om.get_CA(test_meta['classes'], preds)
-            accs.append(ca)
-            print(ca)    
+            
+            if regression:
+                preds = clf.run(test_feats)
+            else:
+                preds, _ = clf.run(test_feats)
+                
+            metrics = om.extract_offline_metrics(metrics, test_meta[label_val], preds)
+            accs.append(metrics)
+                
+            print(metrics)    
         accuracies[d] = accs
 
         with open(output_file, 'wb') as handle:
