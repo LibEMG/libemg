@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
+from typing import Sequence
 
 import numpy as np
 
@@ -46,7 +47,7 @@ class _Hyser(Dataset, ABC):
 
 
 class Hyser1DOF(_Hyser):
-    def __init__(self, dataset_folder = 'Hyser1DOF', analysis = 'baseline'):
+    def __init__(self, dataset_folder: str = 'Hyser1DOF', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
         """1 degree of freedom (DOF) Hyser dataset.
 
         Parameters
@@ -56,10 +57,12 @@ class Hyser1DOF(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        subjects: Sequence[str] or None, default=None
+            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis)
+        super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
 
     def _prepare_data_helper(self, split = False):
         filename_filters = deepcopy(self.common_regex_filters)
@@ -87,7 +90,7 @@ class Hyser1DOF(_Hyser):
 
         
 class HyserNDOF(_Hyser):
-    def __init__(self, dataset_folder = 'HyserNDOF', analysis = 'baseline'):
+    def __init__(self, dataset_folder: str = 'HyserNDOF', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
         """N degree of freedom (DOF) Hyser dataset.
 
         Parameters
@@ -97,11 +100,13 @@ class HyserNDOF(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        subjects: Sequence[str] or None, default=None
+            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         # TODO: Add a 'regression' flag... maybe add a 'DOFs' parameter instead of just gestures?
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis) 
+        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects) 
         self.finger_combinations = {
             1: 'Thumb + Index',
             2: 'Thumb + Middle',
@@ -147,7 +152,7 @@ class HyserNDOF(_Hyser):
         
 
 class HyserRandom(_Hyser):
-    def __init__(self, dataset_folder = 'HyserRandom', analysis = 'baseline'):
+    def __init__(self, dataset_folder: str = 'HyserRandom', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
         """Random task (DOF) Hyser dataset.
 
         Parameters
@@ -157,10 +162,13 @@ class HyserRandom(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        subjects: Sequence[str] or None, default=None
+            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
-        subjects = [str(idx + 1).zfill(2) for idx in range(20) if idx != 9] # subject 10 is missing the labels file for sample1
+        if subjects is None:
+            subjects = [str(idx + 1).zfill(2) for idx in range(20) if idx != 9] # subject 10 is missing the labels file for sample1
         super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
@@ -236,7 +244,7 @@ class _PRRepFetcher(_PRLabelsFetcher):
 
         
 class HyserPR(_Hyser):
-    def __init__(self, dataset_folder = 'HyserPR', analysis = 'baseline'):
+    def __init__(self, dataset_folder: str = 'HyserPR', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
         """Pattern recognition (PR) Hyser dataset.
 
         Parameters
@@ -246,6 +254,8 @@ class HyserPR(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
+        subjects: Sequence[str] or None, default=None
+            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         gestures = {
             1: 'Thumb Extension',
@@ -284,7 +294,7 @@ class HyserPR(_Hyser):
             34: 'Thumb and Middle Fingers Pinch'
         }
         description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
-        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis)  # num_reps=2 b/c 2 trials
+        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
 
     def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
