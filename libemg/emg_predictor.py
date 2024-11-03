@@ -926,27 +926,26 @@ class OnlineEMGClassifier(OnlineStreamer):
         # Write classifier output:
         if self.options['file']:
             if not 'file_handle' in self.files.keys():
-                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
+                self.files['file_handle'] = open(self.options['file_path'] + 'model_output.txt', "a", newline="")
             writer = csv.writer(self.files['file_handle'])
             feat_str = str(model_input[0]).replace('\n','')[1:-1]
             row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
             writer.writerow(row)
             self.files['file_handle'].flush()
         if "smm" in self.options.keys():
-            #assumed to have "classifier_input" and "classifier_output" keys
             # these are (1+)
-            def insert_classifier_input(data):
-                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
+            def insert_model_input(data):
+                input_size = self.options['smm'].variables['model_input']["shape"][0]
                 data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
                 return data
-            def insert_classifier_output(data):
-                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
+            def insert_model_output(data):
+                output_size = self.options['smm'].variables['model_output']["shape"][0]
                 data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
                 return data
-            self.options['smm'].modify_variable("classifier_input",
-                                                insert_classifier_input)
-            self.options['smm'].modify_variable("classifier_output",
-                                                insert_classifier_output)
+            self.options['smm'].modify_variable("model_input",
+                                                insert_model_input)
+            self.options['smm'].modify_variable("model_output",
+                                                insert_model_output)
             self.options['model_smm_writes'] += 1
 
         if self.output_format == "predictions":
