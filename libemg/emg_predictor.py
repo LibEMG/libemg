@@ -831,13 +831,13 @@ class OnlineEMGClassifier(OnlineStreamer):
         True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
     smm_items: list, default = None
         List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
-        When modifying this variable, items with the name 'classifier_output' and 'classifier_input' are expected to be passed in to track classifier inputs and outputs.
-        The 'classifier_input' item should be of the format ['classifier_input', (100, 1 + num_features), np.double]
-        The 'classifier_output' item should be of the format ['classifier_output', (100, 1 + num_dofs), np.double].
+        When modifying this variable, items with the name 'model_output' and 'model_input' are expected to be passed in to track classifier inputs and outputs.
+        The 'model_input' item should be of the format ['model_input', (100, 1 + num_features), np.double]
+        The 'model_output' item should be of the format ['model_output', (100, 1 + num_dofs), np.double].
         If None, defaults to:
         [
-            ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-            ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+            ["model_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+            ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
         ]
     port: int (optional), default = 12346
         The port used for streaming predictions over UDP.
@@ -862,11 +862,11 @@ class OnlineEMGClassifier(OnlineStreamer):
         
         if smm_items is None:
             smm_items = [
-                ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+                ["model_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                ["model_input", (100,1+32), np.double], # timestamp, <- features ->
             ]
-        assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
-        assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.output_format = output_format
