@@ -20,7 +20,7 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 import pickle
-import time
+import numpy as np
 
 def get_dataset_list(type='CLASSIFICATION'):
     """Gets a list of all available datasets.
@@ -154,10 +154,12 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         
         train_data = data['Train']
         test_data = data['Test']
+
+        unique_subjects = np.unique(np.hstack([t.flatten() for t in train_data.subjects]))
         
         accs = []
-        for s in range(0, dataset.num_subjects):
-            print(str(s) + '/' + str(dataset.num_subjects) + ' completed.')
+        for s_i, s in enumerate(unique_subjects):
+            print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
             s_train_dh = train_data.isolate_data('subjects', [s])
             s_test_dh = test_data.isolate_data('subjects', [s])
             

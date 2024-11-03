@@ -5,7 +5,7 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import *
 
 class OneSiteBiopoint(Dataset):
-    def __init__(self, dataset_folder='CIIL_WeaklySupervised/data/'):
+    def __init__(self, dataset_folder='OneSiteBioPoint/data/'):
         Dataset.__init__(self, 
                          2000, 
                          1, 
@@ -28,10 +28,11 @@ class OneSiteBiopoint(Dataset):
         reps_values = [str(i) for i in range(0,6)]
         regex_filters = [
             RegexFilter(left_bound = "/S", right_bound="/", values = subjects, description='subjects'),
-            RegexFilter(left_bound = "R_", right_bound="EMG-bio.csv", values = reps_values, description='reps'),
+            RegexFilter(left_bound = "R_", right_bound="_EMG-bio.csv", values = reps_values, description='reps'),
             RegexFilter(left_bound = "C_", right_bound="_R", values = classes_values, description='classes')
         ]
         odh_s = OfflineDataHandler()
+        print(self.dataset_folder)
         odh_s.get_data(folder_location=self.dataset_folder,
                        regex_filters=regex_filters,
                        delimiter=",")
