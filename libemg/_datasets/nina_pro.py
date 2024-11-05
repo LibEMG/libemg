@@ -167,7 +167,7 @@ class NinaproDB2(Ninapro):
         return data
 
 class NinaproDB8(Ninapro):
-    def __init__(self, dataset_folder="NinaProDB8/"):
+    def __init__(self, dataset_folder="NinaProDB8/", map_to_finger_dofs = True):
         # NOTE: This expects each subject's data to be in its own zip file, so the data files for one subject end up in a single directory once we unzip them (e.g., DB8_s1)
         gestures = {
             0: "rest",
@@ -195,6 +195,38 @@ class NinaproDB8(Ninapro):
         )
         self.exercise_step = [0,10,20]
         self.num_cyberglove_dofs = 18
+        self.map_to_finger_dofs = map_to_finger_dofs
+
+    def _remap_labels(self, odh):
+        if not self.map_to_finger_dofs:
+            return odh
+
+        # Linear mapping matrix pulled from original paper: https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2019.00891/full
+        finger_map_matrix = np.array([
+            [0.639, 0, 0, 0, 0],
+            [0.383, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [-0.639, 0, 0, 0, 0],
+            [0, 0, 0.4, 0, 0],
+            [0, 0, 0.6, 0, 0],
+            [0, 0, 0, 0.4, 0],
+            [0, 0, 0, 0.6, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0.1667],
+            [0, 0, 0, 0, 0.3333],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0.1667],
+            [0, 0, 0, 0, 0.3333],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [-0.19, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+        ])
+
+        remapped_labels = finger_map_matrix @ odh.labels
+        odh.labels = remapped_labels
+        return odh
 
     def prepare_data(self, split = False, subjects_values = None, reps_values = None, classes_values = None):
         if subjects_values is None:
@@ -217,6 +249,7 @@ class NinaproDB8(Ninapro):
         emg_column_mask = [idx for idx in range(self.num_channels)] # first columns should be EMG
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=",", data_column=emg_column_mask)
+        odh = self._remap_labels(odh)
         data = odh
         if split:
             data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1, 2, 3], fast=True), 'Test': odh.isolate_data('reps', [4, 5], fast=True)}
