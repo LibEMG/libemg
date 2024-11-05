@@ -140,7 +140,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
     # --------------- Run -----------------
     accuracies = {}
     for d in included_datasets:
-        print('Evaluating ' + d + ' dataset...')
+        print(f"Evaluating {d} dataset...")
         if isinstance(d, str):
             dataset = get_dataset_list('ALL')[d]()
         else:
