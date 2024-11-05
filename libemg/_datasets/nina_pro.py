@@ -168,7 +168,7 @@ class NinaproDB2(Ninapro):
         return data
 
 class NinaproDB8(Ninapro):
-    def __init__(self, dataset_folder="NinaProDB8/", map_to_finger_dofs = True):
+    def __init__(self, dataset_folder="NinaProDB8/", map_to_finger_dofs = True, normalize_labels = True):
         # NOTE: This expects each subject's data to be in its own zip file, so the data files for one subject end up in a single directory once we unzip them (e.g., DB8_s1)
         gestures = {
             0: "rest",
@@ -197,11 +197,9 @@ class NinaproDB8(Ninapro):
         self.exercise_step = [0,10,20]
         self.num_cyberglove_dofs = 18
         self.map_to_finger_dofs = map_to_finger_dofs
+        self.normalize_labels = normalize_labels
 
     def _remap_labels(self, odh):
-        if not self.map_to_finger_dofs:
-            return odh
-
         # Linear mapping matrix pulled from original paper: https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2019.00891/full
         finger_map_matrix = np.array([
             [0.639, 0, 0, 0, 0],
@@ -226,8 +224,11 @@ class NinaproDB8(Ninapro):
 
         remapped_labels = []
         for labels in odh.labels:
-            finger_labels = labels @ finger_map_matrix
-            finger_labels = MinMaxScaler().fit_transform(finger_labels)
+            finger_labels = np.copy(labels)
+            if self.map_to_finger_dofs:
+                finger_labels = labels @ finger_map_matrix
+            if self.normalize_labels:
+                finger_labels = MinMaxScaler().fit_transform(finger_labels)
             remapped_labels.append(finger_labels)
         odh.labels = remapped_labels
         return odh
