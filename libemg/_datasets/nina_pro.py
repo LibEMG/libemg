@@ -6,6 +6,7 @@ import os
 import scipy.io as sio
 import zipfile
 import numpy as np 
+from sklearn.preprocessing import MinMaxScaler
 
 def find_all_files_of_type_recursively(dir, terminator):
     files = os.listdir(dir)
@@ -221,10 +222,13 @@ class NinaproDB8(Ninapro):
             [0, 0, 0, 0, 0],
             [-0.19, 0, 0, 0, 0],
             [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
         ])
 
-        remapped_labels = finger_map_matrix @ odh.labels
+        remapped_labels = []
+        for labels in odh.labels:
+            finger_labels = labels @ finger_map_matrix
+            finger_labels = MinMaxScaler().fit_transform(finger_labels)
+            remapped_labels.append(finger_labels)
         odh.labels = remapped_labels
         return odh
 
