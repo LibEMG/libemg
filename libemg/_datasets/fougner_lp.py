@@ -7,7 +7,7 @@ class FougnerLP(Dataset):
                         1000, 
                         8, 
                         'BE328 by Liberating Technologies, Inc.', 
-                        8, 
+                        12, 
                         {0: 'Wrist Flexion', 1: 'Wrist Extension', 2: 'Pronation', 3: 'Supination', 4: 'Hand Open', 5: 'Power Grip', 6: 'Pinch Grip', 7: 'Rest'}, 
                         '10 Reps (Train), 10 Reps x 4 Positions',
                         "A limb position dataset (with 5 static limb positions).",

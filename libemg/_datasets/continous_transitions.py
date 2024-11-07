@@ -19,7 +19,7 @@ class ContinuousTransitions(Dataset):
     def prepare_data(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
-            print("Please download the dataset from: ") #TODO: Update
+            print("Please download the dataset from: https://unbcloud-my.sharepoint.com/:f:/g/personal/ecampbe2_unb_ca/EjgjhM9ZHJxOglKoAf062ngBf4wFj2Mn2bORKY1-aMYGRw?e=WkZNwI") 
             return 
         
         # Training ODH
