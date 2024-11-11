@@ -12,7 +12,7 @@ class EMGEPN612(Dataset):
                          8, 
                          'Myo Armband', 
                          612, 
-                         {0: 'Close', 1: 'Open', 2: 'Rest', 3: 'Flexion', 4: 'Extension'}, 
+                         {0: 'No Movement', 1: 'Hand Close', 2: 'Flexion', 3: 'Extension', 4: 'Hand Open', 5: 'Pinch'}, 
                          '50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test)',
                          "A large 612 user dataset for developing cross user models.", 
                          'https://doi.org/10.5281/zenodo.4421500')
