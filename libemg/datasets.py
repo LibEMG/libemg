@@ -241,9 +241,12 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         
         train_data = data['Train']
         test_data = data['Test']
+        del data
 
         train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+        del train_data
         train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+        del train_windows
 
         ds = {
             'training_features': train_feats,
@@ -253,13 +256,16 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         clf = EMGClassifier(model)
         clf.fit(ds)
 
-        unique_subjects = np.unique(np.hstack([t.flatten() for t in train_data.subjects]))
+        del train_feats
+        del ds
+
+        unique_subjects = np.unique(np.hstack([t.flatten() for t in test_data.subjects]))
         
         accs = []
         for s_i, s in enumerate(unique_subjects):
             print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
             s_test_dh = test_data.isolate_data('subjects', [s])
-            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
             test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
             preds, _ = clf.run(test_feats)
