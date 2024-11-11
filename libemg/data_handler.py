@@ -511,7 +511,7 @@ class OfflineDataHandler(DataHandler):
             new_odh.data[i] = new_odh.data[i][:,channels]
         return new_odh
     
-    def isolate_data(self, key, values, fast=False):
+    def isolate_data(self, key, values, fast=True):
         """Entry point for isolating a single key of data within the offline data handler. First, error checking is performed within this method, then
         if it passes, the isolate_data_helper is called to make a new OfflineDataHandler that contains only that data.
 
