@@ -1,9 +1,9 @@
 from libemg._datasets._3DC import _3DCDataset
 from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
 from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
-from libemg._datasets.emg_epn612 import EMGEPN612
+from libemg._datasets.emg_epn612 import EMGEPN_UserDependent, EMGEPN_UserIndependent
 from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift, CIIL_WeaklySupervised
-from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
+from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay, GrabMyoCrossUser
 from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
 from libemg._datasets.myodisco import MyoDisCo
@@ -36,9 +36,14 @@ def get_dataset_list(type='CLASSIFICATION'):
         A dictionary with the all available datasets and their respective classes.
     """
     type = type.upper()
-    if type not in ['CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', 'ALL']:
+    if type not in ['CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', 'CROSSUSER', 'ALL']:
         print('Valid Options for type parameter: \'CLASSIFICATION\', \'REGRESSION\', or \'ALL\'.')
         return {}
+    
+    cross_user = {
+        'GRABMyo': GrabMyoCrossUser, 
+        'EMGEPN612': EMGEPN_UserIndependent,
+    }
     
     classification = {
         'OneSubjectMyo': OneSubjectMyoDataset,
@@ -50,7 +55,7 @@ def get_dataset_list(type='CLASSIFICATION'):
         'ContinuousTransitions': ContinuousTransitions,
         'NinaProDB2': NinaproDB2,
         'FORS-EMG': FORSEMG,
-        'EMGEPN612': EMGEPN612,
+        'EMGEPN612': EMGEPN_UserDependent,
         'ContractionIntensity': ContractionIntensity,
         'RadmandLP': RadmandLP,
         'FougnerLP': FougnerLP,
@@ -79,6 +84,8 @@ def get_dataset_list(type='CLASSIFICATION'):
         return regression 
     elif type == "WEAKLYSUPERVISED":
         return weaklysupervised
+    elif type == "CROSSUSER":
+        return cross_user
     else:
         # Concatenate all datasets
         classification.update(regression)
@@ -111,7 +118,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         A list of features.
     feature_dic: dic (default={})
         A dictionary of parameters for the passed in features.
-    included_dataasets: list (str) or list (DataSets)
+    included_datasets: list (str) or list (DataSets)
         The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
     output_file: string (default='out.pkl')
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
@@ -145,10 +152,6 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             dataset = get_dataset_list('ALL')[d]()
         else:
             dataset = d
-
-        if isinstance(dataset, EMGEPN612):
-            print('EMGEPN612 Dataset is meant for cross user modelling... Skipping.')
-            continue
         
         data = dataset.prepare_data(split=True)
         
@@ -195,4 +198,68 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         with open(output_file, 'wb') as handle:
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
-    return accuracies
+
+def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612', 'GRABMyo'], output_file='out_cross.pkl', metrics=['CA']):
+    """Evaluates an algorithm against all the cross-user datasets.
+    
+    Parameters
+    ----------
+    window_size: int
+        The window size (**in ms**). 
+    window_inc: int
+        The window increment (**in ms**). 
+    feature_list: list (default=['MAV'])
+        A list of features.
+    feature_dic: dic (default={})
+        A dictionary of parameters for the passed in features.
+    included_datasets: list (str) or list (DataSets)
+        The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
+    output_file: string (default='out.pkl')
+        The name of the directory you want to incrementally save the results to (it will be a pickle file).
+    metrics: list (default=['CA'])
+        The metrics to extract from each dataset.
+    Returns
+    ----------
+    dictionary
+        A dictionary with a set of accuracies for different datasets
+    """
+
+    om = OfflineMetrics()
+
+    # --------------- Run -----------------
+    accuracies = {}
+    for d in included_datasets:
+        print(f"Evaluating {d} dataset...")
+        if isinstance(d, str):
+            dataset = get_dataset_list('CROSSUSER')[d]()
+        else:
+            dataset = d
+        
+        data = dataset.prepare_data(split=True)
+        
+        train_data = data['Train']
+        test_data = data['Test']
+
+        train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+        test_windows, test_meta = test_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+
+        fe = FeatureExtractor()
+        train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+        test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+
+        ds = {
+            'training_features': train_feats,
+            'training_labels': train_meta['classes']
+        }
+
+        clf = EMGClassifier(model)
+        clf.fit(ds)
+
+        preds, _ = clf.run(test_feats)
+                
+        metrics = om.extract_offline_metrics(metrics, test_meta['classes'], preds)
+        print(metrics)
+        accuracies[d] = metrics 
+    
+        with open(output_file, 'wb') as handle:
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   

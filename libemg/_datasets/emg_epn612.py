@@ -6,20 +6,24 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.utils import *
 
 class EMGEPN612(Dataset):
-    def __init__(self, dataset_file='EMGEPN612.pkl'):
+    def __init__(self, dataset_file='EMGEPN612.pkl', cross_user=True):
+        split = '50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test) --> Cross User Split'
+        if not cross_user:
+            split = '20 Reps (Train), 5 Reps (Test) from the 306 Test Users --> User Dependent Split'
+
         Dataset.__init__(self, 
                          200, 
                          8, 
                          'Myo Armband', 
                          612, 
                          {0: 'No Movement', 1: 'Hand Close', 2: 'Flexion', 3: 'Extension', 4: 'Hand Open', 5: 'Pinch'}, 
-                         '50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test)',
+                         split,
                          "A large 612 user dataset for developing cross user models.", 
                          'https://doi.org/10.5281/zenodo.4421500')
         self.url = "https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBLyFv6UrPYGwAISPDW9dBXw?e=vjCA14"
         self.dataset_name = dataset_file
 
-    def prepare_data(self, split = False):
+    def get_odh(self, split = False):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_name)):
             self.download_via_onedrive(self.url, self.dataset_name, unzip=False, clean=False)
@@ -59,13 +63,29 @@ class EMGEPN612(Dataset):
             if i % 150 == 0:
                 te_reps = [0,0,0,0,0,0]
  
-        odh_all = odh_tr + odh_te
+        return odh_tr, odh_te
+    
+class EMGEPN_UserDependent(EMGEPN612):
+    def __init__(self, dataset_file='EMGEPN612.pkl'):
+        EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=False)
+    
+    def prepare_data(self, split=False):
+        _, odh = self.get_odh()
+        odh_tr = odh.isolate_data('reps', list(range(0,20)))
+        odh_te = odh.isolate_data('reps', list(range(20,25)))
 
-        data = odh_all
         if split:
-            data = {'All': odh_all, 'Train': odh_tr, 'Test': odh_te}
-
+            data = {'All': odh, 'Train': odh_tr, 'Test': odh_te}
         return data
-
+    
+class EMGEPN_UserIndependent(EMGEPN612):
+    def __init__(self, dataset_file='EMGEPN612.pkl'):
+        EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=True)
+    
+    def prepare_data(self, split=False):
+        odh_tr, odh_te = self.get_odh()
+        if split:
+            data = {'All': odh_tr + odh_te, 'Train': odh_tr, 'Test': odh_te}
+        return data
 
         
