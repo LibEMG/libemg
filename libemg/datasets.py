@@ -242,37 +242,33 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         train_data = data['Train']
         test_data = data['Test']
 
-        del data 
-        gc.collect()
-
         train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
         train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-
-        del train_windows
-        gc.collect()
 
         ds = {
             'training_features': train_feats,
             'training_labels': train_meta['classes']
         }
-
+        
         clf = EMGClassifier(model)
         clf.fit(ds)
 
-        del train_feats
-        gc.collect()
-
-        test_windows, test_meta = test_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
-        test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+        unique_subjects = np.unique(np.hstack([t.flatten() for t in train_data.subjects]))
         
-        del test_windows
-        gc.collect()
+        accs = []
+        for s_i, s in enumerate(unique_subjects):
+            print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
+            s_test_dh = test_data.isolate_data('subjects', [s])
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
-        preds, _ = clf.run(test_feats)
+            preds, _ = clf.run(test_feats)
                 
-        metrics = om.extract_offline_metrics(metrics, test_meta['classes'], preds)
-        print(metrics)
-        accuracies[d] = metrics 
-    
+            metrics = om.extract_offline_metrics(metrics, test_meta['classes'], preds)
+            accs.append(metrics)
+                
+            print(metrics)    
+        accuracies[d] = accs
+
         with open(output_file, 'wb') as handle:
-            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)
