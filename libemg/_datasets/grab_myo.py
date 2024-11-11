@@ -56,6 +56,7 @@ class GrabMyoCrossUser(GRABMyo):
 
     def prepare_data(self, split = False):
         forearm_data = self.get_odh()
+        forearm_data = forearm_data.isolate_data('sessions', [0], fast=True)
        
         train_data = forearm_data.isolate_data('subjects', list(range(0,30)), fast=True)
         test_data = forearm_data.isolate_data('subjects', list(range(30,44)), fast=True)
