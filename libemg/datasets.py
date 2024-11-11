@@ -21,6 +21,7 @@ from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 import pickle
 import numpy as np
+import gc
 
 def get_dataset_list(type='CLASSIFICATION'):
     """Gets a list of all available datasets.
@@ -225,6 +226,7 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
     """
 
     om = OfflineMetrics()
+    fe = FeatureExtractor()
 
     # --------------- Run -----------------
     accuracies = {}
@@ -240,12 +242,14 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         train_data = data['Train']
         test_data = data['Test']
 
-        train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
-        test_windows, test_meta = test_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+        del data 
+        gc.collect()
 
-        fe = FeatureExtractor()
+        train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
         train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-        test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+
+        del train_windows
+        gc.collect()
 
         ds = {
             'training_features': train_feats,
@@ -254,6 +258,15 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
 
         clf = EMGClassifier(model)
         clf.fit(ds)
+
+        del train_feats
+        gc.collect()
+
+        test_windows, test_meta = test_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+        test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+        
+        del test_windows
+        gc.collect()
 
         preds, _ = clf.run(test_feats)
                 
