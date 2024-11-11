@@ -240,18 +240,17 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         train_data = data['Train']
         test_data = data['Test']
 
-        print('Loaded Dataset')
+        del data 
 
         train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
         test_windows, test_meta = test_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
-
-        print('Extracted Windows')
 
         fe = FeatureExtractor()
         train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
         test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
-        print('Extracted Features')
+        del train_windows
+        del test_windows
 
         ds = {
             'training_features': train_feats,
