@@ -19,19 +19,18 @@ from libemg._streamers._leap_streamer import LeapStreamer
 def sifi_biopoint_streamer(
     name = "BioPoint_v1_3",
     shared_memory_items = None,
-    ecg = True,
+    ecg = False,
     emg = True, 
-    eda = True,
-    imu = True,
-    ppg = True,
+    eda = False,
+    imu = False,
+    ppg = False,
     filtering = True, 
     emg_notch_freq = 60,
     emg_bandpass = (20,450),
     eda_bandpass = (0,5),
-    eda_freq = 250,
+    eda_freq = 0,
     streaming=False,
-    mac= None,
-    bridge_version = None
+    mac= None
 ):
     """
     The streamer for the SiFi BioPoint. 
@@ -50,15 +49,15 @@ def sifi_biopoint_streamer(
         The name or MAC of the device.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
-    ecg, default = True
+    ecg, default = False
         Enable electrocardiography recording from the main sensor unit.
     emg, default = True
         Enable electromyography recording.
-    eda, default = True
+    eda, default = False
         Enable electrodermal recording.
-    imu, default = True
+    imu, default = False
         Enable inertial measurement unit recording
-    ppg, default = True
+    ppg, default = False
         The flag to enable photoplethysmography recording
     filtering, default = True
         Enable on-device filtering, including bandpass filters and notch filters.
@@ -68,14 +67,12 @@ def sifi_biopoint_streamer(
         The low and high cutoff frequency of the EMG bandpass filter.
     eda_bandpass, default = (0, 5)
         The low and high cutoff frequency of the EDA bandpass filter.
-    eda_freq, default = 250
-        The excitation signal frequency for EDA/BIOZ.
+    eda_freq, default = 0
+        The excitation signal frequency for EDA/BIOZ. Setting an AC value may inject a lot of noise into the EMG sensor.
     streaming, default = False
         Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
     mac, default = None:  
         Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
-    bridge_version, default = None:
-        Version of SiFi Bridge to use. Defaults to the latest version.
           
     Returns
     ----------
@@ -126,8 +123,7 @@ def sifi_biopoint_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac,
-        bridge_version
+        mac
     )
     sb.start()
     return sb, shared_memory_items
@@ -136,19 +132,18 @@ def sifi_biopoint_streamer(
 def sifi_bioarmband_streamer(
     name = "BioPoint_v1_1",
     shared_memory_items = None,
-    ecg = True,
+    ecg = False,
     emg = True, 
-    eda = True,
-    imu = True,
-    ppg = True,
+    eda = False,
+    imu = False,
+    ppg = False,
     filtering = True, 
     emg_notch_freq = 60,
     emg_bandpass = (20,450),
     eda_bandpass = (0,5),
-    eda_freq = 250,
+    eda_freq = 0,
     streaming = False,
-    mac = None,
-    bridge_version = None
+    mac = None
 ):
     """
     The streamer for the SiFi BioArmband. 
@@ -167,15 +162,15 @@ def sifi_bioarmband_streamer(
         The name of the Sifi Device. For example: BioArmband, BioPoint_v1_3, etc.
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
-    ecg, default = True
+    ecg, default = False
         Enable electrocardiography recording from the main sensor unit.
     emg, default = True
         Enable electromyography recording.
-    eda, default = True
+    eda, default = False
         Enable electrodermal recording.
-    imu, default = True
+    imu, default = False
         Enable inertial measurement unit recording
-    ppg, default = True
+    ppg, default = False
         The flag to enable photoplethysmography recording
     filtering, default = True
         Enable on-device filtering, including bandpass filters and notch filters.
@@ -185,14 +180,12 @@ def sifi_bioarmband_streamer(
         The low and high cutoff frequency of the EMG bandpass filter.
     eda_bandpass, default = (0, 5)
         The low and high cutoff frequency of the EDA bandpass filter.
-    eda_freq, default = 250
-        The excitation signal frequency for EDA/BIOZ.
+    eda_freq, default = 0
+        The excitation signal frequency for EDA/BIOZ.  Setting an AC value may inject a lot of noise into the EMG sensor.
     streaming, default = False
         Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
     mac, default = None:  
         Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
-    bridge_version, default = None:
-        Version of SiFi Bridge to use. Defaults to the latest version.
          
     Returns
     ----------
@@ -244,8 +237,7 @@ def sifi_bioarmband_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac,
-        bridge_version
+        mac
     )
 
     sb.start()

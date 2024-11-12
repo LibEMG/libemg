@@ -35,7 +35,6 @@ setup(
         "pyserial",
         "PyWavelets",
         "requests",
-        "semantic-version",
         "websockets",
         "opencv-python",
         "pythonnet",
