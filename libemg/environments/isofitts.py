@@ -10,7 +10,7 @@ from libemg.environments._base import Environment
 class IsoFitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, target_distance_radius: int = 275):
+                 target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None):
         """Iso Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -45,6 +45,9 @@ class IsoFitts(Environment):
             Radius (in pixels) of each individual target. Defaults to 40.
         target_distance_radius : int, optional
             Radius (in pixels) of circle of targets in Iso Fitts' environment. Defaults to 275.
+        game_time : float, optional
+            Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
+            If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
         """
         # logging information
         log_dictionary = {
@@ -104,6 +107,8 @@ class IsoFitts(Environment):
         self._info = ['predictions', 'timestamp']
         if self.proportional_control:
             self._info.append('pc')
+        self.start_time = time.time()
+        self.game_time = game_time
 
     def _draw(self):
         self.screen.fill(self.BLACK)
@@ -161,6 +166,10 @@ class IsoFitts(Environment):
             if event.type == pygame.QUIT:
                 self.done = True
                 return
+
+        if self.game_time is not None and (time.time() - self.start_time) >= self.game_time:
+            self.done = True
+            return
             
         data = self.controller.get_data(self._info)
         
