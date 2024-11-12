@@ -940,7 +940,12 @@ class OnlineEMGClassifier(OnlineStreamer):
                 return data
             def insert_model_output(data):
                 output_size = self.options['smm'].variables['model_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
+                if self.output_format == "predictions":
+                    data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
+                elif self.output_format == "probabilities":
+                    row = [time_stamp]
+                    row.extend(probabilities.squeeze().tolist())
+                    data[:] = np.vstack((np.array(row), data))[:output_size,:]
                 return data
             self.options['smm'].modify_variable("model_input",
                                                 insert_model_input)
