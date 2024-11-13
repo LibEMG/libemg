@@ -18,9 +18,11 @@ class IsoFitts(Environment):
         controller : Controller
             Interface to parse predictions which determine the direction of the cursor.
         prediction_map : dict | None, optional
-            Maps received control commands to cursor movement. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to down, up, no motion, right, and left, respectively.
-            For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and values map to actions in the environment.
-            Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be represented by a single key in the dictionary. Defaults to None.
+            Maps received control commands to cursor movement - only used if a non-continuous controller is used (e.g., classifier). If a continuous controller is used (e.g., regressor),
+            then 2 DoFs are expected when parsing predictions and this parameter is not used. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to
+            down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
+            values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
+            represented by a single key in the dictionary. Defaults to None.
         num_circles : int, optional
             Number of targets in task. Defaults to 30.
         num_trials : int, optional
