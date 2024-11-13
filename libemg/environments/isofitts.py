@@ -8,10 +8,10 @@ from libemg.environments.controllers import Controller
 from libemg.environments._base import Environment
 
 class IsoFitts(Environment):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_circles: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
+    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
                  target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None):
-        """Iso Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
+        """Iso Fitts style task. Targets are generated in a target and the user is asked to acquire targets as quickly as possible.
 
         Parameters
         ----------
@@ -23,7 +23,7 @@ class IsoFitts(Environment):
             down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
             values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
             represented by a single key in the dictionary. Defaults to None.
-        num_circles : int, optional
+        num_targets : int, optional
             Number of targets in task. Defaults to 30.
         num_trials : int, optional
             Number of trials user must complete. Defaults to 15.
@@ -46,7 +46,7 @@ class IsoFitts(Environment):
         target_radius : int, optional
             Radius (in pixels) of each individual target. Defaults to 40.
         target_distance_radius : int, optional
-            Radius (in pixels) of circle of targets in Iso Fitts' environment. Defaults to 275.
+            Radius (in pixels) of target of targets in Iso Fitts' environment. Defaults to 275.
         game_time : float, optional
             Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
@@ -55,7 +55,7 @@ class IsoFitts(Environment):
         log_dictionary = {
             'time_stamp':        [],
             'trial_number':      [],
-            'goal_circle' :      [],
+            'goal_target' :      [],
             'global_clock' :     [],
             'cursor_position':   [],
             'class_label':       [],
@@ -89,17 +89,17 @@ class IsoFitts(Environment):
 
         self.VEL = velocity
         self.dwell_time = dwell_time
-        self.num_of_circles = num_circles 
+        self.num_of_targets = num_targets 
         self.max_trial = num_trials
         self.width = width
         self.height = height
         self.trial = 0
 
         # interface objects
-        self.circles = []
+        self.targets = []
         self.cursor = pygame.Rect(self.width//2 - 7, self.height//2 - 7, 14, 14)
-        self.goal_circle = -1
-        self._get_new_goal_circle()
+        self.goal_target = -1
+        self._get_new_goal_target()
         self.current_direction = [0,0]
 
         self.timeout_timer = None
@@ -114,23 +114,23 @@ class IsoFitts(Environment):
 
     def _draw(self):
         self.screen.fill(self.BLACK)
-        self._draw_circles()
+        self._draw_targets()
         self._draw_cursor()
         self._draw_timer()
     
-    def _draw_circles(self):
-        if not len(self.circles):
-            self.angle = 0
-            self.angle_increment = 360 // self.num_of_circles
-            while self.angle < 360:
-                self.circles.append(pygame.Rect((self.width//2 - self.small_rad) + math.cos(math.radians(self.angle)) * self.big_rad, (self.height//2 - self.small_rad) + math.sin(math.radians(self.angle)) * self.big_rad, self.small_rad * 2, self.small_rad * 2))
-                self.angle += self.angle_increment
+    def _draw_targets(self):
+        if not len(self.targets):
+            angle = 0
+            angle_increment = 360 // self.num_of_targets
+            while angle < 360:
+                self.targets.append(pygame.Rect((self.width//2 - self.small_rad) + math.cos(math.radians(angle)) * self.big_rad, (self.height//2 - self.small_rad) + math.sin(math.radians(angle)) * self.big_rad, self.small_rad * 2, self.small_rad * 2))
+                angle += angle_increment
 
-        for circle in self.circles:
-            pygame.draw.circle(self.screen, self.RED, (circle.x + self.small_rad, circle.y + self.small_rad), self.small_rad, 2)
+        for target in self.targets:
+            pygame.draw.circle(self.screen, self.RED, (target.x + self.small_rad, target.y + self.small_rad), self.small_rad, 2)
         
-        goal_circle = self.circles[self.goal_circle]
-        pygame.draw.circle(self.screen, self.RED, (goal_circle.x + self.small_rad, goal_circle.y + self.small_rad), self.small_rad)
+        goal_target = self.targets[self.goal_target]
+        pygame.draw.circle(self.screen, self.RED, (goal_target.x + self.small_rad, goal_target.y + self.small_rad), self.small_rad)
             
     def _draw_cursor(self):
         pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.left + 7, self.cursor.top + 7), 7)
@@ -154,12 +154,12 @@ class IsoFitts(Environment):
         self._check_events()
 
     def _check_collisions(self):
-        circle = self.circles[self.goal_circle]
-        if math.sqrt((circle.centerx - self.cursor.centerx)**2 + (circle.centery - self.cursor.centery)**2) < (circle[2]/2 + self.cursor[2]/2):
-            pygame.event.post(pygame.event.Event(pygame.USEREVENT + self.goal_circle))
+        target = self.targets[self.goal_target]
+        if math.sqrt((target.centerx - self.cursor.centerx)**2 + (target.centery - self.cursor.centery)**2) < (target[2]/2 + self.cursor[2]/2):
+            pygame.event.post(pygame.event.Event(pygame.USEREVENT + self.goal_target))
             self.Event_Flag = True
         else:
-            pygame.event.post(pygame.event.Event(pygame.USEREVENT + self.num_of_circles))
+            pygame.event.post(pygame.event.Event(pygame.USEREVENT + self.num_of_targets))
             self.Event_Flag = False
 
     def _check_events(self):
@@ -213,20 +213,20 @@ class IsoFitts(Environment):
         
 
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
-        if event.type >= pygame.USEREVENT and event.type < pygame.USEREVENT + self.num_of_circles:
+        if event.type >= pygame.USEREVENT and event.type < pygame.USEREVENT + self.num_of_targets:
             if self.dwell_timer is None:
                 self.dwell_timer = time.perf_counter()
             else:
                 toc = time.perf_counter()
                 self.duration = round((toc - self.dwell_timer), 2)
             if self.duration >= self.dwell_time:
-                self._get_new_goal_circle()
+                self._get_new_goal_target()
                 self.dwell_timer = None
                 if self.trial < self.max_trial-1: # -1 because max_trial is 1 indexed
                     self.trial += 1
                 else:
                     self.done = True
-        elif event.type == pygame.USEREVENT + self.num_of_circles:
+        elif event.type == pygame.USEREVENT + self.num_of_targets:
             if self.Event_Flag == False:
                 self.dwell_timer = None
                 self.duration = 0
@@ -237,7 +237,7 @@ class IsoFitts(Environment):
             self.trial_duration = round((toc - self.timeout_timer), 2)
         if self.trial_duration >= self.timeout:
             # Timeout
-            self._get_new_goal_circle()
+            self._get_new_goal_target()
             self.timeout_timer = None
             if self.trial < self.max_trial-1: # -1 because max_trial is 1 indexed
                 self.trial += 1
@@ -251,27 +251,27 @@ class IsoFitts(Environment):
         if self.cursor.top + self.current_direction[1] > 0 and self.cursor.top + self.current_direction[1] < self.height:
             self.cursor.top += self.current_direction[1]
     
-    def _get_new_goal_circle(self):
-        if self.goal_circle == -1:
-            self.goal_circle = 0
-            self.next_circle_in = self.num_of_circles//2
-            self.circle_jump = 0
+    def _get_new_goal_target(self):
+        if self.goal_target == -1:
+            self.goal_target = 0
+            self.next_target_in = self.num_of_targets//2
+            self.target_jump = 0
         else:
-            self.goal_circle =  (self.goal_circle + self.next_circle_in )% self.num_of_circles
-            if self.circle_jump == 0:
-                self.next_circle_in = self.num_of_circles//2 + 1
-                self.circle_jump = 1
+            self.goal_target =  (self.goal_target + self.next_target_in )% self.num_of_targets
+            if self.target_jump == 0:
+                self.next_target_in = self.num_of_targets//2 + 1
+                self.target_jump = 1
             else:
-                self.next_circle_in = self.num_of_circles // 2
-                self.circle_jump = 0
+                self.next_target_in = self.num_of_targets // 2
+                self.target_jump = 0
         self.timeout_timer = None
         self.trial_duration = 0
 
     def _log(self, label, timestamp):
-        circle = self.circles[self.goal_circle]
+        target = self.targets[self.goal_target]
         self.log_dictionary['time_stamp'].append(timestamp)
         self.log_dictionary['trial_number'].append(self.trial)
-        self.log_dictionary['goal_circle'].append((circle.centerx, circle.centery, circle[2]))
+        self.log_dictionary['goal_target'].append((target.centerx, target.centery, target[2]))
         self.log_dictionary['global_clock'].append(time.perf_counter())
         self.log_dictionary['cursor_position'].append((self.cursor.centerx, self.cursor.centery, self.cursor[2]))
         self.log_dictionary['class_label'].append(label) 
@@ -281,3 +281,48 @@ class IsoFitts(Environment):
         # updated frequently for graphics & gameplay
         self._update_game()
         pygame.display.set_caption(str(self.clock.get_fps()))
+
+
+class RotationalIsoFitts(IsoFitts):
+    # def _draw_targets(self):
+    #     if not len(self.targets):
+    #         self.angle = 0
+    #         self.angle_increment = 360 // self.num_of_targets
+    #         while self.angle < 360:
+    #             self.targets.append(pygame.Rect((self.width//2 - self.small_rad) + math.cos(math.radians(self.angle)) * self.big_rad, (self.height//2 - self.small_rad) + math.sin(math.radians(self.angle)) * self.big_rad, self.small_rad * 2, self.small_rad * 2))
+                
+    #             self.angle += self.angle_increment
+
+    #     for target in self.targets:
+    #         pygame.draw.circle(self.screen, self.RED, (target.x + self.small_rad, target.y + self.small_rad), self.small_rad, 2)
+        
+    #     goal_target = self.targets[self.goal_target]
+    #     pygame.draw.circle(self.screen, self.RED, (goal_target.x + self.small_rad, goal_target.y + self.small_rad), self.small_rad)
+
+    def _draw_cursor(self):
+        screen_width = self.screen.get_size()[0]
+        angle = float(np.interp(self.cursor.left, [0, screen_width], [-math.pi / 2, math.pi / 2]))   # question: should it be 180 or 360??
+        arrow_length = 40
+        head_width = 15
+        arrow_x = int(arrow_length * np.cos(angle))
+        arrow_y = int(arrow_length * np.sin(angle))
+        start_position = (screen_width // 2, self.cursor.top)
+        end_position = (start_position[0] + arrow_x, start_position[1] + arrow_y)
+
+        # bottom_left = (end_position[0] - head_width * np.cos(angle + math.pi / 4), end_position[1] - head_width * np.sin(angle + math.pi / 4))
+        # bottom_right = (end_position[0] - head_width * np.cos(angle - math.pi / 4), end_position[1] - head_width * np.sin(angle - math.pi / 4))
+
+        pygame.draw.line(self.screen, self.YELLOW, start_position, end_position, width=5)
+        # pygame.draw.line(self.screen, self.YELLOW, bottom_left, end_position, width=line_width)
+        # pygame.draw.line(self.screen, self.YELLOW, bottom_right, end_position, width=line_width)
+        points = [
+            (end_position[0] - head_width * np.cos(angle + math.pi / 4), end_position[1] - head_width * np.sin(angle + math.pi / 4)),
+            (end_position[0] - head_width * np.cos(angle - math.pi / 4), end_position[1] - head_width * np.sin(angle - math.pi / 4)),
+            (end_position[0] + 5 * np.cos(angle), end_position[1] + 5 * np.sin(angle))
+        ]
+        pygame.draw.polygon(self.screen, self.YELLOW, points)
+        # TODO: This still doesn't look fantastic, but it's a start
+
+
+    # def _check_collisions(self):
+    #     ...
