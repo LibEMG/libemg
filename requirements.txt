@@ -10,7 +10,6 @@ pyomyo==0.0.5
 pyserial
 wfdb
 bleak
-semantic-version
 requests
 # For Docs
 sphinx==5.0.0
