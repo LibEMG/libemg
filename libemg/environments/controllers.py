@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import overload
 import socket
 import re
+import time
 
 import numpy as np
 import pygame
@@ -27,7 +28,8 @@ class Controller(ABC):
         """Abstract controller interface for controlling environments. Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals."""
         self.info_function_map = {
             'predictions': self._parse_predictions,
-            'pc': self._parse_proportional_control
+            'pc': self._parse_proportional_control,
+            'timestamp': self._parse_timestamp
         }
         # TODO: Maybe add a flag for continuous vs. not continuous... not sure if that's needed though
 
@@ -104,6 +106,23 @@ class Controller(ABC):
         """
         ...
 
+    
+    @abstractmethod
+    def _parse_timestamp(self, action: str) -> float:
+        """Parse the latest timestamp from a message.
+
+        Parameters
+        ----------
+        action : str
+            Message to parse.
+
+        Returns
+        -------
+        float
+            Timestamp.
+        """
+        ...
+
     @abstractmethod
     def _get_action(self) -> str | None:
         """Grab the latest action.
@@ -129,7 +148,6 @@ class SocketController(Controller):
             Port for UDP socket used to read messages.
         """
         super().__init__()
-        self.info_function_map['timestamp'] = self._parse_timestamp
         self.ip = ip
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -265,6 +283,9 @@ class KeyboardController(Controller):
     def _parse_proportional_control(self, action: str) -> list[float]:
         predictions = self._parse_predictions(action)
         return [1. for _ in predictions]    # proportional control is built into prediction, so return 1 for each key pressed
+
+    def _parse_timestamp(self, action: str) -> float:
+        return time.time()
 
     def _get_action(self):
         keys = pygame.key.get_pressed()
