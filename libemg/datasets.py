@@ -116,7 +116,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
     window_inc: int
         The window increment (**in ms**). 
     feature_list: list (default=['MAV'])
-        A list of features.
+        A list of features. Pass in None for CNN.
     feature_dic: dic (default={})
         A dictionary of parameters for the passed in features.
     included_datasets: list (str) or list (DataSets)
@@ -170,9 +170,13 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
             test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
 
-            fe = FeatureExtractor()
-            train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-            test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+            if feature_list is not None:
+                fe = FeatureExtractor()
+                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+                test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+            else:
+                train_feats = train_windows
+                test_feats = test_windows
 
             ds = {
                 'training_features': train_feats,
