@@ -8,6 +8,8 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 from pywt import wavedec, upcoef
+import warnings
+warnings.filterwarnings("ignore")
 
 class FeatureExtractor:
     """

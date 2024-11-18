@@ -901,7 +901,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         prediction = prediction[0]
 
         # Direction Map:
-        dm = {0: [0,1], 1: [0,-1], 2: [0,0], 3: [1,0], 4: [-1,0]}
+        dm = {0: [0,1], 1: [0,-1], 2: [0,0], 3: [1,0], 4: [-1,0], -1: [0,0]}
 
         direction = np.array(dm[prediction]) * np.mean(FeatureExtractor().extract_features(['MAV'], window['emg'], array=True)[0])
         message = str(int(direction[0])) + ' ' + str(int(direction[1]))
