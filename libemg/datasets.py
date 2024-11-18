@@ -106,7 +106,7 @@ def get_dataset_info(dataset):
     else:
         print("ERROR: Invalid dataset name")
 
-def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl', regression=False, metrics=['CA'], normalize_data=False):
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False):
     """Evaluates an algorithm against all included datasets.
     
     Parameters
@@ -127,8 +127,10 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
     metrics: list (default=['CA']/['MSE'])
         The metrics to extract from each dataset.
-    normalize_data: boolean (default=True)
-        If True, the data will be normalized between -1 and 1.
+    normalize_data: boolean (default=False)
+        If True, the data will be normalized.
+    normalize_features: boolean (default=False)
+        If True, features will get normalized.
     Returns
     ----------
     dictionary
@@ -181,8 +183,12 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
 
             if feature_list is not None:
                 fe = FeatureExtractor()
-                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-                test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+                if normalize_features:
+                    train_feats, scaler = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler)      
+                else:
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)     
             else:
                 train_feats = train_windows
                 test_feats = test_windows
