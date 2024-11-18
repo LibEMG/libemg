@@ -219,7 +219,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
 
-def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612', 'GRABMyo'], output_file='out_cross.pkl', metrics=['CA']):
+def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612', 'GRABMyo'], output_file='out_cross.pkl', metrics=['CA'], normalize_data=False, normalize_features=False):
     """Evaluates an algorithm against all the cross-user datasets.
     
     Parameters
@@ -238,6 +238,10 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
     metrics: list (default=['CA'])
         The metrics to extract from each dataset.
+    normalize_data: boolean (default=False)
+        If True, the data will be normalized.
+    normalize_features: boolean (default=False)
+        If True, features will get normalized.
     Returns
     ----------
     dictionary
@@ -260,11 +264,21 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         
         train_data = data['Train']
         test_data = data['Test']
+        # Normalize Data
+        if normalize_data:
+            filter = Filter(dataset.sampling)
+            filter.install_filters({'name': 'standardize', 'data': train_data})
+            filter.filter(train_data)
+            filter.filter(test_data)
         del data
 
         train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
         del train_data
-        train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+        if normalize_features:
+            train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
+        else:
+            train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+            
         del train_windows
 
         ds = {
@@ -285,7 +299,10 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
             s_test_dh = test_data.isolate_data('subjects', [s])
             test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
-            test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+            if normalize_features:
+                test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=normalizer)
+            else:
+                test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
             preds, _ = clf.run(test_feats)
                 
