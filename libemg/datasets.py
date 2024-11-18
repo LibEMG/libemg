@@ -19,9 +19,9 @@ from libemg._datasets.one_site_biopoint import OneSiteBiopoint
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
+from libemg.filtering import Filter
 import pickle
 import numpy as np
-import gc
 
 def get_dataset_list(type='CLASSIFICATION'):
     """Gets a list of all available datasets.
@@ -106,7 +106,7 @@ def get_dataset_info(dataset):
     else:
         print("ERROR: Invalid dataset name")
 
-def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl', regression=False, metrics=['CA']):
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl', regression=False, metrics=['CA'], normalize_data=False):
     """Evaluates an algorithm against all included datasets.
     
     Parameters
@@ -127,6 +127,8 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
     metrics: list (default=['CA']/['MSE'])
         The metrics to extract from each dataset.
+    normalize_data: boolean (default=True)
+        If True, the data will be normalized between -1 and 1.
     Returns
     ----------
     dictionary
@@ -166,7 +168,14 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
             s_train_dh = train_data.isolate_data('subjects', [s])
             s_test_dh = test_data.isolate_data('subjects', [s])
-            
+
+            # Normalize Data
+            if normalize_data:
+                filter = Filter(dataset.sampling)
+                filter.install_filters({'name': 'standardize', 'data': s_train_dh})
+                filter.filter(s_train_dh)
+                filter.filter(s_test_dh)
+
             train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
             test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
 
