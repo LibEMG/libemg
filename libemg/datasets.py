@@ -29,7 +29,7 @@ def get_dataset_list(type='CLASSIFICATION'):
     Parameters
     ----------
     type: str (default='CLASSIFICATION')
-        The type of datasets to return. Valid Options: 'CLASSIFICATION', 'REGRESSION', and 'ALL'.
+        The type of datasets to return. Valid Options: 'CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', 'CROSSUSER', and 'ALL'.
     
     Returns
     ----------
