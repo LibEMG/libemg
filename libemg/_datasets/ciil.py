@@ -97,13 +97,13 @@ class CIIL_WeaklySupervised(Dataset):
         self.url = "https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EaABHYybhfJNslTVcvwPPwgB9WwqlTLCStui30maqY53kw?e=MbboMd"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False,
+                     subjects = [str(i) for i in range(0, 16)]):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             self.download_via_onedrive(self.url, self.dataset_folder)
 
         # supervised odh loading
-        subjects = [str(i) for i in range(0, 16)]
         classes_values = [str(i) for i in range(0,5)]
         reps_values = [str(i) for i in range(0,15)]
         setting_values     = [".csv", ""] # this is arbitrary to get a field that separates WS from S
@@ -119,7 +119,6 @@ class CIIL_WeaklySupervised(Dataset):
                        delimiter=",")
 
         # weakly supervised odh loading
-        subjects = [str(i) for i in range(0, 16)]
         reps_values      = [str(i) for i in range(3)]
         setting_values     = ["", ".csv"] # this is arbitrary to get a field that separates WS from S
         regex_filters = [
