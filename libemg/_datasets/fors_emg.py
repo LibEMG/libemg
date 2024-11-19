@@ -29,7 +29,7 @@ class FORSEMG(Dataset):
         odh.orientation = []
         odh.extra_attributes = ['subjects', 'classes', 'reps', 'orientation']
 
-        subject_list = np.array(list(range(0,20)))
+        subject_list = np.array(list(range(1,20)))
         if subjects:
             subject_list = subject_list[subjects]
 
