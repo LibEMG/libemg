@@ -30,22 +30,25 @@ class _Hyser(Dataset, ABC):
         self.subjects = subjects
         
     @property
-    def common_regex_filters(self):
+    def common_regex_filters(self, subjects = None):
         sessions_values = ['1', '2'] if self.analysis == 'sessions' else ['1']   # only grab first session unless both are desired
+        subject_vals = self.subjects
+        if subjects:
+            subject_vals = self.subjects[subjects]
         filters = [
-            RegexFilter(left_bound='subject', right_bound='_session', values=self.subjects, description='subjects'),
+            RegexFilter(left_bound='subject', right_bound='_session', values=subject_vals, description='subjects'),
             RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions')
         ]
         return filters
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects = None):
         if (not self.check_exists(self.dataset_folder)):
             raise FileNotFoundError(f"Didn't find Hyser data in {self.dataset_folder} directory. Please download the dataset and \
                                     store it in the appropriate directory before running prepare_data(). See {self.url} for download details.")
-        return self._prepare_data_helper(split=split)
+        return self._prepare_data_helper(split=split, subjects = None)
         
     @abstractmethod
-    def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
         ...
 
 
@@ -264,7 +267,7 @@ class HyserPR(_Hyser):
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
         subjects: Sequence[str] or None, default=None
-            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
+            Subjects to parse (e.g., [0,1,2]). If None, parses all participants. Defaults to None.
         """
         gestures = {
             1: 'Thumb Extension',
@@ -305,7 +308,7 @@ class HyserPR(_Hyser):
         description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
         super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
 
-    def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
         filename_filters = deepcopy(self.common_regex_filters)
         filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(204)], description='samples')) # max # of dynamic tasks
         filename_filters.append(RegexFilter(left_bound='/', right_bound='_', values=['dynamic', 'maintenance'], description='tasks'))
