@@ -30,13 +30,10 @@ class _Hyser(Dataset, ABC):
         self.subjects = subjects
         
     @property
-    def common_regex_filters(self, subjects = None):
+    def common_regex_filters(self):
         sessions_values = ['1', '2'] if self.analysis == 'sessions' else ['1']   # only grab first session unless both are desired
-        subject_vals = self.subjects
-        if subjects:
-            subject_vals = self.subjects[subjects]
         filters = [
-            RegexFilter(left_bound='subject', right_bound='_session', values=subject_vals, description='subjects'),
+            RegexFilter(left_bound='subject', right_bound='_session', values=self.subjects, description='subjects'),
             RegexFilter(left_bound='_session', right_bound='/', values=sessions_values, description='sessions')
         ]
         return filters
@@ -309,6 +306,12 @@ class HyserPR(_Hyser):
         super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
 
     def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+        # Need to remove subjects 3 and 11 b/c they're missing classes
+        subject_list = np.delete(np.array(list(range(1,21))), [2,10])
+        if subjects:
+            subject_list = subject_list[subjects]
+        self.subjects = subject_list
+
         filename_filters = deepcopy(self.common_regex_filters)
         filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(204)], description='samples')) # max # of dynamic tasks
         filename_filters.append(RegexFilter(left_bound='/', right_bound='_', values=['dynamic', 'maintenance'], description='tasks'))
@@ -323,9 +326,6 @@ class HyserPR(_Hyser):
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
 
-        # Need to remove subjects 3 and 11 b/c they're missing classes
-        subject_mask = [self.subjects.index(s) for s in self.subjects if s not in ('03', '11')]
-        odh = odh.isolate_data('subjects', subject_mask, fast=True)
         data = odh
         if split:
             if self.analysis == 'sessions':
