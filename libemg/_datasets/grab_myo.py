@@ -75,7 +75,7 @@ class GRABMyoCrossDay(GRABMyo):
         GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=False)
         
     def prepare_data(self, split = False, subjects = None):
-        forearm_data = self.get_odh()
+        forearm_data = self.get_odh(subjects)
         train_data = forearm_data.isolate_data('sessions', [0], fast=True)
         test_data = forearm_data.isolate_data('sessions', [1,2], fast=True)
 
