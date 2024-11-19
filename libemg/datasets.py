@@ -3,7 +3,7 @@ from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
 from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
 from libemg._datasets.emg_epn612 import EMGEPN_UserDependent, EMGEPN_UserIndependent
 from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift, CIIL_WeaklySupervised
-from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay, GrabMyoCrossUser
+from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
 from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
 from libemg._datasets.user_compliance import UserComplianceDataset
@@ -40,7 +40,6 @@ def get_dataset_list(type='CLASSIFICATION'):
         return {}
     
     cross_user = {
-        'GRABMyo': GrabMyoCrossUser, 
         'EMGEPN612': EMGEPN_UserIndependent,
     }
     
@@ -212,7 +211,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
 
-def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612', 'GRABMyo'], output_file='out_cross.pkl', metrics=['CA'], normalize_data=False, normalize_features=False):
+def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612'], output_file='out_cross.pkl', metrics=['CA'], normalize_data=False, normalize_features=False):
     """Evaluates an algorithm against all the cross-user datasets.
     
     Parameters
