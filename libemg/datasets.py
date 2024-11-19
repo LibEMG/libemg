@@ -18,6 +18,7 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
+from libemg._datasets.emg2pose import EMG2POSE
 import pickle
 import numpy as np
 
@@ -68,7 +69,8 @@ def get_dataset_list(type='CLASSIFICATION'):
         'Hyser1DOF': Hyser1DOF,
         'HyserNDOF': HyserNDOF, 
         'HyserRandom': HyserRandom,
-        'UserCompliance': UserComplianceDataset
+        'UserCompliance': UserComplianceDataset,
+        'EMG2POSE': EMG2POSE,
     }
 
     weaklysupervised = {
