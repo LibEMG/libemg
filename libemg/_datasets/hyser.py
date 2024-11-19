@@ -42,7 +42,7 @@ class _Hyser(Dataset, ABC):
         if (not self.check_exists(self.dataset_folder)):
             raise FileNotFoundError(f"Didn't find Hyser data in {self.dataset_folder} directory. Please download the dataset and \
                                     store it in the appropriate directory before running prepare_data(). See {self.url} for download details.")
-        return self._prepare_data_helper(split=split, subjects = None)
+        return self._prepare_data_helper(split=split, subjects = subjects)
         
     @abstractmethod
     def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
@@ -304,13 +304,15 @@ class HyserPR(_Hyser):
         }
         description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
         super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
+        self.num_subjects = 18 # Removed 2 subjects because they're missing classes
 
     def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
         # Need to remove subjects 3 and 11 b/c they're missing classes
         subject_list = np.delete(np.array(list(range(1,21))), [2,10])
         if subjects:
             subject_list = subject_list[subjects]
-        self.subjects = subject_list
+
+        self.subjects = [f'{s:02d}' for s in subject_list]
 
         filename_filters = deepcopy(self.common_regex_filters)
         filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(204)], description='samples')) # max # of dynamic tasks
