@@ -6,7 +6,6 @@ from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift, CIIL_We
 from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay, GrabMyoCrossUser
 from libemg._datasets.continous_transitions import ContinuousTransitions
 from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
-from libemg._datasets.myodisco import MyoDisCo
 from libemg._datasets.user_compliance import UserComplianceDataset
 from libemg._datasets.fors_emg import FORSEMG
 from libemg._datasets.radmand_lp import RadmandLP
@@ -15,7 +14,6 @@ from libemg._datasets.intensity import ContractionIntensity
 from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR
 from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg._datasets.tmr_shirleyryanabilitylab import TMRShirleyRyanAbilityLab
-from libemg._datasets.one_site_biopoint import OneSiteBiopoint
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
@@ -63,7 +61,6 @@ def get_dataset_list(type='CLASSIFICATION'):
         'KaufmannMD': KaufmannMD,
         'TMRShirleyRyanAbilityLab' : TMRShirleyRyanAbilityLab,
         'HyserPR': HyserPR,
-        'OneSiteBioPoint': OneSiteBiopoint
     }
 
     regression = {

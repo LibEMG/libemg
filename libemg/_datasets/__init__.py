@@ -9,7 +9,6 @@ from libemg._datasets import grab_myo
 from libemg._datasets import hyser
 from libemg._datasets import intensity
 from libemg._datasets import kaufmann_md
-from libemg._datasets import myodisco
 from libemg._datasets import nina_pro
 from libemg._datasets import one_subject_emager
 from libemg._datasets import one_subject_myo
