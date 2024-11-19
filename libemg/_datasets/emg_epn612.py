@@ -45,7 +45,7 @@ class EMGEPN612(Dataset):
         tr_reps = [0,0,0,0,0,0]
         odh_tr.extra_attributes = ['subjects', 'classes', 'reps']
         for i, e in enumerate(emg['training']):
-            if i//300 not in subject_list:
+            if i // 300 not in subject_list:
                 continue
             odh_tr.data.append(e)
             odh_tr.classes.append(np.ones((len(e), 1)) * labels['training'][i])
@@ -61,7 +61,7 @@ class EMGEPN612(Dataset):
         te_reps = [0,0,0,0,0,0]
         odh_te.extra_attributes = ['subjects', 'classes', 'reps']
         for i, e in enumerate(emg['testing']):
-            if (i//300 + 306) not in subject_list:
+            if (i // 150 + 306) not in subject_list:
                 continue
             odh_te.data.append(e)
             odh_te.classes.append(np.ones((len(e), 1)) * labels['testing'][i])
@@ -71,14 +71,14 @@ class EMGEPN612(Dataset):
             if i % 150 == 0:
                 te_reps = [0,0,0,0,0,0]
  
-        return odh_tr, odh_te
+        return odh_tr + odh_te
     
 class EMGEPN_UserDependent(EMGEPN612):
     def __init__(self, dataset_file='EMGEPN612.pkl'):
         EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=False)
     
     def prepare_data(self, split=False, subjects=None):
-        _, odh = self.get_odh(subjects)
+        odh = self.get_odh(subjects)
         odh_tr = odh.isolate_data('reps', list(range(0,20)))
         odh_te = odh.isolate_data('reps', list(range(20,25)))
 
@@ -91,7 +91,9 @@ class EMGEPN_UserIndependent(EMGEPN612):
         EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=True)
     
     def prepare_data(self, split=False):
-        odh_tr, odh_te = self.get_odh()
+        odh = self.get_odh()
+        odh_tr = odh.isolate_data('subjects', values=list(range(0,306)))
+        odh_te = odh.isolate_data('subjects', values=list(range(306,612)))
         if split:
             data = {'All': odh_tr + odh_te, 'Train': odh_tr, 'Test': odh_te}
         return data
