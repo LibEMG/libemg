@@ -27,8 +27,11 @@ class EMGEPN612(Dataset):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_name)):
             self.download_via_onedrive(self.url, self.dataset_name, unzip=False, clean=False)
-        
-        # TODO: Fix 
+
+        subject_list = np.array(list(range(0,612)))
+        if subjects:
+            subject_list = np.array(subjects)
+
         file = open(self.dataset_name, 'rb')
         data = pickle.load(file)
 
@@ -42,6 +45,8 @@ class EMGEPN612(Dataset):
         tr_reps = [0,0,0,0,0,0]
         odh_tr.extra_attributes = ['subjects', 'classes', 'reps']
         for i, e in enumerate(emg['training']):
+            if i//300 not in subject_list:
+                continue
             odh_tr.data.append(e)
             odh_tr.classes.append(np.ones((len(e), 1)) * labels['training'][i])
             odh_tr.subjects.append(np.ones((len(e), 1)) * i//300)
@@ -56,6 +61,8 @@ class EMGEPN612(Dataset):
         te_reps = [0,0,0,0,0,0]
         odh_te.extra_attributes = ['subjects', 'classes', 'reps']
         for i, e in enumerate(emg['testing']):
+            if (i//300 + 306) not in subject_list:
+                continue
             odh_te.data.append(e)
             odh_te.classes.append(np.ones((len(e), 1)) * labels['testing'][i])
             odh_te.subjects.append(np.ones((len(e), 1)) * (i//150 + 306))
