@@ -1,5 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
+import numpy as np
 
 class _3DCDataset(Dataset):
     def __init__(self, dataset_folder="_3DCDataset/"):
@@ -15,16 +16,16 @@ class _3DCDataset(Dataset):
         self.url = "https://github.com/libemg/3DCDataset"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects_values = None, sets_values = None, reps_values = None,
-                     classes_values = None):
-        if subjects_values is None:
-            subjects_values = [str(i) for i in range(1,23)]
-        if sets_values is None:
-            sets_values = ["train", "test"]
-        if reps_values is None:
-            reps_values = ["0","1","2","3"]
-        if classes_values is None:
-            classes_values = [str(i) for i in range(11)]
+    def prepare_data(self, split = False, subjects = None):
+        subject_list = np.array(list(range(1,23)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
+
+
+        sets_values = ["train", "test"]
+        reps_values = ["0","1","2","3"]
+        classes_values = [str(i) for i in range(11)]
 
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):

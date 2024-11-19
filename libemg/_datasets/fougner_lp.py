@@ -1,5 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
+import numpy as np
 
 class FougnerLP(Dataset):
     def __init__(self, dataset_folder="LimbPosition/"):
@@ -15,8 +16,12 @@ class FougnerLP(Dataset):
         self.url = "https://github.com/libemg/LimbPosition"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
-        subjects_values = [str(i) for i in range(1,13)]
+    def prepare_data(self, split = False, subjects = None):
+        subject_list = np.array(list(range(1,13)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
+
         position_values = ["1", "2", "3", "4", "5"]
         classes_values = ["1", "2", "3", "4", "5", "8", "9", "12"]
         reps_values = ["1","2","3","4","5","6","7","8","9","10"]

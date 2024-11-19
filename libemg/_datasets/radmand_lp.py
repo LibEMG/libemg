@@ -1,5 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
+import numpy as np
 
 class RadmandLP(Dataset):
     def __init__(self, dataset_folder="LimbPosition/"):
@@ -15,8 +16,11 @@ class RadmandLP(Dataset):
         self.url = "https://github.com/libemg/LimbPosition"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
-        subjects_values = [str(i) for i in range(1,11)]
+    def prepare_data(self, split = False, subjects = None):
+        subject_list = np.array(list(range(1,11)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
         position_values = ["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12", "P13", "P14", "P15", "P16"]
         classes_values = [str(i) for i in range(1,9)]
         reps_values = ["1","2","3","4"]

@@ -158,18 +158,14 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         else:
             dataset = d
         
-        data = dataset.prepare_data(split=True)
-        
-        train_data = data['Train']
-        test_data = data['Test']
-
-        unique_subjects = np.unique(np.hstack([t.flatten() for t in train_data.subjects]))
-        
         accs = []
-        for s_i, s in enumerate(unique_subjects):
-            print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
-            s_train_dh = train_data.isolate_data('subjects', [s])
-            s_test_dh = test_data.isolate_data('subjects', [s])
+        for s_i in range(0, dataset.num_subjects):
+            data = dataset.prepare_data(split=True, subjects=[s_i])
+        
+            s_train_dh = data['Train']
+            s_test_dh = data['Test']
+
+            print(str(s_i) + '/' + str(dataset.num_subjects) + ' completed.')
 
             # Normalize Data
             if normalize_data:

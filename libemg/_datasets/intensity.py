@@ -1,5 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
+import numpy as np
 
 class ContractionIntensity(Dataset):
     def __init__(self, dataset_folder="ContractionIntensity/"):
@@ -15,8 +16,11 @@ class ContractionIntensity(Dataset):
         self.url = "https://github.com/libemg/ContractionIntensity"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
-        subjects_values = [str(i) for i in range(1,11)]
+    def prepare_data(self, split = False, subjects = None):
+        subject_list = np.array(list(range(1,11)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
         intensity_values = ["Ramp", "20P", "30P", "40P", "50P", "60P", "70P", "80P", "MVC"]
         classes_values = [str(i) for i in range(1,8)]
         reps_values = ["1","2","3","4"]

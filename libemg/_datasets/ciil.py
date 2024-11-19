@@ -1,7 +1,7 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter, FilePackager
 from pathlib import Path
-
+import numpy as np
 
 
 class CIIL_MinimalData(Dataset):
@@ -18,19 +18,23 @@ class CIIL_MinimalData(Dataset):
         self.url = "https://github.com/LibEMG/CIILData"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects=None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
 
         subfolder = 'MinimalTrainingData'
-        subjects = [str(i) for i in range(0, 11)]
+        subject_list = np.array(list(range(0, 11)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
+
         classes_values = [str(i) for i in range(0,5)]
         reps_values = ["0","1","2"]
         sets = ["train", "test"]
         regex_filters = [
             RegexFilter(left_bound = "/", right_bound="/", values = sets, description='sets'),
-            RegexFilter(left_bound = "/subject", right_bound="/", values = subjects, description='subjects'),
+            RegexFilter(left_bound = "/subject", right_bound="/", values = subjects_values, description='subjects'),
             RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps'),
             RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes')
         ]
@@ -57,19 +61,23 @@ class CIIL_ElectrodeShift(Dataset):
         self.url = "https://github.com/LibEMG/CIILData"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects=None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
 
         subfolder = 'ElectrodeShift'
-        subjects = [str(i) for i in range(0, 21)]
+        subject_list = np.array(list(range(0, 21)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
+
         classes_values = [str(i) for i in range(0,5)]
         reps_values = ["0","1","2","3","4"]
         sets = ["training", "trial_1", "trial_2", "trial_3", "trial_4"]
         regex_filters = [
             RegexFilter(left_bound = "/", right_bound="/", values = sets, description='sets'),
-            RegexFilter(left_bound = "/subject", right_bound="/", values = subjects, description='subjects'),
+            RegexFilter(left_bound = "/subject", right_bound="/", values = subjects_values, description='subjects'),
             RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps'),
             RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes')
         ]

@@ -17,7 +17,7 @@ class KaufmannMD(Dataset):
         self.url = "https://github.com/LibEMG/MultiDay"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects = None):
         subjects_values = ["0"]
         day_values = [str(i) for i in range(1,122)]
         classes_values = [str(i) for i in range(11)]

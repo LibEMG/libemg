@@ -23,11 +23,12 @@ class EMGEPN612(Dataset):
         self.url = "https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBLyFv6UrPYGwAISPDW9dBXw?e=vjCA14"
         self.dataset_name = dataset_file
 
-    def get_odh(self, split = False):
+    def get_odh(self, subjects=None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_name)):
             self.download_via_onedrive(self.url, self.dataset_name, unzip=False, clean=False)
         
+        # TODO: Fix 
         file = open(self.dataset_name, 'rb')
         data = pickle.load(file)
 
@@ -69,8 +70,8 @@ class EMGEPN_UserDependent(EMGEPN612):
     def __init__(self, dataset_file='EMGEPN612.pkl'):
         EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=False)
     
-    def prepare_data(self, split=False):
-        _, odh = self.get_odh()
+    def prepare_data(self, split=False, subjects=None):
+        _, odh = self.get_odh(subjects)
         odh_tr = odh.isolate_data('reps', list(range(0,20)))
         odh_te = odh.isolate_data('reps', list(range(20,25)))
 

@@ -1,5 +1,6 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter
+import numpy as np
 
 class TMRShirleyRyanAbilityLab(Dataset):
     def __init__(self, dataset_folder="TMR/"):
@@ -38,8 +39,12 @@ class TMRShirleyRyanAbilityLab(Dataset):
         self.url = "https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
-        subjects_values = ["1","2","3","4","7","10"]
+    def prepare_data(self, split = False, subjects = None):
+        subject_list = np.array([1,2,3,4,7,10])
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
+
         reps_values     = [str(i) for i in range(8)]
         classes_values  = [str(i) for i in range(24)]
         intervention_values = ["preTMR","postTMR"]

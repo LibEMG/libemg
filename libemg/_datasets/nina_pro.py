@@ -131,13 +131,13 @@ class NinaproDB2(Ninapro):
         self.num_cyberglove_dofs = 22
         self.use_cyberglove = use_cyberglove    # needed b/c some files have EMG but no cyberglove
 
-    def prepare_data(self, split = False, subjects_values = None, reps_values = None, classes_values = None):
-        if subjects_values is None:
-            subjects_values = [str(i) for i in range(1,41)]
-        if reps_values is None:
-            reps_values = [str(i) for i in range(6)]
-        if classes_values is None:
-            classes_values = [str(i) for i in range(50)]
+    def prepare_data(self, split = False, subjects = None):
+        subject_list = np.array(list(range(1,41)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
+        reps_values = [str(i) for i in range(6)]
+        classes_values = [str(i) for i in range(50)]
 
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):

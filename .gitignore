@@ -62,3 +62,7 @@ ContractionIntensity/
 CIILData/
 *.pkl
 LimbPosition/
+CNN.py
+MLP.py
+__pycache__/
+libemg/environments/

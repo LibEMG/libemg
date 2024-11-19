@@ -16,7 +16,7 @@ class FORSEMG(Dataset):
                          'https://arxiv.org/abs/2409.07484t')
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects = None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the dataset from: https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset?resource=download")
@@ -29,7 +29,11 @@ class FORSEMG(Dataset):
         odh.orientation = []
         odh.extra_attributes = ['subjects', 'classes', 'reps', 'orientation']
 
-        for s in range(1, 20):
+        subject_list = np.array(list(range(0,20)))
+        if subjects:
+            subject_list = subject_list[subjects]
+
+        for s in subject_list:
             for g_i, g in enumerate(['Thumb_UP', 'Index', 'Right_Angle', 'Peace', 'Index_Little', 'Thumb_Little', 'Hand_Close', 'Hand_Open', 'Wrist_Flexion', 'Wrist_Extension', 'Radial_Deviation']):
                 for r in [1,2,3,4,5]:
                     for o_i, o in enumerate(['Rest', 'Pronation', 'Supination']):
