@@ -41,14 +41,14 @@ class EMG2POSECU(EMG2POSE):
     split: list (default=[80,20])
         Defaults to 80/20 split for train and test data respectively. 
     """
-    def __init__(self, dataset_folder="Meta/emg2pose_data/", stage = 'Wiggling2', split = [80,20]):
+    def __init__(self, dataset_folder="Meta/emg2pose_data/", stage = 'Wiggling2', split = [0.8,0.2]):
         EMG2POSE.__init__(self, dataset_folder=dataset_folder)
         self.stage = stage 
         self.split = split 
 
     def prepare_data(self, split = True):
-        data = []
         odh = OfflineDataHandler()
+        unique_subjects = []
         odh.subjects = []
         odh.labels = []
         odh.extra_attributes = ['subjects', 'labels']
@@ -59,7 +59,6 @@ class EMG2POSECU(EMG2POSE):
 
         target_gesture = self.mapping[self.stage]
         for s_i, s in enumerate(subject_ids):
-            print(s_i)
             sub_mask = df['user'] == s
             gesture_mask = df['stage'] == target_gesture
             
@@ -68,6 +67,7 @@ class EMG2POSECU(EMG2POSE):
             files = [f.replace('left', '') for f in files]
             files = [f.replace('right', '') for f in files]
             for f in np.unique(files):
+                unique_subjects.append(s_i)
                 # Check that files exists otherwise skip
                 if not (self.check_exists(self.dataset_folder + '/' + f + 'left.hdf5') and self.check_exists(self.dataset_folder + '/' + f + 'right.hdf5')):
                     continue
@@ -82,10 +82,16 @@ class EMG2POSECU(EMG2POSE):
                 ja_right = right['emg2pose']['timeseries']['joint_angles']
 
                 odh.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
-                data.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
-                data.subjects.append(np.ones((len(odh.data[-1]), 1)) * s_i)
-        print(np.unique(data.subjects))
+                odh.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
+                odh.subjects.append(np.ones((len(odh.data[-1]), 1)) * s_i)
+        
+        unique_subjects = np.unique(unique_subjects)
+        tr_subjects = list(unique_subjects[0:int(len(unique_subjects)*self.split[0])])
+        te_subjects = list(unique_subjects[-int(len(unique_subjects)*self.split[1]):])
 
+        if split:
+            odh = {'All': odh, 'Train': odh.isolate_data('subjects', tr_subjects), 'Test': odh.isolate_data('subjects', te_subjects)}
+        return odh 
     
 class EMG2POSEUD(EMG2POSE):
     """

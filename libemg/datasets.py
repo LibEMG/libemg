@@ -22,13 +22,15 @@ from libemg._datasets.emg2pose import EMG2POSEUD, EMG2POSECU
 import pickle
 import numpy as np
 
-def get_dataset_list(type='CLASSIFICATION'):
+def get_dataset_list(type='CLASSIFICATION', cross_user=False):
     """Gets a list of all available datasets.
 
     Parameters
     ----------
     type: str (default='CLASSIFICATION')
-        The type of datasets to return. Valid Options: 'CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', 'CROSSUSER', and 'ALL'.
+        The type of datasets to return. Valid Options: 'CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', and 'ALL'.
+    cross_user: bool (default=False)
+
     
     Returns
     ----------
@@ -40,8 +42,12 @@ def get_dataset_list(type='CLASSIFICATION'):
         print('Valid Options for type parameter: \'CLASSIFICATION\', \'REGRESSION\', or \'ALL\'.')
         return {}
     
-    cross_user = {
+    cross_user_classification = {
         'EMGEPN612': EMGEPN_UserIndependent,
+    }
+
+    cross_user_regression = {
+        'EMG2POSE': EMG2POSECU,
     }
     
     classification = {
@@ -70,7 +76,7 @@ def get_dataset_list(type='CLASSIFICATION'):
         'HyserNDOF': HyserNDOF, 
         'HyserRandom': HyserRandom,
         'UserCompliance': UserComplianceDataset,
-        'EMG2POSE': EMG2POSEUD,
+        'EMG2POSE': EMG2POSEUD
     }
 
     weaklysupervised = {
@@ -78,13 +84,15 @@ def get_dataset_list(type='CLASSIFICATION'):
     }
     
     if type == 'CLASSIFICATION':
+        if cross_user:
+            return cross_user_classification
         return classification
     elif type == 'REGRESSION':
+        if cross_user:
+            return cross_user_regression
         return regression 
     elif type == "WEAKLYSUPERVISED":
         return weaklysupervised
-    elif type == "CROSSUSER":
-        return cross_user
     else:
         # Concatenate all datasets
         classification.update(regression)
@@ -217,7 +225,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
 
-def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612'], output_file='out_cross.pkl', metrics=['CA'], normalize_data=False, normalize_features=False):
+def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612'], output_file='out_cross.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False):
     """Evaluates an algorithm against all the cross-user datasets.
     
     Parameters
@@ -234,6 +242,8 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
     output_file: string (default='out.pkl')
         The name of the directory you want to incrementally save the results to (it will be a pickle file).
+    regression: boolean (default=False)
+        If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
     metrics: list (default=['CA'])
         The metrics to extract from each dataset.
     normalize_data: boolean (default=False)
@@ -245,6 +255,15 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
     dictionary
         A dictionary with a set of accuracies for different datasets
     """
+    # -------------- Setup -------------------
+    if metrics == ['CA'] and regression:
+        metrics = ['MSE']
+
+    metadata_operations = None 
+    label_val = 'classes'
+    if regression:
+        metadata_operations = {'labels': 'last_sample'}
+        label_val = 'labels'
 
     om = OfflineMetrics()
     fe = FeatureExtractor()
@@ -254,7 +273,10 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
     for d in included_datasets:
         print(f"Evaluating {d} dataset...")
         if isinstance(d, str):
-            dataset = get_dataset_list('CROSSUSER')[d]()
+            if regression:
+                dataset = get_dataset_list('REGRESSION', True)[d]()
+            else:
+                dataset = get_dataset_list('CLASSIFICATION', True)[d]()
         else:
             dataset = d
         
@@ -270,7 +292,7 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             filter.filter(test_data)
         del data
 
-        train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+        train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
         del train_data
         if normalize_features:
             train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
@@ -281,10 +303,13 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
 
         ds = {
             'training_features': train_feats,
-            'training_labels': train_meta['classes']
+            'training_labels': train_meta[label_val]
         }
         
-        clf = EMGClassifier(model)
+        if not regression:
+            clf = EMGClassifier(model)
+        else:
+            clf = EMGRegressor(model)
         clf.fit(ds)
 
         del train_feats
@@ -296,15 +321,18 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         for s_i, s in enumerate(unique_subjects):
             print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
             s_test_dh = test_data.isolate_data('subjects', [s])
-            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc))
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
             if normalize_features:
                 test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=normalizer)
             else:
                 test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
 
-            preds, _ = clf.run(test_feats)
+            if regression:
+                preds = clf.run(test_feats)
+            else:
+                preds, _ = clf.run(test_feats)
                 
-            metrics = om.extract_offline_metrics(metrics, test_meta['classes'], preds)
+            metrics = om.extract_offline_metrics(metrics, test_meta[label_val], preds)
             accs.append(metrics)
                 
             print(metrics)    
