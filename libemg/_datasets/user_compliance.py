@@ -18,9 +18,10 @@ class UserComplianceDataset(Dataset):
         self.url = 'https://github.com/LibEMG/UserComplianceDataset'
         self.dataset_folder = dataset_folder
         self.analysis = analysis
-        self.subject_list = np.array([f"subject-{str(idx).zfill(3)}" for idx in range(1, 7)])
+        self.subject_list = np.array(['subject-001', 'subject-002', 'subject-003', 'subject-006', 'subject-007', 'subject-008'])
 
     def prepare_data(self, split = False, subjects = None):
+        subject_list = self.subject_list
         if subjects:
             subject_list = subject_list[subjects]
             

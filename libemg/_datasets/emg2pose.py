@@ -14,7 +14,7 @@ class EMG2POSE(Dataset):
                         'Ctrl Labs Armband', 
                         193, 
                         self.mapping, 
-                        'TODO',
+                        'N/A',
                         "A large dataset from ctrl-labs (Meta) for joint angle estimation. Note that not all subjects have all stages.",
                         "https://openreview.net/forum?id=b5n3lKRLzk")
         self.dataset_folder = dataset_folder
@@ -29,42 +29,56 @@ class EMG2POSE(Dataset):
             return False
         
         return True
+    
+class EMG2POSEUD(EMG2POSE):
+    """
+    The user dependent version of emg2pose. We are testing generalization within user to unseen stages.
+
+    Parameters
+    ----------
+    train_stages: list (default = None)
+        If None, the training stages will be all of the ones not included in the test stages. 
+    test_stages: list (default=['Wiggling2', 'Gesture3', 'Gesture2', 'Counting2', 'FingerFreeform', 'Counting1'])
+        A list of stages to use for training. See self.mapping for options. If a user doens't have that testing stage then it is ignored.
+    """
+    def __init__(self, dataset_folder="Meta/emg2pose_data/", train_stages = None, test_stages = None):
+        EMG2POSE.__init__(self, dataset_folder=dataset_folder)
+        self.train_stages = train_stages
+        self.test_stages = test_stages
 
     # This split works for stage generalization - takes the average across stages, though 
-    def prepare_data(self, split = False, subjects = None, test_stages = None):
+    def prepare_data(self, split = False, subjects = None):
         """Prepares the EMG2POSE dataset.
         
         Parameters
         ----------
         subjects: list
-            A list of subject indexes. 
-        test_stages: list (default=['Wiggling2', 'Gesture3', 'Gesture2', 'Counting2', 'FingerFreeform', 'Counting1'])
-            A list of stages to use for training. See self.mapping for options. If a user doens't have that testing stage then it is ignored.
+            A list of subject indexes.
         """
-        if test_stages:
-            for t in test_stages:
+        if self.test_stages:
+            for t in self.test_stages:
                 assert t in self.mapping.keys()
         else:
-            test_stages = ['Wiggling2', 'Gesture3', 'Gesture2', 'Counting2', 'FingerFreeform', 'Counting1']
+            self.test_stages = ['Wiggling2', 'Gesture3', 'Gesture2', 'Counting2', 'FingerFreeform', 'Counting1']
 
-        train_stages = []
-        for k in self.mapping.keys():
-            if k not in test_stages:
-                train_stages.append(k)
+        if self.train_stages:
+            for t in self.train_stages:
+                assert t in self.mapping.keys()
+        else:
+            self.train_stages = []
+            for k in self.mapping.keys():
+                if k not in self.test_stages:
+                    self.train_stages.append(k)
 
         # (1) Make sure everything is downloaded 
         self.check_files()
 
         # (2) Load metadata file 
         df = pd.read_csv(self.dataset_folder + 'metadata.csv')
-        subject_ids = []
-        for user in np.unique(df['user']):
-            if np.unique(df[df['user'] == user]['stage']).shape[0] == 29:
-                subject_ids.append(user)
-        subject_ids = np.array(subject_ids)
-
+        subject_ids = np.array(list(np.unique(df['user'])))
         if subjects:
             subject_ids = subject_ids[subjects]
+        subject_ids = list(subject_ids)
         
         odh_tr = OfflineDataHandler()
         odh_tr.subjects = []
@@ -83,7 +97,7 @@ class EMG2POSE(Dataset):
         # (3) Iterate through subjects and grab all of the relevant files 
         for s_i, s in enumerate(subject_ids):
             sub_mask = df['user'] == s
-            gestures = [self.mapping[v] for v in np.hstack([train_stages, test_stages])]
+            gestures = [self.mapping[v] for v in np.hstack([self.train_stages, self.test_stages])]
             reps = [0] * len(gestures)
             gesture_mask = df['stage'].isin(gestures)
 
@@ -108,25 +122,27 @@ class EMG2POSE(Dataset):
                 ja_left = left['emg2pose']['timeseries']['joint_angles']
                 ja_right = right['emg2pose']['timeseries']['joint_angles']
 
-                if gesture_name in train_stages:
+                if gesture_name in self.train_stages:
                     odh_tr.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
                     odh_tr.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
                     odh_tr.stages.append(np.ones((len(odh_tr.data[-1]), 1)) * gestures.index(gest))
                     odh_tr.subjects.append(np.ones((len(odh_tr.data[-1]), 1)) * s_i)
                     odh_tr.reps.append(np.ones((len(odh_tr.data[-1]), 1)) * reps[gestures.index(gest)])
-                else:
+                    reps[gestures.index(gest)] += 1
+                if gesture_name in self.test_stages:
                     odh_te.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
                     odh_te.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
                     odh_te.stages.append(np.ones((len(odh_te.data[-1]), 1)) * gestures.index(gest))
                     odh_te.subjects.append(np.ones((len(odh_te.data[-1]), 1)) * s_i)
                     odh_te.reps.append(np.ones((len(odh_te.data[-1]), 1)) * reps[gestures.index(gest)])
-                reps[gestures.index(gest)] += 1
-                
+                    reps[gestures.index(gest)] += 1
+        
+        if len(odh_tr.data) == 0 or len(odh_te.data) == 0:
+            print('Invalid Subject Information: Please confirm that the subject has the desired stages')
+            return None
+        
         odh_all = odh_tr + odh_te
         data = odh_all
         if split:
             data = {'All': odh_all, 'Train': odh_tr, 'Test': odh_te}
         return data 
-        
-    
-

@@ -18,7 +18,7 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
-from libemg._datasets.emg2pose import EMG2POSE
+from libemg._datasets.emg2pose import EMG2POSEUD
 import pickle
 import numpy as np
 
@@ -70,7 +70,7 @@ def get_dataset_list(type='CLASSIFICATION'):
         'HyserNDOF': HyserNDOF, 
         'HyserRandom': HyserRandom,
         'UserCompliance': UserComplianceDataset,
-        'EMG2POSE': EMG2POSE,
+        'EMG2POSE': EMG2POSEUD,
     }
 
     weaklysupervised = {
@@ -159,7 +159,11 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
         accs = []
         for s_i in range(0, dataset.num_subjects):
             data = dataset.prepare_data(split=True, subjects=[s_i])
-        
+
+            if data == None:
+                print('Skipping Subject... No data found.')
+                continue
+
             s_train_dh = data['Train']
             s_test_dh = data['Test']
 
