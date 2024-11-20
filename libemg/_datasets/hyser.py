@@ -174,12 +174,11 @@ class HyserRandom(_Hyser):
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
         super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis)
-
-        self.subjects = [s for s in self.subjects if s != '10']
+        self.num_subjects = 19
 
 
     def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
-        subject_list = np.array(list(range(1,21)))
+        subject_list = np.delete(np.array(list(range(1,21))), 9)
         if subjects:
             subject_list = subject_list[subjects]
         self.subjects = [f'{s:02d}' for s in subject_list]

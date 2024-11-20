@@ -30,7 +30,7 @@ class EMG2POSE(Dataset):
         
         return True
 
-
+    # This split works for stage generalization - takes the average across stages, though 
     def prepare_data(self, split = False, subjects = None, test_stages = None):
         """Prepares the EMG2POSE dataset.
         
@@ -89,21 +89,34 @@ class EMG2POSE(Dataset):
 
             # Get all files for that subject 
             files = df['filename'][(sub_mask) & (gesture_mask)]
-            for f in np.array(files):
-                if 'left' in f:
-                    continue # Just for now TODO: Fix this !!!!!!!
-                h5_data = h5py.File(self.dataset_folder + '/' + f + '.hdf5', "r")
-                gest = df[df['filename'] == f]['stage'].item()
+            files = [f.replace('left', '') for f in files]
+            files = [f.replace('right', '') for f in files]
+            for f in np.unique(files):
+                # Check that files exists otherwise skip
+                if not (self.check_exists(self.dataset_folder + '/' + f + 'left.hdf5') and self.check_exists(self.dataset_folder + '/' + f + 'right.hdf5')):
+                    continue
+
+                left = h5py.File(self.dataset_folder + '/' + f + 'left.hdf5', "r")
+                right = h5py.File(self.dataset_folder + '/' + f + 'right.hdf5', "r")
+                gest = df[df['filename'] == f + 'right']['stage'].item()
                 gesture_name = list(self.mapping.keys())[list(self.mapping.values()).index(gest)]
+
+                emg_left = left['emg2pose']['timeseries']['emg']
+                emg_right = right['emg2pose']['timeseries']['emg']
+                min_idx = min([len(emg_left), len(emg_right)])
+
+                ja_left = left['emg2pose']['timeseries']['joint_angles']
+                ja_right = right['emg2pose']['timeseries']['joint_angles']
+
                 if gesture_name in train_stages:
-                    odh_tr.data.append(h5_data['emg2pose']['timeseries']['emg'])
-                    odh_tr.labels.append(h5_data['emg2pose']['timeseries']['joint_angles'])
+                    odh_tr.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
+                    odh_tr.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
                     odh_tr.stages.append(np.ones((len(odh_tr.data[-1]), 1)) * gestures.index(gest))
                     odh_tr.subjects.append(np.ones((len(odh_tr.data[-1]), 1)) * s_i)
                     odh_tr.reps.append(np.ones((len(odh_tr.data[-1]), 1)) * reps[gestures.index(gest)])
                 else:
-                    odh_te.data.append(h5_data['emg2pose']['timeseries']['emg'])
-                    odh_te.labels.append(h5_data['emg2pose']['timeseries']['joint_angles'])
+                    odh_te.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
+                    odh_te.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
                     odh_te.stages.append(np.ones((len(odh_te.data[-1]), 1)) * gestures.index(gest))
                     odh_te.subjects.append(np.ones((len(odh_te.data[-1]), 1)) * s_i)
                     odh_te.reps.append(np.ones((len(odh_te.data[-1]), 1)) * reps[gestures.index(gest)])
