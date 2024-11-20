@@ -283,69 +283,115 @@ class ISOFitts(Environment):
         pygame.display.set_caption(str(self.clock.get_fps()))
 
 
-class RotationalIsoFitts(ISOFitts):
-    def _draw_arrow(self, color, x, y, fill, target = True):
-        angle = float(np.interp(x, [25, self.width], [-math.pi / 2, math.pi / 2]))   # question: should it be 180 or 360??
-        arrow_length = 30
-        if target:
-            head_width = self.small_rad
-            line_width = self.small_rad
-        else:
-            head_width = 15
-            line_width = 5
-        arrow_x = int(arrow_length * np.cos(angle))
-        arrow_y = int(arrow_length * np.sin(angle))
-        start_position = (self.width // 2, y)
-        end_position = (start_position[0] + arrow_x, start_position[1] + arrow_y)
+# class PolarFitts(ISOFitts):
+#     """Credit to Shriram Tallam Puranam Raghu for providing code for this implementation."""
+#     def _get_targets(self):
+#         if len(self.targets) > 0:
+#             # Targets already initialized
+#             return
 
-        # points = [
-        #     (start_position[0] + arrow_x, start_position[1] + arrow_y),
-        #     (start_position[0] + arrow_x, start_position[1] - arrow_y),
-        #     (start_position[0] - arrow_x, start_position[1] - arrow_y),
-        #     (start_position[0] - arrow_x, start_position[1] + arrow_y)
-        # ]
-        points = [
-            (start_position[0] - arrow_x, start_position[1] - arrow_y),
-            (start_position[0] + arrow_x, start_position[1] - arrow_y),
-            (start_position[0] + arrow_x, start_position[1] + arrow_y),
-            (start_position[0] - arrow_x, start_position[1] + arrow_y)
-        ]
-        if not target:
-            print(points)
-            print(angle)
-            pygame.draw.polygon(self.screen, color, [(50, 50), (60, 30), (100, 80), (90, 100)], width=2)
-        pygame.draw.polygon(self.screen, color, points, width=2)
+#         angles = [2 * math.pi * idx / self.num_of_targets for idx in range(self.num_of_targets)]
+#         radius = 100
+#         target_width = 20
+#         target_height = 30
 
-        # draw_rotated_rect(self.screen, color, (start_position[0], start_position[1], 30, 10), angle=angle, width=0)
-        # pygame.draw.polygon(self.screen, color, [start_position, end_position], width=2)
+#         for angle in angles:
+#             x = radius * math.cos(angle)
+#             y = radius * math.sin(angle)
 
-        # pygame.draw.line(self.screen, color, start_position, end_position, width=line_width)
-        # pygame.draw.rect(self.screen, color, (start_position[0], start_position[1], arrow_x, arrow_y))
-        # points = [
-        #     (end_position[0] - head_width * np.cos(angle + math.pi / 4), end_position[1] - head_width * np.sin(angle + math.pi / 4)),
-        #     (end_position[0] - head_width * np.cos(angle - math.pi / 4), end_position[1] - head_width * np.sin(angle - math.pi / 4)),
-        #     (end_position[0] + 5 * np.cos(angle), end_position[1] + 5 * np.sin(angle))
-        # ]
-        # pygame.draw.polygon(self.screen, color, points, width=fill)
+#             # Convert to target in center of screen
+#             left = self.width / 2 + x - target_width / 2
+#             top = self.height / 2 - y - target_height / 2    # subtract b/c y is inverted in pygame
+#             rect = pygame.Rect(left, top, target_width, target_width)
 
-        # TODO: Maybe scrap the whole arrow thing... just make it like Ameri did. Still use a dot as a cursor but add a line that shows rotation.
-        # Might need to draw lines so it'll be hollow
-        # Will likely need to make this a fitts instead of an isofitts
+#             self.targets.append(rect)
+
+#     def _draw_targets(self):
+#         self._get_targets()
+
+#         target_width = 20
+#         for target in self.targets:
+#             pygame.draw.circle(self.screen, self.RED, (target.centerx, target.centery), target_width / 2)
+        
+#         # goal_target = self.targets[self.goal_target]
+#         # self._draw_arrow(self.RED, goal_target.x, goal_target.y, fill=0)
+
+#     def _draw_cursor(self):
+#         # self._draw_arrow(self.YELLOW, self.cursor.centerx, self.cursor.centery, fill=0, target=False)
+#         pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.centerx, self.cursor.centery), radius=4)
+
+
+#     def _move(self):
+#         center_cursor = (self.cursor.centerx - self.width // 2, self.height - self.cursor.centery)
+#         radius = math.dist((0, 0), center_cursor)
+#         theta = math.atan2(center_cursor[1], center_cursor[0])
+#         radius += self.current_direction[0]
+
+#         max_updates = 100 # radius
+#         angular_velocity = 2 * math.pi / max_updates
+#         theta += self.current_direction[1] / self.VEL * angular_velocity
+#         print(self.current_direction)
+#         print(radius)
+#         print(theta)
+#         # May need to scale by a factor of the radius or something... pixels move slower when radius is smaller
+
+#         radius = max(0, radius) # radius must be >= 0
+#         theta = max(-math.pi, theta)
+#         theta = min(math.pi, theta)
+
+#         center_x = round(radius * math.cos(theta) + self.width // 2)
+#         center_y = round(self.height - radius * math.sin(theta))
+#         self.cursor.center = (center_x, center_y)
+
+
+
+
+
+class PolarFitts(ISOFitts):
+    def _get_targets(self):
+        # Should probably change this approach b/c you'll need to loop through num_trials times when creating the targets... can clean this up afterwards
+        # TODO: Also still need to change target size per trial if we aren't doing ISO
+        # TODO: Need to fix issue where target will be on your cursor... this causes issues when starting up
+        if len(self.targets) > 0:
+            # Targets already initialized
+            return
+
+        # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
+        center_screen = (self.width // 2, self.height // 2)
+        self.radius = math.dist(center_screen, self.cursor.center)
+        self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
+        for _ in range(self.max_trial):
+            target_radius = np.random.randint(0, self.big_rad)
+            target_angle = np.random.uniform(0, 2 * math.pi)
+            
+            x = target_radius * math.cos(target_angle)
+            y = target_radius * math.sin(target_angle)
+
+            # Convert to target in center of screen
+            left = self.width // 2 + x - self.small_rad // 2
+            top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
+            rect = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
+            self.targets.append(rect)
 
     def _draw_targets(self):
-        if not len(self.targets):
-            angle = 0
-            angle_increment = 360 // self.num_of_targets
-            while angle < 360:
-                self.targets.append(pygame.Rect((self.width//2 - self.small_rad) + math.cos(math.radians(angle)) * self.big_rad, (self.height//2 - self.small_rad) + math.sin(math.radians(angle)) * self.big_rad, self.small_rad * 2, self.small_rad * 2))
-                angle += angle_increment
-
-        for target in self.targets:
-            self._draw_arrow(self.RED, target.x, target.y, 2)
-        
+        # Only need to draw the goal target
+        self._get_targets()
         goal_target = self.targets[self.goal_target]
-        self._draw_arrow(self.RED, goal_target.x, goal_target.y, fill=0)
+        pygame.draw.circle(self.screen, self.RED, goal_target.center, self.small_rad)
 
     def _draw_cursor(self):
-        self._draw_arrow(self.YELLOW, self.cursor.centerx, self.cursor.centery, fill=0, target=False)
+        super()._draw_cursor()
+        center = (self.width // 2, self.height // 2)
+        pygame.draw.circle(self.screen, self.YELLOW, center, self.radius, width=2)
 
+
+    def _move(self):
+        self.radius += self.current_direction[0]
+        self.radius = max(1, self.radius) # radius must be >= 0
+
+        self.theta += self.current_direction[1] * math.pi / (2 * self.big_rad)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
+        # # May need to scale by a factor of the radius or something... pixels move slower when radius is smaller
+        # IDEA: would it be better to have one DOF be self.theta and the other is the size of the target?
+        center_x = round(self.radius * math.cos(self.theta) + self.width // 2)
+        center_y = round(self.height // 2 - self.radius * math.sin(self.theta))
+        self.cursor.center = (center_x, center_y)
