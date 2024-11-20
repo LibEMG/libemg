@@ -284,45 +284,68 @@ class IsoFitts(Environment):
 
 
 class RotationalIsoFitts(IsoFitts):
-    # def _draw_targets(self):
-    #     if not len(self.targets):
-    #         self.angle = 0
-    #         self.angle_increment = 360 // self.num_of_targets
-    #         while self.angle < 360:
-    #             self.targets.append(pygame.Rect((self.width//2 - self.small_rad) + math.cos(math.radians(self.angle)) * self.big_rad, (self.height//2 - self.small_rad) + math.sin(math.radians(self.angle)) * self.big_rad, self.small_rad * 2, self.small_rad * 2))
-                
-    #             self.angle += self.angle_increment
-
-    #     for target in self.targets:
-    #         pygame.draw.circle(self.screen, self.RED, (target.x + self.small_rad, target.y + self.small_rad), self.small_rad, 2)
-        
-    #     goal_target = self.targets[self.goal_target]
-    #     pygame.draw.circle(self.screen, self.RED, (goal_target.x + self.small_rad, goal_target.y + self.small_rad), self.small_rad)
-
-    def _draw_cursor(self):
-        screen_width = self.screen.get_size()[0]
-        angle = float(np.interp(self.cursor.left, [0, screen_width], [-math.pi / 2, math.pi / 2]))   # question: should it be 180 or 360??
-        arrow_length = 40
-        head_width = 15
+    def _draw_arrow(self, color, x, y, fill, target = True):
+        angle = float(np.interp(x, [25, self.width], [-math.pi / 2, math.pi / 2]))   # question: should it be 180 or 360??
+        arrow_length = 30
+        if target:
+            head_width = self.small_rad
+            line_width = self.small_rad
+        else:
+            head_width = 15
+            line_width = 5
         arrow_x = int(arrow_length * np.cos(angle))
         arrow_y = int(arrow_length * np.sin(angle))
-        start_position = (screen_width // 2, self.cursor.top)
+        start_position = (self.width // 2, y)
         end_position = (start_position[0] + arrow_x, start_position[1] + arrow_y)
 
-        # bottom_left = (end_position[0] - head_width * np.cos(angle + math.pi / 4), end_position[1] - head_width * np.sin(angle + math.pi / 4))
-        # bottom_right = (end_position[0] - head_width * np.cos(angle - math.pi / 4), end_position[1] - head_width * np.sin(angle - math.pi / 4))
-
-        pygame.draw.line(self.screen, self.YELLOW, start_position, end_position, width=5)
-        # pygame.draw.line(self.screen, self.YELLOW, bottom_left, end_position, width=line_width)
-        # pygame.draw.line(self.screen, self.YELLOW, bottom_right, end_position, width=line_width)
+        # points = [
+        #     (start_position[0] + arrow_x, start_position[1] + arrow_y),
+        #     (start_position[0] + arrow_x, start_position[1] - arrow_y),
+        #     (start_position[0] - arrow_x, start_position[1] - arrow_y),
+        #     (start_position[0] - arrow_x, start_position[1] + arrow_y)
+        # ]
         points = [
-            (end_position[0] - head_width * np.cos(angle + math.pi / 4), end_position[1] - head_width * np.sin(angle + math.pi / 4)),
-            (end_position[0] - head_width * np.cos(angle - math.pi / 4), end_position[1] - head_width * np.sin(angle - math.pi / 4)),
-            (end_position[0] + 5 * np.cos(angle), end_position[1] + 5 * np.sin(angle))
+            (start_position[0] - arrow_x, start_position[1] - arrow_y),
+            (start_position[0] + arrow_x, start_position[1] - arrow_y),
+            (start_position[0] + arrow_x, start_position[1] + arrow_y),
+            (start_position[0] - arrow_x, start_position[1] + arrow_y)
         ]
-        pygame.draw.polygon(self.screen, self.YELLOW, points)
-        # TODO: This still doesn't look fantastic, but it's a start
+        if not target:
+            print(points)
+            print(angle)
+            pygame.draw.polygon(self.screen, color, [(50, 50), (60, 30), (100, 80), (90, 100)], width=2)
+        pygame.draw.polygon(self.screen, color, points, width=2)
 
+        # draw_rotated_rect(self.screen, color, (start_position[0], start_position[1], 30, 10), angle=angle, width=0)
+        # pygame.draw.polygon(self.screen, color, [start_position, end_position], width=2)
 
-    # def _check_collisions(self):
-    #     ...
+        # pygame.draw.line(self.screen, color, start_position, end_position, width=line_width)
+        # pygame.draw.rect(self.screen, color, (start_position[0], start_position[1], arrow_x, arrow_y))
+        # points = [
+        #     (end_position[0] - head_width * np.cos(angle + math.pi / 4), end_position[1] - head_width * np.sin(angle + math.pi / 4)),
+        #     (end_position[0] - head_width * np.cos(angle - math.pi / 4), end_position[1] - head_width * np.sin(angle - math.pi / 4)),
+        #     (end_position[0] + 5 * np.cos(angle), end_position[1] + 5 * np.sin(angle))
+        # ]
+        # pygame.draw.polygon(self.screen, color, points, width=fill)
+
+        # TODO: Maybe scrap the whole arrow thing... just make it like Ameri did. Still use a dot as a cursor but add a line that shows rotation.
+        # Might need to draw lines so it'll be hollow
+        # Will likely need to make this a fitts instead of an isofitts
+
+    def _draw_targets(self):
+        if not len(self.targets):
+            angle = 0
+            angle_increment = 360 // self.num_of_targets
+            while angle < 360:
+                self.targets.append(pygame.Rect((self.width//2 - self.small_rad) + math.cos(math.radians(angle)) * self.big_rad, (self.height//2 - self.small_rad) + math.sin(math.radians(angle)) * self.big_rad, self.small_rad * 2, self.small_rad * 2))
+                angle += angle_increment
+
+        for target in self.targets:
+            self._draw_arrow(self.RED, target.x, target.y, 2)
+        
+        goal_target = self.targets[self.goal_target]
+        self._draw_arrow(self.RED, goal_target.x, goal_target.y, fill=0)
+
+    def _draw_cursor(self):
+        self._draw_arrow(self.YELLOW, self.cursor.centerx, self.cursor.centery, fill=0, target=False)
+
