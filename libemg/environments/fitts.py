@@ -341,69 +341,6 @@ class ISOFitts(Fitts):
         self.goal_target = self.targets[self.goal_target_idx]
 
 
-# class PolarFitts(ISOFitts):
-#     """Credit to Shriram Tallam Puranam Raghu for providing code for this implementation."""
-#     def _get_targets(self):
-#         if len(self.targets) > 0:
-#             # Targets already initialized
-#             return
-
-#         angles = [2 * math.pi * idx / self.num_of_targets for idx in range(self.num_of_targets)]
-#         radius = 100
-#         target_width = 20
-#         target_height = 30
-
-#         for angle in angles:
-#             x = radius * math.cos(angle)
-#             y = radius * math.sin(angle)
-
-#             # Convert to target in center of screen
-#             left = self.width / 2 + x - target_width / 2
-#             top = self.height / 2 - y - target_height / 2    # subtract b/c y is inverted in pygame
-#             rect = pygame.Rect(left, top, target_width, target_width)
-
-#             self.targets.append(rect)
-
-#     def _draw_targets(self):
-#         self._get_targets()
-
-#         target_width = 20
-#         for target in self.targets:
-#             pygame.draw.circle(self.screen, self.RED, (target.centerx, target.centery), target_width / 2)
-        
-#         # goal_target = self.targets[self.goal_target]
-#         # self._draw_arrow(self.RED, goal_target.x, goal_target.y, fill=0)
-
-#     def _draw_cursor(self):
-#         # self._draw_arrow(self.YELLOW, self.cursor.centerx, self.cursor.centery, fill=0, target=False)
-#         pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.centerx, self.cursor.centery), radius=4)
-
-
-#     def _move(self):
-#         center_cursor = (self.cursor.centerx - self.width // 2, self.height - self.cursor.centery)
-#         radius = math.dist((0, 0), center_cursor)
-#         theta = math.atan2(center_cursor[1], center_cursor[0])
-#         radius += self.current_direction[0]
-
-#         max_updates = 100 # radius
-#         angular_velocity = 2 * math.pi / max_updates
-#         theta += self.current_direction[1] / self.VEL * angular_velocity
-#         print(self.current_direction)
-#         print(radius)
-#         print(theta)
-#         # May need to scale by a factor of the radius or something... pixels move slower when radius is smaller
-
-#         radius = max(0, radius) # radius must be >= 0
-#         theta = max(-math.pi, theta)
-#         theta = min(math.pi, theta)
-
-#         center_x = round(radius * math.cos(theta) + self.width // 2)
-#         center_y = round(self.height - radius * math.sin(theta))
-#         self.cursor.center = (center_x, center_y)
-
-
-
-
 
 class PolarFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None):
