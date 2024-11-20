@@ -20,7 +20,7 @@ class OneSubjectEMaGerDataset(Dataset):
         self.url = 'https://github.com/LibEMG/OneSubjectEMaGerDataset'
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects = None):
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
         regex_filters = [

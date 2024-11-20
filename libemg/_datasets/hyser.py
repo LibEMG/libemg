@@ -10,7 +10,7 @@ from libemg._datasets.dataset import Dataset
 
 
 class _Hyser(Dataset, ABC):
-    def __init__(self, gestures, num_reps, description, dataset_folder, analysis = 'baseline', subjects = None):
+    def __init__(self, gestures, num_reps, description, dataset_folder, analysis = 'baseline'):
         super().__init__(
             sampling=2048,
             num_channels=256,
@@ -21,8 +21,7 @@ class _Hyser(Dataset, ABC):
             description=description,
             citation='https://doi.org/10.13026/ym7v-bh53'
         )
-        if subjects is None:
-            subjects = [str(idx + 1).zfill(2) for idx in range(self.num_subjects)]   # +1 due to Python indexing
+        subjects = [str(idx + 1).zfill(2) for idx in range(self.num_subjects)]   # +1 due to Python indexing
 
         self.url = 'https://www.physionet.org/content/hd-semg/1.0.0/'
         self.dataset_folder = dataset_folder
@@ -50,7 +49,7 @@ class _Hyser(Dataset, ABC):
 
 
 class Hyser1DOF(_Hyser):
-    def __init__(self, dataset_folder: str = 'Hyser1DOF', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
+    def __init__(self, dataset_folder: str = 'Hyser1DOF', analysis: str = 'baseline'):
         """1 degree of freedom (DOF) Hyser dataset.
 
         Parameters
@@ -60,14 +59,17 @@ class Hyser1DOF(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
-        subjects: Sequence[str] or None, default=None
-            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
+        super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis)
 
-    def _prepare_data_helper(self, split = False):
+    def _prepare_data_helper(self, split = False, subjects = None):
+        subject_list = np.array(list(range(1,21)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        self.subjects = [f'{s:02d}' for s in subject_list]
+
         filename_filters = deepcopy(self.common_regex_filters)
         filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps'))
         filename_filters.append(RegexFilter(left_bound='_finger', right_bound='_sample', values=['1', '2', '3', '4', '5'], description='finger'))
@@ -93,7 +95,7 @@ class Hyser1DOF(_Hyser):
 
         
 class HyserNDOF(_Hyser):
-    def __init__(self, dataset_folder: str = 'HyserNDOF', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
+    def __init__(self, dataset_folder: str = 'HyserNDOF', analysis: str = 'baseline'):
         """N degree of freedom (DOF) Hyser dataset.
 
         Parameters
@@ -103,13 +105,11 @@ class HyserNDOF(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
-        subjects: Sequence[str] or None, default=None
-            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         # TODO: Add a 'regression' flag... maybe add a 'DOFs' parameter instead of just gestures?
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects) 
+        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis) 
         self.finger_combinations = {
             1: 'Thumb + Index',
             2: 'Thumb + Middle',
@@ -128,7 +128,12 @@ class HyserNDOF(_Hyser):
             15: 'Index + Middle (Opposing)'
         }
 
-    def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+        subject_list = np.array(list(range(1,21)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        self.subjects = [f'{s:02d}' for s in subject_list]
+
         filename_filters = deepcopy(self.common_regex_filters)
         filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps'))
         filename_filters.append(RegexFilter(left_bound='_combination', right_bound='_sample', values=[str(idx + 1) for idx in range(len(self.finger_combinations))], description='finger_combinations'))
@@ -155,7 +160,7 @@ class HyserNDOF(_Hyser):
         
 
 class HyserRandom(_Hyser):
-    def __init__(self, dataset_folder: str = 'HyserRandom', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
+    def __init__(self, dataset_folder: str = 'HyserRandom', analysis: str = 'baseline'):
         """Random task (DOF) Hyser dataset.
 
         Parameters
@@ -165,17 +170,20 @@ class HyserRandom(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
-        subjects: Sequence[str] or None, default=None
-            Subjects to parse (e.g., ['01', '03', '10']). If None, parses all participants. Defaults to None.
         """
         gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)
+        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis)
 
         self.subjects = [s for s in self.subjects if s != '10']
 
 
-    def _prepare_data_helper(self, split = False) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+        subject_list = np.array(list(range(1,21)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        self.subjects = [f'{s:02d}' for s in subject_list]
+
         filename_filters = deepcopy(self.common_regex_filters)
         filename_filters.append(RegexFilter(left_bound='_sample', right_bound='.hea', values=[str(idx + 1) for idx in range(self.num_reps)], description='reps'))
 
@@ -253,7 +261,7 @@ class _PRRepFetcher(_PRLabelsFetcher):
 
         
 class HyserPR(_Hyser):
-    def __init__(self, dataset_folder: str = 'HyserPR', analysis: str = 'baseline', subjects: Sequence[str] | None = None):
+    def __init__(self, dataset_folder: str = 'HyserPR', analysis: str = 'baseline'):
         """Pattern recognition (PR) Hyser dataset.
 
         Parameters
@@ -263,8 +271,6 @@ class HyserPR(_Hyser):
         analysis: str, default='baseline'
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
-        subjects: Sequence[str] or None, default=None
-            Subjects to parse (e.g., [0,1,2]). If None, parses all participants. Defaults to None.
         """
         gestures = {
             1: 'Thumb Extension',
@@ -303,7 +309,7 @@ class HyserPR(_Hyser):
             34: 'Thumb and Middle Fingers Pinch'
         }
         description = 'Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.'
-        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis, subjects=subjects)  # num_reps=2 b/c 2 trials
+        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis)  # num_reps=2 b/c 2 trials
         self.num_subjects = 18 # Removed 2 subjects because they're missing classes
 
     def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:

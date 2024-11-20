@@ -1,11 +1,10 @@
+import numpy as np 
 from pathlib import Path
-
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler, RegexFilter, FilePackager
 
-
 class UserComplianceDataset(Dataset):
-    def __init__(self, dataset_folder = 'UserComplianceDataset/', analysis = 'baseline', subjects = None):
+    def __init__(self, dataset_folder = 'UserComplianceDataset/', analysis = 'baseline'):
         super().__init__(
             sampling=1010,
             num_channels=64,
@@ -19,11 +18,12 @@ class UserComplianceDataset(Dataset):
         self.url = 'https://github.com/LibEMG/UserComplianceDataset'
         self.dataset_folder = dataset_folder
         self.analysis = analysis
-        if subjects is None:
-            subjects = [f"subject-{str(idx).zfill(3)}" for idx in range(1, 7)]
-        self.subjects = subjects
+        self.subject_list = np.array([f"subject-{str(idx).zfill(3)}" for idx in range(1, 7)])
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = False, subjects = None):
+        if subjects:
+            subject_list = subject_list[subjects]
+            
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
 
@@ -31,7 +31,7 @@ class UserComplianceDataset(Dataset):
             RegexFilter(left_bound='/', right_bound='/', values=['open-close', 'pro-sup'], description='movements'),
             RegexFilter(left_bound='_R_', right_bound='.csv', values=[str(idx) for idx in range(self.num_reps)], description='reps'),
             RegexFilter(left_bound='/', right_bound='/', values=['anticipation', 'all-or-nothing', 'baseline'], description='behaviours'),
-            RegexFilter(left_bound='/', right_bound='/', values=self.subjects, description='subjects')
+            RegexFilter(left_bound='/', right_bound='/', values=list(subject_list), description='subjects')
         ]
         package_function = lambda x, y: Path(x).parent.absolute() == Path(y).parent.absolute()
         metadata_fetchers = [FilePackager(RegexFilter(left_bound='/', right_bound='.txt', values=['labels'], description='labels'), package_function)]

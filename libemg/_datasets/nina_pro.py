@@ -233,20 +233,19 @@ class NinaproDB8(Ninapro):
         odh.labels = remapped_labels
         return odh
 
-    def prepare_data(self, split = False, subjects_values = None, reps_values = None, classes_values = None):
-        if subjects_values is None:
-            subjects_values = [str(i) for i in range(1,self.num_subjects + 1)]
-        if reps_values is None:
-            reps_values = [str(i) for i in range(self.num_reps)]
-        if classes_values is None:
-            classes_values = [str(i) for i in range(9)]
+    def prepare_data(self, split = False, subjects = None):
+        subjects_values = np.array([str(i) for i in range(1,self.num_subjects + 1)])
+        if subjects:
+            subjects_values = subjects_values[subjects]
+        reps_values = [str(i) for i in range(self.num_reps)]
+        classes_values = [str(i) for i in range(9)]
 
         self.convert_to_compatible()
 
         regex_filters = [
             RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
             RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
-            RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
+            RegexFilter(left_bound="DB8_s", right_bound="/",values=list(subjects_values), description='subjects')
         ]
         metadata_fetchers = [
             ColumnFetcher('labels', column_mask=[idx for idx in range(self.num_channels, self.num_channels + self.num_cyberglove_dofs)])
