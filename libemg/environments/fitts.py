@@ -7,7 +7,7 @@ import numpy as np
 from libemg.environments.controllers import Controller
 from libemg.environments._base import Environment
 
-class IsoFitts(Environment):
+class ISOFitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
                  target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None):
@@ -283,7 +283,7 @@ class IsoFitts(Environment):
         pygame.display.set_caption(str(self.clock.get_fps()))
 
 
-class RotationalIsoFitts(IsoFitts):
+class RotationalIsoFitts(ISOFitts):
     def _draw_arrow(self, color, x, y, fill, target = True):
         angle = float(np.interp(x, [25, self.width], [-math.pi / 2, math.pi / 2]))   # question: should it be 180 or 360??
         arrow_length = 30
