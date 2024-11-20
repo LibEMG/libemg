@@ -1,1 +1,1 @@
-from libemg.environments import _base, controllers, emg_hero, isofitts
+from libemg.environments import _base, controllers, emg_hero, fitts
