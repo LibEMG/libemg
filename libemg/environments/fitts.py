@@ -405,37 +405,53 @@ class ISOFitts(Fitts):
 
 
 
-class PolarFitts(ISOFitts):
-    def _get_targets(self):
-        # Should probably change this approach b/c you'll need to loop through num_trials times when creating the targets... can clean this up afterwards
-        # TODO: Also still need to change target size per trial if we aren't doing ISO
-        # TODO: Need to fix issue where target will be on your cursor... this causes issues when starting up
-        if len(self.targets) > 0:
-            # Targets already initialized
-            return
-
-        # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
+class PolarFitts(Fitts):
+    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None):
+        # TODO: Add a start() method or something so you can initialize stuff without overriding the __init__ method...
+        self.max_radius = int(min(width, height) * 0.8)
+        super().__init__(controller, prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
         center_screen = (self.width // 2, self.height // 2)
         self.radius = math.dist(center_screen, self.cursor.center)
         self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
-        for _ in range(self.max_trial):
-            target_radius = np.random.randint(0, self.big_rad)
-            target_angle = np.random.uniform(0, 2 * math.pi)
+
+    def _get_new_goal_target(self):
+        super()._get_new_goal_target()
+
+        target_radius = np.random.randint(0, self.max_radius)   # show targets in 80% of screen space
+        target_angle = np.random.uniform(0, 2 * math.pi)
+        
+        x = target_radius * math.cos(target_angle)
+        y = target_radius * math.sin(target_angle)
+
+        # Convert to target in center of screen
+        left = self.width // 2 + x - self.small_rad // 2
+        top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
+        self.goal_target = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
+
+    # def _get_targets(self):
+    #     # Should probably change this approach b/c you'll need to loop through num_trials times when creating the targets... can clean this up afterwards
+    #     # TODO: Also still need to change target size per trial if we aren't doing ISO
+    #     # TODO: Need to fix issue where target will be on your cursor... this causes issues when starting up
+    #     if len(self.targets) > 0:
+    #         # Targets already initialized
+    #         return
+
+    #     # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
+    #     center_screen = (self.width // 2, self.height // 2)
+    #     self.radius = math.dist(center_screen, self.cursor.center)
+    #     self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
+    #     for _ in range(self.max_trial):
+    #         target_radius = np.random.randint(0, self.big_rad)
+    #         target_angle = np.random.uniform(0, 2 * math.pi)
             
-            x = target_radius * math.cos(target_angle)
-            y = target_radius * math.sin(target_angle)
+    #         x = target_radius * math.cos(target_angle)
+    #         y = target_radius * math.sin(target_angle)
 
-            # Convert to target in center of screen
-            left = self.width // 2 + x - self.small_rad // 2
-            top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
-            rect = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
-            self.targets.append(rect)
-
-    def _draw_targets(self):
-        # Only need to draw the goal target
-        self._get_targets()
-        goal_target = self.targets[self.goal_target]
-        pygame.draw.circle(self.screen, self.RED, goal_target.center, self.small_rad)
+    #         # Convert to target in center of screen
+    #         left = self.width // 2 + x - self.small_rad // 2
+    #         top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
+    #         rect = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
+    #         self.targets.append(rect)
 
     def _draw_cursor(self):
         super()._draw_cursor()
@@ -447,7 +463,7 @@ class PolarFitts(ISOFitts):
         self.radius += self.current_direction[0]
         self.radius = max(1, self.radius) # radius must be >= 0
 
-        self.theta += self.current_direction[1] * math.pi / (2 * self.big_rad)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
+        self.theta += self.current_direction[1] * math.pi / (2 * self.max_radius)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
         # # May need to scale by a factor of the radius or something... pixels move slower when radius is smaller
         # IDEA: would it be better to have one DOF be self.theta and the other is the size of the target?
         center_x = round(self.radius * math.cos(self.theta) + self.width // 2)
