@@ -16,7 +16,7 @@ class FORSEMG(Dataset):
                          'https://arxiv.org/abs/2409.07484t')
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the dataset from: https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset?resource=download")

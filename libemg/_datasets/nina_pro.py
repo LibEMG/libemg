@@ -131,7 +131,7 @@ class NinaproDB2(Ninapro):
         self.num_cyberglove_dofs = 22
         self.use_cyberglove = use_cyberglove    # needed b/c some files have EMG but no cyberglove
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         subject_list = np.array(list(range(1,41)))
         if subjects:
             subject_list = subject_list[subjects]
@@ -233,7 +233,7 @@ class NinaproDB8(Ninapro):
         odh.labels = remapped_labels
         return odh
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         subjects_values = np.array([str(i) for i in range(1,self.num_subjects + 1)])
         if subjects:
             subjects_values = subjects_values[subjects]

@@ -77,7 +77,7 @@ class EMGEPN_UserDependent(EMGEPN612):
     def __init__(self, dataset_file='EMGEPN612.pkl'):
         EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=False)
     
-    def prepare_data(self, split=False, subjects=None):
+    def prepare_data(self, split = True, subjects=None):
         odh = self.get_odh(subjects)
         odh_tr = odh.isolate_data('reps', list(range(0,20)))
         odh_te = odh.isolate_data('reps', list(range(20,25)))
@@ -90,7 +90,7 @@ class EMGEPN_UserIndependent(EMGEPN612):
     def __init__(self, dataset_file='EMGEPN612.pkl'):
         EMGEPN612.__init__(self, dataset_file=dataset_file, cross_user=True)
     
-    def prepare_data(self, split=False):
+    def prepare_data(self, split = True):
         odh = self.get_odh()
         odh_tr = odh.isolate_data('subjects', values=list(range(0,306)))
         odh_te = odh.isolate_data('subjects', values=list(range(306,612)))

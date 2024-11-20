@@ -16,7 +16,7 @@ class RadmandLP(Dataset):
         self.url = "https://github.com/libemg/LimbPosition"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         subject_list = np.array(list(range(1,11)))
         if subjects:
             subject_list = subject_list[subjects]

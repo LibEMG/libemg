@@ -20,7 +20,7 @@ class UserComplianceDataset(Dataset):
         self.analysis = analysis
         self.subject_list = np.array(['subject-001', 'subject-002', 'subject-003', 'subject-006', 'subject-007', 'subject-008'])
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         subject_list = self.subject_list
         if subjects:
             subject_list = subject_list[subjects]

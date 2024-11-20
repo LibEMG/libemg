@@ -16,7 +16,7 @@ class OneSubjectMyoDataset(Dataset):
         self.url = "https://github.com/libemg/OneSubjectMyoDataset"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects=None):
+    def prepare_data(self, split = True, subjects=None):
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
 

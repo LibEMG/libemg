@@ -16,7 +16,7 @@ class ContinuousTransitions(Dataset):
                         "https://ieeexplore.ieee.org/document/10254242")
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects=None):
+    def prepare_data(self, split = True, subjects=None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             print("Please download the dataset from: https://unbcloud-my.sharepoint.com/:f:/g/personal/ecampbe2_unb_ca/EjgjhM9ZHJxOglKoAf062ngBf4wFj2Mn2bORKY1-aMYGRw?e=WkZNwI") 

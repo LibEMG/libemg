@@ -18,7 +18,7 @@ class CIIL_MinimalData(Dataset):
         self.url = "https://github.com/LibEMG/CIILData"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects=None):
+    def prepare_data(self, split = True, subjects=None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
@@ -61,7 +61,7 @@ class CIIL_ElectrodeShift(Dataset):
         self.url = "https://github.com/LibEMG/CIILData"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects=None):
+    def prepare_data(self, split = True, subjects=None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             self.download(self.url, self.dataset_folder)
@@ -105,7 +105,7 @@ class CIIL_WeaklySupervised(Dataset):
         self.url = "https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EaABHYybhfJNslTVcvwPPwgB9WwqlTLCStui30maqY53kw?e=MbboMd"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False,
+    def prepare_data(self, split = True,
                      subjects = [str(i) for i in range(0, 16)]):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):

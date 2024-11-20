@@ -18,7 +18,7 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
-from libemg._datasets.emg2pose import EMG2POSEUD
+from libemg._datasets.emg2pose import EMG2POSEUD, EMG2POSECU
 import pickle
 import numpy as np
 

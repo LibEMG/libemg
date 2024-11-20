@@ -39,7 +39,7 @@ class TMRShirleyRyanAbilityLab(Dataset):
         self.url = "https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         subject_list = np.array([1,2,3,4,7,10])
         if subjects:
             subject_list = subject_list[subjects]

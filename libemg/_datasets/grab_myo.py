@@ -58,7 +58,7 @@ class GrabMyoCrossUser(GRABMyo):
     def __init__(self, dataset_folder="GRABMyo"):
         GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=False)
 
-    def prepare_data(self, split = False):
+    def prepare_data(self, split = True):
         forearm_data = self.get_odh()
        
         train_data = forearm_data.isolate_data('subjects', list(range(0,30)), fast=True)
@@ -74,7 +74,7 @@ class GRABMyoCrossDay(GRABMyo):
     def __init__(self, dataset_folder="GRABMyo"):
         GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=False)
         
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         forearm_data = self.get_odh(subjects)
         train_data = forearm_data.isolate_data('sessions', [0], fast=True)
         test_data = forearm_data.isolate_data('sessions', [1,2], fast=True)
@@ -89,7 +89,7 @@ class GRABMyoBaseline(GRABMyo):
     def __init__(self, dataset_folder="GRABMyo"):
         GRABMyo.__init__(self, dataset_folder=dataset_folder, baseline=True)
         
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         forearm_data = self.get_odh(subjects)
         forearm_data = forearm_data.isolate_data('sessions', [0])
 

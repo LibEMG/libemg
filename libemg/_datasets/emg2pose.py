@@ -30,6 +30,63 @@ class EMG2POSE(Dataset):
         
         return True
     
+class EMG2POSECU(EMG2POSE):
+    """
+    The cross user version of emg2pose. We are testing generalization within across users within the same stage.
+
+    Parameters
+    ----------
+    stage: str (default='Wiggling2')
+        The stage to test. Will grab all subjects with that stage.
+    split: list (default=[80,20])
+        Defaults to 80/20 split for train and test data respectively. 
+    """
+    def __init__(self, dataset_folder="Meta/emg2pose_data/", stage = 'Wiggling2', split = [80,20]):
+        EMG2POSE.__init__(self, dataset_folder=dataset_folder)
+        self.stage = stage 
+        self.split = split 
+
+    def prepare_data(self, split = True):
+        data = []
+        odh = OfflineDataHandler()
+        odh.subjects = []
+        odh.labels = []
+        odh.extra_attributes = ['subjects', 'labels']
+
+        self.check_files()
+        df = pd.read_csv(self.dataset_folder + 'metadata.csv')
+        subject_ids = list(np.unique(df['user']))
+
+        target_gesture = self.mapping[self.stage]
+        for s_i, s in enumerate(subject_ids):
+            print(s_i)
+            sub_mask = df['user'] == s
+            gesture_mask = df['stage'] == target_gesture
+            
+            # Get all files for that subject 
+            files = df['filename'][(sub_mask) & (gesture_mask)]
+            files = [f.replace('left', '') for f in files]
+            files = [f.replace('right', '') for f in files]
+            for f in np.unique(files):
+                # Check that files exists otherwise skip
+                if not (self.check_exists(self.dataset_folder + '/' + f + 'left.hdf5') and self.check_exists(self.dataset_folder + '/' + f + 'right.hdf5')):
+                    continue
+                left = h5py.File(self.dataset_folder + '/' + f + 'left.hdf5', "r")
+                right = h5py.File(self.dataset_folder + '/' + f + 'right.hdf5', "r")
+
+                emg_left = left['emg2pose']['timeseries']['emg']
+                emg_right = right['emg2pose']['timeseries']['emg']
+                min_idx = min([len(emg_left), len(emg_right)])
+
+                ja_left = left['emg2pose']['timeseries']['joint_angles']
+                ja_right = right['emg2pose']['timeseries']['joint_angles']
+
+                odh.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
+                data.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
+                data.subjects.append(np.ones((len(odh.data[-1]), 1)) * s_i)
+        print(np.unique(data.subjects))
+
+    
 class EMG2POSEUD(EMG2POSE):
     """
     The user dependent version of emg2pose. We are testing generalization within user to unseen stages.
@@ -47,14 +104,7 @@ class EMG2POSEUD(EMG2POSE):
         self.test_stages = test_stages
 
     # This split works for stage generalization - takes the average across stages, though 
-    def prepare_data(self, split = False, subjects = None):
-        """Prepares the EMG2POSE dataset.
-        
-        Parameters
-        ----------
-        subjects: list
-            A list of subject indexes.
-        """
+    def prepare_data(self, split = True, subjects = None):
         if self.test_stages:
             for t in self.test_stages:
                 assert t in self.mapping.keys()

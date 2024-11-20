@@ -37,14 +37,14 @@ class _Hyser(Dataset, ABC):
         ]
         return filters
 
-    def prepare_data(self, split = False, subjects = None):
+    def prepare_data(self, split = True, subjects = None):
         if (not self.check_exists(self.dataset_folder)):
             raise FileNotFoundError(f"Didn't find Hyser data in {self.dataset_folder} directory. Please download the dataset and \
                                     store it in the appropriate directory before running prepare_data(). See {self.url} for download details.")
         return self._prepare_data_helper(split=split, subjects = subjects)
         
     @abstractmethod
-    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = True, subjects = None) -> dict | OfflineDataHandler:
         ...
 
 
@@ -64,7 +64,7 @@ class Hyser1DOF(_Hyser):
         description = 'Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.'
         super().__init__(gestures=gestures, num_reps=3, description=description, dataset_folder=dataset_folder, analysis=analysis)
 
-    def _prepare_data_helper(self, split = False, subjects = None):
+    def _prepare_data_helper(self, split = True, subjects = None):
         subject_list = np.array(list(range(1,21)))
         if subjects:
             subject_list = subject_list[subjects]
@@ -128,7 +128,7 @@ class HyserNDOF(_Hyser):
             15: 'Index + Middle (Opposing)'
         }
 
-    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = True, subjects = None) -> dict | OfflineDataHandler:
         subject_list = np.array(list(range(1,21)))
         if subjects:
             subject_list = subject_list[subjects]
@@ -177,7 +177,7 @@ class HyserRandom(_Hyser):
         self.num_subjects = 19
 
 
-    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = True, subjects = None) -> dict | OfflineDataHandler:
         subject_list = np.delete(np.array(list(range(1,21))), 9)
         if subjects:
             subject_list = subject_list[subjects]
@@ -311,7 +311,7 @@ class HyserPR(_Hyser):
         super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis)  # num_reps=2 b/c 2 trials
         self.num_subjects = 18 # Removed 2 subjects because they're missing classes
 
-    def _prepare_data_helper(self, split = False, subjects = None) -> dict | OfflineDataHandler:
+    def _prepare_data_helper(self, split = True, subjects = None) -> dict | OfflineDataHandler:
         # Need to remove subjects 3 and 11 b/c they're missing classes
         subject_list = np.delete(np.array(list(range(1,21))), [2,10])
         if subjects:
