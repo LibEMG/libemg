@@ -234,12 +234,19 @@ class Fitts(Environment):
         self.timeout_timer = None
         self.trial_duration = 0
 
-        # Only create targets in the center 80% of the screen
-        x = np.random.randint(int(0.1 * self.width), int(0.9 * self.width))
-        y = np.random.randint(int(0.1 * self.height), int(0.9 * self.height))
-        self.goal_target = pygame.Rect(x, y, self.small_rad * 2, self.small_rad * 2)
-        self.trial += 1
+        # Only create targets in a centered circle (based on size of screen)
+        max_radius = int(min(self.width, self.height) * 0.5)
+        target_radius = np.random.randint(0, max_radius)
+        target_angle = np.random.uniform(0, 2 * math.pi)
+        x = target_radius * math.cos(target_angle)
+        y = target_radius * math.sin(target_angle)
 
+        # Convert to target in center of screen
+        left = self.width // 2 + x - self.small_rad // 2
+        top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
+        self.goal_target = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
+
+        self.trial += 1
         if self.trial == self.max_trial:
             self.done = True
 
@@ -345,30 +352,32 @@ class ISOFitts(Fitts):
 class PolarFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None):
         # TODO: Add a start() method or something so you can initialize stuff without overriding the __init__ method...
-        self.max_radius = int(min(width, height) * 0.8)
+        # TODO: Also still need to change target size per trial if we aren't doing ISO
+        # TODO: Need to fix issue where target will be on your cursor... this causes issues when starting up
+        # TODO: Is it a problem that you can go all the way around the circle? That would be like saying you go left and loop around the screen...
+        # TODO: Maybe change prediction map keys for this to map to polar?
+        self.max_radius = int(min(width, height) * 0.5)
         super().__init__(controller, prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
         center_screen = (self.width // 2, self.height // 2)
         self.radius = math.dist(center_screen, self.cursor.center)
         self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
 
-    def _get_new_goal_target(self):
-        super()._get_new_goal_target()
+    # def _get_new_goal_target(self):
+    #     super()._get_new_goal_target()
 
-        target_radius = np.random.randint(0, self.max_radius)   # show targets in 80% of screen space
-        target_angle = np.random.uniform(0, 2 * math.pi)
+    #     target_radius = np.random.randint(0, self.max_radius)   # show targets in 80% of screen space
+    #     target_angle = np.random.uniform(0, 2 * math.pi)
         
-        x = target_radius * math.cos(target_angle)
-        y = target_radius * math.sin(target_angle)
+    #     x = target_radius * math.cos(target_angle)
+    #     y = target_radius * math.sin(target_angle)
 
-        # Convert to target in center of screen
-        left = self.width // 2 + x - self.small_rad // 2
-        top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
-        self.goal_target = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
+    #     # Convert to target in center of screen
+    #     left = self.width // 2 + x - self.small_rad // 2
+    #     top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
+    #     self.goal_target = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
 
     # def _get_targets(self):
     #     # Should probably change this approach b/c you'll need to loop through num_trials times when creating the targets... can clean this up afterwards
-    #     # TODO: Also still need to change target size per trial if we aren't doing ISO
-    #     # TODO: Need to fix issue where target will be on your cursor... this causes issues when starting up
     #     if len(self.targets) > 0:
     #         # Targets already initialized
     #         return
