@@ -116,7 +116,7 @@ class Fitts(Environment):
     
     def _draw_targets(self):
         # Need to draw single target
-        pygame.draw.circle(self.screen, self.RED, self.goal_target.center, self.small_rad)
+        pygame.draw.circle(self.screen, self.RED, self.goal_target.center, self.goal_target[2] / 2)
             
     def _draw_cursor(self):
         pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.left + 7, self.cursor.top + 7), 7)
@@ -236,15 +236,22 @@ class Fitts(Environment):
 
         # Only create targets in a centered circle (based on size of screen)
         max_radius = int(min(self.width, self.height) * 0.5)
-        target_radius = np.random.randint(0, max_radius)
-        target_angle = np.random.uniform(0, 2 * math.pi)
-        x = target_radius * math.cos(target_angle)
-        y = target_radius * math.sin(target_angle)
+
+        while True:
+            target_radius = np.random.randint(10, self.small_rad)
+            target_position_radius = np.random.randint(0, max_radius - target_radius)
+            target_angle = np.random.uniform(0, 2 * math.pi)
+            x = target_position_radius * math.cos(target_angle)
+            y = target_position_radius * math.sin(target_angle)
+            
+            # Continue until we create a target that isn't on the cursor
+            if math.dist((x, y), self.cursor.center) > target_radius:
+                break
 
         # Convert to target in center of screen
-        left = self.width // 2 + x - self.small_rad // 2
-        top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
-        self.goal_target = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
+        left = self.width // 2 + x - target_radius
+        top = self.height // 2 - y - target_radius    # subtract b/c y is inverted in pygame
+        self.goal_target = pygame.Rect(left, top, target_radius * 2, target_radius * 2)
 
         self.trial += 1
         if self.trial == self.max_trial:
@@ -352,12 +359,10 @@ class ISOFitts(Fitts):
 class PolarFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None):
         # TODO: Add a start() method or something so you can initialize stuff without overriding the __init__ method...
-        # TODO: Also still need to change target size per trial if we aren't doing ISO
-        # TODO: Need to fix issue where target will be on your cursor... this causes issues when starting up
         # TODO: Is it a problem that you can go all the way around the circle? That would be like saying you go left and loop around the screen...
         # TODO: Maybe change prediction map keys for this to map to polar?
-        self.max_radius = int(min(width, height) * 0.5)
         super().__init__(controller, prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
+        self.max_radius = int(min(self.width, self.height) * 0.5)
         center_screen = (self.width // 2, self.height // 2)
         self.radius = math.dist(center_screen, self.cursor.center)
         self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
