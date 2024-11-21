@@ -246,7 +246,7 @@ class Fitts(Environment):
             y = target_position_radius * math.sin(target_angle)
             
             # Continue until we create a target that isn't on the cursor
-            if math.dist((x, y), self.cursor.center) > target_radius:
+            if math.dist((x, y), self.cursor.center) > (target_radius + self.cursor[2]):
                 break
 
         # Convert to target in center of screen
