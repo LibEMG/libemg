@@ -620,7 +620,10 @@ class OnlineStreamer(ABC):
             ["adapt_flag", (1,1), np.int32],
             ["active_flag", (1,1), np.int8]
         ]
-        smm_items.extend(required_smm_items)
+        current_smm_tags = [item[0] for item in smm_items]
+        for smm_item in required_smm_items:
+            if smm_item[0] not in current_smm_tags:
+                smm_items.append(smm_item)
         self.smm = smm
         self.smm_items = smm_items
 
