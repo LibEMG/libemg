@@ -374,10 +374,10 @@ class PolarFitts(Fitts):
         # Map to expected values for parent class
         polar_to_cartesian_map = {
             'NM': 'NM',
-            'R+': 'N',
-            'R-': 'S',
-            'A+': 'E',
-            'A-': 'W'
+            'A+': 'S',
+            'A-': 'N',
+            'R+': 'E',
+            'R-': 'W'
         }
         parent_prediction_map = {output: polar_to_cartesian_map[direction] for output, direction in prediction_map.items()}
         super().__init__(controller, parent_prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
