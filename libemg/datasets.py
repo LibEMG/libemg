@@ -81,7 +81,7 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
     }
 
     weaklysupervised = {
-        'CIILWeaklySupervised': CIIL_WeaklySupervised
+        'CIIL_WeaklySupervised': CIIL_WeaklySupervised
     }
     
     if type == 'CLASSIFICATION':
@@ -220,7 +220,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             accs.append(metrics)
                 
             print(metrics)    
-        accuracies[str(dataset)] = accs
+        accuracies[str(d)] = accs
 
         with open(output_file, 'wb') as handle:
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
@@ -300,10 +300,10 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
 
         if memory_efficient:
             train_feats = np.vstack(train_data.data)
-            train_labels = np.vstack(train_data.labels)
+            train_labels = np.vstack(getattr(train_data, label_val)).squeeze()
             if normalize_features:
                 normalizer = StandardScaler()
-                features = normalizer.fit_transform(features)
+                train_feats = normalizer.fit_transform(train_feats)
         else:
             train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
             if normalize_features:
@@ -311,7 +311,6 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             else:
                 train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
             del train_windows
-            del test_windows
             train_labels = train_meta[label_val]
 
         ds = {
@@ -337,7 +336,7 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
 
             if memory_efficient:
                 test_feats = np.vstack(s_test_dh.data)
-                test_labels = np.vstack(s_test_dh.labels)
+                test_labels = np.vstack(getattr(s_test_dh, label_val)).squeeze()
                 if normalize_features:
                     test_feats = normalizer.transform(test_feats)
             else:
@@ -357,7 +356,127 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             accs.append(metrics)
                 
             print(metrics)    
-        accuracies[str(dataset)] = accs
+        accuracies[str(d)] = accs
 
         with open(output_file, 'wb') as handle:
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def evaluate_weaklysupervised(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['CIIL_WeaklySupervised'], output_file='out.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False):
+    """Evaluates an algorithm against all included datasets.
+    
+    Parameters
+    ----------
+    window_size: int
+        The window size (**in ms**). 
+    window_inc: int
+        The window increment (**in ms**). 
+    feature_list: list (default=['MAV'])
+        A list of features. Pass in None for CNN.
+    feature_dic: dic (default={})
+        A dictionary of parameters for the passed in features.
+    included_datasets: list (str) or list (DataSets)
+        The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
+    output_file: string (default='out.pkl')
+        The name of the directory you want to incrementally save the results to (it will be a pickle file).
+    regression: boolean (default=False)
+        If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
+    metrics: list (default=['CA']/['MSE'])
+        The metrics to extract from each dataset.
+    normalize_data: boolean (default=False)
+        If True, the data will be normalized.
+    normalize_features: boolean (default=False)
+        If True, features will get normalized.
+    Returns
+    ----------
+    dictionary
+        A dictionary with a set of accuracies for different datasets
+    """
+
+    # -------------- Setup -------------------
+    if metrics == ['CA'] and regression:
+        metrics = ['MSE']
+
+    metadata_operations = None 
+    label_val = 'classes'
+    if regression:
+        metadata_operations = {'labels': 'last_sample'}
+        label_val = 'labels'
+
+    om = OfflineMetrics()
+
+    # --------------- Run -----------------
+    accuracies = {}
+    for d in included_datasets:
+        print(f"Evaluating {d} dataset...")
+        if isinstance(d, str):
+            dataset = get_dataset_list('WEAKLYSUPERVISED')[d]()
+        else:
+            dataset = d
+        
+        accs = []
+        for s_i in range(0, dataset.num_subjects):
+            data = dataset.prepare_data(split=True, subjects=[s_i])
+
+            if data == None:
+                print('Skipping Subject... No data found.')
+                continue
+            
+            s_pretrain_dh = data['Pretrain']
+            s_pretrain_dh.extra_attributes.remove('classes')
+            delattr(s_pretrain_dh,"classes")
+            s_train_dh = data['Train']
+            s_test_dh = data['Test']
+
+            # Normalize Data
+            if normalize_data:
+                filter = Filter(dataset.sampling)
+                filter.install_filters({'name': 'standardize', 'data': s_pretrain_dh})
+                filter.filter(s_pretrain_dh)
+                filter.filter(s_train_dh)
+                filter.filter(s_test_dh)
+
+            pretrain_windows, pretrain_meta = s_pretrain_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+
+            if feature_list is not None:
+                fe = FeatureExtractor()
+                if normalize_features:
+                    pretrain_feats, scaler = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic, normalize=True)
+                    train_feats, _ = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler)      
+                else:
+                    pretrain_feats = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic)
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)     
+            else:
+                pretrain_feats = pretrain_windows
+                train_feats = train_windows
+                test_feats = test_windows
+
+            ds = {
+                'training_features': train_feats,
+                'training_labels': train_meta[label_val],
+                'pretraining_features': pretrain_feats
+            }
+
+            model.fit(ds)
+
+            if not regression:
+                clf = EMGClassifier(model)
+            else:
+                clf = EMGRegressor(model)
+            
+            if regression:
+                preds = clf.run(test_feats)
+            else:
+                preds, _ = clf.run(test_feats)
+                
+            metrics = om.extract_offline_metrics(metrics, test_meta[label_val], preds)
+            accs.append(metrics)
+            print(str(s_i) + '/' + str(dataset.num_subjects) + ' completed.')
+            print(metrics)    
+        accuracies[str(dataset)] = accs
+
+        with open(output_file, 'wb') as handle:
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   

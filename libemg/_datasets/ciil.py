@@ -106,18 +106,22 @@ class CIIL_WeaklySupervised(Dataset):
         self.dataset_folder = dataset_folder
 
     def prepare_data(self, split = True,
-                     subjects = [str(i) for i in range(0, 16)]):
+                     subjects = None):
         print('\nPlease cite: ' + self.citation+'\n')
         if (not self.check_exists(self.dataset_folder)):
             self.download_via_onedrive(self.url, self.dataset_folder)
 
         # supervised odh loading
+        subject_list = np.array(list(range(0, 16)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        subjects_values = [str(s) for s in subject_list]
         classes_values = [str(i) for i in range(0,5)]
         reps_values = [str(i) for i in range(0,15)]
         setting_values     = [".csv", ""] # this is arbitrary to get a field that separates WS from S
         regex_filters = [
             RegexFilter(left_bound = "", right_bound="", values = setting_values, description='settings'),
-            RegexFilter(left_bound = "/S", right_bound="/", values = subjects, description='subjects'),
+            RegexFilter(left_bound = "/S", right_bound="/", values = subjects_values, description='subjects'),
             RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
             RegexFilter(left_bound = "C", right_bound="_R", values = classes_values, description='classes')
         ]
@@ -131,7 +135,7 @@ class CIIL_WeaklySupervised(Dataset):
         setting_values     = ["", ".csv"] # this is arbitrary to get a field that separates WS from S
         regex_filters = [
             RegexFilter(left_bound = "", right_bound="", values = setting_values, description='settings'),
-            RegexFilter(left_bound = "/S", right_bound="/", values = subjects, description='subjects'),
+            RegexFilter(left_bound = "/S", right_bound="/", values = subjects_values, description='subjects'),
             RegexFilter(left_bound = "WS", right_bound=".csv", values = reps_values, description='reps'),
         ]
         metadata_fetchers = [

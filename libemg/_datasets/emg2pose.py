@@ -135,6 +135,7 @@ class EMG2POSEUD(EMG2POSE):
     """
     def __init__(self, dataset_folder="Meta/emg2pose_data/", train_stages = None, test_stages = None):
         EMG2POSE.__init__(self, dataset_folder=dataset_folder)
+        self.num_subjects = 192 # One participant was too low - assuming something was off 
         self.train_stages = train_stages
         self.test_stages = test_stages
 
@@ -160,7 +161,7 @@ class EMG2POSEUD(EMG2POSE):
 
         # (2) Load metadata file 
         df = pd.read_csv(self.dataset_folder + 'metadata.csv')
-        subject_ids = np.array(list(np.unique(df['user'])))
+        subject_ids = np.delete(np.array(list(np.unique(df['user']))), 144)
         if subjects:
             subject_ids = subject_ids[subjects]
         subject_ids = list(subject_ids)
