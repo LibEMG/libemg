@@ -172,7 +172,7 @@ class EMGPredictor:
         return valid_model
 
     def _format_data(self, feature_dictionary):
-        if not isinstance(feature_dictionary, np.ndarray):
+        if isinstance(feature_dictionary, dict):
             # Loop through each element and stack
             arr = None
             for feat in feature_dictionary:

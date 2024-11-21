@@ -19,6 +19,7 @@ from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
 from libemg._datasets.emg2pose import EMG2POSEUD, EMG2POSECU
+from sklearn.preprocessing import StandardScaler
 import pickle
 import numpy as np
 
@@ -219,13 +220,13 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             accs.append(metrics)
                 
             print(metrics)    
-        accuracies[d] = accs
+        accuracies[str(dataset)] = accs
 
         with open(output_file, 'wb') as handle:
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
 
-def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612'], output_file='out_cross.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False):
+def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612'], output_file='out_cross.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False, memory_efficient=False):
     """Evaluates an algorithm against all the cross-user datasets.
     
     Parameters
@@ -250,6 +251,8 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         If True, the data will be normalized.
     normalize_features: boolean (default=False)
         If True, features will get normalized.
+    memory_efficient: boolean (default=false)
+        If True, features will be extracted in the prepare method. You wont have access to the raw data and normalization won't be possible. 
     Returns
     ----------
     dictionary
@@ -280,30 +283,40 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         else:
             dataset = d
         
-        data = dataset.prepare_data(split=True)
+        if memory_efficient:
+            data = dataset.prepare_data(split=True, feature_list=feature_list, feature_dic=feature_dic, window_size=int(dataset.sampling/1000 * window_size), window_inc=int(dataset.sampling/1000 * window_inc))
+        else:
+            data = dataset.prepare_data(split=True)
         
         train_data = data['Train']
         test_data = data['Test']
+
         # Normalize Data
-        if normalize_data:
+        if normalize_data and not memory_efficient:
             filter = Filter(dataset.sampling)
             filter.install_filters({'name': 'standardize', 'data': train_data})
             filter.filter(train_data)
             filter.filter(test_data)
-        del data
 
-        train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
-        del train_data
-        if normalize_features:
-            train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
+        if memory_efficient:
+            train_feats = np.vstack(train_data.data)
+            train_labels = np.vstack(train_data.labels)
+            if normalize_features:
+                normalizer = StandardScaler()
+                features = normalizer.fit_transform(features)
         else:
-            train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-            
-        del train_windows
+            train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            if normalize_features:
+                train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
+            else:
+                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+            del train_windows
+            del test_windows
+            train_labels = train_meta[label_val]
 
         ds = {
             'training_features': train_feats,
-            'training_labels': train_meta[label_val]
+            'training_labels': train_labels
         }
         
         if not regression:
@@ -321,22 +334,30 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         for s_i, s in enumerate(unique_subjects):
             print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
             s_test_dh = test_data.isolate_data('subjects', [s])
-            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
-            if normalize_features:
-                test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=normalizer)
+
+            if memory_efficient:
+                test_feats = np.vstack(s_test_dh.data)
+                test_labels = np.vstack(s_test_dh.labels)
+                if normalize_features:
+                    test_feats = normalizer.transform(test_feats)
             else:
-                test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+                test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+                if normalize_features:
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=normalizer)
+                else:
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+                test_labels = test_meta[label_val]
 
             if regression:
                 preds = clf.run(test_feats)
             else:
                 preds, _ = clf.run(test_feats)
                 
-            metrics = om.extract_offline_metrics(metrics, test_meta[label_val], preds)
+            metrics = om.extract_offline_metrics(metrics, test_labels, preds)
             accs.append(metrics)
                 
             print(metrics)    
-        accuracies[d] = accs
+        accuracies[str(dataset)] = accs
 
         with open(output_file, 'wb') as handle:
             pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)

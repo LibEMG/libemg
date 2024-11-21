@@ -66,3 +66,4 @@ CNN.py
 MLP.py
 __pycache__/
 libemg/environments/
+MLPR.py

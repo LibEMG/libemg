@@ -1820,6 +1820,9 @@ class FeatureExtractor:
         return train_data, test_data
     
     def _format_data(self, feature_dictionary):
+        if not isinstance(feature_dictionary, dict):
+            return feature_dictionary
+        
         arr = None
         for feat in feature_dictionary:
             if arr is None:

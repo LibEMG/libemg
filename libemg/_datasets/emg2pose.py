@@ -1,5 +1,7 @@
 from libemg._datasets.dataset import Dataset
 from libemg.data_handler import OfflineDataHandler
+from libemg.feature_extractor import FeatureExtractor
+from libemg.utils import * 
 import numpy as np
 import pandas as pd
 import h5py
@@ -45,8 +47,28 @@ class EMG2POSECU(EMG2POSE):
         EMG2POSE.__init__(self, dataset_folder=dataset_folder)
         self.stage = stage 
         self.split = split 
+    
+    def prepare_data(self, split = True, feature_list = None, window_size = None, window_inc = None, feature_dic = None):
+        """
+        Use the features, window_size, and window_inc parameters to extract features directly so that you save on memory usage.
 
-    def prepare_data(self, split = True):
+        Parameters
+        ----------
+        feature_list: list (default=None)
+            List of featurs.
+        window_size: int (default=None)
+            Number of samples.
+        window_inc: int (default=None)
+            Number of samples.
+        feature_dic: dic (default=None)
+            Feature parameters.
+        """
+        if feature_list or window_size or window_inc:
+            assert feature_list
+            assert window_size
+            assert window_inc
+            fe = FeatureExtractor()
+
         odh = OfflineDataHandler()
         unique_subjects = []
         odh.subjects = []
@@ -73,7 +95,7 @@ class EMG2POSECU(EMG2POSE):
                     continue
                 left = h5py.File(self.dataset_folder + '/' + f + 'left.hdf5', "r")
                 right = h5py.File(self.dataset_folder + '/' + f + 'right.hdf5', "r")
-
+                
                 emg_left = left['emg2pose']['timeseries']['emg']
                 emg_right = right['emg2pose']['timeseries']['emg']
                 min_idx = min([len(emg_left), len(emg_right)])
@@ -81,10 +103,17 @@ class EMG2POSECU(EMG2POSE):
                 ja_left = left['emg2pose']['timeseries']['joint_angles']
                 ja_right = right['emg2pose']['timeseries']['joint_angles']
 
-                odh.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
-                odh.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
-                odh.subjects.append(np.ones((len(odh.data[-1]), 1)) * s_i)
-        
+                if feature_list:
+                    feats = fe.extract_features(feature_list, get_windows(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]), window_size, window_inc), feature_dic=feature_dic, array=True)
+                    odh.data.append(feats)
+                    labels = get_windows(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]), window_size, window_inc)[:,:,-1]
+                    odh.labels.append(labels)
+                    odh.subjects.append(np.ones((len(odh.data[-1]), 1)) * s_i)
+                else:
+                    odh.data.append(np.hstack([emg_left[0:min_idx], emg_right[0:min_idx]]))
+                    odh.labels.append(np.hstack([ja_left[0:min_idx], ja_right[0:min_idx]]))
+                    odh.subjects.append(np.ones((len(odh.data[-1]), 1)) * s_i)
+
         unique_subjects = np.unique(unique_subjects)
         tr_subjects = list(unique_subjects[0:int(len(unique_subjects)*self.split[0])])
         te_subjects = list(unique_subjects[-int(len(unique_subjects)*self.split[1]):])
