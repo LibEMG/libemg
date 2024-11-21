@@ -749,7 +749,7 @@ class OnlineStreamer(ABC):
                     model_input = None
                     for mod in self.odh.modalities:
                         # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], array=True)
+                        mod_features = fe.extract_features(self.features, window[mod], feature_dic=self.predictor.feature_params, array=True)
                         if model_input is None:
                             model_input = mod_features
                         else:
