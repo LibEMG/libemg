@@ -120,7 +120,7 @@ class Fitts(Environment):
         pygame.draw.circle(self.screen, self.RED, self.goal_target.center, self.goal_target[2] / 2)
             
     def _draw_cursor(self):
-        pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.left + 7, self.cursor.top + 7), 7)
+        pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.left + self.cursor[2] / 2, self.cursor.top + self.cursor[2] / 2), self.cursor[2] / 2)
 
     def _draw_timer(self):
         if self.dwell_timer is not None:
@@ -239,7 +239,7 @@ class Fitts(Environment):
         max_radius = int(min(self.width, self.height) * 0.5)
 
         while True:
-            target_radius = np.random.randint(10, self.small_rad)
+            target_radius = np.random.randint(self.cursor[2], self.small_rad)
             target_position_radius = np.random.randint(0, max_radius - target_radius)
             target_angle = np.random.uniform(0, 2 * math.pi)
             x = target_position_radius * math.cos(target_angle)
@@ -359,10 +359,7 @@ class ISOFitts(Fitts):
 
 class PolarFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None):
-        # TODO: Add a start() method or something so you can initialize stuff without overriding the __init__ method...
         # TODO: Is it a problem that you can go all the way around the circle? That would be like saying you go left and loop around the screen...
-        # TODO: Maybe change prediction map keys for this to map to polar?
-
         default_prediction_map = {
             0: 'R+',
             1: 'R-',
