@@ -396,6 +396,7 @@ class PolarFitts(Fitts):
     def _move(self):
         self.radius += self.current_direction[0]
         self.radius = max(1, self.radius) # radius must be >= 0
+        self.radius = min(self.max_radius, self.radius)
 
         self.theta += self.current_direction[1] * math.pi / (2 * self.max_radius)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
         # # May need to scale by a factor of the radius or something... pixels move slower when radius is smaller
