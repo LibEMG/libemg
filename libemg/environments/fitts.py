@@ -16,7 +16,7 @@ class Fitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
                  target_radius: int = 40, game_time: float | None = None):
-        """Fitts style task. Targets are generated in a target and the user is asked to acquire targets as quickly as possible.
+        """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
 
         Parameters
         ----------
@@ -63,15 +63,16 @@ class Fitts(Environment):
             'current_direction': []
         }
         super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
+        default_prediction_map = {
+            0: 'S',
+            1: 'N',
+            2: 'NM',
+            3: 'E',
+            4: 'W'
+        }
         if prediction_map is None:
-            prediction_map = {
-                0: 'S',
-                1: 'N',
-                2: 'NM',
-                3: 'E',
-                4: 'W'
-            }
-        assert set(np.unique(list(prediction_map.values()))) == set(['N', 'E', 'S', 'W', 'NM']), f"Did not find all commands ('N', 'E', 'S', 'W', and 'NM') represented as values in prediction_map. Got: {prediction_map}."
+            prediction_map = default_prediction_map
+        assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
         self.prediction_map = prediction_map
 
         self.font = pygame.font.SysFont('helvetica', 40)
@@ -276,7 +277,7 @@ class ISOFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
                  target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None):
-        """ISO Fitts style task. Targets are generated in a target and the user is asked to acquire targets as quickly as possible.
+        """ISO Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
         ----------
@@ -361,54 +362,39 @@ class PolarFitts(Fitts):
         # TODO: Add a start() method or something so you can initialize stuff without overriding the __init__ method...
         # TODO: Is it a problem that you can go all the way around the circle? That would be like saying you go left and loop around the screen...
         # TODO: Maybe change prediction map keys for this to map to polar?
-        super().__init__(controller, prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
+
+        default_prediction_map = {
+            0: 'R+',
+            1: 'R-',
+            2: 'NM',
+            3: 'A+',
+            4: 'A-'
+        }
+        if prediction_map is None:
+            prediction_map = default_prediction_map
+        assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
+
+        # Map to expected values for parent class
+        polar_to_cartesian_map = {
+            'NM': 'NM',
+            'R+': 'N',
+            'R-': 'S',
+            'A+': 'E',
+            'A-': 'W'
+        }
+        parent_prediction_map = {output: polar_to_cartesian_map[direction] for output, direction in prediction_map.items()}
+        super().__init__(controller, parent_prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
         self.max_radius = int(min(self.width, self.height) * 0.5)
         center_screen = (self.width // 2, self.height // 2)
+
+        # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
         self.radius = math.dist(center_screen, self.cursor.center)
         self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
-
-    # def _get_new_goal_target(self):
-    #     super()._get_new_goal_target()
-
-    #     target_radius = np.random.randint(0, self.max_radius)   # show targets in 80% of screen space
-    #     target_angle = np.random.uniform(0, 2 * math.pi)
-        
-    #     x = target_radius * math.cos(target_angle)
-    #     y = target_radius * math.sin(target_angle)
-
-    #     # Convert to target in center of screen
-    #     left = self.width // 2 + x - self.small_rad // 2
-    #     top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
-    #     self.goal_target = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
-
-    # def _get_targets(self):
-    #     # Should probably change this approach b/c you'll need to loop through num_trials times when creating the targets... can clean this up afterwards
-    #     if len(self.targets) > 0:
-    #         # Targets already initialized
-    #         return
-
-    #     # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
-    #     center_screen = (self.width // 2, self.height // 2)
-    #     self.radius = math.dist(center_screen, self.cursor.center)
-    #     self.theta = math.atan2(center_screen[1] - self.cursor.centery, self.cursor.centerx - center_screen[0])
-    #     for _ in range(self.max_trial):
-    #         target_radius = np.random.randint(0, self.big_rad)
-    #         target_angle = np.random.uniform(0, 2 * math.pi)
-            
-    #         x = target_radius * math.cos(target_angle)
-    #         y = target_radius * math.sin(target_angle)
-
-    #         # Convert to target in center of screen
-    #         left = self.width // 2 + x - self.small_rad // 2
-    #         top = self.height // 2 - y - self.small_rad // 2    # subtract b/c y is inverted in pygame
-    #         rect = pygame.Rect(left, top, self.small_rad * 2, self.small_rad * 2)
-    #         self.targets.append(rect)
 
     def _draw_cursor(self):
         super()._draw_cursor()
         center = (self.width // 2, self.height // 2)
         pygame.draw.circle(self.screen, self.YELLOW, center, self.radius, width=2)
-
 
     def _move(self):
         self.radius += self.current_direction[0]
