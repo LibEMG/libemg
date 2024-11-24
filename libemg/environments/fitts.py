@@ -359,7 +359,7 @@ class ISOFitts(Fitts):
 class PolarFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25,
                   save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60,
-                  proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None, reverse: bool = False):
+                  proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None, side: str = 'left'):
         default_prediction_map = {
             0: 'R+',
             1: 'R-',
@@ -380,32 +380,42 @@ class PolarFitts(Fitts):
             'R-': 'W'
         }
         parent_prediction_map = {output: polar_to_cartesian_map[direction] for output, direction in prediction_map.items()}
-        self.reverse = reverse
+        self.side = side
 
         # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
         self.radius = 0
-        if self.reverse:
-            self.theta = 0
-            self.theta_bounds = (-math.pi / 2, math.pi / 2)
+        self.theta = 0
+        self.theta_bounds = (0, math.pi)
+        if self.side == 'right':
+            self.draw_right = True
+        elif self.side == 'left':
+            self.draw_right = False
         else:
-            self.theta = math.pi
-            self.theta_bounds = (math.pi / 2, 3 * math.pi / 2)
+            raise ValueError(f"Unexpected value for side parameter in PolarFitts. Got: {self.side}.")
         super().__init__(controller, parent_prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
 
     def _generate_random_target(self):
         target_radius = np.random.randint(self.cursor[2], self.small_rad)
-        target_position_radius = np.random.randint(self.cursor[2] // 2, self.max_radius - target_radius)
+        target_position_radius = np.random.randint(self.cursor[2] // 2 + target_radius, self.max_radius - target_radius)
         target_angle = np.random.uniform(self.theta_bounds[0], self.theta_bounds[1])
-        x = target_position_radius * math.cos(target_angle)
-        y = target_position_radius * math.sin(target_angle)
+        x, y = self._polar_to_cartesian(target_position_radius, target_angle)
         return x, y, target_radius
+
+    def _polar_to_cartesian(self, radius, theta):
+        # theta is the angle pointing to the bottom of the circle, so x uses sin and y uses cos
+        x = radius * math.sin(theta)
+        y = radius * math.cos(theta)
+        if not self.draw_right:
+            # Draw on the left side of the screen
+            x *= -1
+        return x, y
 
 
     def _draw_cursor(self):
         super()._draw_cursor()
         center = (self.width // 2, self.height // 2)
-        pygame.draw.circle(self.screen, self.YELLOW, center, self.radius, width=2, draw_top_right=self.reverse, draw_top_left=not self.reverse,
-                           draw_bottom_left=not self.reverse, draw_bottom_right=self.reverse)
+        pygame.draw.circle(self.screen, self.YELLOW, center, self.radius, width=2, draw_top_right=self.draw_right, draw_top_left=not self.draw_right,
+                           draw_bottom_left=not self.draw_right, draw_bottom_right=self.draw_right)
         pygame.draw.line(self.screen, self.YELLOW, (center[0], center[1] - self.radius), (center[0], center[1] + self.radius))
 
     def _move(self):
@@ -417,10 +427,8 @@ class PolarFitts(Fitts):
         self.theta = max(self.theta_bounds[0], self.theta)
         self.theta = min(self.theta_bounds[1], self.theta)
 
-        # # May need to scale by a factor of the radius or something... pixels move slower when radius is smaller
         # IDEA: would it be better to have one DOF be self.theta and the other is the size of the target?
-        center_x = round(self.radius * math.cos(self.theta) + self.width // 2)
-        center_y = round(self.height // 2 - self.radius * math.sin(self.theta))
+        x, y = self._polar_to_cartesian(self.radius, self.theta)
+        center_x = x + self.width // 2
+        center_y = y + self.height // 2
         self.cursor.center = (center_x, center_y)
-
-        # TODO: It is a problem that targets right on the radius can be acquired no matter what theta you're at? It probably is... I think that's the last thing
