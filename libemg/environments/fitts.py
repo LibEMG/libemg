@@ -357,9 +357,51 @@ class ISOFitts(Fitts):
 
 
 class PolarFitts(Fitts):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25,
-                  save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60,
-                  proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None, side: str = 'left'):
+    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, 
+                 dwell_time: float = 3, timeout: float = 30, velocity: float = 25,
+                 save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60,
+                 proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None, side: str = 'left'):
+        """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
+        Instead of controlling the cursor via cartesian movements, the cursor is controlled using radial movements (i.e., one DoF controls the radius of the 
+        cursor and the other DoF controls the angle). The angle is restricted to (0, π) for consistent +/- directions for theta, so either the left or right side of the
+        screen is used for the entire task.
+
+        Parameters
+        ----------
+        controller : Controller
+            Interface to parse predictions which determine the direction of the cursor.
+        prediction_map : dict | None, optional
+            Maps received control commands to cursor movement - only used if a non-continuous controller is used (e.g., classifier). If a continuous controller is used (e.g., regressor),
+            then 2 DoFs are expected when parsing predictions and this parameter is not used. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to
+            radius+, radius-, no motion, angle+, and angle-, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
+            values map to actions in the environment. Accepted actions are: 'R+' (increase radius), 'R-' (decrease radius), 'NM' (no motion),
+            'A+' (increase angle), and 'A-' (decrease angle). All of these actions must be represented by a single key in the dictionary. Defaults to None.
+        num_trials : int, optional
+            Number of trials user must complete. Defaults to 15.
+        dwell_time : float, optional
+            Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
+        timeout : float, optional
+            Time limit (in seconds) that signifies a failed trial. Defaults to 30.
+        velocity : float, optional
+            Velocity scalar that controls the max speed of the cursor. Defaults to 25.
+        save_file : str | None, optional
+            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
+        width : int, optional
+            Width of display (in pixels). Defaults to 1250.
+        height : int, optional
+            Height of display (in pixels). Defaults to 750.
+        fps : int, optional
+            Frames per second (in Hz). Defaults to 60.
+        proportional_control : bool, optional
+            True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
+        target_radius : int, optional
+            Radius (in pixels) of each individual target. Defaults to 40.
+        game_time : float, optional
+            Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
+            If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
+        side : str, optional
+            Side of the screen to use. Options are 'left' and 'right'. Defaults to 'left'.
+        """
         default_prediction_map = {
             0: 'R+',
             1: 'R-',
@@ -393,6 +435,7 @@ class PolarFitts(Fitts):
         else:
             raise ValueError(f"Unexpected value for side parameter in PolarFitts. Got: {self.side}.")
         super().__init__(controller, parent_prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
+        self.angular_velocity = math.pi / (2 * self.max_radius)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
 
     def _generate_random_target(self):
         target_radius = np.random.randint(self.cursor[2], self.small_rad)
@@ -423,11 +466,10 @@ class PolarFitts(Fitts):
         self.radius = max(1, self.radius) # radius must be >= 0
         self.radius = min(self.max_radius, self.radius)
 
-        self.theta += self.current_direction[1] * math.pi / (2 * self.max_radius)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
+        self.theta += self.current_direction[1] * self.angular_velocity
         self.theta = max(self.theta_bounds[0], self.theta)
         self.theta = min(self.theta_bounds[1], self.theta)
 
-        # IDEA: would it be better to have one DOF be self.theta and the other is the size of the target?
         x, y = self._polar_to_cartesian(self.radius, self.theta)
         center_x = x + self.width // 2
         center_y = y + self.height // 2
