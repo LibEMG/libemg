@@ -360,7 +360,6 @@ class PolarFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3, timeout: float = 30, velocity: float = 25,
                   save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60,
                   proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None, reverse: bool = False):
-        # TODO: Is it a problem that you can go all the way around the circle? That would be like saying you go left and loop around the screen...
         default_prediction_map = {
             0: 'R+',
             1: 'R-',
@@ -395,7 +394,7 @@ class PolarFitts(Fitts):
 
     def _generate_random_target(self):
         target_radius = np.random.randint(self.cursor[2], self.small_rad)
-        target_position_radius = np.random.randint(0, self.max_radius - target_radius)
+        target_position_radius = np.random.randint(self.cursor[2] // 2, self.max_radius - target_radius)
         target_angle = np.random.uniform(self.theta_bounds[0], self.theta_bounds[1])
         x = target_position_radius * math.cos(target_angle)
         y = target_position_radius * math.sin(target_angle)
@@ -423,3 +422,5 @@ class PolarFitts(Fitts):
         center_x = round(self.radius * math.cos(self.theta) + self.width // 2)
         center_y = round(self.height // 2 - self.radius * math.sin(self.theta))
         self.cursor.center = (center_x, center_y)
+
+        # TODO: It is a problem that targets right on the radius can be acquired no matter what theta you're at? It probably is... I think that's the last thing
