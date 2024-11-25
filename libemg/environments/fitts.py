@@ -416,8 +416,8 @@ class PolarFitts(Fitts):
         # Map to expected values for parent class
         polar_to_cartesian_map = {
             'NM': 'NM',
-            'A+': 'S',
-            'A-': 'N',
+            'A+': 'N',
+            'A-': 'S',
             'R+': 'E',
             'R-': 'W'
         }
@@ -465,7 +465,7 @@ class PolarFitts(Fitts):
         self.radius = max(1, self.radius) # radius must be >= 0
         self.radius = min(self.max_radius, self.radius)
 
-        self.theta += self.current_direction[1] * self.angular_velocity
+        self.theta -= self.current_direction[1] * self.angular_velocity
         self.theta = max(self.theta_bounds[0], self.theta)
         self.theta = min(self.theta_bounds[1], self.theta)
 
