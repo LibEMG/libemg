@@ -426,7 +426,7 @@ class PolarFitts(Fitts):
 
         # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
         self.radius = 0
-        self.theta = 0
+        self.theta = math.pi / 2
         self.theta_bounds = (0, math.pi)
         if self.side == 'right':
             self.draw_right = True
@@ -452,7 +452,6 @@ class PolarFitts(Fitts):
             # Draw on the left side of the screen
             x *= -1
         return x, y
-
 
     def _draw_cursor(self):
         super()._draw_cursor()
