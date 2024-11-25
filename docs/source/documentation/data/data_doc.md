@@ -431,7 +431,7 @@ TODO
 <!-- ------------- NinaProDB2 -------------------- -->
 
 <details>
-<summary><b>Nina Pro DB2</b></summary>
+<summary><b>NinaProDB2</b></summary>
 
 <br/>
 
@@ -536,46 +536,102 @@ TODO
 
 ## Regression 
 
+<!-- ------------- EMG2POSe -------------------- -->
+
+<details>  
+<summary><b>EMG2POSE</b></summary>  
+
+| Attribute         | Description                                                                                                  |
+|-------------------|--------------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 193                                                                                                          |
+| **Num Reps:**     | N/A                                                                                                          |
+| **Classes:**      | <ul><li>FingerPinches1 - AllFingerPinchesThumbSwipeThumbRotate</li><li>Object1 - CoffeePanicPete</li><li>Counting1 - CountingUpDownFaceSideAway</li><li>Counting2 - CountingUpDownFingerWigglingSpreading</li><li>DoorknobFingerGraspFistGrab - DoorknobFingerGraspFistGrab</li><li>Throwing - FastPongFronthandBackhandThrowing</li><li>Abduction - FingerAbductionSeries</li><li>FingerFreeform - FingerFreeform</li><li>FingerPinches2 - FingerPinchesSingleFingerPinchesMultiple</li><li>HandHandInteractions - FingerTouchPalmClapmrburns</li><li>Wiggling1 - FingerWigglingSpreading</li><li>Punch - GraspPunchCloseFar</li><li>Gesture1 - HandClawGraspFlicks</li><li>StaticHands - HandDeskSeparateClaspedChest</li><li>FingerPinches3 - HandOverHandAllFingerPinchesThumbSwipeThumbRotate</li><li>Wiggling2 - HandOverHandCountingUpDownFingerWigglingSpreading</li><li>Unconstrained - unconstrained</li><li>Gesture2 - HookEmHornsOKScissors</li><li>FingerPinches4 - IndexPinchesMiddlePinchesThumbswipes</li><li>Pointing - IndividualFingerPointingSnap</li><li>Freestyle1 - OneHandedFreeStyle</li><li>Object2 - PlayBlocksChess</li><li>Draw - PokeDrawPinchRotateclosefar</li><li>Poke - PokePinchCloseFar</li><li>Gesture3 - ShakaVulcanPeace</li><li>ThumbsSwipes - ThumbsSwipesWholeHand</li><li>ThumbRotations - ThumbsUpDownThumbRotationsCWCCWP</li><li>Freestyle2 - TwoHandedFreeStyle</li><li>WristFlex - WristFlexionAbduction</li></ul> |
+| **Device:**       | Ctrl Labs Armband                                                                                           |
+| **Sampling Rates:** | 2000 Hz                                                                                                   |
+
+**Dataset Description:**  
+A large dataset from ctrl-labs (Meta) for joint angle estimation. Note that not all subjects have all stages.
+
+**Using the Dataset:**  
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['EMG2POSE']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar
+
+**References:**
+```
+TODO
+```
+
+</details>
+</br>
+
 <details>
-<summary><b>Nina Pro DB8</b></summary>
-
-<br/>
-
-Note, this dataset will not be automatically downloaded. To download this dataset, please see [Nina DB8](http://ninapro.hevs.ch/DB8). Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors. 
-
-<br/>
+<summary><b>NinaProDB8</b></summary>
 
 | Attribute          | Description |
 | ------------------ | ----------- |
 | **Num Subjects:**      | 12       |
 | **Num Reps:**      | 20 Training, 2 Testing |
 | **Time Per Rep:**      | 6-9s      |
-| **Classes:**       | 9 [Nina Pro DB8](http://ninapro.hevs.ch/DB8)    |
+| **Classes:**       | 9 [NinaProDB8](http://ninapro.hevs.ch/DB8)    |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | 1111 Hz        |
 
 **Using the Dataset:**
 ```Python
-from libemg.datasets import NinaproDB8
-dataset = NinaproDB8("data/NinaDB8") #The loacation of Nina DB8 is downloaded
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['NinaProDB8']()
 odh = dataset.prepare_data()
 ```
 
+**Dataset Location**
+Note, this dataset will not be automatically downloaded. To download this dataset, please see [Nina DB8](http://ninapro.hevs.ch/DB8). Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors. 
+
+
 **References:**
 ```
-AUTHOR=Krasoulis Agamemnon, Vijayakumar Sethu, Nazarpour Kianoush
-TITLE=Effect of User Practice on Prosthetic Finger Control With an Intuitive Myoelectric Decoder  
-JOURNAL=Frontiers in Neuroscience     
-VOLUME=13      
-YEAR=2019   
-URL=https://www.frontiersin.org/articles/10.3389/fnins.2019.00891     
-DOI=10.3389/fnins.2019.00891    	
-ISSN=1662-453X   
 ```
--------------
+</details>
+</br>
+
+<!-- ------------- User Compliance -------------------- -->
+<details>  
+<summary><b>UserCompliance</b></summary>  
+
+| Attribute         | Description                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 6                                                                                                         |
+| **Num Reps:**     | 5                                                                                                         |
+| **Classes:**      | <ul><li>0 - Hand Close (-) / Hand Open (+)</li><li>1 - Pronation (-) / Supination (+)</li></ul>           |
+| **Device:**       | EMaGer                                                                                                    |
+| **Sampling Rates:** | 1010 Hz                                                                                                |
+
+**Dataset Description:**  
+Regression dataset used for investigation into user compliance during mimic training.
+
+**Using the Dataset:**  
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['UserCompliance']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://github.com/LibEMG/UserComplianceDataset
+
+**References:**
+```
+TODO
+```
 
 </details>
 </br>
+
 
 # Offline Data Handler 
 One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are either .csv or .txt files, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset's file and folder structure. These expressions can be used to create a dictionary that is passed to the OfflineDataHandler. Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: `dataset/train/R_1_C_1_EMG.csv` where R is the rep and C is the class.
