@@ -43,8 +43,8 @@ class UserComplianceDataset(Dataset):
             if self.analysis == 'baseline':
                 data = {
                     'All': odh, 
-                    'Train': odh.isolate_data('behaviours', [2], fast=True).isolate_data('reps', [0, 1, 2, 3], fast=True), 
-                    'Test': odh.isolate_data('behaviours', [2], fast=True).isolate_data('reps', [4], fast=True)
+                    'Train': odh.isolate_data('behaviours', [0, 1], fast=True), 
+                    'Test': odh.isolate_data('behaviours', [2], fast=True)
                 }
             elif self.analysis == 'all-or-nothing':
                 data = {'All': odh, 'Train': odh.isolate_data('behaviours', [1], fast=True), 'Test': odh.isolate_data('behaviours', [2], fast=True)}
