@@ -439,13 +439,6 @@ class PolarFitts(Fitts):
         super().__init__(controller, parent_prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
         self.angular_velocity = math.pi / (2 * self.max_radius)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
 
-    # def _generate_random_target(self):
-    #     target_radius = np.random.randint(self.cursor[2], self.small_rad)
-    #     target_position_radius = np.random.randint(self.cursor[2] // 2 + target_radius, self.max_radius - target_radius)
-    #     target_angle = np.random.uniform(self.theta_bounds[0], self.theta_bounds[1])
-    #     x, y = self._polar_to_cartesian(target_position_radius, target_angle)
-    #     return x, y, target_radius
-
     def _polar_to_cartesian(self, radius, theta):
         # theta is the angle pointing to the bottom of the circle, so x uses sin and y uses cos
         x = radius * math.sin(theta)
@@ -461,73 +454,14 @@ class PolarFitts(Fitts):
     def _y_to_theta(self, y):
         return np.interp(y, (0, self.height), (0, math.pi))
 
-
     def polar_to_cartesian(self, radius, theta):
         """Convert polar coordinates to Cartesian coordinates."""
         x = self.width // 2 + radius * math.cos(theta)
         y = self.height // 2 - radius * math.sin(theta)
         return x, y
 
-
-    # def draw_polar_circle(self, x, y, radius, theta):
-    #     """Draw a 'circle' in polar space, rotated by an angle."""
-    #     num_points = 100  # Number of points for smoothness
-    #     width = 2 * radius
-    #     center = pygame.Vector2(x, y)  # Center of the shape
-
-    #     # Define arc bounding rectangles relative to the center
-    #     bounding_boxes = [
-    #         pygame.Rect(x, y - width, width, width),       # Top-right arc
-    #         pygame.Rect(x, y, width, width),              # Bottom-right arc
-    #         pygame.Rect(x - width, y, width, width),      # Bottom-left arc
-    #         pygame.Rect(x - width, y - width, width, width)  # Top-left arc
-    #     ]
-
-    #     # Apply rotation to each bounding box
-    #     rotated_boxes = []
-    #     for rect in bounding_boxes:
-    #         # Get the center of the current bounding box
-    #         rect_center = pygame.Vector2(rect.center)
-            
-    #         # Rotate the center around the main center (x, y)
-    #         rotated_center = center + (rect_center - center).rotate_rad(theta)
-            
-    #         # Update the rect position to the rotated center
-    #         rotated_rect = rect.copy()
-    #         rotated_rect.center = rotated_center
-    #         rotated_boxes.append(rotated_rect)
-
-    #     # Draw the arcs on the rotated bounding boxes
-    #     pygame.draw.arc(self.screen, self.RED, rotated_boxes[0], math.pi, -math.pi / 2)  # Top -> right
-    #     pygame.draw.arc(self.screen, self.RED, rotated_boxes[1], math.pi / 2, math.pi)   # Right -> bottom
-    #     pygame.draw.arc(self.screen, self.RED, rotated_boxes[2], 0, math.pi / 2)         # Bottom -> left
-    #     pygame.draw.arc(self.screen, self.RED, rotated_boxes[3], -math.pi / 2, 0)       # Left -> top
-
-
-    # def draw_polar_circle(self, x, y, radius, theta):
-    #     """Draw a 'circle' in polar space."""
-    #     num_points = 100  # Number of points for smoothness
-    #     # points = [
-    #     #     self.polar_to_cartesian(radius, theta)
-    #     #     for theta in np.linspace(0, 2 * math.pi, num_points)
-    #     # ]
-    #     # pygame.draw.polygon(self.screen, color, points, width=1)
-
-    #     width = 2 * radius
-    #     # pygame.draw.arc(self.screen, self.RED, [x, y - width, width, width], math.pi, -math.pi / 2) # top -> right
-    #     # pygame.draw.arc(self.screen, self.RED, [x, y, width, width], math.pi / 2, math.pi)  # right -> bottom
-    #     # pygame.draw.arc(self.screen, self.RED, [x - width, y, width, width], 0, math.pi / 2)  # bottom -> left
-    #     # pygame.draw.arc(self.screen, self.RED, [x - width, y - width, width, width], -math.pi / 2, 0)   # left -> top
-    #     delta_x = radius * np.sin(theta)
-    #     delta_y = radius * np.cos(theta)
-
-    #     # pygame.draw.arc(self.screen, self.RED, [x - delta_x, y - width - delta_y, width, width], math.pi / 2 + theta, -math.pi + theta) # top -> right
-    #     # pygame.draw.arc(self.screen, self.RED, [x, y, width, width], theta, math.pi / 2 + theta)  # right -> bottom
-    #     # pygame.draw.arc(self.screen, self.RED, [x - width, y, width, width], -math.pi / 2 + theta, theta)  # bottom -> left
-    #     # pygame.draw.arc(self.screen, self.RED, [x - width, y - width, width, width], -math.pi + theta, -math.pi / 2 + theta)   # left -> top
-
-
     def _draw_circle_in_polar_space(self, x, y, radius):
+        # Draw polar cursor and keep the actual cursor the same so future calculations are unchanged
         cartesian_points = []
         polar_points = []
         for theta in np.linspace(0, 2 * math.pi, num=100):
@@ -544,150 +478,8 @@ class PolarFitts(Fitts):
         pygame.draw.lines(self.screen, self.RED, closed=True, points=polar_points)
         pygame.draw.lines(self.screen, (0, 0, 255), closed=True, points=cartesian_points)
 
-
-
-    # def _draw_rotational_circle(self, x, y, radius, theta, delta_angle, color):
-    #     # Start here... need to be able to make that target where its center is the center of the point
-    #     start_angle = theta - delta_angle - math.pi / 2
-    #     stop_angle = theta + delta_angle - math.pi / 2
-    #     width = 2 * radius
-    #     # print('width', width)
-    #     print(start_angle, stop_angle)
-    #     # rect = pygame.Rect(x - 0.75 * width, y - width // 2, width, width)
-    #     # left = x - radius - (0.5 * radius * np.sin(theta))
-    #     # top = y - radius - (0.5 * radius * np.cos(theta))
-    #     left = x - (width * np.sin(theta))    # might need a factor of theta... still need to tune this but we're getting close
-    #     top = y - (width * np.cos(theta)) - width // 2
-    #     rect = pygame.Rect(left, top, width, width)
-    #     pygame.draw.rect(self.screen, color, rect)
-    #     pygame.draw.arc(self.screen, self.YELLOW, rect, start_angle, stop_angle, width=width)   # width basically just determines how much of arc to fill in... the width of the rect determines its max width. it will always be at MOST half the width of the rect
-    #     # so width of rectangle should be twice the width that we want... makes sense since width that we want is basically the radius, so the rect needs to be twice that
-    #     # pygame.draw.circle(self.screen, self.RED, (self.width // 2, self.height // 2), 1)
-
-    # def _draw_diamond(self, x, y, radius, theta, delta_angle, color):
-    #     # delta_x = radius * np.sin(theta)
-    #     # delta_y = radius * np.cos(theta)
-    #     # print('delta', delta_x, delta_y)
-    #     points = [
-    #         (x, y - radius),
-    #         (x + radius, y),
-    #         (x, y + radius),
-    #         (x - radius, y)
-    #     ]
-
-    #     vertices = [pygame.Vector2(point).rotate_rad(theta) for point in points]
-    #     print(vertices)
-    #     pygame.draw.polygon(self.screen, color, vertices)
-
-
-    def _draw_diamond(self, x, y, radius, theta, color):
-        # Define the diamond's points relative to (x, y)
-        points = [
-            (0, -radius),  # Top
-            (radius, 0),   # Right
-            (0, radius),   # Bottom
-            (-radius, 0)   # Left
-        ]
-
-        # Rotate and translate the points
-        vertices = [
-            (
-                x + point[0] * np.sin(theta) - point[1] * np.cos(theta),  # Rotated X
-                y + point[0] * np.cos(theta) + point[1] * np.sin(theta)   # Rotated Y
-            )
-            for point in points
-        ]
-
-        # Draw the diamond
-        pygame.draw.polygon(self.screen, color, vertices)
-        # pygame.draw.circle(self.screen, color, (x, y), radius)
-    
-    # def _draw_as_polar(self, rect):
-    #     radius = int(self._x_to_radius(rect.centerx))
-    #     theta = self._y_to_theta(rect.centery)
-    #     width = int(self._x_to_radius(rect.width))
-    #     delta_angle = self._y_to_theta(rect.height) * 4 # TODO: REALLY JUST FEELS LIKE ANGLE IS OFF NOW... YEAH TRAVELLING FROM ONE END OF THE CIRCLE TO OTHER SHOULD SHOW WHAT THE ANGLE SHOULD BE
-    #     # PROBABLY BECAUSE I'M ADDING THEM AFTER DOING THE INTERPOLATION. MAYBE I NEED TO CALCULATE BEFORE?
-    #     start_angle = theta - delta_angle - math.pi / 2
-    #     stop_angle = theta + delta_angle - math.pi / 2
-    #     radius = max(0, radius)
-    #     # TODO: I think it needs to be like a diamond... basically what you have now but add the reverse to the other side. Right now it doesn't make sense b/c unlike a circle you don't have corners where you overshoot in one direction but can fix it by going the other DoF.
-    #     # could it be a circle?... no b/c you're mapping y to theta so it can't be the same shape. you're creating the target equivalent of diameter in x and y maps to diameter in radius and theta
-    #     # The radius needs to be mapped to the angle, not the radius of the rectangle...
-
-    #     # ellipse_rect = pygame.Rect(radius * np.sin(theta) - rect.width // 2 + self.width // 2, radius * np.cos(theta) - rect.height // 2 + self.height // 2, rect.width, rect.height)
-    #     # ellipse_rect = pygame.Rect(self.width // 2 - radius + width // 2, self.height // 2 - radius + width // 2, 2 * radius, 2 * radius)
-    #     # ellipse_rect = pygame.Rect(self.width // 2 - self.max_radius, self.height // 2 - self.max_radius, self.max_radius, self.max_radius)
-    #     # ellipse_rect = pygame.Rect(self.width // 2 - radius // 2, self.height // 2 - radius // 2, self.max_radius, self.max_radius)
-    #     # ellipse_rect = pygame.Rect(radius * np.sin(theta) - width + self.width // 2, radius * np.cos(theta) - width + self.height // 2, width, width)
-    #     # print(ellipse_rect, rect, radius, theta, width, start_angle, stop_angle)
-    #     # pygame.draw.arc(self.screen, (0, 0, 255), ellipse_rect, start_angle=start_angle, stop_angle=stop_angle, width=int(width))
-    #     # self._draw_rotational_circle(self.width // 2, self.height // 2, 60, math.pi / 4, math.pi / 4)
-    #     if rect == self.cursor:
-    #         color = (0, 255, 0)
-    #     else:
-    #         color = self.RED
-    #     print(delta_angle)
-    #     # self._draw_rotational_circle(radius * np.sin(theta) + self.width // 2, radius * np.cos(theta) + self.height // 2, width, theta, delta_angle, color)
-    #     # self._draw_rotational_circle(self.width // 2, self.height // 2, 20, 0, math.pi / 4, (0, 0, 255))
-
-    #     self._draw_diamond(radius * np.sin(theta) + self.width // 2, radius * np.cos(theta) + self.height // 2, width // 2, theta, color)
-    #     # self._draw_diamond(self.width // 2, self.height // 2, 20, math.pi / 10, (0, 0, 255))
-    #     self.draw_polar_circle(self.width // 2, self.height // 2, 40, 0)
-    #     # pygame.draw.circle(self.screen, color, (radius * np.sin(theta) + self.width // 2, radius * np.cos(theta) + self.height // 2), width // 2)
-
-    # def _map_to_polar(self, point):
-    #     # center = (self.width // 2, self.height // 2)
-    #     radius = np.interp(point[0], (0, self.width), (0, self.width // 2))
-    #     theta = np.interp(point[1], (0, self.height), (0, math.pi))
-    #     print(self._x_to_radius(self.cursor[2] / 2))
-    #     print(self._y_to_theta(self.cursor[2] / 2))
-
-    #     x = radius * np.sin(theta) + self.width // 2
-    #     y = radius * np.cos(theta) + self.height // 2
-    #     # print(point, [radius, theta], [x, y], self.goal_target[2] / 2)
-    #     return np.array([x, y])
-
     def _draw_cursor(self):
-        # Draw polar cursor and keep the actual cursor the same so future calculations are unchanged
-        # polar_cursor = self._map_to_polar(self.cursor.center)
-        # x, y = self._polar_to_cartesian(self.radius, self.theta)
-        # polar_cursor = np.array([x, y]) + np.array([self.width // 2, self.height // 2])
-        # pygame.draw.arc(self.screen, self.RED, pygame.Rect(self.width // 2 - 200, self.height // 2 - 200, 400, 400), -math.pi / 2, math.pi / 2, width=14)
-        # pygame.draw.arc(self.screen, self.RED, pygame.Rect(self.width // 2 + 40, self.height // 2, 20, 20), 0, math.pi / 2, width=20)
         self._draw_circle_in_polar_space(self.cursor.centerx, self.cursor.centery, self.cursor[2] / 2)
-        # pygame.draw.circle(self.screen, (0, 255, 0), (self.width // 2, self.height // 2), 5)
-        # polar_cursor = self._map_to_polar(self.cursor.center)
-        print('cursor:', self.cursor)
-        # pygame.draw.circle(self.screen, (0, 255, 255), self.cursor.center, self.cursor[2] / 2)
-
-        # self._draw_circle(self.width // 2, self.height // 2, 300)
-        # pygame.draw.circle(self.screen, self.YELLOW, (polar_cursor[0], polar_cursor[1]), self.cursor[2] / 4)
-        # center = (self.width // 2, self.height // 2)
-        # pygame.draw.circle(self.screen, self.YELLOW, center, self.radius, width=2, draw_top_right=self.draw_right, draw_top_left=not self.draw_right,
-        #                    draw_bottom_left=not self.draw_right, draw_bottom_right=self.draw_right)
-        # pygame.draw.line(self.screen, self.YELLOW, (center[0], center[1] - self.radius), (center[0], center[1] + self.radius))
 
     def _draw_targets(self):
-        print('target', self.goal_target)
-        # self._draw_as_polar(self.goal_target)
-        # polar_target = self._map_to_polar(self.goal_target.center)
         self._draw_circle_in_polar_space(self.goal_target.centerx, self.goal_target.centery, self.goal_target[2] / 2)
-        # pygame.draw.circle(self.screen, (0, 0, 255), self.goal_target.center, self.goal_target[2] / 2)
-        # pygame.draw.circle(self.screen, self.RED, (polar_target[0], polar_target[1]), self.goal_target[2] / 4)
-
-    # def _move(self):
-    #     super()._move()
-        # self.radius += self.current_direction[0]
-        # self.radius = max(1, self.radius) # radius must be >= 0
-        # self.radius = min(self.max_radius, self.radius)
-
-        # self.theta -= self.current_direction[1] * self.angular_velocity
-        # self.theta = max(self.theta_bounds[0], self.theta)
-        # self.theta = min(self.theta_bounds[1], self.theta)
-
-        # x, y = self._polar_to_cartesian(self.radius, self.theta)
-        # center_x = x + self.width // 2
-        # center_y = y + self.height // 2
-        # self.polar_cursor.center = (center_x, center_y)
-        # print(self.goal_target, self.cursor, self.polar_cursor)
