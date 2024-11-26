@@ -16,7 +16,7 @@ INSIDE_TARGET = pygame.USEREVENT + 2
 class Fitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, game_time: float | None = None):
+                 target_radius: int = 40, game_time: float | None = None, mapping: str = 'cartesian'):
         """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -52,6 +52,10 @@ class Fitts(Environment):
         game_time : float, optional
             Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
+        mapping : str, optional
+            Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
+            Setting this mapping to polar will instead map predictions to the radius and angle of a semi-circle, similar to spinning a wheel.
+            Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
         """
         # logging information
         log_dictionary = {
@@ -63,7 +67,6 @@ class Fitts(Environment):
             'class_label':       [],
             'current_direction': []
         }
-        super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
         default_prediction_map = {
             0: 'S',
             1: 'N',
@@ -71,14 +74,25 @@ class Fitts(Environment):
             3: 'E',
             4: 'W'
         }
+        super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
+        self.mapping = mapping
+
+        if self.mapping == 'cartesian':
+            self.render_as_polar = False
+        elif self.mapping in ['polar-left', 'polar-right']:
+            self.render_as_polar = True
+        else:
+            raise ValueError(f"Unexpected value for mapping. Got: {self.mapping}.")
+
         if prediction_map is None:
             prediction_map = default_prediction_map
         assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
+
+        self.draw_left = 'left' in self.mapping and self.render_as_polar
         self.prediction_map = prediction_map
 
         self.font = pygame.font.SysFont('helvetica', 40)
         self.screen = pygame.display.set_mode([width, height])
-        
 
         # gameplay parameters
         self.BLACK = (0,0,0)
@@ -118,11 +132,10 @@ class Fitts(Environment):
         self._draw_timer()
     
     def _draw_targets(self):
-        # Need to draw single target
-        pygame.draw.circle(self.screen, self.RED, self.goal_target.center, self.goal_target[2] / 2)
+        self._draw_circle(self.goal_target, self.RED)
             
     def _draw_cursor(self):
-        pygame.draw.circle(self.screen, self.YELLOW, (self.cursor.left + self.cursor[2] / 2, self.cursor.top + self.cursor[2] / 2), self.cursor[2] / 2)
+        self._draw_circle(self.cursor, self.YELLOW)
 
     def _draw_timer(self):
         if self.dwell_timer is not None:
@@ -199,7 +212,6 @@ class Fitts(Environment):
 
             self._log(str(predictions), timestamp)
         
-
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
         if event.type == OUTSIDE_TARGET:
             if self.Event_Flag == False:
@@ -265,6 +277,38 @@ class Fitts(Environment):
         self.log_dictionary['class_label'].append(label) 
         self.log_dictionary['current_direction'].append(self.current_direction)
 
+    def _map_to_polar_space(self, x, y):
+        radius = np.interp(x, (0, self.width), (0, self.max_radius))
+        theta = np.interp(y, (0, self.height), (0, math.pi))
+
+        # theta is the angle from the bottom of the circle, so sin gives the x component and cos gives the x component
+        radius_multiplier = -1 if self.draw_left else 1 # subtract radius so points are drawn on the left of the center of the screen
+        polar_x = radius_multiplier * radius * np.sin(theta) + self.width // 2
+        polar_y = self.height // 2 -radius * np.cos(theta)  # subtract b/c y is inverted in pygame
+
+        return polar_x, polar_y
+
+    def _draw_circle(self, rect, color, fill = True):
+        # Keep the underlying circle (e.g., target or cursor) coordinates the same, but render as polar to keep downstream calculations the same
+        polygon_width = 0 if fill else 2
+        target_radius = rect.width // 2
+
+        if not self.render_as_polar:
+            pygame.draw.circle(self.screen, color, rect.center, target_radius, width=polygon_width)
+            return
+
+        points = []
+        for circle_theta in np.linspace(0, 2 * math.pi, num=100):
+            # Create points to make a circle in Cartesian space
+            x = rect.centerx + target_radius * np.cos(circle_theta)
+            y = rect.centery + target_radius * np.sin(circle_theta)
+
+            # Remap to polar equivalents
+            polar_x, polar_y = self._map_to_polar_space(x, y)
+            points.append((polar_x, polar_y))
+
+        pygame.draw.polygon(self.screen, color, points, width=polygon_width)
+
     def _run_helper(self):
         # updated frequently for graphics & gameplay
         self._update_game()
@@ -274,7 +318,7 @@ class Fitts(Environment):
 class ISOFitts(Fitts):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None):
+                 target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None, mapping: str = 'cartesian'):
         """ISO Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -314,6 +358,10 @@ class ISOFitts(Fitts):
         game_time : float, optional
             Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
+        mapping : str, optional
+            Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
+            Setting this mapping to polar will instead map predictions to the radius and angle of a semi-circle, similar to spinning a wheel.
+            Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
         """
         self.goal_target_idx = -1
         self.num_of_targets = num_targets
@@ -328,14 +376,14 @@ class ISOFitts(Fitts):
             angle += angle_increment
 
         super().__init__(controller, prediction_map=prediction_map, num_trials=num_trials, dwell_time=dwell_time, timeout=timeout, velocity=velocity,
-                         save_file=save_file, width=width, height=height, fps=fps, proportional_control=proportional_control, target_radius=target_radius, game_time=game_time)
-
+                         save_file=save_file, width=width, height=height, fps=fps, proportional_control=proportional_control, target_radius=target_radius, game_time=game_time,
+                         mapping=mapping)
 
     def _draw_targets(self):
         for target in self.targets:
-            pygame.draw.circle(self.screen, self.RED, (target.x + self.small_rad, target.y + self.small_rad), self.small_rad, 2)
+            self._draw_circle(target, self.RED, fill=False) # draw target outlines
         
-        pygame.draw.circle(self.screen, self.RED, (self.goal_target.x + self.small_rad, self.goal_target.y + self.small_rad), self.small_rad)
+        self._draw_circle(self.goal_target, self.RED, fill=True)    # fill in goal target
 
     def _get_new_goal_target(self):
         super()._get_new_goal_target()
@@ -352,136 +400,3 @@ class ISOFitts(Fitts):
                 self.next_target_in = self.num_of_targets // 2
                 self.target_jump = 0
         self.goal_target = self.targets[self.goal_target_idx]
-
-
-class PolarFitts(Fitts):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, 
-                 dwell_time: float = 3, timeout: float = 30, velocity: float = 25,
-                 save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60,
-                 proportional_control: bool = True, target_radius: int = 40, game_time: float | None = None, side: str = 'left'):
-        """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
-        Instead of controlling the cursor via cartesian movements, the cursor is controlled using radial movements (i.e., one DoF controls the radius of the 
-        cursor and the other DoF controls the angle). The angle is restricted to (0, π) for consistent +/- directions for theta, so either the left or right side of the
-        screen is used for the entire task.
-
-        Parameters
-        ----------
-        controller : Controller
-            Interface to parse predictions which determine the direction of the cursor.
-        prediction_map : dict | None, optional
-            Maps received control commands to cursor movement - only used if a non-continuous controller is used (e.g., classifier). If a continuous controller is used (e.g., regressor),
-            then 2 DoFs are expected when parsing predictions and this parameter is not used. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to
-            radius+, radius-, no motion, angle+, and angle-, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
-            values map to actions in the environment. Accepted actions are: 'R+' (increase radius), 'R-' (decrease radius), 'NM' (no motion),
-            'A+' (increase angle), and 'A-' (decrease angle). All of these actions must be represented by a single key in the dictionary. Defaults to None.
-        num_trials : int, optional
-            Number of trials user must complete. Defaults to 15.
-        dwell_time : float, optional
-            Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
-        timeout : float, optional
-            Time limit (in seconds) that signifies a failed trial. Defaults to 30.
-        velocity : float, optional
-            Velocity scalar that controls the max speed of the cursor. Defaults to 25.
-        save_file : str | None, optional
-            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
-        width : int, optional
-            Width of display (in pixels). Defaults to 1250.
-        height : int, optional
-            Height of display (in pixels). Defaults to 750.
-        fps : int, optional
-            Frames per second (in Hz). Defaults to 60.
-        proportional_control : bool, optional
-            True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
-        target_radius : int, optional
-            Radius (in pixels) of each individual target. Defaults to 40.
-        game_time : float, optional
-            Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
-            If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
-        side : str, optional
-            Side of the screen to use. Options are 'left' and 'right'. Defaults to 'left'.
-        """
-        default_prediction_map = {
-            0: 'R+',
-            1: 'R-',
-            2: 'NM',
-            3: 'A+',
-            4: 'A-'
-        }
-        if prediction_map is None:
-            prediction_map = default_prediction_map
-        assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
-
-        # Map to expected values for parent class
-        polar_to_cartesian_map = {
-            'NM': 'NM',
-            'A+': 'N',
-            'A-': 'S',
-            'R+': 'E',
-            'R-': 'W'
-        }
-        parent_prediction_map = {output: polar_to_cartesian_map[direction] for output, direction in prediction_map.items()}
-        self.side = side
-
-        # Must initialize as instance fields b/c calculation from cursor position at each frame led to instability with radius and theta
-        self.radius = 0
-        self.theta = math.pi / 2
-        self.theta_bounds = (0, math.pi)
-        if self.side == 'right':
-            self.draw_right = True
-        elif self.side == 'left':
-            self.draw_right = False
-        else:
-            raise ValueError(f"Unexpected value for side parameter in PolarFitts. Got: {self.side}.")
-        super().__init__(controller, parent_prediction_map, num_trials, dwell_time, timeout, velocity, save_file, width, height, fps, proportional_control, target_radius, game_time)
-        self.angular_velocity = math.pi / (2 * self.max_radius)   # time to travel half of the circle (pi) should be the same as the time to travel the diameter
-
-    def _polar_to_cartesian(self, radius, theta):
-        # theta is the angle pointing to the bottom of the circle, so x uses sin and y uses cos
-        x = radius * math.sin(theta)
-        y = radius * math.cos(theta)
-        if not self.draw_right:
-            # Draw on the left side of the screen
-            x *= -1
-        return x, y
-
-    def _x_to_radius(self, x):
-        return np.interp(x, (0, self.width), (0, self.max_radius))
-
-    def _y_to_theta(self, y):
-        return np.interp(y, (0, self.height), (0, math.pi))
-
-    def polar_to_cartesian(self, radius, theta):
-        """Convert polar coordinates to Cartesian coordinates."""
-        x = self.width // 2 + radius * math.cos(theta)
-        y = self.height // 2 - radius * math.sin(theta)
-        return x, y
-
-    def _draw_circle_in_polar_space(self, rect, color, fill = False):
-        # Keep the underlying circle (e.g., target or cursor) coordinates the same, but render as polar to keep downstream calculations the same
-        polygon_width = 0 if fill else 2
-        target_radius = rect.width // 2
-        # cartesian_points = []
-        polar_points = []
-        for circle_theta in np.linspace(0, 2 * math.pi, num=100):
-            # Create points to make a circle in Cartesian space
-            x = rect.centerx + target_radius * np.cos(circle_theta)
-            y = rect.centery + target_radius * np.sin(circle_theta)
-
-            # Linearly map to polar coordinates, then use the corresponding x and y to draw the polar equivalent
-            radius = self._x_to_radius(x)
-            theta = self._y_to_theta(y)
-
-            # theta is the angle from the bottom of the circle, so sin gives the x component and cos gives the x component
-            polar_x = radius * np.sin(theta) + self.width // 2
-            polar_y = radius * np.cos(theta) + self.height // 2
-            # cartesian_points.append((x, y))
-            polar_points.append((polar_x, polar_y))
-
-        pygame.draw.polygon(self.screen, color, polar_points, width=polygon_width)
-        # pygame.draw.polygon(self.screen, self.BLUE, cartesian_points)
-
-    def _draw_cursor(self):
-        self._draw_circle_in_polar_space(self.cursor, self.YELLOW, fill=True)
-
-    def _draw_targets(self):
-        self._draw_circle_in_polar_space(self.goal_target, self.RED)
