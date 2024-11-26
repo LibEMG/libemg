@@ -460,26 +460,31 @@ class PolarFitts(Fitts):
         y = self.height // 2 - radius * math.sin(theta)
         return x, y
 
-    def _draw_circle_in_polar_space(self, x, y, radius):
-        # Draw polar cursor and keep the actual cursor the same so future calculations are unchanged
+    def _draw_circle_in_polar_space(self, rect):
+        # Keep the underlying circle (e.g., target or cursor) coordinates the same, but render as polar to keep downstream calculations the same
+        target_radius = rect.width // 2
         cartesian_points = []
         polar_points = []
-        for theta in np.linspace(0, 2 * math.pi, num=100):
-            px = x + radius * np.cos(theta)
-            py = y + radius * np.sin(theta)
+        for circle_theta in np.linspace(0, 2 * math.pi, num=100):
+            # Create points to make a circle in Cartesian space
+            x = rect.centerx + target_radius * np.cos(circle_theta)
+            y = rect.centery + target_radius * np.sin(circle_theta)
 
-            r = self._x_to_radius(px)
-            t = self._y_to_theta(py)
-            polar_x = r * np.sin(t) + self.width // 2
-            polar_y = r * np.cos(t) + self.height // 2
-            cartesian_points.append((px, py))
+            # Linearly map to polar coordinates, then use the corresponding x and y to draw the polar equivalent
+            radius = self._x_to_radius(x)
+            theta = self._y_to_theta(y)
+
+            # theta is the angle from the bottom of the circle, so sin gives the x component and cos gives the x component
+            polar_x = radius * np.sin(theta) + self.width // 2
+            polar_y = radius * np.cos(theta) + self.height // 2
+            cartesian_points.append((x, y))
             polar_points.append((polar_x, polar_y))
 
         pygame.draw.lines(self.screen, self.RED, closed=True, points=polar_points)
         pygame.draw.lines(self.screen, (0, 0, 255), closed=True, points=cartesian_points)
 
     def _draw_cursor(self):
-        self._draw_circle_in_polar_space(self.cursor.centerx, self.cursor.centery, self.cursor[2] / 2)
+        self._draw_circle_in_polar_space(self.cursor)
 
     def _draw_targets(self):
-        self._draw_circle_in_polar_space(self.goal_target.centerx, self.goal_target.centery, self.goal_target[2] / 2)
+        self._draw_circle_in_polar_space(self.goal_target)
