@@ -133,7 +133,7 @@ class Fitts(Environment):
     
     def _draw_targets(self):
         self._draw_circle(self.goal_target, self.RED)
-            
+    
     def _draw_cursor(self):
         self._draw_circle(self.cursor, self.YELLOW)
 
@@ -290,7 +290,7 @@ class Fitts(Environment):
 
         return polar_x, polar_y
 
-    def _draw_circle(self, rect, color, fill = True):
+    def _draw_circle(self, rect, color, fill = True, draw_radius = False):
         # Keep the underlying circle (e.g., target or cursor) coordinates the same, but render as polar to keep downstream calculations the same
         polygon_width = 0 if fill else 2
         target_radius = rect.width // 2
@@ -310,6 +310,17 @@ class Fitts(Environment):
             points.append((polar_x, polar_y))
 
         pygame.draw.polygon(self.screen, color, points, width=polygon_width)
+
+        if draw_radius:
+            # NOTE: This option is there, but I'm not sure that it should be used. You don't have runways in real life (or other Fitts tasks), so it might not be fair to add.
+            # If we are going to add it, we'd need to have them for the angle (not just the radius)
+            # Also the calculation of the radius should probably be a field because recalculating and rounding every time will cause instability when just changing the angle.
+            semi_circle_x, semi_circle_y = self._map_to_polar_space(rect.centerx, rect.centery)
+            semi_circle_origin = (self.width // 2, self.height // 2)
+            semi_circle_radius = int(np.linalg.norm(np.array([semi_circle_x - semi_circle_origin[0], semi_circle_y - semi_circle_origin[1]])))
+            pygame.draw.circle(self.screen, color, semi_circle_origin, semi_circle_radius, width=2, draw_top_right=not self.draw_left, draw_top_left=self.draw_left,
+                                draw_bottom_left=self.draw_left, draw_bottom_right=not self.draw_left)
+            pygame.draw.line(self.screen, color, (semi_circle_origin[0], semi_circle_origin[1] - semi_circle_radius), (semi_circle_origin[0], semi_circle_origin[1] + semi_circle_radius))
 
     def _run_helper(self):
         # updated frequently for graphics & gameplay
