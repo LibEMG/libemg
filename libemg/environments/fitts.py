@@ -233,27 +233,23 @@ class Fitts(Environment):
         if self.cursor.top + self.current_direction[1] > 0 and self.cursor.top + self.current_direction[1] < self.height:
             self.cursor.top += self.current_direction[1]
     
-    def _generate_random_target(self):
-        target_radius = np.random.randint(self.cursor[2], self.small_rad)
-        target_position_radius = np.random.randint(0, self.max_radius - target_radius)
-        target_angle = np.random.uniform(0, 2 * math.pi)
-        x = target_position_radius * math.cos(target_angle)
-        y = target_position_radius * math.sin(target_angle)
-        return x, y, target_radius
-
     def _get_new_goal_target(self):
         self.timeout_timer = None
         self.trial_duration = 0
 
         while True:
-            x, y, target_radius = self._generate_random_target()
+            target_radius = np.random.randint(self.cursor[2], self.small_rad)
+            target_position_radius = np.random.randint(0, self.max_radius - target_radius)
+            target_angle = np.random.uniform(0, 2 * math.pi)
+            # Convert to cartesian (relative to pygame origin, not center of screen)
+            x = self.width // 2 + target_position_radius * math.cos(target_angle)
+            y = self.height // 2 - target_position_radius * math.sin(target_angle)  # subtract b/c y is inverted in pygame
             # Continue until we create a target that isn't on the cursor
-            if math.dist((x, y), self.cursor.center) > (target_radius + self.cursor[2]):
+            if math.dist((x, y), self.cursor.center) > (target_radius + self.cursor[2] // 2):
                 break
 
-        # Convert to target in center of screen
-        left = self.width // 2 + x - target_radius
-        top = self.height // 2 - y - target_radius    # subtract b/c y is inverted in pygame
+        left = x - target_radius
+        top = y - target_radius
         self.goal_target = pygame.Rect(left, top, target_radius * 2, target_radius * 2)
 
         self.trial += 1
