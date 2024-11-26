@@ -88,7 +88,6 @@ class Fitts(Environment):
             prediction_map = default_prediction_map
         assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
 
-        self.draw_left = 'left' in self.mapping and self.render_as_polar
         self.prediction_map = prediction_map
 
         self.font = pygame.font.SysFont('helvetica', 40)
@@ -106,8 +105,11 @@ class Fitts(Environment):
         self.max_trial = num_trials
         self.width = width
         self.height = height
-        self.max_radius = int(min(self.width, self.height) * 0.5)   # only create targets in a centered circle (based on size of screen)
         self.trial = -1
+
+        self.max_radius = int(min(self.width, self.height) * 0.5)   # only create targets in a centered circle (based on size of screen)
+        self.draw_left = 'left' in self.mapping and self.render_as_polar
+        self.semi_circle_origin = (self.width // 2, self.height // 2)
 
         # interface objects
         self.cursor = pygame.Rect(self.width//2 - 7, self.height//2 - 7, 14, 14)
@@ -285,8 +287,8 @@ class Fitts(Environment):
 
         # theta is the angle from the bottom of the circle, so sin gives the x component and cos gives the x component
         radius_multiplier = -1 if self.draw_left else 1 # subtract radius so points are drawn on the left of the center of the screen
-        polar_x = radius_multiplier * radius * np.sin(theta) + self.width // 2
-        polar_y = self.height // 2 -radius * np.cos(theta)  # subtract b/c y is inverted in pygame
+        polar_x = radius_multiplier * radius * np.sin(theta) + self.semi_circle_origin[0]
+        polar_y = self.semi_circle_origin[1] - radius * np.cos(theta)  # subtract b/c y is inverted in pygame
 
         return polar_x, polar_y
 
@@ -316,11 +318,10 @@ class Fitts(Environment):
             # If we are going to add it, we'd need to have them for the angle (not just the radius)
             # Also the calculation of the radius should probably be a field because recalculating and rounding every time will cause instability when just changing the angle.
             semi_circle_x, semi_circle_y = self._map_to_polar_space(rect.centerx, rect.centery)
-            semi_circle_origin = (self.width // 2, self.height // 2)
-            semi_circle_radius = int(np.linalg.norm(np.array([semi_circle_x - semi_circle_origin[0], semi_circle_y - semi_circle_origin[1]])))
-            pygame.draw.circle(self.screen, color, semi_circle_origin, semi_circle_radius, width=2, draw_top_right=not self.draw_left, draw_top_left=self.draw_left,
+            semi_circle_radius = int(np.linalg.norm(np.array([semi_circle_x - self.semi_circle_origin[0], semi_circle_y - self.semi_circle_origin[1]])))
+            pygame.draw.circle(self.screen, color, self.semi_circle_origin, semi_circle_radius, width=2, draw_top_right=not self.draw_left, draw_top_left=self.draw_left,
                                 draw_bottom_left=self.draw_left, draw_bottom_right=not self.draw_left)
-            pygame.draw.line(self.screen, color, (semi_circle_origin[0], semi_circle_origin[1] - semi_circle_radius), (semi_circle_origin[0], semi_circle_origin[1] + semi_circle_radius))
+            pygame.draw.line(self.screen, color, (self.semi_circle_origin[0], self.semi_circle_origin[1] - semi_circle_radius), (self.semi_circle_origin[0], self.semi_circle_origin[1] + semi_circle_radius))
 
     def _run_helper(self):
         # updated frequently for graphics & gameplay
