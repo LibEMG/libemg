@@ -54,7 +54,7 @@ class Fitts(Environment):
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
         mapping : str, optional
             Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
-            Setting this mapping to polar will instead map predictions to the radius and angle of a semi-circle, similar to spinning a wheel.
+            Setting this mapping to polar will instead map vertical and horizontal predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
             Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
         """
         # logging information
@@ -362,7 +362,7 @@ class ISOFitts(Fitts):
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
         mapping : str, optional
             Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
-            Setting this mapping to polar will instead map predictions to the radius and angle of a semi-circle, similar to spinning a wheel.
+            Setting this mapping to polar will instead map vertical and horizontal predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
             Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
         """
         self.goal_target_idx = -1
