@@ -460,10 +460,11 @@ class PolarFitts(Fitts):
         y = self.height // 2 - radius * math.sin(theta)
         return x, y
 
-    def _draw_circle_in_polar_space(self, rect):
+    def _draw_circle_in_polar_space(self, rect, color, fill = False):
         # Keep the underlying circle (e.g., target or cursor) coordinates the same, but render as polar to keep downstream calculations the same
+        polygon_width = 0 if fill else 2
         target_radius = rect.width // 2
-        cartesian_points = []
+        # cartesian_points = []
         polar_points = []
         for circle_theta in np.linspace(0, 2 * math.pi, num=100):
             # Create points to make a circle in Cartesian space
@@ -477,14 +478,14 @@ class PolarFitts(Fitts):
             # theta is the angle from the bottom of the circle, so sin gives the x component and cos gives the x component
             polar_x = radius * np.sin(theta) + self.width // 2
             polar_y = radius * np.cos(theta) + self.height // 2
-            cartesian_points.append((x, y))
+            # cartesian_points.append((x, y))
             polar_points.append((polar_x, polar_y))
 
-        pygame.draw.lines(self.screen, self.RED, closed=True, points=polar_points)
-        pygame.draw.lines(self.screen, (0, 0, 255), closed=True, points=cartesian_points)
+        pygame.draw.polygon(self.screen, color, polar_points, width=polygon_width)
+        # pygame.draw.polygon(self.screen, self.BLUE, cartesian_points)
 
     def _draw_cursor(self):
-        self._draw_circle_in_polar_space(self.cursor)
+        self._draw_circle_in_polar_space(self.cursor, self.YELLOW, fill=True)
 
     def _draw_targets(self):
-        self._draw_circle_in_polar_space(self.goal_target)
+        self._draw_circle_in_polar_space(self.goal_target, self.RED)
