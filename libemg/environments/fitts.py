@@ -240,9 +240,11 @@ class Fitts(Environment):
 
     def _move(self):
         # Making sure its within the bounds of the screen
-        if self.cursor.left + self.current_direction[0] > 0 and self.cursor.left + self.current_direction[0] < self.width:
+        right = self.cursor.left + self.cursor[2]
+        bottom = self.cursor.top + self.cursor[2]
+        if self.cursor.left + self.current_direction[0] > 0 and right + self.current_direction[0] < self.width:
             self.cursor.left += self.current_direction[0]
-        if self.cursor.top + self.current_direction[1] > 0 and self.cursor.top + self.current_direction[1] < self.height:
+        if self.cursor.top + self.current_direction[1] > 0 and bottom + self.current_direction[1] < self.height:
             self.cursor.top += self.current_direction[1]
     
     def _get_new_goal_target(self):
