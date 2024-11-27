@@ -54,8 +54,8 @@ class Fitts(Environment):
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
         mapping : str, optional
             Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
-            Setting this mapping to polar will instead map vertical and horizontal predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
-            Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
+            Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
+            Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
         """
         # logging information
         log_dictionary = {
@@ -79,7 +79,7 @@ class Fitts(Environment):
 
         if self.mapping == 'cartesian':
             self.render_as_polar = False
-        elif self.mapping in ['polar-left', 'polar-right']:
+        elif self.mapping in ['polar+', 'polar-']:
             self.render_as_polar = True
         else:
             raise ValueError(f"Unexpected value for mapping. Got: {self.mapping}.")
@@ -107,11 +107,15 @@ class Fitts(Environment):
         self.height = height
         self.trial = -1
 
-        self.draw_left = 'left' in self.mapping and self.render_as_polar
-        self.semi_circle_origin = (self.width // 2, self.height // 2)
-        self.semi_circle_origin = (0, self.height // 2)
+        if '+' in self.mapping:
+            theta_bounds = (math.pi, 0)
+        else:
+            theta_bounds = (0, math.pi)
+        
+        self.theta_bounds = theta_bounds
+        self.polar_origin = (self.width // 2, self.height // 2)
+        self.polar_origin = (self.width // 2, self.height)
         self.polygon_angles = np.linspace(0, 2 * math.pi, num=100)  # could change how many points are calculated based on desired FPS (having 1000 caused frame rate issues)
-
 
         # interface objects
         self.cursor = pygame.Rect(self.width//2 - 7, self.height//2 - 7, 14, 14)
@@ -286,13 +290,12 @@ class Fitts(Environment):
         self.log_dictionary['current_direction'].append(self.current_direction)
 
     def _map_to_polar_space(self, x, y):
-        radius = np.interp(x, (0, self.width), (0, min(self.width, self.height // 2)))  # limit radius based on screen dimensions so circles stay on screen
-        theta = np.interp(y, (0, self.height), (0, math.pi))
+        radius = np.interp(x, (0, self.width), (0, min(self.width // 2, self.height)))  # limit radius based on screen dimensions so circles stay on screen
+        theta = np.interp(y, (0, self.height), self.theta_bounds)
 
-        # theta is the angle from the bottom of the circle, so sin gives the x component and cos gives the x component
-        radius_multiplier = -1 if self.draw_left else 1 # subtract radius so points are drawn on the left of the center of the screen
-        polar_x = radius_multiplier * radius * np.sin(theta) + self.semi_circle_origin[0]
-        polar_y = self.semi_circle_origin[1] - radius * np.cos(theta)  # subtract b/c y is inverted in pygame
+        # theta is the angle from the right side of the screen and goes counter-clockwise (same as unit circle)
+        polar_x = radius * np.cos(theta) + self.polar_origin[0]
+        polar_y = self.polar_origin[1] - radius * np.sin(theta) # subtract b/c y is inverted in pygame
 
         return polar_x, polar_y
 
@@ -322,10 +325,9 @@ class Fitts(Environment):
             # If we are going to add it, we'd need to have them for the angle (not just the radius)
             # Also the calculation of the radius should probably be a field because recalculating and rounding every time will cause instability when just changing the angle.
             semi_circle_x, semi_circle_y = self._map_to_polar_space(rect.centerx, rect.centery)
-            semi_circle_radius = int(np.linalg.norm(np.array([semi_circle_x - self.semi_circle_origin[0], semi_circle_y - self.semi_circle_origin[1]])))
-            pygame.draw.circle(self.screen, color, self.semi_circle_origin, semi_circle_radius, width=2, draw_top_right=not self.draw_left, draw_top_left=self.draw_left,
-                                draw_bottom_left=self.draw_left, draw_bottom_right=not self.draw_left)
-            pygame.draw.line(self.screen, color, (self.semi_circle_origin[0], self.semi_circle_origin[1] - semi_circle_radius), (self.semi_circle_origin[0], self.semi_circle_origin[1] + semi_circle_radius))
+            semi_circle_radius = int(np.linalg.norm(np.array([semi_circle_x - self.polar_origin[0], semi_circle_y - self.polar_origin[1]])))
+            pygame.draw.circle(self.screen, color, self.polar_origin, semi_circle_radius, width=2, draw_top_right=True, draw_top_left=True)
+            pygame.draw.line(self.screen, color, (self.polar_origin[0] - semi_circle_radius, self.polar_origin[1]), (self.polar_origin[0] + semi_circle_radius, self.polar_origin[1]))
 
     def _run_helper(self):
         # updated frequently for graphics & gameplay
@@ -378,8 +380,8 @@ class ISOFitts(Fitts):
             If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
         mapping : str, optional
             Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
-            Setting this mapping to polar will instead map vertical and horizontal predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
-            Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
+            Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
+            Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
         """
         width_is_too_small = target_distance_radius > width // 2
         height_is_too_small = target_distance_radius > height // 2
