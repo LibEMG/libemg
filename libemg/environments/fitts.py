@@ -378,6 +378,21 @@ class ISOFitts(Fitts):
             Setting this mapping to polar will instead map vertical and horizontal predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
             Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
         """
+        width_is_too_small = target_distance_radius < width // 2
+        height_is_too_small = target_distance_radius < height // 2
+        if width_is_too_small and height_is_too_small:
+            error_info = f"width and height"
+        elif width_is_too_small:
+            error_info = f"width"
+        elif height_is_too_small:
+            error_info = f"height"
+        else:
+            error_info = None
+        
+        if error_info is not None:
+            raise ValueError(f"Radius between ISO Fitts targets is larger than screen size will allow. 
+                             Target distance radius must be less than half the screen dimensions.
+                             Please increase screen {error_info} or reduce target distance radius.")
         assert target_distance_radius < width // 2 and target_distance_radius < height // 2, f"Radius between ISO Fitts targets is larger than screen size will allow. Please increase screen size or reduce target distance radius."
         self.goal_target_idx = -1
         self.num_of_targets = num_targets
