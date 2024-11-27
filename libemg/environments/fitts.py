@@ -378,6 +378,7 @@ class ISOFitts(Fitts):
             Setting this mapping to polar will instead map vertical and horizontal predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
             Pass in 'polar-right' or 'polar-left' to map to a semi-circle facing right or left, respectively. Defaults to 'cartesian'.
         """
+        assert target_distance_radius < width // 2 and target_distance_radius < height // 2, f"Radius between ISO Fitts targets is larger than screen size will allow. Please increase screen size or reduce target distance radius."
         self.goal_target_idx = -1
         self.num_of_targets = num_targets
         self.big_rad = target_distance_radius
@@ -387,7 +388,11 @@ class ISOFitts(Fitts):
         angle = 0
         angle_increment = 360 // self.num_of_targets
         while angle < 360:
-            self.targets.append(pygame.Rect((width//2 - target_radius) + math.cos(math.radians(angle)) * target_distance_radius, (height//2 - target_radius) + math.sin(math.radians(angle)) * target_distance_radius, target_radius * 2, target_radius * 2))
+            self.targets.append(pygame.Rect(
+                (width//2 - target_radius) + math.cos(math.radians(angle)) * self.big_rad,
+                (height//2 - target_radius) + math.sin(math.radians(angle)) * self.big_rad,
+                target_radius * 2, target_radius * 2
+            ))
             angle += angle_increment
 
         super().__init__(controller, prediction_map=prediction_map, num_trials=num_trials, dwell_time=dwell_time, timeout=timeout, velocity=velocity,
