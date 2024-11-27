@@ -106,10 +106,6 @@ class HyserNDOF(_Hyser):
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
         """
-        # TODO: Add a 'regression' flag... maybe add a 'DOFs' parameter instead of just gestures?
-        gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
-        description = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis) 
         self.finger_combinations = {
             1: 'Thumb + Index',
             2: 'Thumb + Middle',
@@ -127,6 +123,8 @@ class HyserNDOF(_Hyser):
             14: 'Thumb + Little (Opposing)',
             15: 'Index + Middle (Opposing)'
         }
+        description = 'Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.'
+        super().__init__(gestures=self.finger_combinations, num_reps=2, description=description, dataset_folder=dataset_folder, analysis=analysis) 
 
     def _prepare_data_helper(self, split = True, subjects = None) -> dict | OfflineDataHandler:
         subject_list = np.array(list(range(1,21)))
@@ -171,9 +169,8 @@ class HyserRandom(_Hyser):
             Determines which type of data will be extracted and considered train/test splits. If 'baseline', only grabs data from the first session and splits based on
             reps. If 'sessions', grabs data from both sessions and return the first session as train and the second session as test.
         """
-        gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
         description = 'Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.'
-        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis)
+        super().__init__(gestures={}, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis)
         self.num_subjects = 19
 
 

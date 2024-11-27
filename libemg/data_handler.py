@@ -5,9 +5,6 @@ import numpy.typing as npt
 import pandas as pd
 import os
 import re
-import socket
-import csv
-import pickle
 import time
 import math
 import wfdb
@@ -29,20 +26,21 @@ from scipy.signal import welch
 from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str], description: str):
-        """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
+    """
+    Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
-        Parameters
-        ----------
-        left_bound: str
-            The left bound of the regex.
-        right_bound: str
-            The right bound of the regex.
-        values: list
-            The values between the two regexes.
-        description: str
-            Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
-        """
+    Parameters
+    ----------
+    left_bound: str
+        The left bound of the regex.
+    right_bound: str
+        The right bound of the regex.
+    values: list
+        The values between the two regexes.
+    description: str
+        Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
+    """
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str], description: str):
         if values is None:
             raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
@@ -85,14 +83,15 @@ class RegexFilter:
 
 
 class MetadataFetcher(ABC):
-    def __init__(self, description: str):
-        """Describes a type of metadata and implements a method to fetch it.
+    """
+    Describes a type of metadata and implements a method to fetch it.
 
-        Parameters
-        ----------
-        description: str
-            Description of metadata.
-        """
+    Parameters
+    ----------
+    description: str
+        Description of metadata.
+    """
+    def __init__(self, description: str):
         self.description = description
 
     @abstractmethod
@@ -118,29 +117,29 @@ class MetadataFetcher(ABC):
 
 
 class FilePackager(MetadataFetcher):
+    """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
+    that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
+
+    Parameters
+    ----------
+    regex_filter: RegexFilter
+        Used to find the type of metadata files. The description of this RegexFilter is used to assign the name of the field for this metadata in the OfflineDataHandler.
+    package_function: callable or Sequence[RegexFilter]
+        Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
+        Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
+        Alternatively, a list of RegexFilters can be passed in and a function will be created that packages files only if the regex metadata of the data filename
+        and metadata filename match.
+    align_method: str or callable, default='zoom'
+        Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
+        pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
+    load: callable, str, or None, default=None
+        Determines how metadata file is loaded. If a custom loading function, should take in the filename and return an array. If a string, 
+        it is assumed to be the MRDF key of a .hea file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
+    column_mask: list or None, default=None
+        List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
+    """
     def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool] | Sequence[RegexFilter], 
                  align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load: Callable[[str], npt.NDArray] | str | None = None, column_mask: Sequence[int] | None = None):
-        """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
-        that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
-
-        Parameters
-        ----------
-        regex_filter: RegexFilter
-            Used to find the type of metadata files. The description of this RegexFilter is used to assign the name of the field for this metadata in the OfflineDataHandler.
-        package_function: callable or Sequence[RegexFilter]
-            Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
-            Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
-            Alternatively, a list of RegexFilters can be passed in and a function will be created that packages files only if the regex metadata of the data filename
-            and metadata filename match.
-        align_method: str or callable, default='zoom'
-            Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
-            pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
-        load: callable, str, or None, default=None
-            Determines how metadata file is loaded. If a custom loading function, should take in the filename and return an array. If a string, 
-            it is assumed to be the MRDF key of a .hea file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
-        column_mask: list or None, default=None
-            List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
-        """
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
         self.package_filters = None
@@ -213,18 +212,19 @@ class FilePackager(MetadataFetcher):
 
 
 class ColumnFetcher(MetadataFetcher):
-    def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
-        """Fetch metadata from columns within data file.
+    """
+    Fetch metadata from columns within data file.
 
-        Parameters
-        ----------
-        description: str
-            Description of metadata.
-        column_mask: list or int
-            Integers corresponding to indices of columns that should be fetched.
-        values: list or None, default=None
-            List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
-        """
+    Parameters
+    ----------
+    description: str
+        Description of metadata.
+    column_mask: list or int
+        Integers corresponding to indices of columns that should be fetched.
+    values: list or None, default=None
+        List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
+    """
+    def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         super().__init__(description)
         self.column_mask = column_mask
         self.values = values

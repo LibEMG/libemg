@@ -39,7 +39,6 @@ Simple one subject dataset.
 | ------------------ | ----------- |
 | **Num Subjects:**      | 1       |
 | **Num Reps:**      | 12 Reps (i.e., 6 Trials x 2 Reps)|
-| **Time Per Rep:**      | 3s      |
 | **Classes:**       | <ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
 | **Device:**        | Myo        |
 | **Sampling Rates:** | 200 Hz        |
@@ -53,11 +52,20 @@ odh = dataset.prepare_data()
 ```
 
 **Dataset Location**
-https://github.com/LibEMG/OneSubjectMyoDataset
+https://github.com/LibEMG/OneSubjectEMaGerDataset
 
 **References:**
 ```
-Work to be published...
+@ARTICLE{libemg,
+  author={Eddy, Ethan and Campbell, Evan and Phinyomark, Angkoon and Bateman, Scott and Scheme, Erik},
+  journal={IEEE Access}, 
+  title={LibEMG: An Open Source Library to Facilitate the Exploration of Myoelectric Control}, 
+  year={2023},
+  volume={11},
+  number={},
+  pages={87380-87397},
+  keywords={Electromyography;Prosthetics;Libraries;Human computer interaction;Feature extraction;Muscles;Control systems;Gesture recognition;Open source software;EMG;electromyography;toolkit;library;myoelectric control;gesture recognition},
+  doi={10.1109/ACCESS.2023.3304544}}
 ```
 -------------
 </details>
@@ -93,7 +101,16 @@ https://github.com/LibEMG/3DCDataset
 
 **References:**
 ```
-TODO
+@article{cote2019low,
+  title={A low-cost, wireless, 3-D-printed custom armband for sEMG hand gesture recognition},
+  author={C{\^o}t{\'e}-Allard, Ulysse and Gagnon-Turcotte, Gabriel and Laviolette, Fran{\c{c}}ois and Gosselin, Benoit},
+  journal={Sensors},
+  volume={19},
+  number={12},
+  pages={2811},
+  year={2019},
+  publisher={MDPI}
+}
 ```
 </details>
 <br>
@@ -130,7 +147,14 @@ https://github.com/LibEMG/CIILData
 
 **References:**
 ```
-TODO
+@inproceedings{ciil_md,
+  title={Leveraging task-specific context to improve unsupervised adaptation for myoelectric control},
+  author={Eddy, Ethan and Campbell, Evan and Bateman, Scott and Scheme, Erik},
+  booktitle={2023 IEEE International Conference on Systems, Man, and Cybernetics (SMC)},
+  pages={4661--4666},
+  year={2023},
+  organization={IEEE}
+}
 ```
 
 </details>
@@ -166,7 +190,16 @@ https://github.com/LibEMG/CIILData
 
 **References:**
 ```
-TODO
+@article{ciil_es,
+  title={Context-informed incremental learning improves both the performance and resilience of myoelectric control},
+  author={Campbell, Evan and Eddy, Ethan and Bateman, Scott and C{\^o}t{\'e}-Allard, Ulysse and Scheme, Erik},
+  journal={Journal of NeuroEngineering and Rehabilitation},
+  volume={21},
+  number={1},
+  pages={70},
+  year={2024},
+  publisher={Springer}
+}
 ```
 
 </details>
@@ -202,7 +235,7 @@ https://github.com/LibEMG/WS_CIIL
 
 **References:**
 ```
-TODO
+In Publication...
 ```
 
 </details>
@@ -237,7 +270,15 @@ https://unbcloud-my.sharepoint.com/:f:/g/personal/ecampbe2_unb_ca/EjgjhM9ZHJxOgl
 
 **References:**
 ```
-TODO
+@ARTICLE{transitions,
+  author={Raghu, Shriram Tallam Puranam and MacIsaac, Dawn and Scheme, Erik},
+  journal={IEEE Journal of Biomedical and Health Informatics}, 
+  title={Decision-Change Informed Rejection Improves Robustness in Pattern Recognition-Based Myoelectric Control}, 
+  year={2023},
+  volume={27},
+  number={12},
+  pages={6051-6061},
+  doi={10.1109/JBHI.2023.3316599}}
 ```
 
 </details>
@@ -272,7 +313,16 @@ https://github.com/LibEMG/ContractionIntensity
 
 **References:**
 ```
-TODO
+@article{contraction_intensity,
+  title={Training strategies for mitigating the effect of proportional control on classification in pattern recognition--based myoelectric control},
+  author={Scheme, Erik and Englehart, Kevin},
+  journal={JPO: Journal of Prosthetics and Orthotics},
+  volume={25},
+  number={2},
+  pages={76--83},
+  year={2013},
+  publisher={LWW}
+}
 ```
 
 </details>
@@ -308,7 +358,13 @@ https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuA
 
 **References:**
 ```
-TODO
+@article{epn,
+  title={EMG-EPN-612 Dataset. 2020},
+  author={Benalc{\'a}zar, M and Barona, L and Valdivieso, L and Aguas, X and Zea, J},
+  journal={DOI: https://doi. org/10.5281/zenodo},
+  volume={4027874},
+  year={2020}
+}
 ```
 
 </details>
@@ -343,7 +399,12 @@ https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset
 
 **References:**
 ```
-TODO
+@article{fors_emg,
+  title={FORS-EMG: A Novel sEMG Dataset for Hand Gesture Recognition Across Multiple Forearm Orientations},
+  author={Rumman, Umme and Ferdousi, Arifa and Hossain, Md Sazzad and Islam, Md Johirul and Ahmad, Shamim and Reaz, Mamun Bin Ibne and Islam, Md Rezaul},
+  journal={arXiv preprint arXiv:2409.07484},
+  year={2024}
+}
 ```
 
 </details>
@@ -381,7 +442,16 @@ https://github.com/LibEMG/LimbPosition
 
 **References:**
 ```
-TODO
+@article{fougner_lp,
+  title={Resolving the limb position effect in myoelectric pattern recognition},
+  author={Fougner, Anders and Scheme, Erik and Chan, Adrian DC and Englehart, Kevin and Stavdahl, {\O}yvind},
+  journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering},
+  volume={19},
+  number={6},
+  pages={644--651},
+  year={2011},
+  publisher={IEEE}
+}
 ```
 
 </details>
@@ -417,11 +487,63 @@ https://physionet.org/content/grabmyo/1.0.2/
 
 **References:**
 ```
-TODO
+@article{grabmyo,
+  title={Multi-day dataset of forearm and wrist electromyogram for hand gesture recognition and biometrics},
+  author={Pradhan, Ashirbad and He, Jiayuan and Jiang, Ning},
+  journal={Scientific data},
+  volume={9},
+  number={1},
+  pages={733},
+  year={2022},
+  publisher={Nature Publishing Group UK London}
+}
 ```
 
 </details>
 </br>
+
+<!-- ------------- Hyser -------------------- -->
+
+<details>
+<summary><b>HyserPR</b></summary>
+
+<br>
+
+**Dataset Description:**
+High Density Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Subjects:**      | 18       |
+| **Num Reps:**      | 1 Train, 1 Test (Consisting of dynamic and maintanance tasks)     |
+| **Classes:**       | <ul><li>1 - Thumb Extension</li><li>2 - Index Finger Extension</li><li>3 - Middle Finger Extension</li><li>4 - Ring Finger Extension</li><li>5 - Little Finger Extension</li><li>6 - Wrist Flexion</li><li>7 - Wrist Extension</li><li>8 - Wrist Radial</li><li>9 - Wrist Ulnar</li><li>10 - Wrist Pronation</li><li>11 - Wrist Supination</li><li>12 - Extension of Thumb and Index Fingers</li><li>13 - Extension of Index and Middle Fingers</li><li>14 - Wrist Flexion Combined with Hand Close</li><li>15 - Wrist Extension Combined with Hand Close</li><li>16 - Wrist Radial Combined with Hand Close</li><li>17 - Wrist Ulnar Combined with Hand Close</li><li>18 - Wrist Pronation Combined with Hand Close</li><li>19 - Wrist Supination Combined with Hand Close</li><li>20 - Wrist Flexion Combined with Hand Open</li><li>21 - Wrist Extension Combined with Hand Open</li><li>22 - Wrist Radial Combined with Hand Open</li><li>23 - Wrist Ulnar Combined with Hand Open</li><li>24 - Wrist Pronation Combined with Hand Open</li><li>25 - Wrist Supination Combined with Hand Open</li><li>26 - Extension of Thumb, Index and Middle Fingers</li><li>27 - Extension of Index, Middle and Ring Fingers</li><li>28 - Extension of Middle, Ring and Little Fingers</li><li>29 - Extension of Index, Middle, Ring and Little Fingers</li><li>30 - Hand Close</li><li>31 - Hand Open</li><li>32 - Thumb and Index Fingers Pinch</li><li>33 - Thumb, Index and Middle Fingers Pinch</li><li>34 - Thumb and Middle Fingers Pinch</li></ul>   |
+| **Device:**        | OT Bioelettronica Quattrocento        |
+| **Sampling Rates:** | 2048 Hz        |
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list()['HyserPR']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://www.physionet.org/content/hd-semg/2.0.0/
+
+**References:**
+```
+@ARTICLE{hyser,
+  author={Jiang, Xinyu and Liu, Xiangyu and Fan, Jiahao and Ye, Xinming and Dai, Chenyun and Clancy, Edward A. and Akay, Metin and Chen, Wei},
+  journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 
+  title={Open Access Dataset, Toolbox and Benchmark Processing Results of High-Density Surface Electromyogram Recordings}, 
+  year={2021},
+  volume={29},
+  number={},
+  pages={1035-1046},
+  doi={10.1109/TNSRE.2021.3082551}}
+```
+</details>
+<br>
 
 <!-- ------------- Kauffman -------------------- -->
 <details>
@@ -452,7 +574,15 @@ https://github.com/LibEMG/MultiDay
 
 **References:**
 ```
-TODO
+@INPROCEEDINGS{kaufmann,
+  author={Kaufmann, Paul and Englehart, Kevin and Platzner, Marco},
+  booktitle={2010 Annual International Conference of the IEEE Engineering in Medicine and Biology}, 
+  title={Fluctuating emg signals: Investigating long-term effects of pattern matching algorithms}, 
+  year={2010},
+  volume={},
+  number={},
+  pages={6357-6360},
+  doi={10.1109/IEMBS.2010.5627288}}
 ```
 
 </details>
@@ -472,7 +602,6 @@ The Ninapro DB2 is a dataset that can be used to test how algorithms perform for
 | ------------------ | ----------- |
 | **Num Subjects:**      | 40       |
 | **Num Reps:**      | 6 |
-| **Time Per Rep:**      | 5s      |
 | **Classes:**       | 50 [Nina Pro DB2](http://ninapro.hevs.ch/node/123)    |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | 2000 Hz        |
@@ -489,7 +618,16 @@ Note, this dataset will not be automatically downloaded. To download this datase
 
 **References:**
 ```
-TODO.
+@article{db2,
+  title={Electromyography data for non-invasive naturally-controlled robotic hand prostheses},
+  author={Atzori, Manfredo and Gijsberts, Arjan and Castellini, Claudio and Caputo, Barbara and Hager, Anne-Gabrielle Mittaz and Elsig, Simone and Giatsidis, Giorgio and Bassetto, Franco and M{\"u}ller, Henning},
+  journal={Scientific data},
+  volume={1},
+  number={1},
+  pages={1--13},
+  year={2014},
+  publisher={Nature Publishing Group}
+}
 ```
 -------------
 
@@ -525,7 +663,16 @@ https://github.com/LibEMG/LimbPosition
 
 **References:**
 ```
-TODO
+@INPROCEEDINGS{radmand_lp,
+  author={Radmand, A. and Scheme, E. and Englehart, K.},
+  booktitle={2014 36th Annual International Conference of the IEEE Engineering in Medicine and Biology Society}, 
+  title={A characterization of the effect of limb position on EMG features to guide the development of effective prosthetic control schemes}, 
+  year={2014},
+  volume={},
+  number={},
+  pages={662-667},
+  keywords={},
+  doi={10.1109/EMBC.2014.6943678}}
 ```
 
 </details>
@@ -560,7 +707,16 @@ https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab
 
 **References:**
 ```
-TODO
+@article{tmr,
+  title={Myoelectric prosthesis hand grasp control following targeted muscle reinnervation in individuals with transradial amputation},
+  author={Simon, Ann M and Turner, Kristi L and Miller, Laura A and Dumanian, Gregory A and Potter, Benjamin K and Beachler, Mark D and Hargrove, Levi J and Kuiken, Todd A},
+  journal={PloS one},
+  volume={18},
+  number={1},
+  pages={e0280210},
+  year={2023},
+  publisher={Public Library of Science San Francisco, CA USA}
+}
 ```
 
 </details>
@@ -569,7 +725,52 @@ TODO
 
 ## Regression 
 
-<!-- ------------- EMG2POSe -------------------- -->
+<!-- ------------- One Subject EmaGer -------------------- -->
+
+<details>
+<summary><b>OneSubjectEmaGEr</b></summary>
+
+<br>
+
+**Dataset Description:**
+Simple one subject regression dataset. 
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Subjects:**      | 1       |
+| **Num Reps:**      | 5 Reps |
+| **Classes:**       | <ul><li>0: Hand Close (-) / Hand Open (+) </li><li>Pronation (-) / Supination (+)</li></li></ul>       |
+| **Device:**        | EmaGEr        |
+| **Sampling Rates:** | 1010 Hz        |
+
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['OneSubjectMyo']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://github.com/LibEMG/OneSubjectMyoDataset
+
+**References:**
+```
+@ARTICLE{libemg,
+  author={Eddy, Ethan and Campbell, Evan and Phinyomark, Angkoon and Bateman, Scott and Scheme, Erik},
+  journal={IEEE Access}, 
+  title={LibEMG: An Open Source Library to Facilitate the Exploration of Myoelectric Control}, 
+  year={2023},
+  volume={11},
+  number={},
+  pages={87380-87397},
+  doi={10.1109/ACCESS.2023.3304544}}
+```
+</details>
+
+<br>
+
+<!-- ------------- EMG2POSE -------------------- -->
 
 <details>  
 <summary><b>EMG2POSE</b></summary>  
@@ -590,7 +791,8 @@ A large dataset from ctrl-labs (Meta) for joint angle estimation. Note that not 
 **Using the Dataset:**  
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list('REGRESSION')['EMG2POSE']()
+dataset = get_dataset_list('REGRESSION')['EMG2POSE']() # Within USer 
+dataset = get_dataset_list('REGRESSION', cross_user=True)['EMG2POSE']() # Cross User 
 odh = dataset.prepare_data()
 ```
 
@@ -599,11 +801,17 @@ https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar
 
 **References:**
 ```
-TODO
+@inproceedings{salteremg2pose,
+  title={emg2pose: A Large and Diverse Benchmark for Surface Electromyographic Hand Pose Estimation},
+  author={Salter, Sasha and Warren, Richard and Schlager, Collin and Spurr, Adrian and Han, Shangchen and Bhasin, Rohin and Cai, Yujun and Walkington, Peter and Bolarinwa, Anuoluwapo and Wang, Robert and others},
+  booktitle={The Thirty-eight Conference on Neural Information Processing Systems Datasets and Benchmarks Track}
+}
 ```
 
 </details>
 </br>
+
+<!-- ------------- DB8 -------------------- -->
 
 <details>
 <summary><b>NinaProDB8</b></summary>
@@ -612,7 +820,6 @@ TODO
 | ------------------ | ----------- |
 | **Num Subjects:**      | 12       |
 | **Num Reps:**      | 20 Training, 2 Testing |
-| **Time Per Rep:**      | 6-9s      |
 | **Classes:**       | 9 [NinaProDB8](http://ninapro.hevs.ch/DB8)    |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | 1111 Hz        |
@@ -629,9 +836,151 @@ Note, this dataset will not be automatically downloaded. To download this datase
 
 **References:**
 ```
+@article{db8,
+  title={Effect of user practice on prosthetic finger control with an intuitive myoelectric decoder},
+  author={Krasoulis, Agamemnon and Vijayakumar, Sethu and Nazarpour, Kianoush},
+  journal={Frontiers in neuroscience},
+  volume={13},
+  pages={891},
+  year={2019},
+  publisher={Frontiers Media SA}
+}
 ```
 </details>
 </br>
+
+<!-- ------------- Hyser 1DOF -------------------- -->
+<details>  
+<summary><b>Hyser1DOF</b></summary>  
+
+<br>
+
+**Dataset Description:**  
+Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.
+<br>
+
+| Attribute         | Description                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 20                                                                                                         |
+| **Num Reps:**     | 3                                                                                                         |
+| **Classes:**      |   <ul><li>1 - Thumb</li><li>2 - Index</li><li>3 - Middle</li><li>4 - Ring</li><li>5 - Little</li></ul>  |
+| **Device:**        | OT Bioelettronica Quattrocento        |
+| **Sampling Rates:** | 2048 Hz        |
+
+**Using the Dataset:**  
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['Hyser1DOF']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://www.physionet.org/content/hd-semg/2.0.0/
+
+**References:**
+```
+@ARTICLE{hyser,
+  author={Jiang, Xinyu and Liu, Xiangyu and Fan, Jiahao and Ye, Xinming and Dai, Chenyun and Clancy, Edward A. and Akay, Metin and Chen, Wei},
+  journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 
+  title={Open Access Dataset, Toolbox and Benchmark Processing Results of High-Density Surface Electromyogram Recordings}, 
+  year={2021},
+  volume={29},
+  number={},
+  pages={1035-1046},
+  doi={10.1109/TNSRE.2021.3082551}}
+```
+
+</details>
+</br>
+
+<!-- ------------- Hyser NDOF -------------------- -->
+<details>  
+<summary><b>HyserNDOF</b></summary>  
+
+<br>
+
+**Dataset Description:**  
+Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.
+<br>
+
+| Attribute         | Description                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 20                                                                                                         |
+| **Num Reps:**     | 2                                                                                                         |
+| **Classes:**      |   <ul><li>1 - Thumb + Index</li><li>2 - Thumb + Middle</li><li>3 - Thumb + Ring</li><li>4 - Thumb + Little</li><li>5 - Index + Middle</li><li>6 - Thumb + Index + Middle</li><li>7 - Index + Middle + Ring</li><li>8 - Middle + Ring + Little</li><li>9 - Index + Middle + Ring + Little</li><li>10 - All Fingers</li><li>11 - Thumb + Index (Opposing)</li><li>12 - Thumb + Middle (Opposing)</li><li>13 - Thumb + Ring (Opposing)</li><li>14 - Thumb + Little (Opposing)</li><li>15 - Index + Middle (Opposing)</li></ul>  |
+| **Device:**        | OT Bioelettronica Quattrocento        |
+| **Sampling Rates:** | 2048 Hz        |
+
+**Using the Dataset:**  
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['HyserNDOF']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://www.physionet.org/content/hd-semg/2.0.0/
+
+**References:**
+```
+@ARTICLE{hyser,
+  author={Jiang, Xinyu and Liu, Xiangyu and Fan, Jiahao and Ye, Xinming and Dai, Chenyun and Clancy, Edward A. and Akay, Metin and Chen, Wei},
+  journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 
+  title={Open Access Dataset, Toolbox and Benchmark Processing Results of High-Density Surface Electromyogram Recordings}, 
+  year={2021},
+  volume={29},
+  number={},
+  pages={1035-1046},
+  doi={10.1109/TNSRE.2021.3082551}}
+```
+
+</details>
+</br>
+
+<!-- ------------- Hyser Random -------------------- -->
+<details>  
+<summary><b>HyserNDOF</b></summary>  
+
+<br>
+
+**Dataset Description:**  
+Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.
+<br>
+
+| Attribute         | Description                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 19                                                                                                         |
+| **Num Reps:**     | 5                                                                                                         |
+| **Classes:**      |   Random  |
+| **Device:**        | OT Bioelettronica Quattrocento        |
+| **Sampling Rates:** | 2048 Hz        |
+
+**Using the Dataset:**  
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['HyserRandom']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://www.physionet.org/content/hd-semg/2.0.0/
+
+**References:**
+```
+@ARTICLE{hyser,
+  author={Jiang, Xinyu and Liu, Xiangyu and Fan, Jiahao and Ye, Xinming and Dai, Chenyun and Clancy, Edward A. and Akay, Metin and Chen, Wei},
+  journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 
+  title={Open Access Dataset, Toolbox and Benchmark Processing Results of High-Density Surface Electromyogram Recordings}, 
+  year={2021},
+  volume={29},
+  number={},
+  pages={1035-1046},
+  doi={10.1109/TNSRE.2021.3082551}}
+```
+
+</details>
+</br>
+
 
 <!-- ------------- User Compliance -------------------- -->
 <details>  
@@ -663,7 +1012,12 @@ https://github.com/LibEMG/UserComplianceDataset
 
 **References:**
 ```
-TODO
+@inproceedings{morrell2024exploring,
+  title={Exploring user compliance in the training of regression-based myoelectric control},
+  author={Morrell, Christian and Campbell, Evan and Scheme, Erik},
+  booktitle={Myoelectric Controls Symposium},
+  year={2024}
+}
 ```
 
 </details>
