@@ -1,5 +1,6 @@
 import math
 import time
+from dataclasses import dataclass
 
 import pygame
 import numpy as np
@@ -12,54 +13,76 @@ OUTSIDE_TARGET = pygame.USEREVENT + 1
 INSIDE_TARGET = pygame.USEREVENT + 2
 
 
+@dataclass(frozen=True)
+class FittsConfig:
+    """Dataclass to customize parameters (e.g., target size and color) for a real-time Fitts' Law style task.
+
+    Parameters
+    ----------
+    num_trials : int, optional
+        Number of trials user must complete. Defaults to 15.
+    dwell_time : float, optional
+        Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
+    timeout : float, optional
+        Time limit (in seconds) that signifies a failed trial. Defaults to 30.
+    velocity : float, optional
+        Velocity scalar that controls the max speed of the cursor. Defaults to 25.
+    save_file : str | None, optional
+        Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
+    width : int, optional
+        Width of display (in pixels). Defaults to 1250.
+    height : int, optional
+        Height of display (in pixels). Defaults to 750.
+    fps : int, optional
+        Frames per second (in Hz). Defaults to 60.
+    proportional_control : bool, optional
+        True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
+    target_radius : int, optional
+        Radius (in pixels) of each individual target. Defaults to 40.
+    game_time : float, optional
+        Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
+        If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
+    mapping : str, optional
+        Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
+        Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
+        Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
+    cursor_color : tuple, optional
+        Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to yellow (255, 255, 0).
+    target_color : tuple, optional
+        Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to red (255, 0, 0).
+    """
+    num_trials: int = 15
+    dwell_time: float = 3.0
+    timeout: float = 30.0
+    velocity: float = 25.0
+    save_file: str | None = None
+    width: int = 1250
+    height: int = 750
+    fps: int = 60
+    proportional_control: bool = True
+    target_radius: int = 40
+    game_time: float | None = None
+    mapping: str = 'cartesian'
+    cursor_color: tuple[int, int, int] = (255, 255, 0)
+    target_color: tuple[int, int, int] = (255, 0, 0)
+
+
 class Fitts(Environment):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
-                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, game_time: float | None = None, mapping: str = 'cartesian', cursor_color: tuple[int, int, int] = (255, 255, 0),
-                 target_color: tuple[int, int, int] = (255, 0, 0)):
+    def __init__(self, controller: Controller, config: FittsConfig, prediction_map: dict | None = None):
         """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
 
         Parameters
         ----------
         controller : Controller
             Interface to parse predictions which determine the direction of the cursor.
+        config : FittsConfig
+            Configuration class that determines environment parameters (e.g., target size).
         prediction_map : dict | None, optional
             Maps received control commands to cursor movement - only used if a non-continuous controller is used (e.g., classifier). If a continuous controller is used (e.g., regressor),
             then 2 DoFs are expected when parsing predictions and this parameter is not used. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to
             down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
             values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
             represented by a single key in the dictionary. Defaults to None.
-        num_trials : int, optional
-            Number of trials user must complete. Defaults to 15.
-        dwell_time : float, optional
-            Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
-        timeout : float, optional
-            Time limit (in seconds) that signifies a failed trial. Defaults to 30.
-        velocity : float, optional
-            Velocity scalar that controls the max speed of the cursor. Defaults to 25.
-        save_file : str | None, optional
-            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
-        width : int, optional
-            Width of display (in pixels). Defaults to 1250.
-        height : int, optional
-            Height of display (in pixels). Defaults to 750.
-        fps : int, optional
-            Frames per second (in Hz). Defaults to 60.
-        proportional_control : bool, optional
-            True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
-        target_radius : int, optional
-            Radius (in pixels) of each individual target. Defaults to 40.
-        game_time : float, optional
-            Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
-            If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
-        mapping : str, optional
-            Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
-            Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
-            Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
-        cursor_color : tuple, optional
-            Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to yellow (255, 255, 0).
-        target_color : tuple, optional
-            Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to red (255, 0, 0).
         """
         # logging information
         log_dictionary = {
@@ -78,15 +101,15 @@ class Fitts(Environment):
             3: 'E',
             4: 'W'
         }
-        super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
-        self.mapping = mapping
+        self.config = config
+        super().__init__(controller, fps=self.config.fps, log_dictionary=log_dictionary, save_file=self.config.save_file)
 
-        if self.mapping == 'cartesian':
+        if self.config.mapping == 'cartesian':
             self.render_as_polar = False
-        elif self.mapping in ['polar+', 'polar-']:
+        elif self.config.mapping in ['polar+', 'polar-']:
             self.render_as_polar = True
         else:
-            raise ValueError(f"Unexpected value for mapping. Got: {self.mapping}.")
+            raise ValueError(f"Unexpected value for mapping. Got: {self.config.mapping}.")
 
         if prediction_map is None:
             prediction_map = default_prediction_map
@@ -95,46 +118,34 @@ class Fitts(Environment):
         self.prediction_map = prediction_map
 
         self.font = pygame.font.SysFont('helvetica', 40)
-        self.screen = pygame.display.set_mode([width, height])
+        self.screen = pygame.display.set_mode([self.config.width, self.config.height])
 
         # gameplay parameters
         self.BLACK = (0,0,0)
-        self.target_color   = target_color
-        self.cursor_color = cursor_color
         self.BLUE   = (0,102,204)
-        self.small_rad = target_radius
-
-        self.VEL = velocity
-        self.dwell_time = dwell_time
-        self.max_trial = num_trials
-        self.width = width
-        self.height = height
         self.trial = -1
 
-        if '+' in self.mapping:
+        if '+' in self.config.mapping:
             theta_bounds = (math.pi, 0)
         else:
             theta_bounds = (0, math.pi)
         
         self.theta_bounds = theta_bounds
-        self.polar_origin = (self.width // 2, self.height // 2)
-        self.polar_origin = (self.width // 2, self.height)
+        self.polar_origin = (self.config.width // 2, self.config.height // 2)
+        self.polar_origin = (self.config.width // 2, self.config.height)
         self.polygon_angles = np.linspace(0, 2 * math.pi, num=100)  # could change how many points are calculated based on desired FPS (having 1000 caused frame rate issues)
 
         # interface objects
-        self.cursor = pygame.Rect(self.width//2 - 7, self.height//2 - 7, 14, 14)
+        self.cursor = pygame.Rect(self.config.width//2 - 7, self.config.height//2 - 7, 14, 14)
         self._get_new_goal_target()
         self.current_direction = [0,0]
 
         self.timeout_timer = None
-        self.timeout = timeout   # (seconds)
         self.trial_duration = 0
-        self.proportional_control = proportional_control
         self._info = ['predictions', 'timestamp']
-        if self.proportional_control:
+        if self.config.proportional_control:
             self._info.append('pc')
         self.start_time = time.time()
-        self.game_time = game_time
         self.dwell_timer = None
 
     def _draw(self):
@@ -144,10 +155,10 @@ class Fitts(Environment):
         self._draw_timer()
     
     def _draw_targets(self):
-        self._draw_circle(self.goal_target, self.target_color)
+        self._draw_circle(self.goal_target, self.config.target_color)
     
     def _draw_cursor(self):
-        self._draw_circle(self.cursor, self.cursor_color)
+        self._draw_circle(self.cursor, self.config.cursor_color)
 
     def _draw_timer(self):
         if self.dwell_timer is not None:
@@ -182,7 +193,7 @@ class Fitts(Environment):
                 self.done = True
                 return
 
-        if self.game_time is not None and (time.time() - self.start_time) >= self.game_time:
+        if self.config.game_time is not None and (time.time() - self.start_time) >= self.config.game_time:
             self.done = True
             return
             
@@ -219,8 +230,8 @@ class Fitts(Environment):
                 
                 pc = [pc, pc]
 
-            self.current_direction[0] += self.VEL * float(predictions[0]) * pc[0]
-            self.current_direction[1] -= self.VEL * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
+            self.current_direction[0] += self.config.velocity * float(predictions[0]) * pc[0]
+            self.current_direction[1] -= self.config.velocity * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
             self._log(str(predictions), timestamp)
         
@@ -235,7 +246,7 @@ class Fitts(Environment):
             else:
                 toc = time.perf_counter()
                 self.duration = round((toc - self.dwell_timer), 2)
-            if self.duration >= self.dwell_time:
+            if self.duration >= self.config.dwell_time:
                 self._get_new_goal_target()
                 self.dwell_timer = None
 
@@ -245,7 +256,7 @@ class Fitts(Environment):
             toc = time.perf_counter()
             self.trial_duration = round((toc - self.timeout_timer), 2)
 
-        if self.trial_duration >= self.timeout:
+        if self.trial_duration >= self.config.timeout:
             # Timeout
             self._get_new_goal_target()
             self.timeout_timer = None
@@ -256,22 +267,22 @@ class Fitts(Environment):
 
         # Ensure cursor stays in the bounds of the screen
         self.cursor.left = max(0, self.cursor.left)
-        self.cursor.left = min(self.width - self.cursor.width, self.cursor.left)
+        self.cursor.left = min(self.config.width - self.cursor.width, self.cursor.left)
         self.cursor.top = max(0, self.cursor.top)
-        self.cursor.top = min(self.height - self.cursor.height, self.cursor.top)
+        self.cursor.top = min(self.config.height - self.cursor.height, self.cursor.top)
     
     def _get_new_goal_target(self):
         self.timeout_timer = None
         self.trial_duration = 0
 
-        max_radius = int(min(self.width, self.height) * 0.5)   # only create targets in a centered circle (based on size of screen)
+        max_radius = int(min(self.config.width, self.config.height) * 0.5)   # only create targets in a centered circle (based on size of screen)
         while True:
-            target_radius = np.random.randint(self.cursor[2], self.small_rad)
+            target_radius = np.random.randint(self.cursor[2], self.config.target_radius)
             target_position_radius = np.random.randint(0, max_radius - target_radius)
             target_angle = np.random.uniform(0, 2 * math.pi)
             # Convert to cartesian (relative to pygame origin, not center of screen)
-            x = self.width // 2 + target_position_radius * math.cos(target_angle)
-            y = self.height // 2 - target_position_radius * math.sin(target_angle)  # subtract b/c y is inverted in pygame
+            x = self.config.width // 2 + target_position_radius * math.cos(target_angle)
+            y = self.config.height // 2 - target_position_radius * math.sin(target_angle)  # subtract b/c y is inverted in pygame
             # Continue until we create a target that isn't on the cursor
             if math.dist((x, y), self.cursor.center) > (target_radius + self.cursor[2] // 2):
                 break
@@ -281,7 +292,7 @@ class Fitts(Environment):
         self.goal_target = pygame.Rect(left, top, target_radius * 2, target_radius * 2)
 
         self.trial += 1
-        if self.trial == self.max_trial:
+        if self.trial == self.config.num_trials:
             self.done = True
 
     def _log(self, label, timestamp):
@@ -294,8 +305,8 @@ class Fitts(Environment):
         self.log_dictionary['current_direction'].append(self.current_direction)
 
     def _map_to_polar_space(self, x, y):
-        radius = np.interp(x, (0, self.width), (0, min(self.width // 2, self.height)))  # limit radius based on screen dimensions so circles stay on screen
-        theta = np.interp(y, (0, self.height), self.theta_bounds)
+        radius = np.interp(x, (0, self.config.width), (0, min(self.config.width // 2, self.config.height)))  # limit radius based on screen dimensions so circles stay on screen
+        theta = np.interp(y, (0, self.config.height), self.theta_bounds)
 
         # theta is the angle from the right side of the screen and goes counter-clockwise (same as unit circle)
         polar_x = radius * np.cos(theta) + self.polar_origin[0]
@@ -340,60 +351,28 @@ class Fitts(Environment):
 
 
 class ISOFitts(Fitts):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
-                 velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, game_time: float | None = None, mapping: str = 'cartesian', cursor_color: tuple[int, int, int] = (255, 255, 0),
-                 target_color: tuple[int, int, int] = (255, 0, 0), num_targets: int = 8, target_distance_radius: int = 275):
+    def __init__(self, controller: Controller, config: FittsConfig, prediction_map: dict | None = None, num_targets: int = 8, target_distance_radius: int = 275):
         """ISO Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
         ----------
         controller : Controller
             Interface to parse predictions which determine the direction of the cursor.
+        config : FittsConfig
+            Configuration class that determines environment parameters (e.g., target size).
         prediction_map : dict | None, optional
             Maps received control commands to cursor movement - only used if a non-continuous controller is used (e.g., classifier). If a continuous controller is used (e.g., regressor),
             then 2 DoFs are expected when parsing predictions and this parameter is not used. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to
             down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
             values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
             represented by a single key in the dictionary. Defaults to None.
-        num_trials : int, optional
-            Number of trials user must complete. Defaults to 15.
-        dwell_time : float, optional
-            Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
-        timeout : float, optional
-            Time limit (in seconds) that signifies a failed trial. Defaults to 30.
-        velocity : float, optional
-            Velocity scalar that controls the max speed of the cursor. Defaults to 25.
-        save_file : str | None, optional
-            Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
-        width : int, optional
-            Width of display (in pixels). Defaults to 1250.
-        height : int, optional
-            Height of display (in pixels). Defaults to 750.
-        fps : int, optional
-            Frames per second (in Hz). Defaults to 60.
-        proportional_control : bool, optional
-            True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
-        target_radius : int, optional
-            Radius (in pixels) of each individual target. Defaults to 40.
-        target_distance_radius : int, optional
-            Radius (in pixels) of target of targets in Iso Fitts' environment. Defaults to 275.
-        game_time : float, optional
-            Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
-            If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
-        mapping : str, optional
-            Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
-            Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
-            Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
-        cursor_color : tuple, optional
-            Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to yellow (255, 255, 0).
-        target_color : tuple, optional
-            Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to red (255, 0, 0).
         num_targets : int, optional
             Number of targets in task. Defaults to 8.
+        target_distance_radius : int, optional
+            Radius (in pixels) of target of targets in Iso Fitts' environment. Defaults to 275.
         """
-        width_is_too_small = target_distance_radius > width // 2
-        height_is_too_small = target_distance_radius > height // 2
+        width_is_too_small = target_distance_radius > config.width // 2
+        height_is_too_small = target_distance_radius > config.height // 2
         if width_is_too_small and height_is_too_small:
             error_info = f"width and height"
         elif width_is_too_small:
@@ -407,7 +386,7 @@ class ISOFitts(Fitts):
             raise ValueError(f"Radius between ISO Fitts targets is larger than screen size will allow. "
                              f"Target distance radius must be less than half the screen dimensions. "
                              f"Please increase screen {error_info} or reduce target distance radius.")
-        assert target_distance_radius < width // 2 and target_distance_radius < height // 2, f"Radius between ISO Fitts targets is larger than screen size will allow. Please increase screen size or reduce target distance radius."
+        assert target_distance_radius < config.width // 2 and target_distance_radius < config.height // 2, f"Radius between ISO Fitts targets is larger than screen size will allow. Please increase screen size or reduce target distance radius."
         self.goal_target_idx = -1
         self.num_of_targets = num_targets
         self.big_rad = target_distance_radius
@@ -418,21 +397,19 @@ class ISOFitts(Fitts):
         angle_increment = 360 // self.num_of_targets
         while angle < 360:
             self.targets.append(pygame.Rect(
-                (width//2 - target_radius) + math.cos(math.radians(angle)) * self.big_rad,
-                (height//2 - target_radius) + math.sin(math.radians(angle)) * self.big_rad,
-                target_radius * 2, target_radius * 2
+                (config.width // 2 - config.target_radius) + math.cos(math.radians(angle)) * self.big_rad,
+                (config.height // 2 - config.target_radius) + math.sin(math.radians(angle)) * self.big_rad,
+                config.target_radius * 2, config.target_radius * 2
             ))
             angle += angle_increment
 
-        super().__init__(controller, prediction_map=prediction_map, num_trials=num_trials, dwell_time=dwell_time, timeout=timeout, velocity=velocity,
-                         save_file=save_file, width=width, height=height, fps=fps, proportional_control=proportional_control, target_radius=target_radius, game_time=game_time,
-                         mapping=mapping, cursor_color=cursor_color, target_color=target_color)
+        super().__init__(controller, config, prediction_map=prediction_map)
 
     def _draw_targets(self):
         for target in self.targets:
-            self._draw_circle(target, self.target_color, fill=False) # draw target outlines
+            self._draw_circle(target, self.config.target_color, fill=False) # draw target outlines
         
-        self._draw_circle(self.goal_target, self.target_color, fill=True)    # fill in goal target
+        self._draw_circle(self.goal_target, self.config.target_color, fill=True)    # fill in goal target
 
     def _get_new_goal_target(self):
         super()._get_new_goal_target()
