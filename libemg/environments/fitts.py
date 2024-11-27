@@ -1,6 +1,5 @@
 import math
 import time
-from copy import deepcopy
 
 import pygame
 import numpy as np
@@ -16,7 +15,8 @@ INSIDE_TARGET = pygame.USEREVENT + 2
 class Fitts(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, game_time: float | None = None, mapping: str = 'cartesian'):
+                 target_radius: int = 40, game_time: float | None = None, mapping: str = 'cartesian', cursor_color: tuple[int, int, int] = (255, 255, 0),
+                 target_color: tuple[int, int, int] = (255, 0, 0)):
         """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -56,6 +56,10 @@ class Fitts(Environment):
             Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
             Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
             Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
+        cursor_color : tuple, optional
+            Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to yellow (255, 255, 0).
+        target_color : tuple, optional
+            Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to red (255, 0, 0).
         """
         # logging information
         log_dictionary = {
@@ -95,8 +99,8 @@ class Fitts(Environment):
 
         # gameplay parameters
         self.BLACK = (0,0,0)
-        self.RED   = (255,0,0)
-        self.YELLOW = (255,255,0)
+        self.target_color   = target_color
+        self.cursor_color = cursor_color
         self.BLUE   = (0,102,204)
         self.small_rad = target_radius
 
@@ -140,10 +144,10 @@ class Fitts(Environment):
         self._draw_timer()
     
     def _draw_targets(self):
-        self._draw_circle(self.goal_target, self.RED)
+        self._draw_circle(self.goal_target, self.target_color)
     
     def _draw_cursor(self):
-        self._draw_circle(self.cursor, self.YELLOW)
+        self._draw_circle(self.cursor, self.cursor_color)
 
     def _draw_timer(self):
         if self.dwell_timer is not None:
@@ -336,9 +340,10 @@ class Fitts(Environment):
 
 
 class ISOFitts(Fitts):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 8, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
+    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
-                 target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None, mapping: str = 'cartesian'):
+                 target_radius: int = 40, game_time: float | None = None, mapping: str = 'cartesian', cursor_color: tuple[int, int, int] = (255, 255, 0),
+                 target_color: tuple[int, int, int] = (255, 0, 0), num_targets: int = 8, target_distance_radius: int = 275):
         """ISO Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -351,8 +356,6 @@ class ISOFitts(Fitts):
             down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
             values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
             represented by a single key in the dictionary. Defaults to None.
-        num_targets : int, optional
-            Number of targets in task. Defaults to 8.
         num_trials : int, optional
             Number of trials user must complete. Defaults to 15.
         dwell_time : float, optional
@@ -382,6 +385,12 @@ class ISOFitts(Fitts):
             Space to map predictions to. Setting this to 'cartesian' uses the standard Fitts' style input space, where predictions map to the x and y position of the cursor.
             Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
             Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
+        cursor_color : tuple, optional
+            Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to yellow (255, 255, 0).
+        target_color : tuple, optional
+            Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to red (255, 0, 0).
+        num_targets : int, optional
+            Number of targets in task. Defaults to 8.
         """
         width_is_too_small = target_distance_radius > width // 2
         height_is_too_small = target_distance_radius > height // 2
@@ -417,13 +426,13 @@ class ISOFitts(Fitts):
 
         super().__init__(controller, prediction_map=prediction_map, num_trials=num_trials, dwell_time=dwell_time, timeout=timeout, velocity=velocity,
                          save_file=save_file, width=width, height=height, fps=fps, proportional_control=proportional_control, target_radius=target_radius, game_time=game_time,
-                         mapping=mapping)
+                         mapping=mapping, cursor_color=cursor_color, target_color=target_color)
 
     def _draw_targets(self):
         for target in self.targets:
-            self._draw_circle(target, self.RED, fill=False) # draw target outlines
+            self._draw_circle(target, self.target_color, fill=False) # draw target outlines
         
-        self._draw_circle(self.goal_target, self.RED, fill=True)    # fill in goal target
+        self._draw_circle(self.goal_target, self.target_color, fill=True)    # fill in goal target
 
     def _get_new_goal_target(self):
         super()._get_new_goal_target()
