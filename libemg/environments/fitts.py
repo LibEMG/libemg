@@ -390,9 +390,9 @@ class ISOFitts(Fitts):
             error_info = None
         
         if error_info is not None:
-            raise ValueError(f"Radius between ISO Fitts targets is larger than screen size will allow. 
-                             Target distance radius must be less than half the screen dimensions.
-                             Please increase screen {error_info} or reduce target distance radius.")
+            raise ValueError(f"Radius between ISO Fitts targets is larger than screen size will allow. "
+                             f"Target distance radius must be less than half the screen dimensions. "
+                             f"Please increase screen {error_info} or reduce target distance radius.")
         assert target_distance_radius < width // 2 and target_distance_radius < height // 2, f"Radius between ISO Fitts targets is larger than screen size will allow. Please increase screen size or reduce target distance radius."
         self.goal_target_idx = -1
         self.num_of_targets = num_targets
