@@ -241,13 +241,14 @@ class Fitts(Environment):
             self.timeout_timer = None
 
     def _move(self):
-        # Making sure its within the bounds of the screen
-        right = self.cursor.left + self.cursor[2]
-        bottom = self.cursor.top + self.cursor[2]
-        if self.cursor.left + self.current_direction[0] > 0 and right + self.current_direction[0] < self.width:
-            self.cursor.left += self.current_direction[0]
-        if self.cursor.top + self.current_direction[1] > 0 and bottom + self.current_direction[1] < self.height:
-            self.cursor.top += self.current_direction[1]
+        self.cursor.left += self.current_direction[0]
+        self.cursor.top += self.current_direction[1]
+
+        # Ensure cursor stays in the bounds of the screen
+        self.cursor.left = max(0, self.cursor.left)
+        self.cursor.left = min(self.width - self.cursor.width, self.cursor.left)
+        self.cursor.top = max(0, self.cursor.top)
+        self.cursor.top = min(self.height - self.cursor.height, self.cursor.top)
     
     def _get_new_goal_target(self):
         self.timeout_timer = None
