@@ -12,7 +12,7 @@ with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
 # python -m twine upload --repository testpypi dist/* --verbose  <------ testpypi
 #
 
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 DESCRIPTION = "LibEMG - Myoelectric Control Library"
 LONG_DESCRIPTION = "A library for designing and exploring real-time and offline myoelectric control systems."
 
