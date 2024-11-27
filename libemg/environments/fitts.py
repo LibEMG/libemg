@@ -336,7 +336,7 @@ class Fitts(Environment):
 
 
 class ISOFitts(Fitts):
-    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 30, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
+    def __init__(self, controller: Controller, prediction_map: dict | None = None, num_targets: int = 8, num_trials: int = 15, dwell_time: float = 3.0, timeout: float = 30.0, 
                  velocity: float = 25.0, save_file: str | None = None, width: int = 1250, height: int = 750, fps: int = 60, proportional_control: bool = True,
                  target_radius: int = 40, target_distance_radius: int = 275, game_time: float | None = None, mapping: str = 'cartesian'):
         """ISO Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
@@ -352,7 +352,7 @@ class ISOFitts(Fitts):
             values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
             represented by a single key in the dictionary. Defaults to None.
         num_targets : int, optional
-            Number of targets in task. Defaults to 30.
+            Number of targets in task. Defaults to 8.
         num_trials : int, optional
             Number of trials user must complete. Defaults to 15.
         dwell_time : float, optional
