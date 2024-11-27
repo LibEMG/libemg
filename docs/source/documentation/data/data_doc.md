@@ -939,7 +939,7 @@ https://www.physionet.org/content/hd-semg/2.0.0/
 
 <!-- ------------- Hyser Random -------------------- -->
 <details>  
-<summary><b>HyserNDOF</b></summary>  
+<summary><b>HyserRandom</b></summary>  
 
 <br>
 
