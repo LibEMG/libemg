@@ -42,6 +42,7 @@ Simple one subject dataset.
 | **Classes:**       | <ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
 | **Device:**        | Myo        |
 | **Sampling Rates:** | 200 Hz        |
+| **Auto Download:** | True       |
 
 
 **Using the Dataset:**
@@ -85,9 +86,11 @@ A relatively simple within session baseline.
 | Attribute          | Description |
 | ------------------ | ----------- |
 | **Num Subjects:**      | 22       |
-| **Num Reps:**      | 4 Training, 4 Testing       || **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
+| **Num Reps:**      | 4 Training, 4 Testing       |
+| **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | 1000 Hz        |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -133,6 +136,7 @@ The goal of this Myo dataset is to explore how well models perform when they hav
 | **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
 | **Device:**       | Myo Armband                                                                                         |
 | **Sampling Rates:** | 200 Hz                                                                                     |
+| **Auto Download:** | True       |
 
 
 **Using the Dataset:**
@@ -177,6 +181,7 @@ An electrode shift confounding factors dataset.
 | **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
 | **Device:**       | Myo Armband                                                                                         |
 | **Sampling Rates:** | 200 Hz                                                                                   |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -222,6 +227,7 @@ A weakly supervised environment with sparse supervised calibration.
 | **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
 | **Device:**       | OyMotion gForcePro+ EMG Armband                                                                     |
 | **Sampling Rates:** | 1000 Hz                                                                                    |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -257,6 +263,7 @@ The testing set in this dataset has continuous transitions between classes, prov
 | **Classes:**      | <ul><li>0 - No Motion</li><li>1 - Wrist Flexion</li><li>2 - Wrist Extension</li><li>3 - Wrist Pronation</li><li>4 - Wrist Supination</li><li>5 - Hand Close</li><li>6 - Hand Open</li></ul> |
 | **Device:**       | Delsys                                                                                               |
 | **Sampling Rates:** | 2000 Hz                                                                                    |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**
 ```Python
@@ -300,6 +307,7 @@ A contraction intensity dataset.
 | **Classes:**      | <ul><li>0 - No Motion</li><li>1 - Wrist Flexion</li><li>2 - Wrist Extension</li><li>3 - Wrist Pronation</li><li>4 - Wrist Supination</li><li>5 - Chuck Grip</li><li>6 - Hand Open</li></ul> |
 | **Device:**       | BE328 by Liberating Technologies, Inc                                                                |
 | **Sampling Rates:** | 1000 Hz                                                                                    |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -344,6 +352,7 @@ A large 612 user dataset for developing cross-user models.
 | **Classes:**      | <ul><li>0 - No Movement</li><li>1 - Hand Close</li><li>2 - Flexion</li><li>3 - Extension</li><li>4 - Hand Open</li><li>5 - Pinch</li></ul> |
 | **Device:**       | Myo Armband                                                                                         |
 | **Sampling Rates:** | 200 Hz                                                                                     |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -386,6 +395,7 @@ Twelve gestures elicited in three forearm orientations (neutral, pronation, and 
 | **Classes:**      | <ul><li>0 - Thump Up</li><li>1 - Index</li><li>2 - Right Angle</li><li>3 - Peace</li><li>4 - Index Little</li><li>5 - Thumb Little</li><li>6 - Hand Close</li><li>7 - Hand Open</li><li>8 - Wrist Flexion</li><li>9 - Wrist Extension</li><li>10 - Ulnar Deviation</li><li>11 - Radial Deviation</li></ul> |
 | **Device:**       | Experimental Device                                                                                    |
 | **Sampling Rates:** | 985 Hz                                                                                       |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**
 ```Python
@@ -428,6 +438,7 @@ A limb position dataset (with 5 static limb positions).
 | **Classes:**      | <ul><li>0 - Wrist Flexion</li><li>1 - Wrist Extension</li><li>2 - Pronation</li><li>3 - Supination</li><li>4 - Hand Open</li><li>5 - Power Grip</li><li>6 - Pinch Grip</li><li>7 - Rest</li></ul> |
 | **Device:**       | BE328 by Liberating Technologies, Inc.                                                                |
 | **Sampling Rates:** | 1000 Hz                                                                                     |
+| **Auto Download:** | True       |
 
 
 **Using the Dataset:**
@@ -473,6 +484,7 @@ A large cross-session dataset including 17 gestures elicited across 3 separate s
 | **Classes:**      | <ul><li>0 - Lateral Prehension</li><li>1 - Thumb Adduction</li><li>2 - Thumb and Little Finger Opposition</li><li>3 - Thumb and Index Finger Opposition</li><li>4 - Thumb and Index Finger Extension</li><li>5 - Thumb and Little Finger Extension</li><li>6 - Index and Middle Finger Extension</li><li>7 - Little Finger Extension</li><li>8 - Index Finger Extension</li><li>9 - Thumb Finger Extension</li><li>10 - Wrist Extension</li><li>11 - Wrist Flexion</li><li>12 - Forearm Supination</li><li>13 - Forearm Pronation</li><li>14 - Hand Open</li><li>15 - Hand Close</li><li>16 - Rest</li></ul> |
 | **Device:**       | EMGUSB2+ device (OT Bioelletronica, Italy)                                                           |
 | **Sampling Rates:** | 2048 Hz                                                                                      |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**
 ```Python
@@ -519,6 +531,7 @@ High Density Hyser pattern recognition (PR) dataset. Includes dynamic and mainte
 | **Classes:**       | <ul><li>1 - Thumb Extension</li><li>2 - Index Finger Extension</li><li>3 - Middle Finger Extension</li><li>4 - Ring Finger Extension</li><li>5 - Little Finger Extension</li><li>6 - Wrist Flexion</li><li>7 - Wrist Extension</li><li>8 - Wrist Radial</li><li>9 - Wrist Ulnar</li><li>10 - Wrist Pronation</li><li>11 - Wrist Supination</li><li>12 - Extension of Thumb and Index Fingers</li><li>13 - Extension of Index and Middle Fingers</li><li>14 - Wrist Flexion Combined with Hand Close</li><li>15 - Wrist Extension Combined with Hand Close</li><li>16 - Wrist Radial Combined with Hand Close</li><li>17 - Wrist Ulnar Combined with Hand Close</li><li>18 - Wrist Pronation Combined with Hand Close</li><li>19 - Wrist Supination Combined with Hand Close</li><li>20 - Wrist Flexion Combined with Hand Open</li><li>21 - Wrist Extension Combined with Hand Open</li><li>22 - Wrist Radial Combined with Hand Open</li><li>23 - Wrist Ulnar Combined with Hand Open</li><li>24 - Wrist Pronation Combined with Hand Open</li><li>25 - Wrist Supination Combined with Hand Open</li><li>26 - Extension of Thumb, Index and Middle Fingers</li><li>27 - Extension of Index, Middle and Ring Fingers</li><li>28 - Extension of Middle, Ring and Little Fingers</li><li>29 - Extension of Index, Middle, Ring and Little Fingers</li><li>30 - Hand Close</li><li>31 - Hand Open</li><li>32 - Thumb and Index Fingers Pinch</li><li>33 - Thumb, Index and Middle Fingers Pinch</li><li>34 - Thumb and Middle Fingers Pinch</li></ul>   |
 | **Device:**        | OT Bioelettronica Quattrocento        |
 | **Sampling Rates:** | 2048 Hz        |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**
 ```Python
@@ -561,6 +574,7 @@ A single subject, multi-day (120 days) collection.
 | **Classes:**      | <ul><li>0 - No Motion</li><li>1 - Wrist Extension</li><li>2 - Wrist Flexion</li><li>3 - Wrist Adduction</li><li>4 - Wrist Abduction</li><li>5 - Wrist Supination</li><li>6 - Wrist Pronation</li><li>7 - Hand Open</li><li>8 - Hand Closed</li><li>9 - Key Grip</li><li>10 - Index Point</li></ul> |
 | **Device:**       | MindMedia                                                                                           |
 | **Sampling Rates:** | 2048 Hz                                                                                     |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -605,6 +619,7 @@ The Ninapro DB2 is a dataset that can be used to test how algorithms perform for
 | **Classes:**       | 50 [Nina Pro DB2](http://ninapro.hevs.ch/node/123)    |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | 2000 Hz        |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**
 ```Python
@@ -650,6 +665,7 @@ A large limb position dataset (with 16 static limb positions).
 | **Classes:**      | <ul><li>Mapping is Uncertain</li></ul>                                                                    |
 | **Device:**       | DelsysTrigno                                                                                         |
 | **Sampling Rates:** | 1000 Hz                                                                                     |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -694,6 +710,7 @@ https://github.com/LibEMG/LimbPosition
 | **Classes:**      | <ul><li>0 - Hand Open</li><li>1 - Key Grip</li><li>2 - Power Grip</li><li>3 - Fine Pinch Opened</li><li>4 - Fine Pinch Closed</li><li>5 - Tripod Opened</li><li>6 - Tripod Closed</li><li>7 - Tool</li><li>8 - Hook</li><li>9 - Index Point</li><li>10 - Thumb Flexion</li><li>11 - Thumb Extension</li><li>12 - Thumb Abduction</li><li>13 - Thumb Adduction</li><li>14 - Index Flexion</li><li>15 - Ring Flexion</li><li>16 - Pinky Flexion</li><li>17 - Wrist Supination</li><li>18 - Wrist Pronation</li><li>19 - Wrist Flexion</li><li>20 - Wrist Extension</li><li>21 - Radial Deviation</li><li>22 - Ulnar Deviation</li><li>23 - No Motion</li></ul> |
 | **Device:**       | Ag/AgCl                                                                                             |
 | **Sampling Rates:** | 1000 Hz                                                                                     |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**
 ```Python
@@ -742,6 +759,7 @@ Simple one subject regression dataset.
 | **Classes:**       | <ul><li>0: Hand Close (-) / Hand Open (+) </li><li>Pronation (-) / Supination (+)</li></li></ul>       |
 | **Device:**        | EmaGEr        |
 | **Sampling Rates:** | 1010 Hz        |
+| **Auto Download:** | True       |
 
 
 **Using the Dataset:**
@@ -787,6 +805,7 @@ A large dataset from ctrl-labs (Meta) for joint angle estimation. Note that not 
 | **Classes:**      | <ul><li>FingerPinches1 - AllFingerPinchesThumbSwipeThumbRotate</li><li>Object1 - CoffeePanicPete</li><li>Counting1 - CountingUpDownFaceSideAway</li><li>Counting2 - CountingUpDownFingerWigglingSpreading</li><li>DoorknobFingerGraspFistGrab - DoorknobFingerGraspFistGrab</li><li>Throwing - FastPongFronthandBackhandThrowing</li><li>Abduction - FingerAbductionSeries</li><li>FingerFreeform - FingerFreeform</li><li>FingerPinches2 - FingerPinchesSingleFingerPinchesMultiple</li><li>HandHandInteractions - FingerTouchPalmClapmrburns</li><li>Wiggling1 - FingerWigglingSpreading</li><li>Punch - GraspPunchCloseFar</li><li>Gesture1 - HandClawGraspFlicks</li><li>StaticHands - HandDeskSeparateClaspedChest</li><li>FingerPinches3 - HandOverHandAllFingerPinchesThumbSwipeThumbRotate</li><li>Wiggling2 - HandOverHandCountingUpDownFingerWigglingSpreading</li><li>Unconstrained - unconstrained</li><li>Gesture2 - HookEmHornsOKScissors</li><li>FingerPinches4 - IndexPinchesMiddlePinchesThumbswipes</li><li>Pointing - IndividualFingerPointingSnap</li><li>Freestyle1 - OneHandedFreeStyle</li><li>Object2 - PlayBlocksChess</li><li>Draw - PokeDrawPinchRotateclosefar</li><li>Poke - PokePinchCloseFar</li><li>Gesture3 - ShakaVulcanPeace</li><li>ThumbsSwipes - ThumbsSwipesWholeHand</li><li>ThumbRotations - ThumbsUpDownThumbRotationsCWCCWP</li><li>Freestyle2 - TwoHandedFreeStyle</li><li>WristFlex - WristFlexionAbduction</li></ul> |
 | **Device:**       | Ctrl Labs Armband                                                                                           |
 | **Sampling Rates:** | 2000 Hz                                                                                                   |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**  
 ```Python
@@ -823,6 +842,7 @@ https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar
 | **Classes:**       | 9 [NinaProDB8](http://ninapro.hevs.ch/DB8)    |
 | **Device:**        | Delsys        |
 | **Sampling Rates:** | 1111 Hz        |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**
 ```Python
@@ -866,6 +886,7 @@ Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger f
 | **Classes:**      |   <ul><li>1 - Thumb</li><li>2 - Index</li><li>3 - Middle</li><li>4 - Ring</li><li>5 - Little</li></ul>  |
 | **Device:**        | OT Bioelettronica Quattrocento        |
 | **Sampling Rates:** | 2048 Hz        |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**  
 ```Python
@@ -910,6 +931,7 @@ Hyser N DOF dataset. Includes combined finger movements. Ground truth finger for
 | **Classes:**      |   <ul><li>1 - Thumb + Index</li><li>2 - Thumb + Middle</li><li>3 - Thumb + Ring</li><li>4 - Thumb + Little</li><li>5 - Index + Middle</li><li>6 - Thumb + Index + Middle</li><li>7 - Index + Middle + Ring</li><li>8 - Middle + Ring + Little</li><li>9 - Index + Middle + Ring + Little</li><li>10 - All Fingers</li><li>11 - Thumb + Index (Opposing)</li><li>12 - Thumb + Middle (Opposing)</li><li>13 - Thumb + Ring (Opposing)</li><li>14 - Thumb + Little (Opposing)</li><li>15 - Index + Middle (Opposing)</li></ul>  |
 | **Device:**        | OT Bioelettronica Quattrocento        |
 | **Sampling Rates:** | 2048 Hz        |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**  
 ```Python
@@ -954,6 +976,7 @@ Hyser random dataset. Includes random motions performed by users. Ground truth f
 | **Classes:**      |   Random  |
 | **Device:**        | OT Bioelettronica Quattrocento        |
 | **Sampling Rates:** | 2048 Hz        |
+| **Auto Download:** | False       |
 
 **Using the Dataset:**  
 ```Python
@@ -999,6 +1022,7 @@ Regression dataset used for investigation into user compliance during mimic trai
 | **Classes:**      | <ul><li>0 - Hand Close (-) / Hand Open (+)</li><li>1 - Pronation (-) / Supination (+)</li></ul>           |
 | **Device:**       | EMaGer                                                                                                    |
 | **Sampling Rates:** | 1010 Hz                                                                                                |
+| **Auto Download:** | True       |
 
 **Using the Dataset:**  
 ```Python
