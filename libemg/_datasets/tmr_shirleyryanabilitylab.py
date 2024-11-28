@@ -3,7 +3,7 @@ from libemg.data_handler import OfflineDataHandler, RegexFilter
 import numpy as np
 
 class TMRShirleyRyanAbilityLab(Dataset):
-    def __init__(self, dataset_folder="TMR/"):
+    def __init__(self, dataset_folder="TMR/", desc=''):
         Dataset.__init__(self, 
                         1000, 
                         32, 
@@ -34,12 +34,12 @@ class TMRShirleyRyanAbilityLab(Dataset):
                          22:"UlnarDeviation",
                          23:"NoMotion"}, 
                          8,
-                        '6 subjects, 8 reps, 24 motions, pre/post intervention',
+                        desc,
                         "https://pmc.ncbi.nlm.nih.gov/articles/PMC9879512/")
         self.url = "https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab"
         self.dataset_folder = dataset_folder
 
-    def prepare_data(self, split = True, subjects = None):
+    def get_odh(self, subjects = None):
         subject_list = np.array([1,2,3,4,7,10])
         if subjects:
             subject_list = subject_list[subjects]
@@ -61,8 +61,34 @@ class TMRShirleyRyanAbilityLab(Dataset):
         ]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
+        return odh
+
+class TMR_Pre(TMRShirleyRyanAbilityLab):
+    """
+    Data from participants pre TMR surgery. 
+    """
+    def __init__(self, dataset_folder="TMR/"):
+        TMRShirleyRyanAbilityLab.__init__(self, dataset_folder=dataset_folder, desc='TMR Dataset: 6 subjects, 8 reps, 24 motions, pre intervention')
+
+    def prepare_data(self, split=True, subjects=None):
+        odh = self.get_odh(subjects)
+        odh = odh.isolate_data('intervention', [0])
         data = odh
         if split:
-            data = {'All': odh, 'Train': odh.isolate_data("reps", list(range(4)), fast=True), 'Test': odh.isolate_data("reps", list(range(4,8)), fast=True)}
+            data = {'All': odh, 'Train': odh.isolate_data("reps", list(range(6)), fast=True), 'Test': odh.isolate_data("reps", list(range(6,8)), fast=True)}
+        return data 
 
-        return data
+class TMR_Post(TMRShirleyRyanAbilityLab):
+    """
+    Data from participants post TMR surgery. 
+    """
+    def __init__(self, dataset_folder="TMR/"):
+        TMRShirleyRyanAbilityLab.__init__(self, dataset_folder=dataset_folder, desc='TMR Dataset: 6 subjects, 8 reps, 24 motions, post intervention')
+
+    def prepare_data(self, split=True, subjects=None):
+        odh = self.get_odh(subjects)
+        odh = odh.isolate_data('intervention', [1])
+        data = odh
+        if split:
+            data = {'All': odh, 'Train': odh.isolate_data("reps", list(range(6)), fast=True), 'Test': odh.isolate_data("reps", list(range(6,8)), fast=True)}
+        return data 
