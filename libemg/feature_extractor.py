@@ -149,9 +149,9 @@ class FeatureExtractor:
         array: bool (optional), default=False 
             If True, the dictionary will get converted to a list.
         normalize: bool (optional), default=False
-            If True, the features will be normalized between -1 and 1.
+            If True, the features will be normalized between using sklearn StandardScaler. The returned object will be a list.
         normalizer: StandardScaler, default=None
-            This should be set to the output from feature extraction on the training data. 
+            This should be set to the output from feature extraction on the training data. Do not normalize testing features without this as this could be considered information leakage. 
         Returns
         ----------
         dictionary or list 
@@ -170,7 +170,6 @@ class FeatureExtractor:
         if array:
             features = self._format_data(features)
         if normalize:
-            # TODO: Fix this 
             if isinstance(features, dict):
                 features = self._format_data(features)
             if not normalizer:

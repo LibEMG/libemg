@@ -9,7 +9,7 @@ class EMGEPN612(Dataset):
     def __init__(self, dataset_file='EMGEPN612.pkl', cross_user=True):
         split = '50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test) --> Cross User Split'
         if not cross_user:
-            split = '20 Reps (Train), 5 Reps (Test) from the 306 Test Users --> User Dependent Split'
+            split = '20 Reps (Train), 5 Reps (Test) from the 612 Test Users --> User Dependent Split'
 
         Dataset.__init__(self, 
                          200, 

@@ -131,7 +131,7 @@ class EMG2POSEUD(EMG2POSE):
     train_stages: list (default = None)
         If None, the training stages will be all of the ones not included in the test stages. 
     test_stages: list (default=['Wiggling2', 'Gesture3', 'Gesture2', 'Counting2', 'FingerFreeform', 'Counting1'])
-        A list of stages to use for training. See self.mapping for options. If a user doens't have that testing stage then it is ignored.
+        A list of stages to use for training. See self.mapping for options. If a user doesn't have that testing stage then it is ignored.
     """
     def __init__(self, dataset_folder="Meta/emg2pose_data/", train_stages = None, test_stages = None):
         EMG2POSE.__init__(self, dataset_folder=dataset_folder)

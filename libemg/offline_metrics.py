@@ -3,8 +3,17 @@ from sklearn.metrics import *
 import matplotlib.pyplot as plt
 
 class OfflineMetrics:
-    """Offline Metrics class is used for extracting offline performance metrics.
     """
+    Offline Metrics class is used for extracting offline performance metrics.
+    """
+    
+    def _ignore_rejected(self, y_predictions, y_true):
+        # ignore rejections
+        valid_samples = y_predictions != -1
+        y_predictions = y_predictions[valid_samples]
+        y_true        = y_true[valid_samples]
+        return y_predictions, y_true
+
 
     def get_common_metrics(self):
         """Gets a list of the common metrics used for assessing EMG performance.
@@ -50,9 +59,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list 
+        y_true: numpy.ndarray 
             A list of the true labels associated with each prediction.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted outputs from a classifier.
         null_label: int (optional)
             A null label used for the AER metric - this should correspond to the label associated
@@ -74,9 +83,9 @@ class OfflineMetrics:
         metrics: list
             A list of the metrics to extract. A list of metrics can be found running the 
             get_available_metrics function.
-        y_true: list 
+        y_true: numpy.ndarray 
             A list of the true labels associated with each prediction.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted outputs from a classifier.
         null_label: int (optional)
             A null label used for the AER metric - this should correspond to the label associated
@@ -126,9 +135,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -136,10 +145,7 @@ class OfflineMetrics:
         float
             Returns the classification accuracy.
         """
-        # ignore rejections
-        valid_samples = y_predictions != -1
-        y_predictions = y_predictions[valid_samples]
-        y_true        = y_true[valid_samples]
+        y_predictions, y_true = self._ignore_rejected(y_predictions, y_true)
         if len(y_true) == 0:
             print("No test samples - check the rejection rate.")
             return 1.0
@@ -148,13 +154,13 @@ class OfflineMetrics:
     def get_AER(self, y_true, y_predictions, null_class):
         """Active Error.
 
-        Classification accuracy on active classes (i.e., all classes but no movement/rest).
+        Classification accuracy on active classes (i.e., all classes but no movement/rest). Rejected samples are ignored.
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
         null_class: int
             The null class that shouldn't be considered.
@@ -164,6 +170,7 @@ class OfflineMetrics:
         float
             Returns the active error.
         """
+        y_predictions, y_true = self._ignore_rejected(y_predictions, y_true)
         nm_predictions = [i for i, x in enumerate(y_predictions) if x == null_class]
         return 1 - self.get_CA(np.delete(y_true, nm_predictions), np.delete(y_predictions, nm_predictions))
 
@@ -174,9 +181,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -196,7 +203,7 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels. -1 in the list correspond to rejected predictions.
 
         Returns
@@ -214,9 +221,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -240,9 +247,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -250,6 +257,7 @@ class OfflineMetrics:
         list
             Returns a list consisting of the recall for each class.
         """
+        y_predictions, y_true = self._ignore_rejected(y_predictions, y_true)
         recall, weights = self._get_RECALL_helper(y_true, y_predictions)
         return np.average(recall, weights=weights)
 
@@ -273,9 +281,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -283,6 +291,7 @@ class OfflineMetrics:
         list
             Returns a list consisting of the precision for each class.
         """
+        y_predictions, y_true = self._ignore_rejected(y_predictions, y_true)
         precision, weights = self._get_PREC_helper(y_true, y_predictions)
         return np.average(precision, weights=weights)
     
@@ -307,9 +316,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -317,6 +326,7 @@ class OfflineMetrics:
         list
             Returns a list consisting of the f1 score for each class.
         """
+        y_predictions, y_true = self._ignore_rejected(y_predictions, y_true)
         prec, weights = self._get_PREC_helper(y_true, y_predictions)
         recall, _ = self._get_RECALL_helper(y_true, y_predictions)
         f1 = 2 * (prec * recall) / (prec + recall)
@@ -329,9 +339,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -351,9 +361,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -372,9 +382,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -393,9 +403,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -415,9 +425,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
@@ -437,9 +447,9 @@ class OfflineMetrics:
 
         Parameters
         ----------
-        y_true: list
+        y_true: numpy.ndarray
             A list of ground truth labels.
-        y_predictions: list
+        y_predictions: numpy.ndarray
             A list of predicted labels.
 
         Returns
