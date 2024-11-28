@@ -47,9 +47,15 @@ class FittsConfig:
         Setting this mapping to polar will instead map horizontal and vertical predictions to the radius and angle of a semi-circle, respectively (similar to spinning a wheel).
         Pass in 'polar+' or 'polar-' to map up or down to counter-clockwise changes in angle, respectively. Defaults to 'cartesian'.
     cursor_color : tuple, optional
-        Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to yellow (255, 255, 0).
+        Color of cursor. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to orange (255, 95, 31).
+    cursor_in_target_color : tuple, optional
+        Color of cursor when in target. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to blue (0, 102, 204).
     target_color : tuple, optional
-        Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to red (255, 0, 0).
+        Color of targets. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to white (255, 255, 255).
+    background_color : tuple, optional
+        Color of background. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to black (0, 0, 0).
+    timer_color : tuple, optional
+        Color of dwell timer. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to blue (0, 102, 204).
     """
     num_trials: int = 15
     dwell_time: float = 3.0
@@ -63,8 +69,11 @@ class FittsConfig:
     target_radius: int = 40
     game_time: float | None = None
     mapping: str = 'cartesian'
-    cursor_color: tuple[int, int, int] = (255, 255, 0)
-    target_color: tuple[int, int, int] = (255, 0, 0)
+    cursor_color: tuple[int, int, int] = (255, 95, 31)
+    cursor_in_target_color: tuple[int, int, int] = (0, 102, 204)
+    target_color: tuple[int, int, int] = (255, 255, 255)
+    background_color: tuple[int, int, int] = (0, 0, 0)
+    timer_color: tuple[int, int, int] = (0, 102, 204)
 
 
 class Fitts(Environment):
@@ -121,8 +130,6 @@ class Fitts(Environment):
         self.screen = pygame.display.set_mode([self.config.width, self.config.height])
 
         # gameplay parameters
-        self.BLACK = (0,0,0)
-        self.BLUE   = (0,102,204)
         self.trial = -1
 
         if '+' in self.config.mapping:
@@ -149,7 +156,7 @@ class Fitts(Environment):
         self.dwell_timer = None
 
     def _draw(self):
-        self.screen.fill(self.BLACK)
+        self.screen.fill(self.config.background_color)
         self._draw_targets()
         self._draw_cursor()
         self._draw_timer()
@@ -158,14 +165,15 @@ class Fitts(Environment):
         self._draw_circle(self.goal_target, self.config.target_color)
     
     def _draw_cursor(self):
-        self._draw_circle(self.cursor, self.config.cursor_color)
+        color = self.config.cursor_in_target_color if self.dwell_timer is not None else self.config.cursor_color
+        self._draw_circle(self.cursor, color)
 
     def _draw_timer(self):
         if self.dwell_timer is not None:
             toc = time.perf_counter()
             duration = round((toc-self.dwell_timer),2)
             time_str = str(duration)
-            draw_text = self.font.render(time_str, 1, self.BLUE)
+            draw_text = self.font.render(time_str, 1, self.config.timer_color)
             self.screen.blit(draw_text, (10, 10))
 
     def _update_game(self):
@@ -178,7 +186,6 @@ class Fitts(Environment):
         self._check_events()
 
     def _check_collisions(self):
-        # print(math.sqrt((self.goal_target.centerx - self.cursor.centerx)**2 + (self.goal_target.centery - self.cursor.centery)**2))
         if math.sqrt((self.goal_target.centerx - self.cursor.centerx)**2 + (self.goal_target.centery - self.cursor.centery)**2) < (self.goal_target[2]/2 + self.cursor[2]/2):
             pygame.event.post(pygame.event.Event(INSIDE_TARGET))
             self.Event_Flag = True
