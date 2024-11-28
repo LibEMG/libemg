@@ -64,3 +64,10 @@ def test_REMOVE(om):
     preds, labels = om._ignore_rejected(preds, labels)
     assert np.alltrue(preds == np.array([0,1,2,2,0,0]))
     assert np.alltrue(preds == np.array([0,1,2,2,0,0]))
+
+def test_REMOVE2(om):
+    preds = np.array([0,1,2,3,4,5,6,7,8,9,0])
+    labels = np.array([0,1,2,3,4,5,6,7,8,9,0])
+    preds2, labels2 = om._ignore_rejected(preds, labels)
+    assert np.alltrue(preds2 == preds)
+    assert np.alltrue(labels2 == labels)
