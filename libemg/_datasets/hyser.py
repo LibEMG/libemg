@@ -192,11 +192,7 @@ class HyserRandom(_Hyser):
         ]
         odh = OfflineDataHandler()
         odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
-        for idx, subject in enumerate(odh.subjects):
-            if (len(self.subjects) == self.num_subjects) and (int(self.subjects[subject[0, 0]]) > 10):
-                # Add 1 to align with proper subject ID
-                odh.subjects[idx] += 1
-                
+        
         data = odh
         if split:
             if self.analysis == 'sessions':
