@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -107,15 +108,17 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values())):
-            self.get_settings()
-            dpg.delete_item("__dc_configuration_window")
-            self.cleanup_window("configuration")
-            media_list = self.gather_media()
+        if not (self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values()))):
+            raise ConnectionError('Attempted to start data collection, but data are not being received. Please ensure the OnlineDataHandler is receiving data.')
 
-            self.spawn_collection_thread = threading.Thread(target=self.spawn_collection_window, args=(media_list,))
-            self.spawn_collection_thread.start()
-            # self.spawn_collection_window(media_list)
+        self.get_settings()
+        dpg.delete_item("__dc_configuration_window")
+        self.cleanup_window("configuration")
+        media_list = self.gather_media()
+
+        self.spawn_collection_thread = threading.Thread(target=self.spawn_collection_window, args=(media_list,))
+        self.spawn_collection_thread.start()
+        # self.spawn_collection_window(media_list)
 
     def get_settings(self):
         self.num_reps      = int(dpg.get_value("__dc_num_reps"))
@@ -129,8 +132,8 @@ class DataCollectionPanel:
         # find everything in the media folder
         files = os.listdir(self.media_folder)
         files = sorted(files)
-        valid_files = [file.endswith((".gif",".png",".mp4","jpg")) for file in files]
-        files = list(compress(files, valid_files))
+        labels_files = [file for file in files if file.endswith(('.txt', '.csv'))]
+        files = [file for file in files if file.endswith((".gif",".png",".mp4","jpg"))]
         self.num_motions = len(files)
         collection_conf = []
         # make the collection_details.json file
@@ -145,13 +148,30 @@ class DataCollectionPanel:
         with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
             json.dump(collection_details, f)
 
+        for media_file in files:
+            matching_labels_files = [labels_file for labels_file in labels_files if Path(labels_file).stem == Path(media_file).stem]
+            if len(matching_labels_files) == 1:
+                # Copy labels file to data directory
+                labels_file = matching_labels_files[0]
+                class_index = [idx for idx, filename in collection_details['class_map'].items() if filename == Path(labels_file).stem]
+                assert len(class_index) == 1, f"Expected a single matching filename in collection_details.json, but got {len(class_index)} for {labels_file}."
+                class_index = class_index[0]
+                labels_new_filename = Path(labels_file).with_stem(f"C_{class_index}").name
+                shutil.copy(Path(self.media_folder, labels_file).absolute(), Path(self.data_folder, labels_new_filename).absolute())
+
         # make the media list for SGT progression
         for rep_index in range(self.num_reps):
             for class_index, motion_class in enumerate(files):
                 # entry for collection of rep
                 media = Media()
                 media.from_file(Path(self.media_folder, motion_class).absolute().as_posix())
-                collection_conf.append([media,motion_class.split('.')[0],class_index,rep_index,self.rep_time])
+
+                if media.type in ('mp4', 'gif'):
+                    # Automatically calculate length of video
+                    rep_time = media.n_frames / media.fps
+                else:
+                    rep_time = self.rep_time
+                collection_conf.append([media, motion_class.split('.')[0], class_index, rep_index, rep_time])
         return collection_conf
 
     def spawn_collection_window(self, media_list):
@@ -170,6 +190,9 @@ class DataCollectionPanel:
             with dpg.group(horizontal=True):
                 dpg.add_spacer(height=20,width=self.video_player_width/2+30-(7*len("Collection Menu"))/2)
                 dpg.add_text(default_value="Collection Menu")
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(tag="__dc_rep_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
+                dpg.add_text(f"Rep 1 of {self.num_reps}", tag="__dc_rep")
             with dpg.group(horizontal=True):
                 dpg.add_spacer(tag="__dc_prompt_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
                 dpg.add_text(media_list[0][1], tag="__dc_prompt")
@@ -218,11 +241,19 @@ class DataCollectionPanel:
             self.save_data(output_path)
             last_rep = media_list[self.i][3]
             self.i = self.i+1
-            if self.i  == len(media_list):
-                break
-            current_rep = media_list[self.i][3]
+            is_final_media = self.i == len(media_list)
+            if is_final_media:
+                # At the end of the list, so we must be finished a rep
+                rep_is_finished = True
+                current_rep = self.num_reps - 1
+            else:
+                # Check if we've finished a rep
+                current_rep = media_list[self.i][3]
+                rep_is_finished = last_rep != current_rep
+
             # pause / redo goes here!
-            if last_rep != current_rep  or (not self.auto_advance):
+            if rep_is_finished  or (not self.auto_advance):
+                # Show redo / continue buttons
                 self.advance = False
                 dpg.show_item(item="__dc_redo_button")
                 dpg.show_item(item="__dc_continue_button")
@@ -232,6 +263,8 @@ class DataCollectionPanel:
                     jobs = dpg.get_callback_queue()
                     dpg.run_callbacks(jobs)
                 dpg.configure_app(manual_callback_management=False)
+                if not is_final_media:
+                    dpg.set_value('__dc_rep', value=f"Rep {media_list[self.i][3] + 1} of {self.num_reps}")
         
     def redo_collection_callback(self):
         if self.auto_advance:
@@ -249,7 +282,7 @@ class DataCollectionPanel:
 
     def play_collection_visual(self, media, active=True):
         if active:
-            timer_duration = self.rep_time
+            timer_duration = media[-1]
             dpg.set_value("__dc_prompt", value=media[1])
             dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len(media[1]))/2)
         else:
@@ -286,6 +319,8 @@ class DataCollectionPanel:
         for mod in self.rep_buffer:
             filename = file_parts[0] + "_" + mod + "." + file_parts[1]
             data = np.vstack(self.rep_buffer[mod])[::-1,:]
+            if data.size == 0:
+                raise ConnectionError('Attempting to store data, but received 0 samples during repetition, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
             with open(filename, "w", newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
                 for row in data:

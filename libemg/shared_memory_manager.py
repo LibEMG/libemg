@@ -9,13 +9,25 @@ class SharedMemoryManager:
         if tag in self.variables.keys():
             print(f"Already have access to this variable: {tag}")
             return True
+        
+        # if tag exists already
+        if self.find_variable(tag, shape, type, lock):
+            print(f'{tag} already exists in shared memory, found variable.')
+            return True
+        
         try:
             sm = SharedMemory(tag, create=False)
             sm.unlink()
         except:
             pass
         
-        smh = SharedMemory(tag, create=True, size=int(type().itemsize * np.prod(shape)))
+        try:
+            type_size = type().itemsize
+        except TypeError:
+            # Passed in non-callable dtype
+            type_size = type.itemsize
+
+        smh = SharedMemory(tag, create=True, size=int(type_size * np.prod(shape)))
         data = np.ndarray((shape),dtype=type,buffer=smh.buf)
         data.fill(0)
         self.variables[tag] = {}
@@ -28,7 +40,12 @@ class SharedMemoryManager:
 
     def find_variable(self, tag, shape, type, lock):
         try:
-            smh = SharedMemory(tag, size=int(type().itemsize * np.prod(shape)))
+            type_size = type().itemsize
+        except TypeError:
+            # Passed in non-callable dtype
+            type_size = type.itemsize
+        try:
+            smh = SharedMemory(tag, size=int(type_size * np.prod(shape)))
             # create a new numpy array that uses the shared memory
             data = np.ndarray((shape), dtype=type, buffer=smh.buf)
             self.variables[tag] = {}
@@ -41,7 +58,6 @@ class SharedMemoryManager:
         except FileNotFoundError:
             return False
         
-
     def get_variable(self, tag):
         assert tag in self.variables.keys()
         with self.variables[tag]["lock"]:
@@ -51,7 +67,6 @@ class SharedMemoryManager:
         assert tag in self.variables.keys()
         with self.variables[tag]["lock"]:
             self.variables[tag]["data"][:] = fn(self.variables[tag]["data"])
-
 
     def cleanup(self, parent = True):
         for k in self.variables.keys():

@@ -35,7 +35,6 @@ setup(
         "pyserial",
         "PyWavelets",
         "requests",
-        "semantic-version",
         "websockets",
         "opencv-python",
         "pythonnet",
@@ -43,6 +42,8 @@ setup(
         "dearpygui",
         "h5py",
         "onedrivedownloader"
+        "sifi-bridge-py",
+        "pygame"
     ],
     keywords=[
         "emg",

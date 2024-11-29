@@ -10,7 +10,6 @@ pyomyo==0.0.5
 pyserial
 wfdb
 bleak
-semantic-version
 requests
 h5py
 # For Docs
@@ -31,3 +30,4 @@ datetime
 websockets==8.1
 h5py
 onedrivedownloader
+sifi-bridge-py

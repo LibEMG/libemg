@@ -11,7 +11,7 @@ import wfdb
 import copy
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from sklearn.decomposition import PCA
+from matplotlib.axes import Axes
 from scipy.ndimage import zoom
 from scipy.signal import decimate
 from matplotlib import pyplot
@@ -850,6 +850,8 @@ class OnlineDataHandler(DataHandler):
         # Format figure
         sample_data = extract_data()    # access sample data to determine heatmap size
         fig, axs = plt.subplots(len(sample_data.keys()), 1)
+        if isinstance(axs, Axes):
+            axs = np.array([axs])
         fig.suptitle(f'HD-EMG Heatmap')
         plots = []
         for (feature_key, feature_data), ax in zip(sample_data.items(), axs):

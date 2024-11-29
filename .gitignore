@@ -68,3 +68,5 @@ __pycache__/
 libemg/environments/
 MLPR.py
 docs/Makefile
+sifibridge-*
+*.pyc

@@ -24,7 +24,7 @@ Feature Selection
 .. automodule:: libemg.feature_selector
    :members:
 
-Classification
+EMG Prediction
 ------------------------------
 .. automodule:: libemg.emg_predictor
    :members:
