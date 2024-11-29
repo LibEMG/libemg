@@ -8,6 +8,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from scipy.stats import skew, kurtosis
 from librosa import lpc
 from pywt import wavedec, upcoef
+from sklearn.preprocessing import StandardScaler
 
 class FeatureExtractor:
     """
@@ -133,7 +134,7 @@ class FeatureExtractor:
             return self._format_data(feats)
         return feats 
 
-    def extract_features(self, feature_list, windows, feature_dic={}, array=False):
+    def extract_features(self, feature_list, windows, feature_dic={}, array=False, normalize=False, normalizer=None):
         """Extracts a list of features.
         
         Parameters
@@ -147,11 +148,17 @@ class FeatureExtractor:
             A dictionary containing the parameters you'd like passed to each feature. ex. {"MDF_sf":1000}
         array: bool (optional), default=False 
             If True, the dictionary will get converted to a list.
+        normalize: bool (optional), default=False
+            If True, the features will be normalized between using sklearn StandardScaler. The returned object will be a list.
+        normalizer: StandardScaler, default=None
+            This should be set to the output from feature extraction on the training data. Do not normalize testing features without this as this could be considered information leakage. 
         Returns
         ----------
         dictionary or list 
             A dictionary where each key is a specific feature and its value is a list of the computed 
             features for each window.
+        StandardScaler
+            If normalize is true it will return the normalizer object. This should be passed into the feature extractor for test data.
         """
         features = {}
         for feature in feature_list:
@@ -161,8 +168,17 @@ class FeatureExtractor:
                 smaller_dictionary = dict((k, feature_dic[k]) for k in valid_keys if k in feature_dic)
                 features[feature] = method_to_call(windows, **smaller_dictionary)
         if array:
-            return self._format_data(features)  
-        return features
+            features = self._format_data(features)
+        if normalize:
+            if isinstance(features, dict):
+                features = self._format_data(features)
+            if not normalizer:
+                scaler = StandardScaler()
+                features = scaler.fit_transform(features)
+            else:
+                features = normalizer.transform(features)
+            return features, None 
+        return features 
 
     def check_features(self, features, silent=False):
         """Assesses a features object for np.nan, np.inf, and -np.inf. Can be used to check for clean data. 
@@ -1397,15 +1413,18 @@ class FeatureExtractor:
         list
             The computed features associated with each window. Size: Wx((order+1)*Nchannels)
         """
-        # get the highest power of 2 the nyquist rate is divisible by
-        order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
-        # Khushaba et al suggests using sym8
-        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
-        # original paper suggests using as the order.
-        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
-        # for every order, compute the energy (sum of DWT) - total of the squared signal
-        features = np.hstack([np.log(np.sum(i**2, axis=2)+1e-10) for i in wavelets])
-        return features
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # get the highest power of 2 the nyquist rate is divisible by
+            order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
+            # Khushaba et al suggests using sym8
+            # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
+            # original paper suggests using as the order.
+            wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+            # for every order, compute the energy (sum of DWT) - total of the squared signal
+            features = np.hstack([np.log(np.sum(i**2, axis=2)+1e-10) for i in wavelets])
+            return features
 
 
     def getWVfeat(self, windows, WV_fs=1000):
@@ -1800,6 +1819,9 @@ class FeatureExtractor:
         return train_data, test_data
     
     def _format_data(self, feature_dictionary):
+        if not isinstance(feature_dictionary, dict):
+            return feature_dictionary
+        
         arr = None
         for feat in feature_dictionary:
             if arr is None:

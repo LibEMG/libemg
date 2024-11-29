@@ -27,9 +27,9 @@ As EMG signals are stochastic, they do not provide adequate descriptive informat
 
 Feature selection is an important design consideration when developing EMG-based control systems, as features can drastically influence performance. Often, however, it is difficult to know what features to select for a particular problem. **This module provides a means to extract the most relevant features for a specific problem.** This module is optional and is primarily a tool to explore the robustness of certain features and groups using a variety of metrics. These are the techniques used by previous work to suggest predefined feature groups.
 
-<h3 style="background-color:#A8FFB1;padding-left: 10px;"> Classification Module</h3>
+<h3 style="background-color:#A8FFB1;padding-left: 10px;"> Prediction Module</h3>
 
-Classification uses machine learning models to predict user intent from EMG data (i.e., features) generated during contractions. **This module enables online (real-time) and offline (after-the-fact) classification.** Currently, it is limited to continuous control schemes where a model continuously predicts user intent based on segments (i.e., windows) of data.
+The prediction module uses machine learning models (classification or regression) to predict user intent from EMG data (i.e., features) generated during contractions. **This module enables online (real-time) and offline (after-the-fact) predictions.** Currently, it is limited to continuous control schemes where a model continuously predicts user intent based on segments (i.e., windows) of data.
 
 <h3 style="background-color:#FFA8AD;padding-left: 10px;"> Evaluation Module</h3>
 

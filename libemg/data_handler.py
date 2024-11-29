@@ -26,20 +26,21 @@ from scipy.signal import welch
 from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
 
 class RegexFilter:
-    def __init__(self, left_bound: str, right_bound: str, values: Sequence, description: str):
-        """Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
+    """
+    Filters files based on filenames that match the associated regex pattern and grabs metadata based on the regex pattern.
 
-        Parameters
-        ----------
-        left_bound: str
-            The left bound of the regex.
-        right_bound: str
-            The right bound of the regex.
-        values: list
-            The values between the two regexes.
-        description: str
-            Description of filter - used to name the metadata field.
-        """
+    Parameters
+    ----------
+    left_bound: str
+        The left bound of the regex.
+    right_bound: str
+        The right bound of the regex.
+    values: list
+        The values between the two regexes.
+    description: str
+        Description of filter - used to name the metadata field. Pass in an empty string to filter files without storing the values as metadata.
+    """
+    def __init__(self, left_bound: str, right_bound: str, values: Sequence[str], description: str):
         if values is None:
             raise ValueError('Expected a list of values for RegexFilter, but got None. Using regex wildcard is not supported with the RegexFilter.')
         self.pattern = make_regex(left_bound, right_bound, values)
@@ -82,19 +83,21 @@ class RegexFilter:
 
 
 class MetadataFetcher(ABC):
-    def __init__(self, description: str):
-        """Describes a type of metadata and implements a method to fetch it.
+    """
+    Describes a type of metadata and implements a method to fetch it.
 
-        Parameters
-        ----------
-        description: str
-            Description of metadata.
-        """
+    Parameters
+    ----------
+    description: str
+        Description of metadata.
+    """
+    def __init__(self, description: str):
         self.description = description
 
     @abstractmethod
-    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
+    def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]) -> npt.NDArray:
         """Fetch metadata. Must return a (N x M) numpy.ndarray, where N is the number of samples in the EMG data and M is the number of columns in the metadata.
+        If a single value array is returned (0D or 1D), it will be cast to a N x 1 array where all values are the original value.
 
         Parameters
         ----------
@@ -114,31 +117,53 @@ class MetadataFetcher(ABC):
 
 
 class FilePackager(MetadataFetcher):
-    def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool], align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load = None, column_mask = None):
-        """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
-        that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
+    """Package data file with another file that contains relevant metadata (e.g., a labels file). Cycles through all files
+    that match the RegexFilter and packages a data file with a metadata file based on a packaging function.
 
-        Parameters
-        ----------
-        regex_filter: RegexFilter
-            Used to find the type of metadata files.
-        package_function: callable
-            Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
-            Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
-        align_method: str or callable, default='zoom'
-            Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
-            pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
-        load: callable or None, default=None
-            Custom loading function for metadata file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
-        column_mask: list or None, default=None
-            List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
-        """
+    Parameters
+    ----------
+    regex_filter: RegexFilter
+        Used to find the type of metadata files. The description of this RegexFilter is used to assign the name of the field for this metadata in the OfflineDataHandler.
+    package_function: callable or Sequence[RegexFilter]
+        Function handle used to determine if two files should be packaged together (i.e., found the metadata file that goes with the data file).
+        Takes in the filename of a metadata file and the filename of the data file. Should return True if the files should be packaged together and False if not.
+        Alternatively, a list of RegexFilters can be passed in and a function will be created that packages files only if the regex metadata of the data filename
+        and metadata filename match.
+    align_method: str or callable, default='zoom'
+        Method for aligning the samples of the metadata file and data file. Pass in 'zoom' for the metadata file to be zoomed using spline interpolation to the size of the data file or 
+        pass in a callable that takes in the metadata and the EMG data and returns the aligned metadata.
+    load: callable, str, or None, default=None
+        Determines how metadata file is loaded. If a custom loading function, should take in the filename and return an array. If a string, 
+        it is assumed to be the MRDF key of a .hea file. If None is passed, the metadata is loaded based on the file extension (only .csv and .txt are supported).
+    column_mask: list or None, default=None
+        List of integers corresponding to the indices of the columns that should be extracted from the raw file data. If None is passed, all columns are extracted.
+    """
+    def __init__(self, regex_filter: RegexFilter, package_function: Callable[[str, str], bool] | Sequence[RegexFilter], 
+                 align_method: str | Callable[[npt.NDArray, npt.NDArray], npt.NDArray] = 'zoom', load: Callable[[str], npt.NDArray] | str | None = None, column_mask: Sequence[int] | None = None):
         super().__init__(regex_filter.description)
         self.regex_filter = regex_filter
+        self.package_filters = None
+
+        if isinstance(package_function, Sequence):
+            # Create function to ensure metadata matches
+            self.package_filters = copy.deepcopy(package_function)
+            package_function = self._match_regex_patterns
         self.package_function = package_function
         self.align_method = align_method
         self.load = load
         self.column_mask = column_mask
+
+    def _match_regex_patterns(self, metadata_file: str, data_file: str):
+        assert self.package_filters is not None, 'Attempting to match package filters, but None found.'
+        for filter in self.package_filters:
+            if len(filter.get_matching_files([metadata_file])) == 0:
+                # Doesn't match filters
+                return False
+            matching_metadata = filter.get_metadata(metadata_file) == filter.get_metadata(data_file)
+            if not matching_metadata:
+                return False
+        return True
+        
 
     def __call__(self, filename: str, file_data: npt.NDArray, all_files: Sequence[str]):
         potential_files = self.regex_filter.get_matching_files(all_files)
@@ -147,13 +172,19 @@ class FilePackager(MetadataFetcher):
             # I think it's easier to enforce a single file per FilePackager, but we could build in functionality to allow multiple files then just vstack all the data if there's a use case for that.
             raise ValueError(f"Found {len(packaged_files)} files to be packaged with {filename} when trying to package {self.regex_filter.description} file (1 file should be found). Please check filter and package functions.")
         packaged_file = packaged_files[0]
+        suffix = packaged_file.suffix
+        packaged_file = packaged_file.as_posix()
 
         if callable(self.load):
             # Passed in a custom loading function
             packaged_file_data = self.load(packaged_file)
-        elif packaged_file.suffix == '.txt':
+        elif isinstance(self.load, str):
+            # Passed in a MRDF key
+            assert suffix == '.hea', f"Provided string for load parameter, but packaged file doesn't have extension .hea. Please pass in a custom load function and/or ensure the correct file is packaged."
+            packaged_file_data = (wfdb.rdrecord(packaged_file.replace('.hea', ''))).__getattribute__(self.load)
+        elif suffix == '.txt':
             packaged_file_data = np.loadtxt(packaged_file, delimiter=',')
-        elif packaged_file.suffix == '.csv':
+        elif suffix == '.csv':
             packaged_file_data = pd.read_csv(packaged_file)
             packaged_file_data = packaged_file_data.to_numpy()
         else:
@@ -162,7 +193,7 @@ class FilePackager(MetadataFetcher):
         # Align with EMG data
         if self.align_method == 'zoom':
             zoom_rate = file_data.shape[0] / packaged_file_data.shape[0]
-            zoom_factor = [zoom_rate if idx == 0 else 1 for idx in range(packaged_file_data.shape[1])]  # only align the 0th axis (samples)
+            zoom_factor = (zoom_rate, 1)    # only align the 0th axis (samples)
             packaged_file_data = zoom(packaged_file_data, zoom=zoom_factor)
         elif callable(self.align_method):
             packaged_file_data = self.align_method(packaged_file_data, file_data)
@@ -181,18 +212,19 @@ class FilePackager(MetadataFetcher):
 
 
 class ColumnFetcher(MetadataFetcher):
-    def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
-        """Fetch metadata from columns within data file.
+    """
+    Fetch metadata from columns within data file.
 
-        Parameters
-        ----------
-        description: str
-            Description of metadata.
-        column_mask: list or int
-            Integers corresponding to indices of columns that should be fetched.
-        values: list or None, default=None
-            List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
-        """
+    Parameters
+    ----------
+    description: str
+        Description of metadata.
+    column_mask: list or int
+        Integers corresponding to indices of columns that should be fetched.
+    values: list or None, default=None
+        List of potential values within metadata column. If a list is passed in, the metadata will be stored as the location (index) of the value within the provided list. If None, the value within the columns will be stored.
+    """
+    def __init__(self, description: str, column_mask: Sequence[int] | int, values: Sequence | None = None):
         super().__init__(description)
         self.column_mask = column_mask
         self.values = values
@@ -293,6 +325,9 @@ class OfflineDataHandler(DataHandler):
             Raises ValueError if folder_location is not a valid directory.
         """
         def append_to_attribute(name, value):
+            if name == '':
+                # Don't want this data saved to data handler, so skip it
+                return
             if not hasattr(self, name):
                 setattr(self, name, [])
                 self.extra_attributes.append(name)
@@ -344,6 +379,9 @@ class OfflineDataHandler(DataHandler):
             # Fetch remaining metadata
             for metadata_fetcher in metadata_fetchers:
                 metadata = metadata_fetcher(file, file_data, all_files)
+                if metadata.ndim == 0 or metadata.shape[0] == 1:
+                    # Cast to array with the same # of samples as EMG data
+                    metadata = np.full((file_data.shape[0], 1), fill_value=metadata)
                 if metadata.ndim == 1:
                     # Ensure that output is always 2D array
                     metadata = np.expand_dims(metadata, axis=1)
@@ -418,19 +456,15 @@ class OfflineDataHandler(DataHandler):
             'median': np.median,
             'last_sample': lambda x: x[-1]
         }
-
-        metadata_ = {}
+        window_data = []
+        metadata = {k: [] for k in self.extra_attributes}
         for i, file in enumerate(self.data):
             # emg data windowing
-            windows = get_windows(file,window_size,window_increment)
-            if "windows_" in locals():
-                windows_ = np.concatenate((windows_, windows))
-            else:
-                windows_ = windows
-            # metadata windowing
+            window_data.append(get_windows(file,window_size,window_increment))
+    
             for k in self.extra_attributes:
                 if type(getattr(self,k)[i]) != np.ndarray:
-                    file_metadata = np.ones((windows.shape[0])) * getattr(self, k)[i]
+                    file_metadata = np.ones((window_data[-1].shape[0])) * getattr(self, k)[i]
                 else:
                     if metadata_operations is not None:
                         if k in metadata_operations.keys():
@@ -447,13 +481,10 @@ class OfflineDataHandler(DataHandler):
                             file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
                     else:
                         file_metadata = _get_mode_windows(getattr(self,k)[i], window_size, window_increment)
-                if k not in metadata_.keys():
-                    metadata_[k] = file_metadata
-                else:
-                    metadata_[k] = np.concatenate((metadata_[k], file_metadata))
-
+                
+                metadata[k].append(file_metadata)
             
-        return windows_, metadata_
+        return np.vstack(window_data), {k: np.concatenate(metadata[k], axis=0) for k in metadata.keys()}
 
     
     def isolate_channels(self, channels):
@@ -480,7 +511,7 @@ class OfflineDataHandler(DataHandler):
             new_odh.data[i] = new_odh.data[i][:,channels]
         return new_odh
     
-    def isolate_data(self, key, values):
+    def isolate_data(self, key, values, fast=True):
         """Entry point for isolating a single key of data within the offline data handler. First, error checking is performed within this method, then
         if it passes, the isolate_data_helper is called to make a new OfflineDataHandler that contains only that data.
 
@@ -490,6 +521,8 @@ class OfflineDataHandler(DataHandler):
             The metadata key that will be used to filter (e.g., "subject", "rep", "class", "set", whatever you'd like).
         values: list
             A list of values that you want to isolate. (e.g. [0,1,2,3]). Indexing starts at 0.
+        fast: Boolean (default=False)
+            If true, it iterates over the median value for each EMG element. This should be used when parsing on things like reps, subjects, classes, etc.
             
         Returns
         ----------
@@ -498,47 +531,31 @@ class OfflineDataHandler(DataHandler):
         """
         assert key in self.extra_attributes
         assert type(values) == list 
-        return self._isolate_data_helper(key,values)
+        return self._isolate_data_helper(key,values,fast)
 
-    def _isolate_data_helper(self, key, values):
+    def _isolate_data_helper(self, key, values,fast):
         new_odh = OfflineDataHandler()
         setattr(new_odh, "extra_attributes", self.extra_attributes)
         key_attr = getattr(self, key)
-        
-        # if these end up being ndarrays, it means that the metadata was IN the csv file.
-        
-        if type(key_attr[0]) == np.ndarray:
-            # for every file (list element)
-            data = []
-            for f in range(len(key_attr)):
-                # get the keep_mask
-                keep_mask = list([i in values for i in key_attr[f]])
-                # append the valid data
-                if self.data[f][keep_mask,:].shape[0]> 0:
-                    data.append(self.data[f][keep_mask,:])
-            setattr(new_odh, "data", data)
-
-            for k in self.extra_attributes:
-                key_value = getattr(self, k)
-                if type(key_value[0]) == np.ndarray:
-                    # the other metadata that is in the csv file should be sliced the same way as the ndarray
-                    key = []
-                    for f in range(len(key_attr)):
-                        keep_mask = list([i in values for i in key_attr[f]])
-                        if key_value[f][keep_mask,:].shape[0]>0:
-                            key.append(key_value[f][keep_mask,:])
-                    setattr(new_odh, k, key)
-                    
+        for e in self.extra_attributes:
+            setattr(new_odh, e, [])
+                
+        for f in range(len(key_attr)):
+            if fast:
+                if key_attr[f][0][0] in values:
+                    keep_mask = [True] * len(key_attr[f])
                 else:
-                    assert False # we should never get here
-                    # # if the other metadata was not in the csv file (i.e. subject label in filename but classes in csv), then just keep it
-                    # setattr(new_odh, k, key_value)
-        else:
-            assert False # we should never get here
-            # keep_mask = list([i in values for i in key_attr])
-            # setattr(new_odh, "data", list(compress(self.data, keep_mask)))
-            # for k in self.extra_attributes:
-            #     setattr(new_odh, k,list(compress(getattr(self, k), keep_mask)))
+                    keep_mask = [False] * len(key_attr[f])
+            else:
+                keep_mask = list([i in values for i in key_attr[f]])
+            
+            if self.data[f][keep_mask,:].shape[0]> 0:
+                new_odh.data.append(self.data[f][keep_mask,:])
+                for e in self.extra_attributes:
+                    updated_arr = getattr(new_odh, e)
+                    updated_arr.append(getattr(self, e)[f][keep_mask])
+                    setattr(new_odh, e, updated_arr)
+
         return new_odh
     
     def visualize():

@@ -3,6 +3,12 @@ Data Handler
 .. automodule:: libemg.data_handler
    :members:
 
+Datasets
+------------------------------
+.. automodule:: libemg.datasets
+   :members:
+
+
 Filtering
 ------------------------------
 .. automodule:: libemg.filtering
