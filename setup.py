@@ -41,9 +41,9 @@ setup(
         "bleak",
         "dearpygui",
         "h5py",
-        "onedrivedownloader"
+        "onedrivedownloader",
         "sifi-bridge-py",
-        "pygame"
+        "pygame",
     ],
     keywords=[
         "emg",
