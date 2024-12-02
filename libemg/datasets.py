@@ -11,7 +11,7 @@ from libemg._datasets.fors_emg import FORSEMG
 from libemg._datasets.radmand_lp import RadmandLP
 from libemg._datasets.fougner_lp import FougnerLP
 from libemg._datasets.intensity import ContractionIntensity
-from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR
+from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR, HyserMVC # HyserMVC is not used in this script but is imported so it's public in libemg API
 from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg._datasets.tmr_shirleyryanabilitylab import TMR_Post, TMR_Pre
 from libemg.feature_extractor import FeatureExtractor

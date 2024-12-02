@@ -336,3 +336,39 @@ class HyserPR(_Hyser):
                 raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
             
         return data
+
+
+class HyserMVC(_Hyser):
+    def __init__(self, dataset_folder: str = 'HyserMVC', analysis: str = 'baseline'):
+        gestures = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Little'}
+        description = 'Hyser maximum voluntary contraction (MVC) dataset. Includes MVC for flexion and extension of each finger. Typically used for normalization of other Hyser datasets.'
+        super().__init__(gestures=gestures, num_reps=5, description=description, dataset_folder=dataset_folder, analysis=analysis)
+        
+    def _prepare_data_helper(self, split=True, subjects=None):
+        subject_list = np.array(list(range(1,21)))
+        if subjects:
+            subject_list = subject_list[subjects]
+        self.subjects = [f'{s:02d}' for s in subject_list]
+
+        filename_filters = deepcopy(self.common_regex_filters)
+        filename_filters.append(RegexFilter(left_bound='_', right_bound='.hea', values=['flexion', 'extension'], description='movement'))
+        filename_filters.append(RegexFilter(left_bound='_finger', right_bound='_', values=['1', '2', '3', '4', '5'], description='finger'))
+
+        regex_filters = deepcopy(filename_filters)
+        regex_filters.append(RegexFilter(left_bound='mvc_', right_bound='_finger', values=['raw'], description='data_type'))
+
+        metadata_fetchers = [
+            FilePackager(RegexFilter(left_bound='/mvc_', right_bound='_finger', values=['force'], description='labels'),
+                          package_function=filename_filters, load='p_signal')
+        ]
+        odh = OfflineDataHandler()
+        odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
+        data = odh
+        if split:
+            if self.analysis == 'sessions':
+                data = {'All': odh, 'Train': odh.isolate_data('sessions', [0], fast=True), 'Test': odh.isolate_data('sessions', [1], fast=True)}
+            elif self.analysis == 'baseline':
+                data = {'All': odh, 'Train': odh.isolate_data('reps', [0, 1], fast=True), 'Test': odh.isolate_data('reps', [2], fast=True)}
+            else:
+                raise ValueError(f"Unexpected value for analysis. Suported values are sessions, baseline. Got: {self.analysis}.")
+        return data
