@@ -8,21 +8,6 @@ import numpy as np
 import pygame
 
 
-"""Base class for EMG prediction.
-
-        Parameters
-        ----------
-        model: custom model (must have fit, predict and predict_proba functions)
-            Object that will be used to fit and provide predictions.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        """
 class Controller(ABC):
     def __init__(self):
         """Abstract controller interface for controlling environments. Runs as a Process in a separate thread and collects control signals continuously. Call start() to start collecting control signals."""
