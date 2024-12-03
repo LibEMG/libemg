@@ -255,7 +255,6 @@ class Fitts(Environment):
                 self.duration = round((toc - self.dwell_timer), 2)
             if self.duration >= self.config.dwell_time:
                 self._get_new_goal_target()
-                self.dwell_timer = None
 
         if self.timeout_timer is None:
             self.timeout_timer = time.perf_counter()
@@ -266,7 +265,6 @@ class Fitts(Environment):
         if self.trial_duration >= self.config.timeout:
             # Timeout
             self._get_new_goal_target()
-            self.timeout_timer = None
 
     def _move(self):
         self.cursor.left += self.current_direction[0]
@@ -279,6 +277,7 @@ class Fitts(Environment):
         self.cursor.top = min(self.config.height - self.cursor.height, self.cursor.top)
     
     def _get_new_goal_target(self):
+        self.dwell_timer = None
         self.timeout_timer = None
         self.trial_duration = 0
 
