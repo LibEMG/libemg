@@ -242,6 +242,11 @@ class Fitts(Environment):
 
             self._log(str(predictions), timestamp)
         
+        if len(self.log_dictionary['time_stamp']) == 0:
+            # No data has been received, so don't start counting
+            print('Waiting for Fitts to receive data...')
+            return
+
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
         if event.type == OUTSIDE_TARGET:
             if self.Event_Flag == False:
