@@ -39,6 +39,8 @@ class FittsConfig:
         True if proportional control should be used, otherwise False. This value is ignored for Controllers that have proportional control built in, like regressors. Defaults to False.
     target_radius : int, optional
         Radius (in pixels) of each individual target. Defaults to 40.
+    cursor_radius : int, optional
+        Radius (in pixels) of cursor. Defaults to 14.
     game_time : float, optional
         Time (in seconds) that the task should run. If None, no time limit is set and the task ends when the number of targets are acquired.
         If a value is passed, the task is stopped when either the time limit has been reached or the number of trials has been acquired. Defaults to None.
@@ -67,6 +69,7 @@ class FittsConfig:
     fps: int = 60
     proportional_control: bool = True
     target_radius: int = 40
+    cursor_radius: int = 7
     game_time: float | None = None
     mapping: str = 'cartesian'
     cursor_color: tuple[int, int, int] = (255, 95, 31)
@@ -143,7 +146,8 @@ class Fitts(Environment):
         self.polygon_angles = np.linspace(0, 2 * math.pi, num=100)  # could change how many points are calculated based on desired FPS (having 1000 caused frame rate issues)
 
         # interface objects
-        self.cursor = pygame.Rect(self.config.width//2 - 7, self.config.height//2 - 7, 14, 14)
+        self.cursor = pygame.Rect(self.config.width // 2 - self.config.cursor_radius, self.config.height // 2 - self.config.cursor_radius,
+                                  self.config.cursor_radius * 2, self.config.cursor_radius * 2)
         self._get_new_goal_target()
         self.current_direction = [0,0]
 
