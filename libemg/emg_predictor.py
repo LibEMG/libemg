@@ -27,6 +27,7 @@ from abc import ABC, abstractmethod
 import re
 from matplotlib.animation import FuncAnimation
 from functools import partial
+from typing import Callable
 
 from libemg.utils import get_windows
 from libemg.environments.controllers import RegressorController, ClassifierController
@@ -307,20 +308,33 @@ class EMGClassifier(EMGPredictor):
 
     def add_velocity(self, train_windows, train_labels,
                      velocity_metric_handle = None,
-                     velocity_mapping_handle = None):
+                     velocity_mapping_handle: str | None | Callable[[int], int] = None):
         """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
 
         Note, that when using this optional, ramp contractions should be captured for training. 
 
         Parameters
         -----------
+        train_windows: np.ndarray
+            The training windows extracted from the offline data handler.
+        train_labels: np.ndarray
+            The labels associated with the train windows. Allows for per class proportional control mapping. 
+        velocity_mapping_handle: function or a string (valid options: "SIGMOID", "SQUARED", "LOG", "RELU") 
+            A function that maps the proportionality (bounded between 0-1) to some other value. 
         """
-        self.velocity_metric_handle = velocity_metric_handle
-        self.velocity_mapping_handle = velocity_mapping_handle
+        if isinstance(velocity_mapping_handle, str):
+            if not velocity_mapping_handle in ['SIGMOID', 'SQUARED', 'LOG', 'RELU']:
+                print("Invalid velocity mapping... Defaulting to linear.")
+            else:
+                if velocity_mapping_handle == 'SQUARED':
+                    self.velocity_mapping_handle = lambda x: x**2
+                # TODO: Fill out rest 
+        else:
+            self.velocity_metric_handle = velocity_metric_handle
+            self.velocity_mapping_handle = velocity_mapping_handle
+        
         self.velocity = True
-
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
-
 
     
     '''
