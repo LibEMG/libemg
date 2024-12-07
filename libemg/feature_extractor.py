@@ -161,6 +161,7 @@ class FeatureExtractor:
             If normalize is true it will return the normalizer object. This should be passed into the feature extractor for test data.
         """
         features = {}
+        scaler = None
         for feature in feature_list:
             if feature in self.get_feature_list():
                 method_to_call = getattr(self, 'get' + feature + 'feat')
@@ -177,7 +178,7 @@ class FeatureExtractor:
                 features = scaler.fit_transform(features)
             else:
                 features = normalizer.transform(features)
-            return features, None 
+            return features, scaler 
         return features 
 
     def check_features(self, features, silent=False):
