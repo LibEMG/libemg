@@ -1,10 +1,25 @@
 import numpy as np
+import random
 from scipy.interpolate import interp1d
 
 class DataAugmenter:
     """
     Data augmentation class.
     """
+    def __init__(self, augmentations, aug_chance=0.5):
+        self.augmentations = augmentations
+        self.aug_chance = aug_chance
+
+    def apply_augmentations(self, data, data2=None):
+        for a in self.augmentations:
+            aug = self.get_augmentation_list()[a]
+            if random.random() < self.aug_chance:
+                if a == 'MIXUP':
+                    data = aug(data, data2)
+                else:
+                    data = aug(data)
+        return data 
+
     def get_augmentation_list(self):
         """Gets a list of all available augmentations.
         
@@ -29,8 +44,9 @@ class DataAugmenter:
             'NONE': self.augNONE,
         }
 
-    def augGNOISE(self, data, mag=1):
-        gaussian_noise = np.random.normal(np.mean(data, axis=0) * mag, np.std(data, axis=0) * mag, data.shape)
+    def augGNOISE(self, data, max_mag=0.25):
+        noise_factor = random.random()
+        gaussian_noise = np.random.normal(np.mean(data, axis=0) * noise_factor * max_mag, np.std(data, axis=0) * noise_factor * max_mag, data.shape)
         return data + gaussian_noise
 
     def augCS(self, data):
@@ -47,7 +63,7 @@ class DataAugmenter:
         end_idx = start_idx + crop_length
         return data[start_idx:end_idx, :]
     
-    def augMAG(self, data, min_mag=0.5, max_mag=1.5):
+    def augMAG(self, data, min_mag=0.5, max_mag=2):
         mag = np.random.uniform(min_mag, max_mag)
         return data * mag
     
@@ -81,13 +97,11 @@ class DataAugmenter:
     def augCUTOUT(self, data, drop_prob=0.2):
         num_channels = data.shape[1]
         channels_to_zero = np.random.choice(num_channels, size=int(num_channels * drop_prob), replace=False)
-
-        # Zero out the selected channels
         data[:, channels_to_zero] = 0
 
         return data
     
-    def augMIXUP(self, data1, data2, alpha=0.2):
+    def augMIXUP(self, data1, data2, alpha=0.8):
         lambda_ = np.random.beta(alpha, alpha)
         mixed_data = lambda_ * data1 + (1 - lambda_) * data2
         return mixed_data
