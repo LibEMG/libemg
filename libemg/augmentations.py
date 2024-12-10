@@ -10,14 +10,20 @@ class DataAugmenter:
         self.augmentations = augmentations
         self.aug_chance = aug_chance
 
-    def apply_augmentations(self, data, data2=None):
+    def apply_augmentations(self, data, data2=None, params=None):
         for a in self.augmentations:
             aug = self.get_augmentation_list()[a]
             if random.random() < self.aug_chance:
                 if a == 'MIXUP':
-                    data = aug(data, data2)
+                    if params:
+                        data = aug(data, data2, params)
+                    else: 
+                        data = aug(data, data2)
                 else:
-                    data = aug(data)
+                    if params:
+                        data = aug(data, params)
+                    else:
+                        data = aug(data)
         return data 
 
     def get_augmentation_list(self):
@@ -44,7 +50,7 @@ class DataAugmenter:
             'NONE': self.augNONE,
         }
 
-    def augGNOISE(self, data, max_mag=0.25):
+    def augGNOISE(self, data, max_mag=1):
         noise_factor = random.random()
         gaussian_noise = np.random.normal(np.mean(data, axis=0) * noise_factor * max_mag, np.std(data, axis=0) * noise_factor * max_mag, data.shape)
         return data + gaussian_noise
@@ -63,7 +69,9 @@ class DataAugmenter:
         end_idx = start_idx + crop_length
         return data[start_idx:end_idx, :]
     
-    def augMAG(self, data, min_mag=0.5, max_mag=2):
+    def augMAG(self, data, mag=0.5):
+        min_mag = mag  
+        max_mag = 1 + (1 - mag)
         mag = np.random.uniform(min_mag, max_mag)
         return data * mag
     
