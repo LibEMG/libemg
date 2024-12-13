@@ -19,12 +19,12 @@ class FittsConfig:
 
     Parameters
     ----------
-    num_trials : int, optional
-        Number of trials user must complete. Defaults to 15.
+    num_trials : int
+        Number of trials user must complete.
     dwell_time : float, optional
-        Time (in seconds) user must dwell in target to complete trial. Defaults to 3.
-    timeout : float, optional
-        Time limit (in seconds) that signifies a failed trial. Defaults to 30.
+        Time (in seconds) user must dwell in target to complete trial. Defaults to 1.0.
+    timeout : float | None, optional
+        Time limit (in seconds) that signifies a failed trial. If None, no timeout is used. Defaults to None.
     velocity : float, optional
         Velocity scalar that controls the max speed of the cursor. Defaults to 25.
     save_file : str | None, optional
@@ -59,9 +59,9 @@ class FittsConfig:
     timer_color : tuple, optional
         Color of dwell timer. Pass in a tuple of the format (red, green, blue), where each color value is in the range 0-255. Defaults to blue (0, 102, 204).
     """
-    num_trials: int = 15
-    dwell_time: float = 3.0
-    timeout: float = 30.0
+    num_trials: int
+    dwell_time: float = 1.0
+    timeout: float | None = None
     velocity: float = 25.0
     save_file: str | None = None
     width: int = 1250
@@ -271,7 +271,7 @@ class Fitts(Environment):
             toc = time.perf_counter()
             self.trial_duration = round((toc - self.timeout_timer), 2)
 
-        if self.trial_duration >= self.config.timeout:
+        if self.config.timeout is not None and self.trial_duration >= self.config.timeout:
             # Timeout
             self._get_new_goal_target()
 
