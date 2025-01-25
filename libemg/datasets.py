@@ -238,8 +238,8 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         The window increment (**in ms**). 
     feature_list: list (default=['MAV'])
         A list of features.
-    feature_dic: dic (default={})
-        A dictionary of parameters for the passed in features.
+    feature_dic: dic or list (default={})
+        A dictionary or list of dictionaries of parameters for the passed in features.
     included_datasets: list (str) or list (DataSets)
         The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
     output_file: string (default='out.pkl')
@@ -274,7 +274,7 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
 
     # --------------- Run -----------------
     accuracies = {}
-    for d in included_datasets:
+    for d_i, d in enumerate(included_datasets):
         print(f"Evaluating {d} dataset...")
         if isinstance(d, str):
             if regression:
@@ -283,9 +283,15 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
                 dataset = get_dataset_list('CLASSIFICATION', True)[d]()
         else:
             dataset = d
+
+        # Get feature dic 
+        if isinstance(object, list):
+            f_dic = feature_dic[d_i]
+        else:
+            f_dic = feature_dic
         
         if memory_efficient:
-            data = dataset.prepare_data(split=True, feature_list=feature_list, feature_dic=feature_dic, window_size=int(dataset.sampling/1000 * window_size), window_inc=int(dataset.sampling/1000 * window_inc))
+            data = dataset.prepare_data(split=True, feature_list=feature_list, feature_dic=f_dic, window_size=int(dataset.sampling/1000 * window_size), window_inc=int(dataset.sampling/1000 * window_inc))
         else:
             data = dataset.prepare_data(split=True)
         
@@ -308,9 +314,9 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         else:
             train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
             if normalize_features:
-                train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
+                train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, normalize=True)
             else:
-                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
+                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=f_dic)
             del train_windows
             train_labels = train_meta[label_val]
 
@@ -343,9 +349,9 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             else:
                 test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
                 if normalize_features:
-                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=normalizer)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, normalize=True, normalizer=normalizer)
                 else:
-                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=f_dic)
                 test_labels = test_meta[label_val]
 
             if regression:
