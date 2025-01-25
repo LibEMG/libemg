@@ -207,9 +207,9 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             }
 
             if not regression:
-                clf = EMGClassifier(model)
+                clf = EMGClassifier(model, fix_feature_errors=True)
             else:
-                clf = EMGRegressor(model)
+                clf = EMGRegressor(model, fix_feature_errors=True)
             clf.fit(ds)
             
             if regression:
@@ -326,9 +326,9 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         }
         
         if not regression:
-            clf = EMGClassifier(model)
+            clf = EMGClassifier(model, fix_feature_errors=True)
         else:
-            clf = EMGRegressor(model)
+            clf = EMGRegressor(model, fix_feature_errors=True)
         clf.fit(ds)
 
         del train_feats
@@ -470,9 +470,9 @@ def evaluate_weaklysupervised(model, window_size, window_inc, feature_list=['MAV
             model.fit(ds)
 
             if not regression:
-                clf = EMGClassifier(model)
+                clf = EMGClassifier(model, fix_feature_errors=True)
             else:
-                clf = EMGRegressor(model)
+                clf = EMGRegressor(model, fix_feature_errors=True)
             
             if regression:
                 preds = clf.run(test_feats)
