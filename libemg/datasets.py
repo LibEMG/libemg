@@ -192,11 +192,11 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             if feature_list is not None:
                 fe = FeatureExtractor()
                 if normalize_features:
-                    train_feats, scaler = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True)
-                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler)      
+                    train_feats, scaler = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True, fix_feature_errors=True)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)      
                 else:
-                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)     
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, fix_feature_errors=True)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, fix_feature_errors=True)     
             else:
                 train_feats = train_windows
                 test_feats = test_windows
@@ -207,9 +207,9 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             }
 
             if not regression:
-                clf = EMGClassifier(model, fix_feature_errors=True)
+                clf = EMGClassifier(model)
             else:
-                clf = EMGRegressor(model, fix_feature_errors=True)
+                clf = EMGRegressor(model)
             clf.fit(ds)
             
             if regression:
@@ -314,9 +314,9 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         else:
             train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
             if normalize_features:
-                train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, normalize=True)
+                train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, normalize=True, fix_feature_errors=True)
             else:
-                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=f_dic)
+                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, fix_feature_errors=True)
             del train_windows
             train_labels = train_meta[label_val]
 
@@ -326,9 +326,9 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
         }
         
         if not regression:
-            clf = EMGClassifier(model, fix_feature_errors=True)
+            clf = EMGClassifier(model)
         else:
-            clf = EMGRegressor(model, fix_feature_errors=True)
+            clf = EMGRegressor(model)
         clf.fit(ds)
 
         del train_feats
@@ -349,9 +349,9 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             else:
                 test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
                 if normalize_features:
-                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, normalize=True, normalizer=normalizer)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, normalize=True, normalizer=normalizer, fix_feature_errors=True)
                 else:
-                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=f_dic)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, fix_feature_errors=True)
                 test_labels = test_meta[label_val]
 
             if regression:
@@ -449,13 +449,13 @@ def evaluate_weaklysupervised(model, window_size, window_inc, feature_list=['MAV
             if feature_list is not None:
                 fe = FeatureExtractor()
                 if normalize_features:
-                    pretrain_feats, scaler = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic, normalize=True)
-                    train_feats, _ = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler)
-                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler)      
+                    pretrain_feats, scaler = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic, normalize=True, fix_feature_errors=True)
+                    train_feats, _ = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)      
                 else:
-                    pretrain_feats = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic)
-                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic)
-                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic)     
+                    pretrain_feats = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic, fix_feature_errors=True)
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, fix_feature_errors=True)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, fix_feature_errors=True)     
             else:
                 pretrain_feats = pretrain_windows
                 train_feats = train_windows
@@ -470,9 +470,9 @@ def evaluate_weaklysupervised(model, window_size, window_inc, feature_list=['MAV
             model.fit(ds)
 
             if not regression:
-                clf = EMGClassifier(model, fix_feature_errors=True)
+                clf = EMGClassifier(model)
             else:
-                clf = EMGRegressor(model, fix_feature_errors=True)
+                clf = EMGRegressor(model)
             
             if regression:
                 preds = clf.run(test_feats)

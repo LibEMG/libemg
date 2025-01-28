@@ -134,7 +134,7 @@ class FeatureExtractor:
             return self._format_data(feats)
         return feats 
 
-    def extract_features(self, feature_list, windows, feature_dic={}, array=False, normalize=False, normalizer=None, fix_feature_errors=True):
+    def extract_features(self, feature_list, windows, feature_dic={}, array=False, normalize=False, normalizer=None, fix_feature_errors=False):
         """Extracts a list of features.
         
         Parameters
@@ -152,7 +152,7 @@ class FeatureExtractor:
             If True, the features will be normalized between using sklearn StandardScaler. The returned object will be a list.
         normalizer: StandardScaler, default=None
             This should be set to the output from feature extraction on the training data. Do not normalize testing features without this as this could be considered information leakage. 
-        fix_feature_errors: bool (optional), default=True
+        fix_feature_errors: bool (optional), default=False
             If true, fixes all feature errors (NaN=0, INF=0, -INF=0).
         Returns
         ----------
