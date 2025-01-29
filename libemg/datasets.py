@@ -54,8 +54,8 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
     classification = {
         'OneSubjectMyo': OneSubjectMyoDataset,
         '3DC': _3DCDataset,
-        'CIIL_MinimalData': CIIL_MinimalData,
-        'CIIL_ElectrodeShift': CIIL_ElectrodeShift,
+        'MinimalTrainingData': CIIL_MinimalData,
+        'ElectrodeShift': CIIL_ElectrodeShift,
         'GRABMyoBaseline': GRABMyoBaseline,
         'GRABMyoCrossDay': GRABMyoCrossDay,
         'ContinuousTransitions': ContinuousTransitions,
@@ -82,7 +82,7 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
     }
 
     weaklysupervised = {
-        'CIIL_WeaklySupervised': CIIL_WeaklySupervised
+        'WeaklySupervised': CIIL_WeaklySupervised
     }
     
     if type == 'CLASSIFICATION':
