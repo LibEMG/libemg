@@ -159,12 +159,18 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
 
     # --------------- Run -----------------
     accuracies = {}
-    for d in included_datasets:
+    for d_i, d in enumerate(included_datasets):
         print(f"Evaluating {d} dataset...")
         if isinstance(d, str):
             dataset = get_dataset_list('ALL')[d]()
         else:
             dataset = d
+
+        # Get feature dic 
+        if isinstance(object, list):
+            f_dic = feature_dic[d_i]
+        else:
+            f_dic = feature_dic
         
         accs = []
         for s_i in range(0, dataset.num_subjects):
@@ -192,11 +198,11 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             if feature_list is not None:
                 fe = FeatureExtractor()
                 if normalize_features:
-                    train_feats, scaler = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True, fix_feature_errors=True)
-                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)      
+                    train_feats, scaler = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, normalize=True, fix_feature_errors=True)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)      
                 else:
-                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, fix_feature_errors=True)
-                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, fix_feature_errors=True)     
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, fix_feature_errors=True)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, fix_feature_errors=True)     
             else:
                 train_feats = train_windows
                 test_feats = test_windows
