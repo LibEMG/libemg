@@ -167,7 +167,7 @@ def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={
             dataset = d
 
         # Get feature dic 
-        if isinstance(object, list):
+        if isinstance(feature_dic, list):
             f_dic = feature_dic[d_i]
         else:
             f_dic = feature_dic
@@ -291,7 +291,7 @@ def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], fea
             dataset = d
 
         # Get feature dic 
-        if isinstance(object, list):
+        if isinstance(feature_dic, list):
             f_dic = feature_dic[d_i]
         else:
             f_dic = feature_dic
