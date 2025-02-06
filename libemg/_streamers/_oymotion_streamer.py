@@ -72,7 +72,7 @@ if platform.system() == 'Linux':
         from bluepy import btle
         from bluepy.btle import DefaultDelegate, Scanner, Peripheral
     except:
-        pass
+        print("Install bluepy to use OyMotion.")
 from datetime import datetime, timedelta
 import struct
 from enum import Enum

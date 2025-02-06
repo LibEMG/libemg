@@ -1,6 +1,9 @@
-import dearpygui.dearpygui as dpg
-from libemg._gui._data_collection_panel import DataCollectionPanel
-from libemg._gui._data_import_panel import DataImportPanel
+try:
+    import dearpygui.dearpygui as dpg
+    from libemg._gui._data_collection_panel import DataCollectionPanel
+    from libemg._gui._data_import_panel import DataImportPanel
+except:
+    pass
 import inspect
 import time
 import os

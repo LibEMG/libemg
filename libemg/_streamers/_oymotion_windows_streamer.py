@@ -11,7 +11,10 @@ Thanks to @zubaidah93 for providing the source code.
 """
 
 import numpy as np
-from bleak import BleakScanner, BLEDevice, AdvertisementData, BleakClient, BleakGATTCharacteristic
+try:
+    from bleak import BleakScanner, BLEDevice, AdvertisementData, BleakClient, BleakGATTCharacteristic
+except:
+    pass
 
 SERVICE_GUID = '0000ffd0-0000-1000-8000-00805f9b34fb'
 CMD_NOTIFY_CHAR_UUID = 'f000ffe1-0451-4000-b000-000000000000'
