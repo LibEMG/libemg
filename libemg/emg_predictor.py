@@ -32,7 +32,7 @@ from libemg.utils import get_windows
 try:
     import pygame
     from libemg.environments.controllers import RegressorController, ClassifierController
-except ImportError:
+except:
     pass
 
 class EMGPredictor:

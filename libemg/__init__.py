@@ -10,4 +10,8 @@ from libemg import streamers
 from libemg import animator
 from libemg import gui
 from libemg import shared_memory_manager
-from libemg import environments
+try:
+    import pygame
+    from libemg import environments
+except ImportError:
+    pass
