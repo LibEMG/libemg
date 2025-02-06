@@ -29,7 +29,11 @@ from matplotlib.animation import FuncAnimation
 from functools import partial
 
 from libemg.utils import get_windows
-from libemg.environments.controllers import RegressorController, ClassifierController
+try:
+    import pygame
+    from libemg.environments.controllers import RegressorController, ClassifierController
+except ImportError:
+    pass
 
 class EMGPredictor:
     """Base class for EMG prediction. Parent class that shares common functionality between classifiers and regressors.
