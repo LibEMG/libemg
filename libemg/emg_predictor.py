@@ -7,6 +7,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
+from sklearn.preprocessing import StandardScaler
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process, Lock
@@ -24,26 +25,29 @@ from scipy import stats
 import csv
 from abc import ABC, abstractmethod
 import re
+from matplotlib.animation import FuncAnimation
+from functools import partial
 
 from libemg.utils import get_windows
+from libemg.environments.controllers import RegressorController, ClassifierController
 
 class EMGPredictor:
-    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
-        """Base class for EMG prediction.
+    """Base class for EMG prediction. Parent class that shares common functionality between classifiers and regressors.
 
-        Parameters
-        ----------
-        model: custom model (must have fit, predict and predict_proba functions)
-            Object that will be used to fit and provide predictions.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        """
+    Parameters
+    ----------
+    model: custom model (must have fit, predict and predict_proba functions)
+        Object that will be used to fit and provide predictions.
+    model_parameters: dictionary, default=None
+        Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+    random_seed: int, default=0
+        Constant value to control randomization seed.
+    fix_feature_errors: bool (default=False)
+        If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+    silent: bool (default=False)
+        If True, the outputs from the fix_feature_errors parameter will be silenced. 
+    """
+    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
         self.model = model
         self.model_parameters = model_parameters
         # default for feature parameters
@@ -171,7 +175,7 @@ class EMGPredictor:
         return valid_model
 
     def _format_data(self, feature_dictionary):
-        if not isinstance(feature_dictionary, np.ndarray):
+        if isinstance(feature_dictionary, dict):
             # Loop through each element and stack
             arr = None
             for feat in feature_dictionary:
@@ -202,26 +206,26 @@ class EMGPredictor:
 
 
 class EMGClassifier(EMGPredictor):
+    """The Offline EMG Classifier. 
+
+    This is the base class for any offline EMG classification. 
+
+    Parameters
+    ----------
+    model: string or custom classifier (must have fit, predict and predic_proba functions)
+        The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
+        'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+        models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
+    model_parameters: dictionary, default=None
+        Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+    random_seed: int, default=0
+        Constant value to control randomization seed.
+    fix_feature_errors: bool (default=False)
+        If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+    silent: bool (default=False)
+        If True, the outputs from the fix_feature_errors parameter will be silenced. 
+    """
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False):
-        """The Offline EMG Classifier. 
-
-        This is the base class for any offline EMG classification. 
-
-        Parameters
-        ----------
-        model: string or custom classifier (must have fit, predict and predic_proba functions)
-            The type of machine learning model. Valid options include: 'LDA', 'QDA', 'SVM', 'KNN', 'RF' (Random Forest),  
-            'NB' (Naive Bayes), 'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom classifiers or parameters for more control.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        """
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
             'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
@@ -440,29 +444,24 @@ class EMGRegressor(EMGPredictor):
 
     This is the base class for any offline EMG regression. 
 
+    Parameters
+    ----------
+    model: string or custom regressor (must have fit and predict functions)
+        The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM' (Support Vector Machine), 'RF' (Random Forest),  
+        'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
+        models with no hyperparameter tuning and may not be optimal. Pass in custom regressors or parameters for more control.
+    model_parameters: dictionary, default=None
+        Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
+    random_seed: int, default=0
+        Constant value to control randomization seed.
+    fix_feature_errors: bool (default=False)
+        If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
+    silent: bool (default=False)
+        If True, the outputs from the fix_feature_errors parameter will be silenced. 
+    deadband_threshold: float, default=0.0
+        Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
     """
     def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False, deadband_threshold = 0.):
-        """The Offline EMG Regressor. 
-
-        This is the base class for any offline EMG regression. 
-
-        Parameters
-        ----------
-        model: string or custom regressor (must have fit and predict functions)
-            The type of machine learning model. Valid options include: 'LR' (Linear Regression), 'SVM' (Support Vector Machine), 'RF' (Random Forest),  
-            'GB' (Gradient Boost), 'MLP' (Multilayer Perceptron). Note, these models are all default sklearn 
-            models with no hyperparameter tuning and may not be optimal. Pass in custom regressors or parameters for more control.
-        model_parameters: dictionary, default=None
-            Mapping from parameter name to value based on the constructor of the specified model. Only used when a string is passed in for model.
-        random_seed: int, default=0
-            Constant value to control randomization seed.
-        fix_feature_errors: bool (default=False)
-            If True, the model will update any feature errors (INF, -INF, NAN) using the np.nan_to_num function.
-        silent: bool (default=False)
-            If True, the outputs from the fix_feature_errors parameter will be silenced. 
-        deadband_threshold: float, default=0.0
-            Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
-        """
         model_config = {
             'LR': (LinearRegression, {}),
             'SVM': (SVR, {"kernel": "linear"}),
@@ -585,6 +584,10 @@ class OnlineStreamer(ABC):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
+        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
+        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
 
     def __init__(self, 
@@ -597,7 +600,9 @@ class OnlineStreamer(ABC):
                  features, 
                  port, ip, 
                  std_out, 
-                 tcp):
+                 tcp,
+                 feature_queue_length):
+
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
@@ -605,7 +610,9 @@ class OnlineStreamer(ABC):
         self.port = port
         self.ip = ip
         self.predictor = offline_predictor
-
+        self.feature_queue_length = feature_queue_length
+        self.queue = deque(maxlen=feature_queue_length) if self.feature_queue_length > 0 else None
+        self.scaler = None
 
         self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
 
@@ -613,7 +620,10 @@ class OnlineStreamer(ABC):
             ["adapt_flag", (1,1), np.int32],
             ["active_flag", (1,1), np.int8]
         ]
-        smm_items.extend(required_smm_items)
+        current_smm_tags = [item[0] for item in smm_items]
+        for smm_item in required_smm_items:
+            if smm_item[0] not in current_smm_tags:
+                smm_items.append(smm_item)
         self.smm = smm
         self.smm_items = smm_items
 
@@ -637,49 +647,6 @@ class OnlineStreamer(ABC):
             self._run_helper()
         else:
             self.process.start()
-    
-    def write_output(self, prediction, probabilities, probability, calculated_velocity, model_input):
-        time_stamp = time.time()
-        if calculated_velocity == "":
-            printed_velocity = "-1"
-        else:
-            printed_velocity = float(calculated_velocity)
-        if self.options['std_out']:
-            print(f"{int(prediction)} {printed_velocity} {time.time()}")
-        # Write classifier output:
-        if self.options['file']:
-            if not 'file_handle' in self.files.keys():
-                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
-            writer = csv.writer(self.files['file_handle'])
-            feat_str = str(model_input[0]).replace('\n','')[1:-1]
-            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
-            writer.writerow(row)
-            self.files['file_handle'].flush()
-        if "smm" in self.options.keys():
-            # assumed to have "classifier_input" and "classifier_output" keys
-            # these are (1+)
-            def insert_classifier_input(data):
-                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
-                return data
-            def insert_classifier_output(data):
-                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
-                return data
-            self.options['smm'].modify_variable("classifier_input",
-                                                insert_classifier_input)
-            self.options['smm'].modify_variable("classifier_output",
-                                                insert_classifier_output)
-            self.options['classifier_smm_writes'] += 1
-
-        if self.output_format == "predictions":
-            message = str(prediction) + calculated_velocity + '\n'
-        elif self.output_format == "probabilities":
-            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-        if not self.tcp:
-            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
-        else:
-            self.conn.sendall(str.encode(message))
                     
     def prepare_smm(self):
         for i in self.smm_items:
@@ -689,7 +656,7 @@ class OnlineStreamer(ABC):
         for item in self.smm_items:
             smm.create_variable(*item)
         self.options['smm'] = smm
-        self.options['classifier_smm_writes'] = 0
+        self.options['model_smm_writes'] = 0
 
     def analyze_predictor(self, analyze_time=10):
         """Analyzes the latency of the designed predictor. 
@@ -755,14 +722,13 @@ class OnlineStreamer(ABC):
         
         self.odh.prepare_smm()
 
-        if self.features is not None:
-            fe = FeatureExtractor()
         
         self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
         # todo: deal with different sampling frequencies for different modalities
         self.odh.reset()
         
         files = {}
+        fe = FeatureExtractor()
         while True:
             if self.smm:
                 if not self.options["smm"].get_variable("active_flag")[0,0]:
@@ -782,16 +748,29 @@ class OnlineStreamer(ABC):
                 window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
 
                 # Dealing with the case for CNNs when no features are used
-                if self.features:
+                if self.features is not None:
                     model_input = None
                     for mod in self.odh.modalities:
                         # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], self.predictor.feature_params)
-                        mod_features = self._format_data_sample(mod_features)
+                        mod_features = fe.extract_features(self.features, window[mod], feature_dic=self.predictor.feature_params, array=True)
                         if model_input is None:
                             model_input = mod_features
                         else:
                             model_input = np.hstack((model_input, mod_features)) 
+
+                    if self.scaler is not None:
+                        model_input = self.scaler.transform(model_input)
+
+                    if self.queue is not None:
+                        # Queue features from previous windows
+                        self.queue.append(model_input)  # oldest windows will automatically be dequeued if length exceeds maxlen
+
+                        if len(self.queue) < self.feature_queue_length:
+                            # Skip until buffer fills up
+                            continue
+
+                        model_input = np.concatenate(self.queue, axis=0)
+                        model_input = np.expand_dims(model_input, axis=0)   # cast to 3D here for time series models
                     
                 else:
                     model_input = window[list(window.keys())[0]] #TODO: Change this
@@ -800,6 +779,23 @@ class OnlineStreamer(ABC):
                     self.expected_count[mod] += self.window_increment 
                 
                 self.write_output(model_input, window)
+
+    def install_standardization(self, standardization: np.ndarray | StandardScaler):
+        """Install standardization to online model. Standardizes each feature based on training data (i.e., standardizes across windows).
+        Standardization is only applied when features are extracted and is applied before feature queueing (i.e., features are standardized then queued)
+        if relevant.
+        To standardize data, use the standardize Filter.
+
+        :param standardization: Standardization data. If an array, creates a scaler and fits to the provided array. If a StandardScaler, uses the StandardScaler.
+        :type standardization: np.ndarray | StandardScaler
+        """        
+        scaler = standardization
+
+        if not isinstance(scaler, StandardScaler):
+            # Fit scaler to provided data
+            scaler = StandardScaler().fit(np.array(standardization))
+
+        self.scaler = scaler
 
     # ----- All of these are unique to each online streamer ----------
     def run(self):
@@ -856,12 +852,16 @@ class OnlineEMGClassifier(OnlineStreamer):
         If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
+        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
+        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file=False, smm=False, 
                  smm_items= None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
-                 output_format="predictions"):
+                 output_format="predictions", feature_queue_length = 0):
         
         if smm_items is None:
             smm_items = [
@@ -871,7 +871,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.output_format = output_format
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
@@ -950,7 +950,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                                                 insert_classifier_input)
             self.options['smm'].modify_variable("classifier_output",
                                                 insert_classifier_output)
-            self.options['classifier_smm_writes'] += 1
+            self.options['model_smm_writes'] += 1
 
         if self.output_format == "predictions":
             message = str(prediction) + calculated_velocity + '\n'
@@ -958,6 +958,7 @@ class OnlineEMGClassifier(OnlineStreamer):
             message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
         else:
             raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
+
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
@@ -973,21 +974,19 @@ class OnlineEMGClassifier(OnlineStreamer):
         max_len: (int) (optional) 
             number of decisions to visualize
         legend: (list) (optional)
-            The legend to display on the plot
+            Labels used to populate legend. Must be passed in order of output classes.
         """
-        #### NOT CURRENTLY WORKING
-        assert 1==0, "Method not ready"
+        if self.output_format != 'probabilities':
+            raise ValueError(f"OnlineEMGClassifier output_format must be 'probabailities' for visualize() method to work, but current value is {self.output_format}.")
         plt.style.use("ggplot")
         figure, ax = plt.subplots()
         figure.suptitle("Live Classifier Output", fontsize=16)
         plot_handle = ax.scatter([],[],c=[])
-        
-
-        # make a new socket that subscribes to the libemg events
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind(('127.0.0.1', 12346))
-        num_classes = len(self.predictor.model.classes_)
+        num_classes = len(self.predictor.model.classes_)    # assumes that user is using an sklearn model
         cmap = cm.get_cmap('turbo', num_classes)
+
+        controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=self.ip, port=self.port)
+        controller.start()
 
         if legend is not None:
             for i in range(num_classes):
@@ -999,14 +998,15 @@ class OnlineEMGClassifier(OnlineStreamer):
         timestamps = []
         start_time = time.time()
         while True:
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode("utf-8"))
-            probabilities = np.array([float(i) for i in data.split(" ")[:num_classes]])
+            data = controller.get_data(['probabilities', 'timestamp'])
+            if data is None:
+                continue
+            probabilities, timestamp = data
             max_prob = np.max(probabilities)
             prediction = np.argmax(probabilities)
             decision_horizon_classes.append(prediction)
             decision_horizon_probabilities.append(max_prob)
-            timestamps.append(float(data.split(" ")[-1]) - start_time)
+            timestamps.append(timestamp - start_time)
 
             decision_horizon_classes = decision_horizon_classes[-max_len:]
             decision_horizon_probabilities = decision_horizon_probabilities[-max_len:]
@@ -1075,10 +1075,14 @@ class OnlineEMGRegressor(OnlineStreamer):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
+    feature_queue_length: int (optional), default = 0
+        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of windows instead of raw EMG.
+        If the value is greater than 0, creates a queue and passes the data to the model as a 1 (window) x feature_queue_length x num_features. 
+        If the value is 0, no feature queue is created and predictions are made on a single window. Defaults to 0.
     """
     def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file = False, smm = False, smm_items = None,
-                 port=12346, ip='127.0.0.1', std_out=False, tcp=False):
+                 port = 12346, ip = '127.0.0.1', std_out = False, tcp = False, feature_queue_length = 0):
         if smm_items is None:
             # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
@@ -1088,7 +1092,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
         self.smi = smm_items
         
     def run(self, block=True):
@@ -1150,56 +1154,62 @@ class OnlineEMGRegressor(OnlineStreamer):
             self.conn.sendall(str.encode(message))
 
     def visualize(self, max_len = 50, legend = False):
-        # TODO: Maybe add an extra option for 2 DOF problems where a single point is plotted on a 2D plane
+        """Plot a live visualization of the online regressor's predictions. Please note that the animation updates every 5 milliseconds,
+        so keep this in mind when choosing window size and increment. For example, a window increment that's too small may cause delay in the plotting
+        if the regressor is making predictions faster than the plot can be updated.
+
+        Parameters
+        ----------
+        max_len: int (optional), default = 50
+            Maximum number of predictions to plot at a time. Defaults to 50.
+        legend: bool (optional), default = False
+            True if a legend should be shown, otherwise False. Defaults to False.
+        """
+
         plt.style.use('ggplot')
         fig, ax = plt.subplots(layout='constrained')
-        fig.suptitle('Live Regressor Output', fontsize=20)
+        fig.suptitle('Live Regressor Output', fontsize=16)
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Prediction')
 
-        # Make local UDP socket whose purpose is to read from regressor output
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((self.ip, self.port))
-        
-        # Grab sample data to determine # of DOFs
-        data, _ = sock.recvfrom(1024)
-        data = str(data.decode('utf-8'))
-        predictions = self.parse_output(data)[0]
+        controller = RegressorController(ip=self.ip, port=self.port)
+        controller.start()
+
+        # Wait for controller to start receiving data
+        predictions = None
+        while predictions is None:
+            predictions = controller.get_data('predictions')
         cmap = cm.get_cmap('turbo', len(predictions))
+
+        plots = [ax.plot([], [], '.', color=cmap.colors[dof_idx], alpha=0.8)[0] for dof_idx in range(len(predictions))]
 
         if legend:
             handles = [mpatches.Patch(color=cmap.colors[dof_idx], label=f"DOF {dof_idx}") for dof_idx in range(len(predictions))]
 
-        decision_horizon_predictions = []
-        timestamps = []
         start_time = time.time()
-        while True:
-            data, _ = sock.recvfrom(1024)
-            data = str(data.decode('utf-8'))
-            predictions, timestamp = self.parse_output(data)
+
+        def update(frame, decision_horizon_predictions, timestamps):
+            data = controller.get_data(['predictions', 'timestamp'])
+            if data is None:
+                return
+            predictions, timestamp = data
+
             timestamps.append(timestamp - start_time)
             decision_horizon_predictions.append(predictions)
 
             timestamps = timestamps[-max_len:]
             decision_horizon_predictions = decision_horizon_predictions[-max_len:]
 
-            if plt.fignum_exists(fig.number):
-                ax.clear()
-                ax.set_xlabel('Time (s)')
-                ax.set_ylabel('Prediction')
-                for dof_idx in range(len(predictions)):
-                    ax.scatter(timestamps, np.array(decision_horizon_predictions)[:, dof_idx], color=cmap.colors[dof_idx], s=4, alpha=0.8)
+            for dof_idx in range(len(predictions)):
+                plots[dof_idx].set_xdata(timestamps)
+                plots[dof_idx].set_ydata(np.array(decision_horizon_predictions)[:, dof_idx])
 
-                if legend:
-                    ax.legend(handles=handles, loc='upper right')
-                plt.draw()
-                plt.pause(0.01)
-            else:
-                # Figure was closed
-                return
+            if legend:
+                ax.legend(handles=handles, loc='upper right')
 
-    @staticmethod
-    def parse_output(message):
-        outputs = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", message)
-        outputs = list(map(float, outputs))
-        predictions = outputs[:-1]
-        timestamp = outputs[-1]
-        return predictions, timestamp
+            ax.relim()
+            ax.autoscale_view()
+            return plots
+        
+        _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
+        plt.show()

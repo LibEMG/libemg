@@ -135,7 +135,7 @@ class DelsysEMGStreamer(Process):
                     data = np.asarray(struct.unpack('<'+'f'*16, packet))
                     data = data[self.channel_list]
                     if len(data.shape)==1:
-                        data = data[:, None]
+                        data = data[None, :]
                     for e in self.emg_handlers:
                         e(data)
                 if self.imu:

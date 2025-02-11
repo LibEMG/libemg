@@ -3,6 +3,12 @@ Data Handler
 .. automodule:: libemg.data_handler
    :members:
 
+Datasets
+------------------------------
+.. automodule:: libemg.datasets
+   :members:
+
+
 Filtering
 ------------------------------
 .. automodule:: libemg.filtering
@@ -18,7 +24,7 @@ Feature Selection
 .. automodule:: libemg.feature_selector
    :members:
 
-Classification
+EMG Prediction
 ------------------------------
 .. automodule:: libemg.emg_predictor
    :members:

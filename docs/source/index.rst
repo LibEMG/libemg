@@ -17,8 +17,9 @@ LibEMG
    documentation/filtering/filtering
    documentation/features/features
    documentation/feature_selection/feature_selection
-   documentation/classification/classification
+   documentation/prediction/prediction
    documentation/evaluation/evaluation
+   documentation/animation/animation
 
 .. toctree::
    :maxdepth: 1
@@ -43,6 +44,7 @@ LibEMG
    examples/features_and_group_example/features_and_group_example
    examples/feature_optimization_example/feature_optimization_example
    examples/deep_learning_example/deep_learning_example
+   examples/offline_regression_example/offline_regression_example
    
 .. toctree::
    :maxdepth: 1

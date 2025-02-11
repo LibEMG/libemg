@@ -1,490 +1,495 @@
-import os
+from libemg._datasets._3DC import _3DCDataset
+from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
+from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
+from libemg._datasets.emg_epn612 import EMGEPN_UserDependent, EMGEPN_UserIndependent
+from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift, CIIL_WeaklySupervised
+from libemg._datasets.grab_myo import GRABMyoBaseline, GRABMyoCrossDay
+from libemg._datasets.continous_transitions import ContinuousTransitions
+from libemg._datasets.nina_pro import NinaproDB2, NinaproDB8
+from libemg._datasets.user_compliance import UserComplianceDataset
+from libemg._datasets.fors_emg import FORSEMG
+from libemg._datasets.radmand_lp import RadmandLP
+from libemg._datasets.fougner_lp import FougnerLP
+from libemg._datasets.intensity import ContractionIntensity
+from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR, HyserMVC # HyserMVC is not used in this script but is imported so it's public in libemg API
+from libemg._datasets.kaufmann_md import KaufmannMD
+from libemg._datasets.tmr_shirleyryanabilitylab import TMR_Post, TMR_Pre
+from libemg.feature_extractor import FeatureExtractor
+from libemg.emg_predictor import EMGClassifier, EMGRegressor
+from libemg.offline_metrics import OfflineMetrics
+from libemg.filtering import Filter
+from libemg._datasets.emg2pose import EMG2POSEUD, EMG2POSECU
+from sklearn.preprocessing import StandardScaler
+import pickle
 import numpy as np
-import zipfile
-import scipy.io as sio
-from libemg.data_handler import ColumnFetch, MetadataFetcher, OfflineDataHandler, RegexFilter, FilePackager
-from libemg.utils import make_regex
-from glob import glob
-from os import walk
-from pathlib import Path
-from datetime import datetime
-# this assumes you have git downloaded (not pygit, but the command line program git)
 
-class Dataset:
-    def __init__(self, save_dir='.', redownload=False):
-        self.save_dir = save_dir
-        self.redownload=redownload
+def get_dataset_list(type='CLASSIFICATION', cross_user=False):
+    """Gets a list of all available datasets.
 
-    def download(self, url, dataset_name):
-        clone_command = "git clone " + url + " " + dataset_name
-        os.system(clone_command)
+    Parameters
+    ----------
+    type: str (default='CLASSIFICATION')
+        The type of datasets to return. Valid Options: 'CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', and 'ALL'.
+    cross_user: bool (default=False)
+
     
-    def remove_dataset(self, dataset_folder):
-        remove_command = "rm -rf " + dataset_folder
-        os.system(remove_command)
-
-    def check_exists(self, dataset_folder):
-        return os.path.exists(dataset_folder)
-
-    def prepare_data(self, format=OfflineDataHandler):
-        pass
-
-
-class _3DCDataset(Dataset):
-    def __init__(self, save_dir='.', redownload=False, dataset_name="_3DCDataset"):
-        Dataset.__init__(self, save_dir, redownload)
-        self.url = "https://github.com/libemg/3DCDataset"
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
-        self.class_list = ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Supination",
-               "Pronation", "Power Grip", "Open Hand", "Chuck Grip", "Pinch Grip"]
-
-        if (not self.check_exists(self.dataset_folder)):
-            self.download(self.url, self.dataset_folder)
-        elif (self.redownload):
-            self.remove_dataset(self.dataset_folder)
-            self.download(self.url, self.dataset_folder)
-
-
-
-    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,23)],
-                                                      sets_values = ["train", "test"],
-                                                      reps_values = ["0","1","2","3"],
-                                                      classes_values = [str(i) for i in range(11)]):
-        if format == OfflineDataHandler:
-            regex_filters = [
-                RegexFilter(left_bound = "/", right_bound="/EMG", values = sets_values, description='sets'),
-                RegexFilter(left_bound = "_", right_bound=".txt", values = classes_values, description='classes'),
-                RegexFilter(left_bound = "EMG_gesture_", right_bound="_", values = reps_values, description='reps'),
-                RegexFilter(left_bound="Participant", right_bound="/",values=subjects_values, description='subjects')
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-            return odh
-
-class Ninapro(Dataset):
-    def __init__(self, save_dir='.', dataset_name="Ninapro"):
-        # downloading the Ninapro dataset is not supported (no permission given from the authors)'
-        # however, you can download it from http://ninapro.hevs.ch/DB8
-        # the subject zip files should be placed at: <save_dir>/NinaproDB8/DB8_s#.zip
-        Dataset.__init__(self, save_dir)
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name, "")
-        self.exercise_step = []
+    Returns
+    ----------
+    dictionary
+        A dictionary with the all available datasets and their respective classes.
+    """
+    type = type.upper()
+    if type not in ['CLASSIFICATION', 'REGRESSION', 'WEAKLYSUPERVISED', 'CROSSUSER', 'ALL']:
+        print('Valid Options for type parameter: \'CLASSIFICATION\', \'REGRESSION\', or \'ALL\'.')
+        return {}
     
-    def convert_to_compatible(self):
-        # get the zip files (original format they're downloaded in)
-        zip_files = find_all_files_of_type_recursively(self.dataset_folder,".zip")
-        # unzip the files -- if any are there (successive runs skip this)
-        for zip_file in zip_files:
-            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
-                zip_ref.extractall(zip_file[:-4]+'/')
-            os.remove(zip_file)
-        # get the mat files (the files we want to convert to csv)
-        mat_files = find_all_files_of_type_recursively(self.dataset_folder,".mat")
-        for mat_file in mat_files:
-            self.convert_to_csv(mat_file)
+    cross_user_classification = {
+        'EMGEPN612': EMGEPN_UserIndependent,
+    }
+
+    cross_user_regression = {
+        'EMG2POSE': EMG2POSECU,
+    }
     
-    def convert_to_csv(self, mat_file):
-        # read the mat file
-        mat_file = mat_file.replace("\\", "/")
-        mat_dir = mat_file.split('/')
-        mat_dir = os.path.join(*mat_dir[:-1],"")
-        mat = sio.loadmat(mat_file)
-        # get the data
-        exercise = int(mat_file.split('_')[3][1])
-        exercise_offset = self.exercise_step[exercise-1] # 0 reps already included
-        data = mat['emg']
-        restimulus = mat['restimulus']
-        rerepetition = mat['rerepetition']
-        if data.shape[0] != restimulus.shape[0]: # this happens in some cases
-            min_shape = min([data.shape[0], restimulus.shape[0]])
-            data = data[:min_shape,:]
-            restimulus = restimulus[:min_shape,]
-            rerepetition = rerepetition[:min_shape,]
-        # remove 0 repetition - collection buffer
-        remove_mask = (rerepetition != 0).squeeze()
-        data = data[remove_mask,:]
-        restimulus = restimulus[remove_mask]
-        rerepetition = rerepetition[remove_mask]
-        # important little not here: 
-        # the "rest" really is only the rest between motions, not a dedicated rest class.
-        # there will be many more rest repetitions (as it is between every class)
-        # so usually we really care about classifying rest as its important (most of the time we do nothing)
-        # but for this dataset it doesn't make sense to include (and not its just an offline showcase of the library)
-        # I encourage you to plot the restimulus to see what I mean. -> plt.plot(restimulus)
-        # so we remove the rest class too
-        remove_mask = (restimulus != 0).squeeze()
-        data = data[remove_mask,:]
-        restimulus = restimulus[remove_mask]
-        rerepetition = rerepetition[remove_mask]
-        tail = 0
-        while tail < data.shape[0]-1:
-            rep = rerepetition[tail][0] # remove the 1 offset (0 was the collection buffer)
-            motion = restimulus[tail][0] # remove the 1 offset (0 was between motions "rest")
-            # find head
-            head = np.where(rerepetition[tail:] != rep)[0]
-            if head.shape == (0,): # last segment of data
-                head = data.shape[0] -1
+    classification = {
+        'OneSubjectMyo': OneSubjectMyoDataset,
+        '3DC': _3DCDataset,
+        'MinimalTrainingData': CIIL_MinimalData,
+        'ElectrodeShift': CIIL_ElectrodeShift,
+        'GRABMyoBaseline': GRABMyoBaseline,
+        'GRABMyoCrossDay': GRABMyoCrossDay,
+        'ContinuousTransitions': ContinuousTransitions,
+        'NinaProDB2': NinaproDB2,
+        'FORS-EMG': FORSEMG,
+        'EMGEPN612': EMGEPN_UserDependent,
+        'ContractionIntensity': ContractionIntensity,
+        'RadmandLP': RadmandLP,
+        'FougnerLP': FougnerLP,
+        'KaufmannMD': KaufmannMD,
+        'TMR_Post' : TMR_Post,
+        'TMR_Pre': TMR_Pre,
+        'HyserPR': HyserPR,
+    }
+
+    regression = {
+        'OneSubjectEMaGer': OneSubjectEMaGerDataset,
+        'NinaProDB8': NinaproDB8,
+        'Hyser1DOF': Hyser1DOF,
+        'HyserNDOF': HyserNDOF, 
+        'HyserRandom': HyserRandom,
+        'UserCompliance': UserComplianceDataset,
+        'EMG2POSE': EMG2POSEUD
+    }
+
+    weaklysupervised = {
+        'WeaklySupervised': CIIL_WeaklySupervised
+    }
+    
+    if type == 'CLASSIFICATION':
+        if cross_user:
+            return cross_user_classification
+        return classification
+    elif type == 'REGRESSION':
+        if cross_user:
+            return cross_user_regression
+        return regression 
+    elif type == "WEAKLYSUPERVISED":
+        return weaklysupervised
+    else:
+        # Concatenate all datasets
+        classification.update(regression)
+        classification.update(weaklysupervised)
+        return classification
+    
+def get_dataset_info(dataset):
+    """Prints out the information about a certain dataset. 
+    
+    Parameters
+    ----------
+    dataset: string
+        The name of the dataset you want the information of.
+    """
+    if dataset in get_dataset_list():
+        get_dataset_list()[dataset]().get_info()
+    else:
+        print("ERROR: Invalid dataset name")
+
+def evaluate(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['OneSubjectMyo', '3DC'], output_file='out.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False):
+    """Evaluates an algorithm against all included datasets.
+    
+    Parameters
+    ----------
+    window_size: int
+        The window size (**in ms**). 
+    window_inc: int
+        The window increment (**in ms**). 
+    feature_list: list (default=['MAV'])
+        A list of features. Pass in None for CNN.
+    feature_dic: dic (default={})
+        A dictionary of parameters for the passed in features.
+    included_datasets: list (str) or list (DataSets)
+        The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
+    output_file: string (default='out.pkl')
+        The name of the directory you want to incrementally save the results to (it will be a pickle file).
+    regression: boolean (default=False)
+        If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
+    metrics: list (default=['CA']/['MSE'])
+        The metrics to extract from each dataset.
+    normalize_data: boolean (default=False)
+        If True, the data will be normalized.
+    normalize_features: boolean (default=False)
+        If True, features will get normalized.
+    Returns
+    ----------
+    dictionary
+        A dictionary with a set of accuracies for different datasets
+    """
+
+    # -------------- Setup -------------------
+    if metrics == ['CA'] and regression:
+        metrics = ['MSE']
+
+    metadata_operations = None 
+    label_val = 'classes'
+    if regression:
+        metadata_operations = {'labels': 'last_sample'}
+        label_val = 'labels'
+
+    om = OfflineMetrics()
+
+    # --------------- Run -----------------
+    accuracies = {}
+    for d_i, d in enumerate(included_datasets):
+        print(f"Evaluating {d} dataset...")
+        if isinstance(d, str):
+            dataset = get_dataset_list('ALL')[d]()
+        else:
+            dataset = d
+
+        # Get feature dic 
+        if isinstance(feature_dic, list):
+            f_dic = feature_dic[d_i]
+        else:
+            f_dic = feature_dic
+        
+        accs = []
+        for s_i in range(0, dataset.num_subjects):
+            data = dataset.prepare_data(split=True, subjects=[s_i])
+
+            if data == None:
+                print('Skipping Subject... No data found.')
+                continue
+
+            s_train_dh = data['Train']
+            s_test_dh = data['Test']
+
+            print(str(s_i) + '/' + str(dataset.num_subjects) + ' completed.')
+
+            # Normalize Data
+            if normalize_data:
+                filter = Filter(dataset.sampling)
+                filter.install_filters({'name': 'standardize', 'data': s_train_dh})
+                filter.filter(s_train_dh)
+                filter.filter(s_test_dh)
+
+            train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+
+            if feature_list is not None:
+                fe = FeatureExtractor()
+                if normalize_features:
+                    train_feats, scaler = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, normalize=True, fix_feature_errors=True)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)      
+                else:
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, fix_feature_errors=True)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, fix_feature_errors=True)     
             else:
-                head = head[0] + tail
-            # downsample to 1kHz from 2kHz using decimation
-            data_for_file = data[tail:head,:]
-            data_for_file = data_for_file[::2, :]
-            # write to csv
-            csv_file = mat_dir + 'C' + str(motion-1) + 'R' + str(rep-1 + exercise_offset) + '.csv'
-            np.savetxt(csv_file, data_for_file, delimiter=',')
-            tail = head
-        os.remove(mat_file)
+                train_feats = train_windows
+                test_feats = test_windows
 
-class NinaproDB8(Ninapro):
-    def __init__(self, save_dir='.', dataset_name="NinaproDB8"):
-        Ninapro.__init__(self, save_dir, dataset_name)
-        self.class_list = ["Thumb Flexion/Extension", "Thumb Abduction/Adduction", "Index Finger Flexion/Extension", "Middle Finger Flexion/Extension", "Combined Ring and Little Fingers Flexion/Extension",
-         "Index Pointer", "Cylindrical Grip", "Lateral Grip", "Tripod Grip"]
-        self.exercise_step = [0,10,20]
+            ds = {
+                'training_features': train_feats,
+                'training_labels': train_meta[label_val]
+            }
 
-    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,13)],
-                                                      reps_values = [str(i) for i in range(22)],
-                                                      classes_values = [str(i) for i in range(9)]):
-        
-        if format == OfflineDataHandler:
-            regex_filters = [
-                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
-                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
-                RegexFilter(left_bound="DB8_s", right_bound="/",values=subjects_values, description='subjects')
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-            return odh
-
-class NinaproDB2(Ninapro):
-    def __init__(self, save_dir='.', dataset_name="NinaproDB2"):
-        Ninapro.__init__(self, save_dir, dataset_name)
-        self.class_list = ["TODO"]
-        self.exercise_step = [0,0,0]
-
-    def prepare_data(self, format=OfflineDataHandler, subjects_values = [str(i) for i in range(1,41)],
-                                                      reps_values = [str(i) for i in range(6)],
-                                                      classes_values = [str(i) for i in range(50)]):
-        
-        if format == OfflineDataHandler:
-            regex_filters = [
-                RegexFilter(left_bound = "/C", right_bound="R", values = classes_values, description='classes'),
-                RegexFilter(left_bound = "R", right_bound=".csv", values = reps_values, description='reps'),
-                RegexFilter(left_bound="DB2_s", right_bound="/",values=subjects_values, description='subjects')
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-            return odh
-
-# given a directory, return a list of files in that directory matching a format
-# can be nested
-# this is just a handly utility
-def find_all_files_of_type_recursively(dir, terminator):
-    files = os.listdir(dir)
-    file_list = []
-    for file in files:
-        if file.endswith(terminator):
-            file_list.append(dir+file)
-        else:
-            if os.path.isdir(dir+file):
-                file_list += find_all_files_of_type_recursively(dir+file+'/',terminator)
-    return file_list
-
-
-class OneSubjectMyoDataset(Dataset):
-    def __init__(self, save_dir='.', redownload=False, dataset_name="OneSubjectMyoDataset"):
-        Dataset.__init__(self, save_dir, redownload)
-        self.url = "https://github.com/libemg/OneSubjectMyoDataset"
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
-
-        if (not self.check_exists(self.dataset_folder)):
-            self.download(self.url, self.dataset_folder)
-        elif (self.redownload):
-            self.remove_dataset(self.dataset_folder)
-            self.download(self.url, self.dataset_folder)
-
-    def prepare_data(self, format=OfflineDataHandler):
-        if format == OfflineDataHandler:
-            sets_values = ["1","2","3","4","5","6"]
-            classes_values = ["0","1","2","3","4"]
-            reps_values = ["0","1"]
-            regex_filters = [
-                RegexFilter(left_bound = "/trial_", right_bound="/", values = sets_values, description='sets'),
-                RegexFilter(left_bound = "C_", right_bound=".csv", values = classes_values, description='classes'),
-                RegexFilter(left_bound = "R_", right_bound="_", values = reps_values, description='reps')
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, delimiter=",")
-            return odh
-
-
-class _SessionFetcher(MetadataFetcher):
-    def __init__(self):
-        super().__init__('sessions')
-
-    def __call__(self, filename, file_data, all_files):
-        def split_filename(f):
-            # Split date and name into separate variables
-            date_idx = f.find('2018')
-            date = datetime.strptime(Path(f[date_idx:]).stem, '%Y-%m-%d-%H-%M-%S-%f')
-            description = f[:date_idx]
-            return date, description
-
-        data_file_date, data_file_description = split_filename(filename)
-
-        # Grab the other file of a different date. Return the index of which session it is
-        same_subject_files = [f for f in all_files if data_file_description in f]
-        file_dates = [split_filename(subject_filename)[0] for subject_filename in same_subject_files]
-        file_dates.sort()
-        session_idx = file_dates.index(data_file_date)
-        return session_idx * np.ones((file_data.shape[0], 1), dtype=int)
-
-
-class _RepFetcher(ColumnFetch):
-    def __call__(self, filename, file_data, all_files):
-        column_data = super().__call__(filename, file_data, all_files)
-        
-        # Get rep transitions
-        diff = np.diff(column_data, axis=0)
-        rep_end_row_mask, rep_end_col_mask = np.nonzero((diff < 0) & (column_data[1:] == 0))
-        unique_rep_end_row_mask = np.unique(rep_end_row_mask)  # remove duplicate start indices (for combined movements)
-        # rest_end_row_mask = np.nonzero(np.diff(np.nonzero(column_data == 0)[0]) > 1)[0]
-        # rest_end_row_mask = np.nonzero(np.diff(np.nonzero(np.all(column_data == 0, axis=1))[0]) > 1)[0]
-        # unique_rep_end_row_mask = np.concatenate((unique_rep_end_row_mask, rest_end_row_mask))
-        # unique_rep_end_row_mask = np.sort(unique_rep_end_row_mask)
-
-
-        # Populate metadata array
-        metadata = np.empty((column_data.shape[0], 1), dtype=np.int16)
-        rep_counters = [0 for _ in range(5)]    # 5 different press types
-        previous_rep_start = 0
-        for idx, rep_start in enumerate(unique_rep_end_row_mask):
-            movement_idx = 4 if np.sum(rep_end_row_mask == rep_start) > 1 else rep_end_col_mask[idx]    # if multiple columns are nonzero then it's a combined movement
-            rep = rep_counters[movement_idx]
-            metadata[previous_rep_start:rep_start] = rep
-            rep_counters[movement_idx] += 1
-            previous_rep_start = rep_start
-
-        # Fill in final samples
-        metadata[rep_start:] = rep
-
-        return metadata
-
-
-class PutEMGForceDataset(Dataset):
-    def __init__(self, save_dir = '.', dataset_name = 'PutEMGForceDataset', data_filetype = None):
-        """Dataset wrapper for putEMG-Force dataset. Used for regression of finger forces.
-
-        Parameters
-        ----------
-        save_dir : str, default='.'
-            Base data directory.
-        dataset_name : str, default='PutEMGForceDataset'
-            Name of dataset. Looks for dataset in filepath created by appending save_dir and dataset_name.
-        data_filetype : list or None, default=None
-            Type of data file to use. Accepted values are 'repeats_long', 'repeats_short', 'sequential', or any combination of those. If None is passed, all will be used.
-        """
-        # TODO: Implement downloading dataset using .sh or .py file
-        super().__init__(save_dir)
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir, self.dataset_name)
-        if data_filetype is None:
-            data_filetype = ['repeats_short', 'repeats_long', 'sequential']
-        elif not isinstance(data_filetype, list):
-            data_filetype = [data_filetype]
-        self.data_filetype = data_filetype
-
-    def prepare_data(self, format=OfflineDataHandler, subjects = None, sessions = None, reps = None, labels = 'forces', label_dof_mask = None):
-        if subjects is None:
-            subjects = [str(idx).zfill(2) for idx in range(60)] 
-
-        if labels == 'forces':
-            column_mask = np.arange(25, 35)
-        elif labels == 'trajectories':
-            column_mask = np.arange(36, 40)
-        else:
-            raise ValueError(f"Expected either 'forces' or trajectories' for labels parameter, but received {labels}.")
-
-        if label_dof_mask is not None:
-            column_mask = column_mask[label_dof_mask]
-
-        if format == OfflineDataHandler:
-            regex_filters = [
-                RegexFilter(left_bound='/emg_force-', right_bound='-', values=subjects, description='subjects'),
-                RegexFilter(left_bound='-', right_bound='-', values=self.data_filetype, description='data_filetype'),
-            ]
-            metadata_fetchers = [
-                _SessionFetcher(),
-                ColumnFetch('labels', column_mask),
-                _RepFetcher('reps', list(range(36, 40)))
-            ]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers, delimiter=',', skiprows=1, data_column=list(range(1, 25)))
-            if sessions is not None:
-                odh = odh.isolate_data('sessions', sessions)
-            if reps is not None:
-                odh = odh.isolate_data('reps', reps)
-            return odh
-
-
-class OneSubjectEMaGerDataset(Dataset):
-    def __init__(self, save_dir = '.', redownload = False, dataset_name = 'OneSubjectEMaGerDataset'):
-        super().__init__(save_dir, redownload)
-        self.url = 'https://github.com/LibEMG/OneSubjectEMaGerDataset'
-        self.dataset_name = dataset_name
-        self.dataset_folder = os.path.join(self.save_dir, self.dataset_name)
-
-        if (not self.check_exists(self.dataset_folder)):
-            self.download(self.url, self.dataset_folder)
-        elif (self.redownload):
-            self.remove_dataset(self.dataset_folder)
-            self.download(self.url, self.dataset_folder)
-
-    def prepare_data(self, format=OfflineDataHandler):
-        if format == OfflineDataHandler:
-            regex_filters = [
-                RegexFilter(left_bound='/', right_bound='/', values=['open-close', 'pro-sup'], description='movements'),
-                RegexFilter(left_bound='_R_', right_bound='_emg.csv', values=[str(idx) for idx in range(5)], description='reps')
-            ]
-            package_function = lambda x, y: Path(x).parent.absolute() == Path(y).parent.absolute()
-            metadata_fetchers = [FilePackager(RegexFilter(left_bound='/', right_bound='.txt', values=['labels'], description='labels'), package_function)]
-            odh = OfflineDataHandler()
-            odh.get_data(folder_location=self.dataset_folder, regex_filters=regex_filters, metadata_fetchers=metadata_fetchers)
-            return odh
+            if not regression:
+                clf = EMGClassifier(model)
+            else:
+                clf = EMGRegressor(model)
+            clf.fit(ds)
             
+            if regression:
+                preds = clf.run(test_feats)
+            else:
+                preds, _ = clf.run(test_feats)
+                
+            metrics = om.extract_offline_metrics(metrics, test_meta[label_val], preds)
+            accs.append(metrics)
+                
+            print(metrics)    
+        accuracies[str(d)] = accs
 
-# class GRABMyo(Dataset):
-#     def __init__(self, save_dir='.', redownload=False, subjects=list(range(1,44)), sessions=list(range(1,4)), dataset_name="GRABMyo"):
-#         Dataset.__init__(self, save_dir, redownload)
-#         self.url = "https://physionet.org/files/grabmyo/1.0.2/"
-#         self.dataset_name = dataset_name
-#         self.dataset_folder = os.path.join(self.save_dir , self.dataset_name)
-#         self.subjects = subjects
-#         self.sessions = sessions
+        with open(output_file, 'wb') as handle:
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   
 
-#         if (not self.check_exists(self.dataset_folder)):
-#             self.download_data()
-#         elif (self.redownload):
-#             self.remove_dataset(self.dataset_folder)
-#             self.download_data()
-#         else:
-#             print("Data Already Downloaded.")
+
+def evaluate_crossuser(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['EMGEPN612'], output_file='out_cross.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False, memory_efficient=False):
+    """Evaluates an algorithm against all the cross-user datasets.
     
-#     def download_data(self):
-#         curl_command = "curl --create-dirs" + " -O --output-dir " + str(self.dataset_folder) + "/ "
-#         # Download files
-#         print("Starting download...")
-#         files = ['readme.txt', 'subject-info.csv', 'MotionSequence.txt']
-#         for f in files:
-#             os.system(curl_command + self.url + f)
-#         for session in self.sessions:
-#             curl_command = "curl --create-dirs" + " -O --output-dir " + str(self.dataset_folder) + "/" + "Session" + str(session) + "/ "
-#             for p in self.subjects:
-#                 for t in range(1,8):
-#                     for g in range(1,18):
-#                         endpoint = self.url + "Session" + str(session) + "/session" + str(session) + "_participant" + str(p) + "/session" + str(session) + "_participant" + str(p) + "_gesture" + str(g) + "_trial" + str(t)
-#                         os.system(curl_command + endpoint + '.hea')
-#                         os.system(curl_command + endpoint + '.dat')
-#         print("Download complete.")
+    Parameters
+    ----------
+    window_size: int
+        The window size (**in ms**). 
+    window_inc: int
+        The window increment (**in ms**). 
+    feature_list: list (default=['MAV'])
+        A list of features.
+    feature_dic: dic or list (default={})
+        A dictionary or list of dictionaries of parameters for the passed in features.
+    included_datasets: list (str) or list (DataSets)
+        The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
+    output_file: string (default='out.pkl')
+        The name of the directory you want to incrementally save the results to (it will be a pickle file).
+    regression: boolean (default=False)
+        If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
+    metrics: list (default=['CA'])
+        The metrics to extract from each dataset.
+    normalize_data: boolean (default=False)
+        If True, the data will be normalized.
+    normalize_features: boolean (default=False)
+        If True, features will get normalized.
+    memory_efficient: boolean (default=false)
+        If True, features will be extracted in the prepare method. You wont have access to the raw data and normalization won't be possible. 
+    Returns
+    ----------
+    dictionary
+        A dictionary with a set of accuracies for different datasets
+    """
+    # -------------- Setup -------------------
+    if metrics == ['CA'] and regression:
+        metrics = ['MSE']
 
-#     def prepare_data(self, format=OfflineDataHandler, subjects=[str(i) for i in range(1,44)], sessions=["1","2","3"]):
-#         if format == OfflineDataHandler:
-#             sets_regex = make_regex(left_bound = "session", right_bound="_", values = sessions)
-#             classes_values = ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17"]
-#             classes_regex = make_regex(left_bound = "_gesture", right_bound="_", values = classes_values)
-#             reps_values = ["1","2","3","4","5","6","7"]
-#             reps_regex = make_regex(left_bound = "trial", right_bound=".hea", values = reps_values)
-#             subjects_regex = make_regex(left_bound="participant", right_bound="_",values=subjects)
-#             dic = {
-#                 "sessions": sessions,
-#                 "sessions_regex": sets_regex,
-#                 "reps": reps_values,
-#                 "reps_regex": reps_regex,
-#                 "classes": classes_values,
-#                 "classes_regex": classes_regex,
-#                 "subjects": subjects,
-#                 "subjects_regex": subjects_regex
-#             }
-#             odh = OfflineDataHandler()
-#             odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
-#             return odh
+    metadata_operations = None 
+    label_val = 'classes'
+    if regression:
+        metadata_operations = {'labels': 'last_sample'}
+        label_val = 'labels'
 
-#     def print_info(self):
-#         print('Reference: https://www.physionet.org/content/grabmyo/1.0.2/') 
-#         print('Name: ' + self.dataset_name)
-#         print('Gestures: 17')
-#         print('Trials: 7')
-#         print('Time Per Rep: 5s')
-#         print('Subjects: 43')
-#         print("Forearm EMG (16): Columns 0-15\nWrist EMG (12): 18-23 and 26-31\nUnused (4): 16,23,24,31")
+    om = OfflineMetrics()
+    fe = FeatureExtractor()
 
+    # --------------- Run -----------------
+    accuracies = {}
+    for d_i, d in enumerate(included_datasets):
+        print(f"Evaluating {d} dataset...")
+        if isinstance(d, str):
+            if regression:
+                dataset = get_dataset_list('REGRESSION', True)[d]()
+            else:
+                dataset = get_dataset_list('CLASSIFICATION', True)[d]()
+        else:
+            dataset = d
 
-# class NinaDB1(Dataset):
-#     def __init__(self, dataset_dir, subjects):
-#         Dataset.__init__(self, dataset_dir)
-#         self.dataset_folder = dataset_dir
-#         self.subjects = subjects
+        # Get feature dic 
+        if isinstance(feature_dic, list):
+            f_dic = feature_dic[d_i]
+        else:
+            f_dic = feature_dic
+        
+        if memory_efficient:
+            data = dataset.prepare_data(split=True, feature_list=feature_list, feature_dic=f_dic, window_size=int(dataset.sampling/1000 * window_size), window_inc=int(dataset.sampling/1000 * window_inc))
+        else:
+            data = dataset.prepare_data(split=True)
+        
+        train_data = data['Train']
+        test_data = data['Test']
 
-#         if (not self.check_exists(self.dataset_folder)):
-#             print("The dataset does not currently exist... Please download it from: http://ninaweb.hevs.ch/data1") 
-#             exit(1)      
-#         else:
-#             filenames = next(walk(self.dataset_folder), (None, None, []))[2]
-#             if not any("csv" in f for f in filenames):
-#                 self.setup(filenames)
-#                 print("Extracted and set up repo.")
-#             self.prepare_data()
+        # Normalize Data
+        if normalize_data and not memory_efficient:
+            filter = Filter(dataset.sampling)
+            filter.install_filters({'name': 'standardize', 'data': train_data})
+            filter.filter(train_data)
+            filter.filter(test_data)
+
+        if memory_efficient:
+            train_feats = np.vstack(train_data.data)
+            train_labels = np.vstack(getattr(train_data, label_val)).squeeze()
+            if normalize_features:
+                normalizer = StandardScaler()
+                train_feats = normalizer.fit_transform(train_feats)
+        else:
+            train_windows, train_meta = train_data.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            if normalize_features:
+                train_feats, normalizer = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, normalize=True, fix_feature_errors=True)
+            else:
+                train_feats = fe.extract_features(feature_list, train_windows, feature_dic=f_dic, fix_feature_errors=True)
+            del train_windows
+            train_labels = train_meta[label_val]
+
+        ds = {
+            'training_features': train_feats,
+            'training_labels': train_labels
+        }
+        
+        if not regression:
+            clf = EMGClassifier(model)
+        else:
+            clf = EMGRegressor(model)
+        clf.fit(ds)
+
+        del train_feats
+        del ds
+
+        unique_subjects = np.unique(np.hstack([t.flatten() for t in test_data.subjects]))
+        
+        accs = []
+        for s_i, s in enumerate(unique_subjects):
+            print(str(s_i) + '/' + str(len(unique_subjects)) + ' completed.')
+            s_test_dh = test_data.isolate_data('subjects', [s])
+
+            if memory_efficient:
+                test_feats = np.vstack(s_test_dh.data)
+                test_labels = np.vstack(getattr(s_test_dh, label_val)).squeeze()
+                if normalize_features:
+                    test_feats = normalizer.transform(test_feats)
+            else:
+                test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+                if normalize_features:
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, normalize=True, normalizer=normalizer, fix_feature_errors=True)
+                else:
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=f_dic, fix_feature_errors=True)
+                test_labels = test_meta[label_val]
+
+            if regression:
+                preds = clf.run(test_feats)
+            else:
+                preds, _ = clf.run(test_feats)
+                
+            metrics = om.extract_offline_metrics(metrics, test_labels, preds)
+            accs.append(metrics)
+                
+            print(metrics)    
+        accuracies[str(d)] = accs
+
+        with open(output_file, 'wb') as handle:
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def evaluate_weaklysupervised(model, window_size, window_inc, feature_list=['MAV'], feature_dic={}, included_datasets=['CIIL_WeaklySupervised'], output_file='out.pkl', regression=False, metrics=['CA'], normalize_data=False, normalize_features=False):
+    """Evaluates an algorithm against all included datasets.
     
-#     def setup(self, filenames):
-#         for f in filenames:
-#             if "zip" in f:
-#                 file_path = os.path.join(self.dataset_folder, f)
-#                 with zipfile.ZipFile(file_path, 'r') as zip_ref:
-#                     zip_ref.extractall(self.dataset_folder)
-#         self.convert_data()
+    Parameters
+    ----------
+    window_size: int
+        The window size (**in ms**). 
+    window_inc: int
+        The window increment (**in ms**). 
+    feature_list: list (default=['MAV'])
+        A list of features. Pass in None for CNN.
+    feature_dic: dic (default={})
+        A dictionary of parameters for the passed in features.
+    included_datasets: list (str) or list (DataSets)
+        The name of the datasets you want to evaluate your model on. Either pass in strings (e.g., '3DC') for names or the dataset objects (e.g., _3DCDataset()). 
+    output_file: string (default='out.pkl')
+        The name of the directory you want to incrementally save the results to (it will be a pickle file).
+    regression: boolean (default=False)
+        If True, will create an EMGRegressor object. Otherwise creates an EMGClassifier object. 
+    metrics: list (default=['CA']/['MSE'])
+        The metrics to extract from each dataset.
+    normalize_data: boolean (default=False)
+        If True, the data will be normalized.
+    normalize_features: boolean (default=False)
+        If True, features will get normalized.
+    Returns
+    ----------
+    dictionary
+        A dictionary with a set of accuracies for different datasets
+    """
 
-#     def convert_data(self):
-#         mat_files = [y for x in os.walk(self.dataset_folder) for y in glob(os.path.join(x[0], '*.mat'))]
-#         for f in mat_files:
-#             mat_dict = sio.loadmat(f)
-#             output_ = np.concatenate((mat_dict['emg'], mat_dict['restimulus'], mat_dict['rerepetition']), axis=1)
-#             mask_ids = output_[:,11] != 0
-#             output_ = output_[mask_ids,:]
-#             np.savetxt(f[:-4]+'.csv', output_,delimiter=',')
-    
-#     def cleanup_data(self):
-#         mat_files = [y for x in os.walk(self.dataset_folder) for y in glob(os.path.join(x[0], '*.mat'))]
-#         zip_files = [y for x in os.walk(self.dataset_folder) for y in glob(os.path.join(x[0], '*.zip'))]
-#         files = mat_files + zip_files
-#         for f in files:
-#             os.remove(f)
-    
-#     def prepare_data(self, format=OfflineDataHandler):
-#         if format == OfflineDataHandler:
-#             classes_values = list(range(1,24))
-#             classes_column = [10]
-#             classset_values = [str(i) for i in list(range(1,4))]
-#             classset_regex  = make_regex(left_bound="_E", right_bound=".csv", values=classset_values)
-#             reps_values = list(range(1,11))
+    # -------------- Setup -------------------
+    if metrics == ['CA'] and regression:
+        metrics = ['MSE']
 
-#             reps_column = [11]
-#             subjects_values = [str(s) for s in self.subjects]
-#             subjects_regex = make_regex(left_bound="S", right_bound="_A", values=subjects_values)
-#             data_column = list(range(0,10))
-#             dic = {
-#                 "reps": reps_values,
-#                 "reps_column": reps_column,
-#                 "classes": classes_values,
-#                 "classes_column": classes_column,
-#                 "subjects": subjects_values,
-#                 "subjects_regex": subjects_regex,
-#                 "classset": classset_values,
-#                 "classset_regex": classset_regex,
-#                 "data_column": data_column
-#             }
-#             odh = OfflineDataHandler()
-#             odh.get_data(folder_location=self.dataset_folder, filename_dic=dic, delimiter=",")
-#             return odh
+    metadata_operations = None 
+    label_val = 'classes'
+    if regression:
+        metadata_operations = {'labels': 'last_sample'}
+        label_val = 'labels'
+
+    om = OfflineMetrics()
+
+    # --------------- Run -----------------
+    accuracies = {}
+    for d in included_datasets:
+        print(f"Evaluating {d} dataset...")
+        if isinstance(d, str):
+            dataset = get_dataset_list('WEAKLYSUPERVISED')[d]()
+        else:
+            dataset = d
+        
+        accs = []
+        for s_i in range(0, dataset.num_subjects):
+            data = dataset.prepare_data(split=True, subjects=[s_i])
+
+            if data == None:
+                print('Skipping Subject... No data found.')
+                continue
+            
+            s_pretrain_dh = data['Pretrain']
+            s_pretrain_dh.extra_attributes.remove('classes')
+            delattr(s_pretrain_dh,"classes")
+            s_train_dh = data['Train']
+            s_test_dh = data['Test']
+
+            # Normalize Data
+            if normalize_data:
+                filter = Filter(dataset.sampling)
+                filter.install_filters({'name': 'standardize', 'data': s_pretrain_dh})
+                filter.filter(s_pretrain_dh)
+                filter.filter(s_train_dh)
+                filter.filter(s_test_dh)
+
+            pretrain_windows, pretrain_meta = s_pretrain_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            train_windows, train_meta = s_train_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+            test_windows, test_meta = s_test_dh.parse_windows(int(dataset.sampling/1000 * window_size), int(dataset.sampling/1000 * window_inc), metadata_operations=metadata_operations)
+
+            if feature_list is not None:
+                fe = FeatureExtractor()
+                if normalize_features:
+                    pretrain_feats, scaler = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic, normalize=True, fix_feature_errors=True)
+                    train_feats, _ = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)
+                    test_feats, _ = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, normalize=True, normalizer=scaler, fix_feature_errors=True)      
+                else:
+                    pretrain_feats = fe.extract_features(feature_list, pretrain_windows, feature_dic=feature_dic, fix_feature_errors=True)
+                    train_feats = fe.extract_features(feature_list, train_windows, feature_dic=feature_dic, fix_feature_errors=True)
+                    test_feats = fe.extract_features(feature_list, test_windows, feature_dic=feature_dic, fix_feature_errors=True)     
+            else:
+                pretrain_feats = pretrain_windows
+                train_feats = train_windows
+                test_feats = test_windows
+
+            ds = {
+                'training_features': train_feats,
+                'training_labels': train_meta[label_val],
+                'pretraining_features': pretrain_feats
+            }
+
+            model.fit(ds)
+
+            if not regression:
+                clf = EMGClassifier(model)
+            else:
+                clf = EMGRegressor(model)
+            
+            if regression:
+                preds = clf.run(test_feats)
+            else:
+                preds, _ = clf.run(test_feats)
+                
+            metrics = om.extract_offline_metrics(metrics, test_meta[label_val], preds)
+            accs.append(metrics)
+            print(str(s_i) + '/' + str(dataset.num_subjects) + ' completed.')
+            print(metrics)    
+        accuracies[str(dataset)] = accs
+
+        with open(output_file, 'wb') as handle:
+            pickle.dump(accuracies, handle, protocol=pickle.HIGHEST_PROTOCOL)   

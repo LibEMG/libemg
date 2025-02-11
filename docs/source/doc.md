@@ -20,6 +20,10 @@ The goal of this library is to provide an easy to use and feature-rich API for d
 $ pip install libemg
 ```
 
+# Interactive API Walkthrough
+
+Interactive offline and online walkthroughs were created as part of a `LibEMG` workshop we presented at [MEC24](https://www.unb.ca/ibme/mec/index.html), hosted by the Institute of Biomedical Engineering. These walkthroughs step through much of the core functionality of `LibEMG`, and offer visuals to explain pieces of the API. The offline example is formatted as a jupyter notebook, allowing you to see visuals for each code snippet without running the code yourself. Please check out out the workshop GitHub repository to see these interactive API walkthroughs: <https://github.com/LibEMG/LibEMG_MEC24_Workshop>.
+
 # Questions
 Check out our discord server if you have questions, comments, or feature requests: https://discord.gg/NeqTTXmM4F
 

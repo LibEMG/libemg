@@ -22,7 +22,10 @@ class GUI:
         Online data handler used for acquiring raw EMG data.
     args: dic, default={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True}
         The dictionary that defines the SGT window. Keys are: 'media_folder', 
-        'data_folder', 'num_reps', 'rep_time', 'rest_time', and 'auto_advance'.
+        'data_folder', 'num_reps', 'rep_time', 'rest_time', and 'auto_advance'. All media (i.e., images and videos) in 'media_folder' will be played in alphabetical order.
+        For video files, a matching labels file of the same name will be searched for and added to the 'data_folder' if found.
+        'rep_time' is only used for images since the duration of videos is automatically calculated based on
+        the number of frames (assumed to be 24 FPS).  
     width: int, default=1920
         The width of the SGT window. 
     height: int, default=1080
