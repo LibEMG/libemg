@@ -692,7 +692,7 @@ class OnlineDataHandler(DataHandler):
         if block:
             self._visualize(num_samples)
         else:
-            p = Process(target=self._visualize, kwargs={"num_samples":num_samples})
+            p = Process(target=self._visualize, kwargs={"num_samples":num_samples}, daemon=True)
             p.start()
 
     def _visualize(self, num_samples):
@@ -1043,7 +1043,7 @@ class OnlineDataHandler(DataHandler):
             self._log_to_file()
             print("ODH->log_to_file ended.")
         else:
-            p = Process(target=self._log_to_file)
+            p = Process(target=self._log_to_file, daemon=True)
             p.start()
 
     def _log_to_file(self):

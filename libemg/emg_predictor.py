@@ -620,7 +620,10 @@ class OnlineStreamer(ABC):
             ["adapt_flag", (1,1), np.int32],
             ["active_flag", (1,1), np.int8]
         ]
-        smm_items.extend(required_smm_items)
+        current_smm_tags = [item[0] for item in smm_items]
+        for smm_item in required_smm_items:
+            if smm_item[0] not in current_smm_tags:
+                smm_items.append(smm_item)
         self.smm = smm
         self.smm_items = smm_items
 
@@ -749,7 +752,7 @@ class OnlineStreamer(ABC):
                     model_input = None
                     for mod in self.odh.modalities:
                         # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], array=True)
+                        mod_features = fe.extract_features(self.features, window[mod], feature_dic=self.predictor.feature_params, array=True)
                         if model_input is None:
                             model_input = mod_features
                         else:
