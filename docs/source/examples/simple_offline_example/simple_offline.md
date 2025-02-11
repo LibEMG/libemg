@@ -34,8 +34,8 @@ dataset = OneSubjectMyoDataset()
 data = dataset.prepare_data()
 
 # Split data into training and testing
-train_data = data.isolate_data("sets", [0,1,2]) 
-test_data = data.isolate_data("sets", [3,4,5]) 
+train_data = data['Train']
+test_data = data['Test']
 
 # Extract windows 
 train_windows, train_meta = train_data.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)

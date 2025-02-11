@@ -17,15 +17,14 @@ Fortunately, we can leverage nearly the entire pipeline code that we have used b
 # make our results repeatable
 fix_random_seed(seed_value=0, use_cuda=True)
 # download the dataset from the internet
-dataset = OneSubjectMyoDataset(save_dir='dataset/',
-                        redownload=False)
-odh = dataset.prepare_data(format=OfflineDataHandler)
+dataset = OneSubjectMyoDataset()
+data = dataset.prepare_data()
 
 # split the dataset into a train, validation, and test set
 # this dataset has a "sets" metadata flag, so lets split 
 # train/test using that.
-not_test_data = odh.isolate_data("sets",[0,1,2,3,4])
-test_data = odh.isolate_data("sets",[5])
+not_test_data = data['Train']
+test_data = data['Test']
 # lets further split up training and validation based on reps
 train_data = not_test_data.isolate_data("sets",[0,1,2,3])
 valid_data = not_test_data.isolate_data("sets",[4])
@@ -238,7 +237,7 @@ We can initialize our model:
 
 ```Python
 # We need to tell the libEMG EMGClassifier that we are using a custom model
-model = CNN(n_output   = np.unique(np.vstack(odh.classes[:])).shape[0],
+model = CNN(n_output   = np.unique(np.vstack(not_test_data.classes[:])).shape[0],
             n_channels = train_windows.shape[1],
             n_samples  = train_windows.shape[2],
             n_filters  = 64)
@@ -252,15 +251,16 @@ And we can train this model with hyperparameters we specify:
 dl_dictionary = {"learning_rate": 1e-4,
                     "num_epochs": 50,
                     "verbose": True}
+model.fit(dataloader_dictionary, **dl_dictionary)
 ```
 
-With these things defined, we can finally interface the CNN model with LibEMG. We can pass our PyTorch classifier to the EMGClassifier.fit() method as the chosen classifier. We can also pass our deep learning dictionary as the positional dataloader_dictionary argument to tell the library we are training a deep learning model. Finally, the deep learning hyperparameter dictionary is passed in with the parameters keyword (note: the keys of this dictionary are positional arguments in the .fit() function).
+With the model fitted we can than update the EMGClassifiers model attribute. Alternatively you could use the dataloader flag. 
 
 ```Python
 # Now that we've made the custom classifier object, libEMG knows how to 
 # interpret it when passed in the dataloader_dictionary. Everything happens behind the scenes.
-classifier = EMGClassifier(model)
-classifier.fit(dataloader_dictionary=dataloader_dictionary, parameters=dl_dictionary)
+classifier = EMGClassifier(None)
+classifier.model = model
 ```
 
 After the classifier has been trained, we can use this EMGClassifier object the same way we always have done, despite now using a neural network.

@@ -22,7 +22,7 @@ The first part of this analysis is to prepare the dataset. For this example, the
 
 When the dataset has been downloaded (data for each subject is zipped), it can be prepared into a LibEMG friendly format and using provided utilities. This will convert the .zip files to folders containing many .csv files that contain a single motion. 
 ```Python
-dataset = libemg.datasets._3DCDataset(save_dir = ".")
+dataset = libemg.datasets._3DCDataset()
 ```
 
 At this point, we can also instantiate various objects that correspond to the modules of the library. We will need a feature extractor, and offline metric object. We can also query the features and feature groups the library provides at the same time.
@@ -36,9 +36,9 @@ om = libemg.offline_metrics.OfflineMetrics()
 Now, we can iterate within-subject and test the accuracy of each available feature / feature set. First we isolate the training and test sets using the prescribed validation scheme of the 3DC authors. Next we can window the motions to prepare for feature extraction.
 ```Python
 for s in subject_list:
-    odh = dataset.prepare_data(subjects_values=[str(s+1)], classes_values=classes_values)
-    train_odh = odh.isolate_data("sets",[0])
-    test_odh = odh.isolate_data("sets",[1])
+    data = dataset.prepare_data(subjects=[s])
+    train_odh = data['Train']
+    test_odh = data['Test']
     train_windows, train_metadata = train_odh.parse_windows(window_size, window_increment)
     test_windows,  test_metadata  = test_odh.parse_windows(window_size, window_increment)
 ```

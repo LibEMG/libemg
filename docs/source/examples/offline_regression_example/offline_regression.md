@@ -33,11 +33,11 @@ This example uses the `OneSubjectEMaGerDataset`. Instantiating the `Dataset` wil
 
 ```Python
 # Load data
-odh = OneSubjectEMaGerDataset().prepare_data()
+data = OneSubjectEMaGerDataset().prepare_data()
 
 # Split into train/test reps
-train_odh = odh.isolate_data('reps', [0, 1, 2, 3])
-test_odh = odh.isolate_data('reps', [4])
+train_odh = data['Train']
+test_odh = data['Test']
 
 # Extract windows
 metadata_operations = {'labels': lambda x: x[-1]}   # grab label of last sample in window

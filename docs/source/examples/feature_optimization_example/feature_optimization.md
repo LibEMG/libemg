@@ -16,12 +16,12 @@ In this example, we will be determining the best Willison's amplitude threshold 
 ```Python
 # Let's load in a single subject's worth of data to illustrate the process
 # of finding the best feature parameter
-dataset = libemg.datasets._3DCDataset(redownload=False)
-odh = dataset.prepare_data(subjects_values = ["1"])
+dataset = libemg.datasets._3DCDataset()
+odh = dataset.prepare_data(subjects = [0])
 # For this process, lets split the dataset into training and testing sets using the 
 # "sets" metadata tag.
-training_odh = odh.isolate_data("sets", [0])
-test_odh = odh.isolate_data("sets", [1])
+training_odh = odh['Train']
+test_odh = odh['Test']
 # For the feature parameter optimization, let further split the training dataset into a 
 # "train" and "validation" set using the first three reps for training and the final rep
 # for validation. 

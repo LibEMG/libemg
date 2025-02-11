@@ -43,7 +43,7 @@ from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter, FilePackager
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier, EMGRegressor, OnlineEMGRegressor
-from libemg.environments.isofitts import IsoFitts
+from libemg.environments.fitts import ISOFitts, FittsConfig
 from libemg.environments.controllers import ClassifierController, RegressorController
 from libemg.animator import ScatterPlotAnimator
 ```
@@ -107,7 +107,8 @@ def start_test(self):
     else:
         controller = ClassifierController(output_format=self.model.output_format, num_classes=5)
         save_file = Path('results', self.model_str.get() + '_clf' + ".pkl").absolute().as_posix()
-    IsoFitts(controller, num_trials=8, num_circles=8, save_file=save_file).run()
+    config = FittsConfig(num_trials=16, save_file=save_file)
+    ISOFitts(controller, config).run()
     # Its important to stop the model after the game has ended
     # Otherwise it will continuously run in a seperate process
     self.model.stop_running()
@@ -174,7 +175,7 @@ else:
     emg_model = EMGClassifier(model=model)
     emg_model.fit(feature_dictionary=data_set)
     emg_model.add_velocity(train_windows, train_metadata[labels_key])
-    self.model = OnlineEMGClassifier(emg_model, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
+    self.model = OnlineEMGClassifier(emg_model, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list output_format='probabilities')
 
 # Step 5: Create online EMG model and start predicting.
 self.model.run(block=False) # block set to false so it will run in a seperate process.
