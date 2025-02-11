@@ -76,7 +76,7 @@ https://github.com/LibEMG/OneSubjectEMaGerDataset
 <!-- ------------- 3DC -------------------- -->
 
 <details>
-<summary><b>3DCDatset</b></summary>
+<summary><b>DS1: 3DC</b></summary>
 
 <br>
 
@@ -118,138 +118,9 @@ https://github.com/LibEMG/3DCDataset
 </details>
 <br>
 
-<!-- ------------- CIIL_MinimalData -------------------- -->
-
-
-<details>
-<summary><b>CIIL_MinimalData</b></summary>
-
-<br>
-
-**Dataset Description:**
-The goal of this Myo dataset is to explore how well models perform when they have a limited amount of training data (1s per class).
-
-| Attribute         | Description                                                                                          |
-|-------------------|------------------------------------------------------------------------------------------------------|
-| **Num Subjects:** | 11                                                                                                   |
-| **Num Reps:**     | 1 Train, 15 Test                                                                               |
-| **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
-| **Device:**       | Myo Armband                                                                                         |
-| **Sampling Rates:** | 200 Hz                                                                                     |
-| **Auto Download:** | True       |
-
-
-**Using the Dataset:**
-```Python
-from libemg.datasets import *
-dataset = get_dataset_list()['CIIL_MinimalData']()
-odh = dataset.prepare_data()
-```
-
-**Dataset Location**
-https://github.com/LibEMG/CIILData
-
-**References:**
-```
-@inproceedings{ciil_md,
-  title={Leveraging task-specific context to improve unsupervised adaptation for myoelectric control},
-  author={Eddy, Ethan and Campbell, Evan and Bateman, Scott and Scheme, Erik},
-  booktitle={2023 IEEE International Conference on Systems, Man, and Cybernetics (SMC)},
-  pages={4661--4666},
-  year={2023},
-  organization={IEEE}
-}
-```
-
-</details>
-</br>
-
-<!-- ------------- CIIL_ElectrodeShift -------------------- -->
-
-<details>
-<summary><b>CIIL_ElectrodeShift</b></summary>
-
-<br>
-
-**Dataset Description:**
-An electrode shift confounding factors dataset.
-
-| Attribute         | Description                                                                                          |
-|-------------------|------------------------------------------------------------------------------------------------------|
-| **Num Subjects:** | 21                                                                                                   |
-| **Num Reps:**     | 5 Train (Before Shift), 8 Test (After Shift)                                                         |
-| **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
-| **Device:**       | Myo Armband                                                                                         |
-| **Sampling Rates:** | 200 Hz                                                                                   |
-| **Auto Download:** | True       |
-
-**Using the Dataset:**
-```Python
-from libemg.datasets import *
-dataset = get_dataset_list()['CIIL_ElectrodeShift']()
-odh = dataset.prepare_data()
-```
-
-**Dataset Location**
-https://github.com/LibEMG/CIILData
-
-**References:**
-```
-@article{ciil_es,
-  title={Context-informed incremental learning improves both the performance and resilience of myoelectric control},
-  author={Campbell, Evan and Eddy, Ethan and Bateman, Scott and C{\^o}t{\'e}-Allard, Ulysse and Scheme, Erik},
-  journal={Journal of NeuroEngineering and Rehabilitation},
-  volume={21},
-  number={1},
-  pages={70},
-  year={2024},
-  publisher={Springer}
-}
-```
-
-</details>
-</br>
-
-<!-- ------------- CIIL_WeaklySupervised -------------------- -->
-
-<details>
-<summary><b>CIIL_WeaklySupervised</b></summary>
-
-<br>
-
-**Dataset Description:**
-A weakly supervised environment with sparse supervised calibration.
-
-| Attribute         | Description                                                                                          |
-|-------------------|------------------------------------------------------------------------------------------------------|
-| **Num Subjects:** | 16                                                                                                   |
-| **Num Reps:**     | 30 min weakly supervised, 1 rep calibration, 14 reps test                                            |
-| **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
-| **Device:**       | OyMotion gForcePro+ EMG Armband                                                                     |
-| **Sampling Rates:** | 1000 Hz                                                                                    |
-| **Auto Download:** | True       |
-
-**Using the Dataset:**
-```Python
-from libemg.datasets import *
-dataset = get_dataset_list('WEAKLYSUPERVISED')['CIIL_WeaklySupervised']()
-odh = dataset.prepare_data()
-```
-
-**Dataset Location**
-https://github.com/LibEMG/WS_CIIL
-
-**References:**
-```
-In Publication...
-```
-
-</details>
-</br>
-
 <!-- ------------- Continuous Transition -------------------- -->
 <details>
-<summary><b>ContinuousTransitions</b></summary>
+<summary><b>DS2: ContinuousTransitions</b></summary>
 
 <br>
 
@@ -293,7 +164,7 @@ https://unbcloud-my.sharepoint.com/:f:/g/personal/ecampbe2_unb_ca/EjgjhM9ZHJxOgl
 
 <!-- ------------- Contraction Intensity -------------------- -->
 <details>
-<summary><b>ContractionIntensity</b></summary>
+<summary><b>DS3: Contraction Intensity</b></summary>
 
 <br>
 
@@ -336,9 +207,55 @@ https://github.com/LibEMG/ContractionIntensity
 </details>
 </br>
 
+<!-- ------------- ElectrodeShift -------------------- -->
+
+<details>
+<summary><b>DS4: Electrode Shift</b></summary>
+
+<br>
+
+**Dataset Description:**
+An electrode shift confounding factors dataset.
+
+| Attribute         | Description                                                                                          |
+|-------------------|------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 21                                                                                                   |
+| **Num Reps:**     | 5 Train (Before Shift), 8 Test (After Shift)                                                         |
+| **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
+| **Device:**       | Myo Armband                                                                                         |
+| **Sampling Rates:** | 200 Hz                                                                                   |
+| **Auto Download:** | True       |
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list()['CIIL_ElectrodeShift']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://github.com/LibEMG/CIILData
+
+**References:**
+```
+@article{ciil_es,
+  title={Context-informed incremental learning improves both the performance and resilience of myoelectric control},
+  author={Campbell, Evan and Eddy, Ethan and Bateman, Scott and C{\^o}t{\'e}-Allard, Ulysse and Scheme, Erik},
+  journal={Journal of NeuroEngineering and Rehabilitation},
+  volume={21},
+  number={1},
+  pages={70},
+  year={2024},
+  publisher={Springer}
+}
+```
+
+</details>
+</br>
+
 <!-- ------------- EMGEPN612 -------------------- -->
 <details>
-<summary><b>EMGEPN612</b></summary>
+<summary><b>DS5: EMGEPN612</b></summary>
 
 <br>
 
@@ -381,7 +298,7 @@ https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuA
 
 <!-- ------------- FORSEMG -------------------- -->
 <details>
-<summary><b>FORSEMG</b></summary>
+<summary><b>DS6: FORSEMG</b></summary>
 
 <br>
 
@@ -424,7 +341,7 @@ https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset
 <!-- ------------- Fougner -------------------- -->
 
 <details>
-<summary><b>FougnerLP</b></summary>
+<summary><b>DS7: Limb Position (Fougner)</b></summary>
 
 <br>
 
@@ -470,7 +387,7 @@ https://github.com/LibEMG/LimbPosition
 
 <!-- ------------- GrabMyo -------------------- -->
 <details>
-<summary><b>GRABMyo</b></summary>
+<summary><b>DS8: GRABMyo</b></summary>
 
 <br>
 
@@ -517,7 +434,7 @@ https://physionet.org/content/grabmyo/1.0.2/
 <!-- ------------- Hyser -------------------- -->
 
 <details>
-<summary><b>HyserPR</b></summary>
+<summary><b>DS9: HyserPR</b></summary>
 
 <br>
 
@@ -560,7 +477,7 @@ https://www.physionet.org/content/hd-semg/2.0.0/
 
 <!-- ------------- Kauffman -------------------- -->
 <details>
-<summary><b>KaufmannMD</b></summary>
+<summary><b>DS10: Single-User Multi-Day (KaufmannMD)</b></summary>
 
 <br>
 
@@ -602,10 +519,55 @@ https://github.com/LibEMG/MultiDay
 </details>
 </br>
 
+<!-- ------------- MinimalData -------------------- -->
+
+<details>
+<summary><b>DS11: Minimal Training Data</b></summary>
+
+<br>
+
+**Dataset Description:**
+The goal of this Myo dataset is to explore how well models perform when they have a limited amount of training data (1s per class).
+
+| Attribute         | Description                                                                                          |
+|-------------------|------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 11                                                                                                   |
+| **Num Reps:**     | 1 Train, 15 Test                                                                               |
+| **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
+| **Device:**       | Myo Armband                                                                                         |
+| **Sampling Rates:** | 200 Hz                                                                                     |
+| **Auto Download:** | True       |
+
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list()['CIIL_MinimalData']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://github.com/LibEMG/CIILData
+
+**References:**
+```
+@inproceedings{ciil_md,
+  title={Leveraging task-specific context to improve unsupervised adaptation for myoelectric control},
+  author={Eddy, Ethan and Campbell, Evan and Bateman, Scott and Scheme, Erik},
+  booktitle={2023 IEEE International Conference on Systems, Man, and Cybernetics (SMC)},
+  pages={4661--4666},
+  year={2023},
+  organization={IEEE}
+}
+```
+
+</details>
+</br>
+
 <!-- ------------- NinaProDB2 -------------------- -->
 
 <details>
-<summary><b>NinaProDB2</b></summary>
+<summary><b>DS12: NinaProDB2</b></summary>
 
 <br>
 
@@ -651,7 +613,7 @@ Note, this dataset will not be automatically downloaded. To download this datase
 
 <!-- ------------- Radmand -------------------- -->
 <details>
-<summary><b>RadmandLP</b></summary>
+<summary><b>DS13: Limb Position (Radmand)</b></summary>
 
 <br>
 
@@ -696,7 +658,7 @@ https://github.com/LibEMG/LimbPosition
 
 <!-- ------------- TMR -------------------- -->
 <details>
-<summary><b>TMRShirleyRyanAbilityLab</b></summary>
+<summary><b>DS14: Pre/Post TMR</b></summary>
 
 <br>
 
@@ -734,6 +696,52 @@ https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab
   year={2023},
   publisher={Public Library of Science San Francisco, CA USA}
 }
+```
+
+</details>
+</br>
+
+<!-- ------------- CIIL_WeaklySupervised -------------------- -->
+
+<details>
+<summary><b>DS15: Weakly Supervised</b></summary>
+
+<br>
+
+**Dataset Description:**
+A weakly supervised environment with sparse supervised calibration.
+
+| Attribute         | Description                                                                                          |
+|-------------------|------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 16                                                                                                   |
+| **Num Reps:**     | 30 min weakly supervised, 1 rep calibration, 14 reps test                                            |
+| **Classes:**      | <ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul> |
+| **Device:**       | OyMotion gForcePro+ EMG Armband                                                                     |
+| **Sampling Rates:** | 1000 Hz                                                                                    |
+| **Auto Download:** | True       |
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('WEAKLYSUPERVISED')['CIIL_WeaklySupervised']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+https://github.com/LibEMG/WS_CIIL
+
+**References:**
+```
+@ARTICLE{10802919,
+  author={Campbell, Evan and Eddy, Ethan and Isabel, Xavier and Bateman, Scott and Gosselin, Benoit and Côté-Allard, Ulysse and Scheme, Erik},
+  journal={IEEE Transactions on Neural Systems and Rehabilitation Engineering}, 
+  title={Screen Guided Training Does Not Capture Goal-Oriented Behaviors: Learning Myoelectric Control Mappings From Scratch Using Context Informed Incremental Learning}, 
+  year={2025},
+  volume={33},
+  number={},
+  pages={332-342},
+  keywords={Training;Electromyography;Games;Data models;Calibration;Adaptation models;Context modeling;Predictive models;Pipelines;Wrist;Electromyography (EMG);deep learning;incremental learning;gesture recognition;zero-shot},
+  doi={10.1109/TNSRE.2024.3518059}}
 ```
 
 </details>
@@ -791,7 +799,7 @@ https://github.com/LibEMG/OneSubjectMyoDataset
 <!-- ------------- EMG2POSE -------------------- -->
 
 <details>  
-<summary><b>EMG2POSE</b></summary>  
+<summary><b>DS16: EMG2POSE</b></summary>  
 
 <br>
 
@@ -830,48 +838,10 @@ https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar
 </details>
 </br>
 
-<!-- ------------- DB8 -------------------- -->
-
-<details>
-<summary><b>NinaProDB8</b></summary>
-
-| Attribute          | Description |
-| ------------------ | ----------- |
-| **Num Subjects:**      | 12       |
-| **Num Reps:**      | 20 Training, 2 Testing |
-| **Classes:**       | 9 [NinaProDB8](http://ninapro.hevs.ch/DB8)    |
-| **Device:**        | Delsys        |
-| **Sampling Rates:** | 1111 Hz        |
-| **Auto Download:** | False       |
-
-**Using the Dataset:**
-```Python
-from libemg.datasets import *
-dataset = get_dataset_list('REGRESSION')['NinaProDB8']()
-odh = dataset.prepare_data()
-```
-
-**Dataset Location**
-Note, this dataset will not be automatically downloaded. To download this dataset, please see [Nina DB8](http://ninapro.hevs.ch/DB8). Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors. 
-
-**References:**
-```
-@article{db8,
-  title={Effect of user practice on prosthetic finger control with an intuitive myoelectric decoder},
-  author={Krasoulis, Agamemnon and Vijayakumar, Sethu and Nazarpour, Kianoush},
-  journal={Frontiers in neuroscience},
-  volume={13},
-  pages={891},
-  year={2019},
-  publisher={Frontiers Media SA}
-}
-```
-</details>
-</br>
 
 <!-- ------------- Hyser 1DOF -------------------- -->
 <details>  
-<summary><b>Hyser1DOF</b></summary>  
+<summary><b>DS17: Hyser1DOF</b></summary>  
 
 <br>
 
@@ -916,7 +886,7 @@ https://www.physionet.org/content/hd-semg/2.0.0/
 
 <!-- ------------- Hyser NDOF -------------------- -->
 <details>  
-<summary><b>HyserNDOF</b></summary>  
+<summary><b>DS18: HyserNDOF</b></summary>  
 
 <br>
 
@@ -961,7 +931,7 @@ https://www.physionet.org/content/hd-semg/2.0.0/
 
 <!-- ------------- Hyser Random -------------------- -->
 <details>  
-<summary><b>HyserRandom</b></summary>  
+<summary><b>DS19: HyserRandom</b></summary>  
 
 <br>
 
@@ -1004,10 +974,49 @@ https://www.physionet.org/content/hd-semg/2.0.0/
 </details>
 </br>
 
+<!-- ------------- DB8 -------------------- -->
+
+<details>
+<summary><b>DS20: NinaProDB8</b></summary>
+
+| Attribute          | Description |
+| ------------------ | ----------- |
+| **Num Subjects:**      | 12       |
+| **Num Reps:**      | 20 Training, 2 Testing |
+| **Classes:**       | 9 [NinaProDB8](http://ninapro.hevs.ch/DB8)    |
+| **Device:**        | Delsys        |
+| **Sampling Rates:** | 1111 Hz        |
+| **Auto Download:** | False       |
+
+**Using the Dataset:**
+```Python
+from libemg.datasets import *
+dataset = get_dataset_list('REGRESSION')['NinaProDB8']()
+odh = dataset.prepare_data()
+```
+
+**Dataset Location**
+Note, this dataset will not be automatically downloaded. To download this dataset, please see [Nina DB8](http://ninapro.hevs.ch/DB8). Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors. 
+
+**References:**
+```
+@article{db8,
+  title={Effect of user practice on prosthetic finger control with an intuitive myoelectric decoder},
+  author={Krasoulis, Agamemnon and Vijayakumar, Sethu and Nazarpour, Kianoush},
+  journal={Frontiers in neuroscience},
+  volume={13},
+  pages={891},
+  year={2019},
+  publisher={Frontiers Media SA}
+}
+```
+</details>
+</br>
+
 
 <!-- ------------- User Compliance -------------------- -->
 <details>  
-<summary><b>UserCompliance</b></summary>  
+<summary><b>DS21: UserCompliance</b></summary>  
 
 <br>
 
