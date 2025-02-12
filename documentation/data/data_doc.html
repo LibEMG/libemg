@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Datasets &mdash; libemg 2.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../prediction/prediction.html">EMG Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../animation/animation.html">Animation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.datasets">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">EMG Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/offline_regression_example/offline_regression_example.html">Offline Regression Analysis</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Datasets</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/data/data_doc.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <style>
+    table {
+        width: 100%;
+    }
+    .device_img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+        height: 50%;
+    }
+    .device_img_2 {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 35%;
+        height: 50%;
+    }
+</style>
+<p>This module has three data-related functions: <strong>(1) Datasets</strong>, <strong>(2) Offline Data Handling</strong>, and <strong>(3) Online Data Handling</strong>. The dataset functionality has built-in support for downloading and exploring a variety of validated datasets. The OfflineDataHandler is responsible for parsing through previously collected (offline) datasets and preparing data to be passed through the pipeline. Finally, the OnlineDataHandler is responsible for accumulating, storing, and processing real-time data.</p>
+<section class="tex2jax_ignore mathjax_ignore" id="datasets">
+<h1>Datasets<a class="headerlink" href="#datasets" title="Permalink to this heading"></a></h1>
+<p>Several validated datasets consisting of different gestures and recording technology are included in this library. These datasets can be used for exploring the library’s capabilities and for future research. When using the packaged datasets for research purposes, we ask that you reference the original dataset contribution and not just this toolkit (the original dataset contributions might not be obvious since they are included for download with this toolkit).</p>
+<section id="classification">
+<h2>Classification<a class="headerlink" href="#classification" title="Permalink to this heading"></a></h2>
+<!-- ------------- One Subject Myo -------------------- -->
+<details>
+<summary><b>OneSubjectMyoDataset</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+Simple one subject dataset.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>12 Reps (i.e., 6 Trials x 2 Reps)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Myo</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>200 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;OneSubjectMyo&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/OneSubjectEMaGerDataset">https://github.com/LibEMG/OneSubjectEMaGerDataset</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">libemg</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Eddy</span><span class="p">,</span> <span class="n">Ethan</span> <span class="ow">and</span> <span class="n">Campbell</span><span class="p">,</span> <span class="n">Evan</span> <span class="ow">and</span> <span class="n">Phinyomark</span><span class="p">,</span> <span class="n">Angkoon</span> <span class="ow">and</span> <span class="n">Bateman</span><span class="p">,</span> <span class="n">Scott</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Access</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">LibEMG</span><span class="p">:</span> <span class="n">An</span> <span class="n">Open</span> <span class="n">Source</span> <span class="n">Library</span> <span class="n">to</span> <span class="n">Facilitate</span> <span class="n">the</span> <span class="n">Exploration</span> <span class="n">of</span> <span class="n">Myoelectric</span> <span class="n">Control</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2023</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">11</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">87380</span><span class="o">-</span><span class="mi">87397</span><span class="p">},</span>
+  <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="n">Electromyography</span><span class="p">;</span><span class="n">Prosthetics</span><span class="p">;</span><span class="n">Libraries</span><span class="p">;</span><span class="n">Human</span> <span class="n">computer</span> <span class="n">interaction</span><span class="p">;</span><span class="n">Feature</span> <span class="n">extraction</span><span class="p">;</span><span class="n">Muscles</span><span class="p">;</span><span class="n">Control</span> <span class="n">systems</span><span class="p">;</span><span class="n">Gesture</span> <span class="n">recognition</span><span class="p">;</span><span class="n">Open</span> <span class="n">source</span> <span class="n">software</span><span class="p">;</span><span class="n">EMG</span><span class="p">;</span><span class="n">electromyography</span><span class="p">;</span><span class="n">toolkit</span><span class="p">;</span><span class="n">library</span><span class="p">;</span><span class="n">myoelectric</span> <span class="n">control</span><span class="p">;</span><span class="n">gesture</span> <span class="n">recognition</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">ACCESS</span><span class="mf">.2023.3304544</span><span class="p">}}</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</details>
+<br>
+<!-- ------------- 3DC -------------------- -->
+<details>
+<summary><b>DS1: 3DC</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A relatively simple within session baseline.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>22</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>4 Training, 4 Testing</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;3DC&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/3DCDataset">https://github.com/LibEMG/3DCDataset</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">cote2019low</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">A</span> <span class="n">low</span><span class="o">-</span><span class="n">cost</span><span class="p">,</span> <span class="n">wireless</span><span class="p">,</span> <span class="mi">3</span><span class="o">-</span><span class="n">D</span><span class="o">-</span><span class="n">printed</span> <span class="n">custom</span> <span class="n">armband</span> <span class="k">for</span> <span class="n">sEMG</span> <span class="n">hand</span> <span class="n">gesture</span> <span class="n">recognition</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">C</span><span class="p">{</span>\<span class="o">^</span><span class="n">o</span><span class="p">}</span><span class="n">t</span><span class="p">{</span>\<span class="s1">&#39;e}-Allard, Ulysse and Gagnon-Turcotte, Gabriel and Laviolette, Fran{\c</span><span class="si">{c}</span><span class="s1">}ois and Gosselin, Benoit},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">Sensors</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">19</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">12</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">2811</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2019</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">MDPI</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+<br>
+<!-- ------------- Continuous Transition -------------------- -->
+<details>
+<summary><b>DS2: ContinuousTransitions</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+The testing set in this dataset has continuous transitions between classes, providing a more realistic offline evaluation standard for myoelectric control.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>43</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>6 Training (Ramp), 42 Transitions (All combinations of Transitions) x 6 Reps</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - No Motion</li><li>1 - Wrist Flexion</li><li>2 - Wrist Extension</li><li>3 - Wrist Pronation</li><li>4 - Wrist Supination</li><li>5 - Hand Close</li><li>6 - Hand Open</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;ContinuousTransitions&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://unbcloud-my.sharepoint.com/:f:/g/personal/ecampbe2_unb_ca/EjgjhM9ZHJxOglKoAf062ngBf4wFj2Mn2bORKY1-aMYGRw?e=WkZNwI">https://unbcloud-my.sharepoint.com/:f:/g/personal/ecampbe2_unb_ca/EjgjhM9ZHJxOglKoAf062ngBf4wFj2Mn2bORKY1-aMYGRw?e=WkZNwI</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">transitions</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Raghu</span><span class="p">,</span> <span class="n">Shriram</span> <span class="n">Tallam</span> <span class="n">Puranam</span> <span class="ow">and</span> <span class="n">MacIsaac</span><span class="p">,</span> <span class="n">Dawn</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Journal</span> <span class="n">of</span> <span class="n">Biomedical</span> <span class="ow">and</span> <span class="n">Health</span> <span class="n">Informatics</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Decision</span><span class="o">-</span><span class="n">Change</span> <span class="n">Informed</span> <span class="n">Rejection</span> <span class="n">Improves</span> <span class="n">Robustness</span> <span class="ow">in</span> <span class="n">Pattern</span> <span class="n">Recognition</span><span class="o">-</span><span class="n">Based</span> <span class="n">Myoelectric</span> <span class="n">Control</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2023</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">27</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">12</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">6051</span><span class="o">-</span><span class="mi">6061</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">JBHI</span><span class="mf">.2023.3316599</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- Contraction Intensity -------------------- -->
+<details>
+<summary><b>DS3: Contraction Intensity</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A contraction intensity dataset.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>4 Ramp Reps (Train), 4 Reps x 20%, 30%, 40%, 50%, 60%, 70%, 80%, MVC (Test)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - No Motion</li><li>1 - Wrist Flexion</li><li>2 - Wrist Extension</li><li>3 - Wrist Pronation</li><li>4 - Wrist Supination</li><li>5 - Chuck Grip</li><li>6 - Hand Open</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>BE328 by Liberating Technologies, Inc</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;ContractionIntensity&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/ContractionIntensity">https://github.com/LibEMG/ContractionIntensity</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">contraction_intensity</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Training</span> <span class="n">strategies</span> <span class="k">for</span> <span class="n">mitigating</span> <span class="n">the</span> <span class="n">effect</span> <span class="n">of</span> <span class="n">proportional</span> <span class="n">control</span> <span class="n">on</span> <span class="n">classification</span> <span class="ow">in</span> <span class="n">pattern</span> <span class="n">recognition</span><span class="o">--</span><span class="n">based</span> <span class="n">myoelectric</span> <span class="n">control</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span> <span class="ow">and</span> <span class="n">Englehart</span><span class="p">,</span> <span class="n">Kevin</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">JPO</span><span class="p">:</span> <span class="n">Journal</span> <span class="n">of</span> <span class="n">Prosthetics</span> <span class="ow">and</span> <span class="n">Orthotics</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">25</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">2</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">76</span><span class="o">--</span><span class="mi">83</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2013</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">LWW</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- ElectrodeShift -------------------- -->
+<details>
+<summary><b>DS4: Electrode Shift</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+An electrode shift confounding factors dataset.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>21</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>5 Train (Before Shift), 8 Test (After Shift)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Myo Armband</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>200 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;ElectrodeShift&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/CIILData">https://github.com/LibEMG/CIILData</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">ciil_es</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Context</span><span class="o">-</span><span class="n">informed</span> <span class="n">incremental</span> <span class="n">learning</span> <span class="n">improves</span> <span class="n">both</span> <span class="n">the</span> <span class="n">performance</span> <span class="ow">and</span> <span class="n">resilience</span> <span class="n">of</span> <span class="n">myoelectric</span> <span class="n">control</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Campbell</span><span class="p">,</span> <span class="n">Evan</span> <span class="ow">and</span> <span class="n">Eddy</span><span class="p">,</span> <span class="n">Ethan</span> <span class="ow">and</span> <span class="n">Bateman</span><span class="p">,</span> <span class="n">Scott</span> <span class="ow">and</span> <span class="n">C</span><span class="p">{</span>\<span class="o">^</span><span class="n">o</span><span class="p">}</span><span class="n">t</span><span class="p">{</span>\<span class="s1">&#39;e}-Allard, Ulysse and Scheme, Erik},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">Journal</span> <span class="n">of</span> <span class="n">NeuroEngineering</span> <span class="ow">and</span> <span class="n">Rehabilitation</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">21</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">70</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2024</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">Springer</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- EMGEPN612 -------------------- -->
+<details>
+<summary><b>DS5: EMGEPN612</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A large 612 user dataset for developing cross-user models.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>612</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>50 Reps x 306 Users (Train), 25 Reps x 306 Users (Test) –&gt; Cross User Split</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - No Movement</li><li>1 - Hand Close</li><li>2 - Flexion</li><li>3 - Extension</li><li>4 - Hand Open</li><li>5 - Pinch</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Myo Armband</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>200 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;EMGEPN612&#39;</span><span class="p">]()</span> <span class="c1"># User Dependent </span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="n">cross_user</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s1">&#39;EMGEPN612&#39;</span><span class="p">]()</span> <span class="c1"># User Independent </span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBLyFv6UrPYGwAISPDW9dBXw?e=vjCA14">https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EWf3sEvRxg9HuAmGoBG2vYkBLyFv6UrPYGwAISPDW9dBXw?e=vjCA14</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">epn</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">EMG</span><span class="o">-</span><span class="n">EPN</span><span class="o">-</span><span class="mi">612</span> <span class="n">Dataset</span><span class="o">.</span> <span class="mi">2020</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Benalc</span><span class="p">{</span>\<span class="s1">&#39;a}zar, M and Barona, L and Valdivieso, L and Aguas, X and Zea, J},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">DOI</span><span class="p">:</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">doi</span><span class="o">.</span> <span class="n">org</span><span class="o">/</span><span class="mf">10.5281</span><span class="o">/</span><span class="n">zenodo</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">4027874</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2020</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- FORSEMG -------------------- -->
+<details>
+<summary><b>DS6: FORSEMG</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+Twelve gestures elicited in three forearm orientations (neutral, pronation, and supination).</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>19</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>5 Train, 10 Test (2 Forearm Orientations x 5 Reps)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Thump Up</li><li>1 - Index</li><li>2 - Right Angle</li><li>3 - Peace</li><li>4 - Index Little</li><li>5 - Thumb Little</li><li>6 - Hand Close</li><li>7 - Hand Open</li><li>8 - Wrist Flexion</li><li>9 - Wrist Extension</li><li>10 - Ulnar Deviation</li><li>11 - Radial Deviation</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Experimental Device</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>985 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;FORS-EMG&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset">https://www.kaggle.com/datasets/ummerummanchaity/fors-emg-a-novel-semg-dataset</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">fors_emg</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">FORS</span><span class="o">-</span><span class="n">EMG</span><span class="p">:</span> <span class="n">A</span> <span class="n">Novel</span> <span class="n">sEMG</span> <span class="n">Dataset</span> <span class="k">for</span> <span class="n">Hand</span> <span class="n">Gesture</span> <span class="n">Recognition</span> <span class="n">Across</span> <span class="n">Multiple</span> <span class="n">Forearm</span> <span class="n">Orientations</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Rumman</span><span class="p">,</span> <span class="n">Umme</span> <span class="ow">and</span> <span class="n">Ferdousi</span><span class="p">,</span> <span class="n">Arifa</span> <span class="ow">and</span> <span class="n">Hossain</span><span class="p">,</span> <span class="n">Md</span> <span class="n">Sazzad</span> <span class="ow">and</span> <span class="n">Islam</span><span class="p">,</span> <span class="n">Md</span> <span class="n">Johirul</span> <span class="ow">and</span> <span class="n">Ahmad</span><span class="p">,</span> <span class="n">Shamim</span> <span class="ow">and</span> <span class="n">Reaz</span><span class="p">,</span> <span class="n">Mamun</span> <span class="n">Bin</span> <span class="n">Ibne</span> <span class="ow">and</span> <span class="n">Islam</span><span class="p">,</span> <span class="n">Md</span> <span class="n">Rezaul</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">arXiv</span> <span class="n">preprint</span> <span class="n">arXiv</span><span class="p">:</span><span class="mf">2409.07484</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2024</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- Fougner -------------------- -->
+<details>
+<summary><b>DS7: Limb Position (Fougner)</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A limb position dataset (with 5 static limb positions).</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>12</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>10 Reps (Train), 10 Reps x 4 Positions</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Wrist Flexion</li><li>1 - Wrist Extension</li><li>2 - Pronation</li><li>3 - Supination</li><li>4 - Hand Open</li><li>5 - Power Grip</li><li>6 - Pinch Grip</li><li>7 - Rest</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>BE328 by Liberating Technologies, Inc.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;FougnerLP&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/LimbPosition">https://github.com/LibEMG/LimbPosition</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">fougner_lp</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Resolving</span> <span class="n">the</span> <span class="n">limb</span> <span class="n">position</span> <span class="n">effect</span> <span class="ow">in</span> <span class="n">myoelectric</span> <span class="n">pattern</span> <span class="n">recognition</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Fougner</span><span class="p">,</span> <span class="n">Anders</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span> <span class="ow">and</span> <span class="n">Chan</span><span class="p">,</span> <span class="n">Adrian</span> <span class="n">DC</span> <span class="ow">and</span> <span class="n">Englehart</span><span class="p">,</span> <span class="n">Kevin</span> <span class="ow">and</span> <span class="n">Stavdahl</span><span class="p">,</span> <span class="p">{</span>\<span class="n">O</span><span class="p">}</span><span class="n">yvind</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Transactions</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Systems</span> <span class="ow">and</span> <span class="n">Rehabilitation</span> <span class="n">Engineering</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">19</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">6</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">644</span><span class="o">--</span><span class="mi">651</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2011</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- GrabMyo -------------------- -->
+<details>
+<summary><b>DS8: GRABMyo</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A large cross-session dataset including 17 gestures elicited across 3 separate sessions.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>43</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>7 Train, 14 Test (2 Separate Days x 7 Reps) –&gt; Cross Day Split</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Lateral Prehension</li><li>1 - Thumb Adduction</li><li>2 - Thumb and Little Finger Opposition</li><li>3 - Thumb and Index Finger Opposition</li><li>4 - Thumb and Index Finger Extension</li><li>5 - Thumb and Little Finger Extension</li><li>6 - Index and Middle Finger Extension</li><li>7 - Little Finger Extension</li><li>8 - Index Finger Extension</li><li>9 - Thumb Finger Extension</li><li>10 - Wrist Extension</li><li>11 - Wrist Flexion</li><li>12 - Forearm Supination</li><li>13 - Forearm Pronation</li><li>14 - Hand Open</li><li>15 - Hand Close</li><li>16 - Rest</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>EMGUSB2+ device (OT Bioelletronica, Italy)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2048 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;GRABMyoBaseline&#39;</span><span class="p">]()</span> <span class="c1"># Baseline </span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;GRABMyoCrossDay&#39;</span><span class="p">]()</span> <span class="c1"># CrossDay</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://physionet.org/content/grabmyo/1.0.2/">https://physionet.org/content/grabmyo/1.0.2/</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">grabmyo</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Multi</span><span class="o">-</span><span class="n">day</span> <span class="n">dataset</span> <span class="n">of</span> <span class="n">forearm</span> <span class="ow">and</span> <span class="n">wrist</span> <span class="n">electromyogram</span> <span class="k">for</span> <span class="n">hand</span> <span class="n">gesture</span> <span class="n">recognition</span> <span class="ow">and</span> <span class="n">biometrics</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Pradhan</span><span class="p">,</span> <span class="n">Ashirbad</span> <span class="ow">and</span> <span class="n">He</span><span class="p">,</span> <span class="n">Jiayuan</span> <span class="ow">and</span> <span class="n">Jiang</span><span class="p">,</span> <span class="n">Ning</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">Scientific</span> <span class="n">data</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">9</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">733</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2022</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">Nature</span> <span class="n">Publishing</span> <span class="n">Group</span> <span class="n">UK</span> <span class="n">London</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- Hyser -------------------- -->
+<details>
+<summary><b>DS9: HyserPR</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+High Density Hyser pattern recognition (PR) dataset. Includes dynamic and maintenance tasks for 34 hand gestures.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>18</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>1 Train, 1 Test (Consisting of dynamic and maintanance tasks)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>1 - Thumb Extension</li><li>2 - Index Finger Extension</li><li>3 - Middle Finger Extension</li><li>4 - Ring Finger Extension</li><li>5 - Little Finger Extension</li><li>6 - Wrist Flexion</li><li>7 - Wrist Extension</li><li>8 - Wrist Radial</li><li>9 - Wrist Ulnar</li><li>10 - Wrist Pronation</li><li>11 - Wrist Supination</li><li>12 - Extension of Thumb and Index Fingers</li><li>13 - Extension of Index and Middle Fingers</li><li>14 - Wrist Flexion Combined with Hand Close</li><li>15 - Wrist Extension Combined with Hand Close</li><li>16 - Wrist Radial Combined with Hand Close</li><li>17 - Wrist Ulnar Combined with Hand Close</li><li>18 - Wrist Pronation Combined with Hand Close</li><li>19 - Wrist Supination Combined with Hand Close</li><li>20 - Wrist Flexion Combined with Hand Open</li><li>21 - Wrist Extension Combined with Hand Open</li><li>22 - Wrist Radial Combined with Hand Open</li><li>23 - Wrist Ulnar Combined with Hand Open</li><li>24 - Wrist Pronation Combined with Hand Open</li><li>25 - Wrist Supination Combined with Hand Open</li><li>26 - Extension of Thumb, Index and Middle Fingers</li><li>27 - Extension of Index, Middle and Ring Fingers</li><li>28 - Extension of Middle, Ring and Little Fingers</li><li>29 - Extension of Index, Middle, Ring and Little Fingers</li><li>30 - Hand Close</li><li>31 - Hand Open</li><li>32 - Thumb and Index Fingers Pinch</li><li>33 - Thumb, Index and Middle Fingers Pinch</li><li>34 - Thumb and Middle Fingers Pinch</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>OT Bioelettronica Quattrocento</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2048 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;HyserPR&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://www.physionet.org/content/hd-semg/2.0.0/">https://www.physionet.org/content/hd-semg/2.0.0/</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">hyser</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Jiang</span><span class="p">,</span> <span class="n">Xinyu</span> <span class="ow">and</span> <span class="n">Liu</span><span class="p">,</span> <span class="n">Xiangyu</span> <span class="ow">and</span> <span class="n">Fan</span><span class="p">,</span> <span class="n">Jiahao</span> <span class="ow">and</span> <span class="n">Ye</span><span class="p">,</span> <span class="n">Xinming</span> <span class="ow">and</span> <span class="n">Dai</span><span class="p">,</span> <span class="n">Chenyun</span> <span class="ow">and</span> <span class="n">Clancy</span><span class="p">,</span> <span class="n">Edward</span> <span class="n">A</span><span class="o">.</span> <span class="ow">and</span> <span class="n">Akay</span><span class="p">,</span> <span class="n">Metin</span> <span class="ow">and</span> <span class="n">Chen</span><span class="p">,</span> <span class="n">Wei</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Transactions</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Systems</span> <span class="ow">and</span> <span class="n">Rehabilitation</span> <span class="n">Engineering</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Open</span> <span class="n">Access</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Toolbox</span> <span class="ow">and</span> <span class="n">Benchmark</span> <span class="n">Processing</span> <span class="n">Results</span> <span class="n">of</span> <span class="n">High</span><span class="o">-</span><span class="n">Density</span> <span class="n">Surface</span> <span class="n">Electromyogram</span> <span class="n">Recordings</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2021</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">29</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">1035</span><span class="o">-</span><span class="mi">1046</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">TNSRE</span><span class="mf">.2021.3082551</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+<br>
+<!-- ------------- Kauffman -------------------- -->
+<details>
+<summary><b>DS10: Single-User Multi-Day (KaufmannMD)</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A single subject, multi-day (120 days) collection.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>1 rep per day, 120 days total. 60/60 train-test split</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - No Motion</li><li>1 - Wrist Extension</li><li>2 - Wrist Flexion</li><li>3 - Wrist Adduction</li><li>4 - Wrist Abduction</li><li>5 - Wrist Supination</li><li>6 - Wrist Pronation</li><li>7 - Hand Open</li><li>8 - Hand Closed</li><li>9 - Key Grip</li><li>10 - Index Point</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>MindMedia</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2048 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;KaufmannMD&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/MultiDay">https://github.com/LibEMG/MultiDay</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@INPROCEEDINGS</span><span class="p">{</span><span class="n">kaufmann</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Kaufmann</span><span class="p">,</span> <span class="n">Paul</span> <span class="ow">and</span> <span class="n">Englehart</span><span class="p">,</span> <span class="n">Kevin</span> <span class="ow">and</span> <span class="n">Platzner</span><span class="p">,</span> <span class="n">Marco</span><span class="p">},</span>
+  <span class="n">booktitle</span><span class="o">=</span><span class="p">{</span><span class="mi">2010</span> <span class="n">Annual</span> <span class="n">International</span> <span class="n">Conference</span> <span class="n">of</span> <span class="n">the</span> <span class="n">IEEE</span> <span class="n">Engineering</span> <span class="ow">in</span> <span class="n">Medicine</span> <span class="ow">and</span> <span class="n">Biology</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Fluctuating</span> <span class="n">emg</span> <span class="n">signals</span><span class="p">:</span> <span class="n">Investigating</span> <span class="n">long</span><span class="o">-</span><span class="n">term</span> <span class="n">effects</span> <span class="n">of</span> <span class="n">pattern</span> <span class="n">matching</span> <span class="n">algorithms</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2010</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">6357</span><span class="o">-</span><span class="mi">6360</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">IEMBS</span><span class="mf">.2010.5627288</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- MinimalData -------------------- -->
+<details>
+<summary><b>DS11: Minimal Training Data</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+The goal of this Myo dataset is to explore how well models perform when they have a limited amount of training data (1s per class).</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>11</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>1 Train, 15 Test</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Myo Armband</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>200 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;MinimalTrainingData&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/CIILData">https://github.com/LibEMG/CIILData</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@inproceedings</span><span class="p">{</span><span class="n">ciil_md</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Leveraging</span> <span class="n">task</span><span class="o">-</span><span class="n">specific</span> <span class="n">context</span> <span class="n">to</span> <span class="n">improve</span> <span class="n">unsupervised</span> <span class="n">adaptation</span> <span class="k">for</span> <span class="n">myoelectric</span> <span class="n">control</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Eddy</span><span class="p">,</span> <span class="n">Ethan</span> <span class="ow">and</span> <span class="n">Campbell</span><span class="p">,</span> <span class="n">Evan</span> <span class="ow">and</span> <span class="n">Bateman</span><span class="p">,</span> <span class="n">Scott</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span><span class="p">},</span>
+  <span class="n">booktitle</span><span class="o">=</span><span class="p">{</span><span class="mi">2023</span> <span class="n">IEEE</span> <span class="n">International</span> <span class="n">Conference</span> <span class="n">on</span> <span class="n">Systems</span><span class="p">,</span> <span class="n">Man</span><span class="p">,</span> <span class="ow">and</span> <span class="n">Cybernetics</span> <span class="p">(</span><span class="n">SMC</span><span class="p">)},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">4661</span><span class="o">--</span><span class="mi">4666</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2023</span><span class="p">},</span>
+  <span class="n">organization</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- NinaProDB2 -------------------- -->
+<details>
+<summary><b>DS12: NinaProDB2</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+The Ninapro DB2 is a dataset that can be used to test how algorithms perform for large gesture sets. The dataset contains 6 repetitions of 50 motion classes (plus optional rest) that were recorded using 12 Delsys Trigno electrodes around the forearm.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>40</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p>50 <a class="reference external" href="http://ninapro.hevs.ch/node/123">Nina Pro DB2</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;NinaProDB2&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+Note, this dataset will not be automatically downloaded. To download this dataset, please see <a class="reference external" href="http://ninapro.hevs.ch/node/17">Nina DB2</a>. Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors.</p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">db2</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Electromyography</span> <span class="n">data</span> <span class="k">for</span> <span class="n">non</span><span class="o">-</span><span class="n">invasive</span> <span class="n">naturally</span><span class="o">-</span><span class="n">controlled</span> <span class="n">robotic</span> <span class="n">hand</span> <span class="n">prostheses</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Atzori</span><span class="p">,</span> <span class="n">Manfredo</span> <span class="ow">and</span> <span class="n">Gijsberts</span><span class="p">,</span> <span class="n">Arjan</span> <span class="ow">and</span> <span class="n">Castellini</span><span class="p">,</span> <span class="n">Claudio</span> <span class="ow">and</span> <span class="n">Caputo</span><span class="p">,</span> <span class="n">Barbara</span> <span class="ow">and</span> <span class="n">Hager</span><span class="p">,</span> <span class="n">Anne</span><span class="o">-</span><span class="n">Gabrielle</span> <span class="n">Mittaz</span> <span class="ow">and</span> <span class="n">Elsig</span><span class="p">,</span> <span class="n">Simone</span> <span class="ow">and</span> <span class="n">Giatsidis</span><span class="p">,</span> <span class="n">Giorgio</span> <span class="ow">and</span> <span class="n">Bassetto</span><span class="p">,</span> <span class="n">Franco</span> <span class="ow">and</span> <span class="n">M</span><span class="p">{</span>\<span class="s2">&quot;u}ller, Henning},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">Scientific</span> <span class="n">data</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="o">--</span><span class="mi">13</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2014</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">Nature</span> <span class="n">Publishing</span> <span class="n">Group</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+</details>
+</br>
+<!-- ------------- Radmand -------------------- -->
+<details>
+<summary><b>DS13: Limb Position (Radmand)</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A large limb position dataset (with 16 static limb positions).</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>4 Reps (Train), 4 Reps x 15 Positions</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>Mapping is Uncertain</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>DelsysTrigno</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;RadmandLP&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/LimbPosition">https://github.com/LibEMG/LimbPosition</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@INPROCEEDINGS</span><span class="p">{</span><span class="n">radmand_lp</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Radmand</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">E</span><span class="o">.</span> <span class="ow">and</span> <span class="n">Englehart</span><span class="p">,</span> <span class="n">K</span><span class="o">.</span><span class="p">},</span>
+  <span class="n">booktitle</span><span class="o">=</span><span class="p">{</span><span class="mi">2014</span> <span class="mi">36</span><span class="n">th</span> <span class="n">Annual</span> <span class="n">International</span> <span class="n">Conference</span> <span class="n">of</span> <span class="n">the</span> <span class="n">IEEE</span> <span class="n">Engineering</span> <span class="ow">in</span> <span class="n">Medicine</span> <span class="ow">and</span> <span class="n">Biology</span> <span class="n">Society</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">A</span> <span class="n">characterization</span> <span class="n">of</span> <span class="n">the</span> <span class="n">effect</span> <span class="n">of</span> <span class="n">limb</span> <span class="n">position</span> <span class="n">on</span> <span class="n">EMG</span> <span class="n">features</span> <span class="n">to</span> <span class="n">guide</span> <span class="n">the</span> <span class="n">development</span> <span class="n">of</span> <span class="n">effective</span> <span class="n">prosthetic</span> <span class="n">control</span> <span class="n">schemes</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2014</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">662</span><span class="o">-</span><span class="mi">667</span><span class="p">},</span>
+  <span class="n">keywords</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">EMBC</span><span class="mf">.2014.6943678</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- TMR -------------------- -->
+<details>
+<summary><b>DS14: Pre/Post TMR</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+6 subjects, 8 reps, 24 motions, pre/post intervention.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>8 reps per motion (pre/post intervention)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Hand Open</li><li>1 - Key Grip</li><li>2 - Power Grip</li><li>3 - Fine Pinch Opened</li><li>4 - Fine Pinch Closed</li><li>5 - Tripod Opened</li><li>6 - Tripod Closed</li><li>7 - Tool</li><li>8 - Hook</li><li>9 - Index Point</li><li>10 - Thumb Flexion</li><li>11 - Thumb Extension</li><li>12 - Thumb Abduction</li><li>13 - Thumb Adduction</li><li>14 - Index Flexion</li><li>15 - Ring Flexion</li><li>16 - Pinky Flexion</li><li>17 - Wrist Supination</li><li>18 - Wrist Pronation</li><li>19 - Wrist Flexion</li><li>20 - Wrist Extension</li><li>21 - Radial Deviation</li><li>22 - Ulnar Deviation</li><li>23 - No Motion</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Ag/AgCl</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset_pre</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;TMR_Pre&#39;</span><span class="p">]()</span>
+<span class="n">dataset_post</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">()[</span><span class="s1">&#39;TMR_Post&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset_pre</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab">https://github.com/LibEMG/TMR_ShirleyRyanAbilityLab</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">tmr</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Myoelectric</span> <span class="n">prosthesis</span> <span class="n">hand</span> <span class="n">grasp</span> <span class="n">control</span> <span class="n">following</span> <span class="n">targeted</span> <span class="n">muscle</span> <span class="n">reinnervation</span> <span class="ow">in</span> <span class="n">individuals</span> <span class="k">with</span> <span class="n">transradial</span> <span class="n">amputation</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Simon</span><span class="p">,</span> <span class="n">Ann</span> <span class="n">M</span> <span class="ow">and</span> <span class="n">Turner</span><span class="p">,</span> <span class="n">Kristi</span> <span class="n">L</span> <span class="ow">and</span> <span class="n">Miller</span><span class="p">,</span> <span class="n">Laura</span> <span class="n">A</span> <span class="ow">and</span> <span class="n">Dumanian</span><span class="p">,</span> <span class="n">Gregory</span> <span class="n">A</span> <span class="ow">and</span> <span class="n">Potter</span><span class="p">,</span> <span class="n">Benjamin</span> <span class="n">K</span> <span class="ow">and</span> <span class="n">Beachler</span><span class="p">,</span> <span class="n">Mark</span> <span class="n">D</span> <span class="ow">and</span> <span class="n">Hargrove</span><span class="p">,</span> <span class="n">Levi</span> <span class="n">J</span> <span class="ow">and</span> <span class="n">Kuiken</span><span class="p">,</span> <span class="n">Todd</span> <span class="n">A</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">PloS</span> <span class="n">one</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">18</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{</span><span class="mi">1</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="n">e0280210</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2023</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">Public</span> <span class="n">Library</span> <span class="n">of</span> <span class="n">Science</span> <span class="n">San</span> <span class="n">Francisco</span><span class="p">,</span> <span class="n">CA</span> <span class="n">USA</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- CIIL_WeaklySupervised -------------------- -->
+<details>
+<summary><b>DS15: Weakly Supervised</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+A weakly supervised environment with sparse supervised calibration.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>16</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>30 min weakly supervised, 1 rep calibration, 14 reps test</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Close</li><li>1 - Open</li><li>2 - Rest</li><li>3 - Flexion</li><li>4 - Extension</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>OyMotion gForcePro+ EMG Armband</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;WEAKLYSUPERVISED&#39;</span><span class="p">)[</span><span class="s1">&#39;WeaklySupervised&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/WS_CIIL">https://github.com/LibEMG/WS_CIIL</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="mi">10802919</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Campbell</span><span class="p">,</span> <span class="n">Evan</span> <span class="ow">and</span> <span class="n">Eddy</span><span class="p">,</span> <span class="n">Ethan</span> <span class="ow">and</span> <span class="n">Isabel</span><span class="p">,</span> <span class="n">Xavier</span> <span class="ow">and</span> <span class="n">Bateman</span><span class="p">,</span> <span class="n">Scott</span> <span class="ow">and</span> <span class="n">Gosselin</span><span class="p">,</span> <span class="n">Benoit</span> <span class="ow">and</span> <span class="n">Côté</span><span class="o">-</span><span class="n">Allard</span><span class="p">,</span> <span class="n">Ulysse</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Transactions</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Systems</span> <span class="ow">and</span> <span class="n">Rehabilitation</span> <span class="n">Engineering</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Screen</span> <span class="n">Guided</span> <span class="n">Training</span> <span class="n">Does</span> <span class="n">Not</span> <span class="n">Capture</span> <span class="n">Goal</span><span class="o">-</span><span class="n">Oriented</span> <span class="n">Behaviors</span><span class="p">:</span> <span class="n">Learning</span> <span class="n">Myoelectric</span> <span class="n">Control</span> <span class="n">Mappings</span> <span class="n">From</span> <span class="n">Scratch</span> <span class="n">Using</span> <span class="n">Context</span> <span class="n">Informed</span> <span class="n">Incremental</span> <span class="n">Learning</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2025</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">33</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">332</span><span class="o">-</span><span class="mi">342</span><span class="p">},</span>
+  <span class="n">keywords</span><span class="o">=</span><span class="p">{</span><span class="n">Training</span><span class="p">;</span><span class="n">Electromyography</span><span class="p">;</span><span class="n">Games</span><span class="p">;</span><span class="n">Data</span> <span class="n">models</span><span class="p">;</span><span class="n">Calibration</span><span class="p">;</span><span class="n">Adaptation</span> <span class="n">models</span><span class="p">;</span><span class="n">Context</span> <span class="n">modeling</span><span class="p">;</span><span class="n">Predictive</span> <span class="n">models</span><span class="p">;</span><span class="n">Pipelines</span><span class="p">;</span><span class="n">Wrist</span><span class="p">;</span><span class="n">Electromyography</span> <span class="p">(</span><span class="n">EMG</span><span class="p">);</span><span class="n">deep</span> <span class="n">learning</span><span class="p">;</span><span class="n">incremental</span> <span class="n">learning</span><span class="p">;</span><span class="n">gesture</span> <span class="n">recognition</span><span class="p">;</span><span class="n">zero</span><span class="o">-</span><span class="n">shot</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">TNSRE</span><span class="mf">.2024.3518059</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+</section>
+<section id="regression">
+<h2>Regression<a class="headerlink" href="#regression" title="Permalink to this heading"></a></h2>
+<!-- ------------- One Subject EmaGer -------------------- -->
+<details>
+<summary><b>OneSubjectEmaGEr</b></summary>
+<br>
+<p><strong>Dataset Description:</strong>
+Simple one subject regression dataset.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>5 Reps</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0: Hand Close (-) / Hand Open (+) </li><li>Pronation (-) / Supination (+)</li></li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>EmaGEr</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1010 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;OneSubjectEMaGer&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/OneSubjectEMaGerDataset">https://github.com/LibEMG/OneSubjectEMaGerDataset</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">libemg</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Eddy</span><span class="p">,</span> <span class="n">Ethan</span> <span class="ow">and</span> <span class="n">Campbell</span><span class="p">,</span> <span class="n">Evan</span> <span class="ow">and</span> <span class="n">Phinyomark</span><span class="p">,</span> <span class="n">Angkoon</span> <span class="ow">and</span> <span class="n">Bateman</span><span class="p">,</span> <span class="n">Scott</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Access</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">LibEMG</span><span class="p">:</span> <span class="n">An</span> <span class="n">Open</span> <span class="n">Source</span> <span class="n">Library</span> <span class="n">to</span> <span class="n">Facilitate</span> <span class="n">the</span> <span class="n">Exploration</span> <span class="n">of</span> <span class="n">Myoelectric</span> <span class="n">Control</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2023</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">11</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">87380</span><span class="o">-</span><span class="mi">87397</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">ACCESS</span><span class="mf">.2023.3304544</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+<br>
+<!-- ------------- EMG2POSE -------------------- -->
+<details>  
+<summary><b>DS16: EMG2POSE</b></summary>  
+<br>
+<p><strong>Dataset Description:</strong><br />
+A large dataset from ctrl-labs (Meta) for joint angle estimation. Note that not all subjects have all stages.</p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>193</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>FingerPinches1 - AllFingerPinchesThumbSwipeThumbRotate</li><li>Object1 - CoffeePanicPete</li><li>Counting1 - CountingUpDownFaceSideAway</li><li>Counting2 - CountingUpDownFingerWigglingSpreading</li><li>DoorknobFingerGraspFistGrab - DoorknobFingerGraspFistGrab</li><li>Throwing - FastPongFronthandBackhandThrowing</li><li>Abduction - FingerAbductionSeries</li><li>FingerFreeform - FingerFreeform</li><li>FingerPinches2 - FingerPinchesSingleFingerPinchesMultiple</li><li>HandHandInteractions - FingerTouchPalmClapmrburns</li><li>Wiggling1 - FingerWigglingSpreading</li><li>Punch - GraspPunchCloseFar</li><li>Gesture1 - HandClawGraspFlicks</li><li>StaticHands - HandDeskSeparateClaspedChest</li><li>FingerPinches3 - HandOverHandAllFingerPinchesThumbSwipeThumbRotate</li><li>Wiggling2 - HandOverHandCountingUpDownFingerWigglingSpreading</li><li>Unconstrained - unconstrained</li><li>Gesture2 - HookEmHornsOKScissors</li><li>FingerPinches4 - IndexPinchesMiddlePinchesThumbswipes</li><li>Pointing - IndividualFingerPointingSnap</li><li>Freestyle1 - OneHandedFreeStyle</li><li>Object2 - PlayBlocksChess</li><li>Draw - PokeDrawPinchRotateclosefar</li><li>Poke - PokePinchCloseFar</li><li>Gesture3 - ShakaVulcanPeace</li><li>ThumbsSwipes - ThumbsSwipesWholeHand</li><li>ThumbRotations - ThumbsUpDownThumbRotationsCWCCWP</li><li>Freestyle2 - TwoHandedFreeStyle</li><li>WristFlex - WristFlexionAbduction</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Ctrl Labs Armband</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2000 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;EMG2POSE&#39;</span><span class="p">]()</span> <span class="c1"># Within USer </span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">,</span> <span class="n">cross_user</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s1">&#39;EMG2POSE&#39;</span><span class="p">]()</span> <span class="c1"># Cross User </span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar">https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@inproceedings</span><span class="p">{</span><span class="n">salteremg2pose</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">emg2pose</span><span class="p">:</span> <span class="n">A</span> <span class="n">Large</span> <span class="ow">and</span> <span class="n">Diverse</span> <span class="n">Benchmark</span> <span class="k">for</span> <span class="n">Surface</span> <span class="n">Electromyographic</span> <span class="n">Hand</span> <span class="n">Pose</span> <span class="n">Estimation</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Salter</span><span class="p">,</span> <span class="n">Sasha</span> <span class="ow">and</span> <span class="n">Warren</span><span class="p">,</span> <span class="n">Richard</span> <span class="ow">and</span> <span class="n">Schlager</span><span class="p">,</span> <span class="n">Collin</span> <span class="ow">and</span> <span class="n">Spurr</span><span class="p">,</span> <span class="n">Adrian</span> <span class="ow">and</span> <span class="n">Han</span><span class="p">,</span> <span class="n">Shangchen</span> <span class="ow">and</span> <span class="n">Bhasin</span><span class="p">,</span> <span class="n">Rohin</span> <span class="ow">and</span> <span class="n">Cai</span><span class="p">,</span> <span class="n">Yujun</span> <span class="ow">and</span> <span class="n">Walkington</span><span class="p">,</span> <span class="n">Peter</span> <span class="ow">and</span> <span class="n">Bolarinwa</span><span class="p">,</span> <span class="n">Anuoluwapo</span> <span class="ow">and</span> <span class="n">Wang</span><span class="p">,</span> <span class="n">Robert</span> <span class="ow">and</span> <span class="n">others</span><span class="p">},</span>
+  <span class="n">booktitle</span><span class="o">=</span><span class="p">{</span><span class="n">The</span> <span class="n">Thirty</span><span class="o">-</span><span class="n">eight</span> <span class="n">Conference</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Information</span> <span class="n">Processing</span> <span class="n">Systems</span> <span class="n">Datasets</span> <span class="ow">and</span> <span class="n">Benchmarks</span> <span class="n">Track</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- Hyser 1DOF -------------------- -->
+<details>  
+<summary><b>DS17: Hyser1DOF</b></summary>  
+<br>
+<p><strong>Dataset Description:</strong><br />
+Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger forces are recorded for use in finger force regression.
+<br></p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>20</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>3</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>1 - Thumb</li><li>2 - Index</li><li>3 - Middle</li><li>4 - Ring</li><li>5 - Little</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>OT Bioelettronica Quattrocento</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2048 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;Hyser1DOF&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://www.physionet.org/content/hd-semg/2.0.0/">https://www.physionet.org/content/hd-semg/2.0.0/</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">hyser</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Jiang</span><span class="p">,</span> <span class="n">Xinyu</span> <span class="ow">and</span> <span class="n">Liu</span><span class="p">,</span> <span class="n">Xiangyu</span> <span class="ow">and</span> <span class="n">Fan</span><span class="p">,</span> <span class="n">Jiahao</span> <span class="ow">and</span> <span class="n">Ye</span><span class="p">,</span> <span class="n">Xinming</span> <span class="ow">and</span> <span class="n">Dai</span><span class="p">,</span> <span class="n">Chenyun</span> <span class="ow">and</span> <span class="n">Clancy</span><span class="p">,</span> <span class="n">Edward</span> <span class="n">A</span><span class="o">.</span> <span class="ow">and</span> <span class="n">Akay</span><span class="p">,</span> <span class="n">Metin</span> <span class="ow">and</span> <span class="n">Chen</span><span class="p">,</span> <span class="n">Wei</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Transactions</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Systems</span> <span class="ow">and</span> <span class="n">Rehabilitation</span> <span class="n">Engineering</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Open</span> <span class="n">Access</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Toolbox</span> <span class="ow">and</span> <span class="n">Benchmark</span> <span class="n">Processing</span> <span class="n">Results</span> <span class="n">of</span> <span class="n">High</span><span class="o">-</span><span class="n">Density</span> <span class="n">Surface</span> <span class="n">Electromyogram</span> <span class="n">Recordings</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2021</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">29</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">1035</span><span class="o">-</span><span class="mi">1046</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">TNSRE</span><span class="mf">.2021.3082551</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- Hyser NDOF -------------------- -->
+<details>  
+<summary><b>DS18: HyserNDOF</b></summary>  
+<br>
+<p><strong>Dataset Description:</strong><br />
+Hyser N DOF dataset. Includes combined finger movements. Ground truth finger forces are recorded for use in finger force regression.
+<br></p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>20</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>2</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>1 - Thumb + Index</li><li>2 - Thumb + Middle</li><li>3 - Thumb + Ring</li><li>4 - Thumb + Little</li><li>5 - Index + Middle</li><li>6 - Thumb + Index + Middle</li><li>7 - Index + Middle + Ring</li><li>8 - Middle + Ring + Little</li><li>9 - Index + Middle + Ring + Little</li><li>10 - All Fingers</li><li>11 - Thumb + Index (Opposing)</li><li>12 - Thumb + Middle (Opposing)</li><li>13 - Thumb + Ring (Opposing)</li><li>14 - Thumb + Little (Opposing)</li><li>15 - Index + Middle (Opposing)</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>OT Bioelettronica Quattrocento</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2048 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;HyserNDOF&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://www.physionet.org/content/hd-semg/2.0.0/">https://www.physionet.org/content/hd-semg/2.0.0/</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">hyser</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Jiang</span><span class="p">,</span> <span class="n">Xinyu</span> <span class="ow">and</span> <span class="n">Liu</span><span class="p">,</span> <span class="n">Xiangyu</span> <span class="ow">and</span> <span class="n">Fan</span><span class="p">,</span> <span class="n">Jiahao</span> <span class="ow">and</span> <span class="n">Ye</span><span class="p">,</span> <span class="n">Xinming</span> <span class="ow">and</span> <span class="n">Dai</span><span class="p">,</span> <span class="n">Chenyun</span> <span class="ow">and</span> <span class="n">Clancy</span><span class="p">,</span> <span class="n">Edward</span> <span class="n">A</span><span class="o">.</span> <span class="ow">and</span> <span class="n">Akay</span><span class="p">,</span> <span class="n">Metin</span> <span class="ow">and</span> <span class="n">Chen</span><span class="p">,</span> <span class="n">Wei</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Transactions</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Systems</span> <span class="ow">and</span> <span class="n">Rehabilitation</span> <span class="n">Engineering</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Open</span> <span class="n">Access</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Toolbox</span> <span class="ow">and</span> <span class="n">Benchmark</span> <span class="n">Processing</span> <span class="n">Results</span> <span class="n">of</span> <span class="n">High</span><span class="o">-</span><span class="n">Density</span> <span class="n">Surface</span> <span class="n">Electromyogram</span> <span class="n">Recordings</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2021</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">29</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">1035</span><span class="o">-</span><span class="mi">1046</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">TNSRE</span><span class="mf">.2021.3082551</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- Hyser Random -------------------- -->
+<details>  
+<summary><b>DS19: HyserRandom</b></summary>  
+<br>
+<p><strong>Dataset Description:</strong><br />
+Hyser random dataset. Includes random motions performed by users. Ground truth finger forces are recorded for use in finger force regression.
+<br></p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>19</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>5</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p>Random</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>OT Bioelettronica Quattrocento</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>2048 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;HyserRandom&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://www.physionet.org/content/hd-semg/2.0.0/">https://www.physionet.org/content/hd-semg/2.0.0/</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@ARTICLE</span><span class="p">{</span><span class="n">hyser</span><span class="p">,</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Jiang</span><span class="p">,</span> <span class="n">Xinyu</span> <span class="ow">and</span> <span class="n">Liu</span><span class="p">,</span> <span class="n">Xiangyu</span> <span class="ow">and</span> <span class="n">Fan</span><span class="p">,</span> <span class="n">Jiahao</span> <span class="ow">and</span> <span class="n">Ye</span><span class="p">,</span> <span class="n">Xinming</span> <span class="ow">and</span> <span class="n">Dai</span><span class="p">,</span> <span class="n">Chenyun</span> <span class="ow">and</span> <span class="n">Clancy</span><span class="p">,</span> <span class="n">Edward</span> <span class="n">A</span><span class="o">.</span> <span class="ow">and</span> <span class="n">Akay</span><span class="p">,</span> <span class="n">Metin</span> <span class="ow">and</span> <span class="n">Chen</span><span class="p">,</span> <span class="n">Wei</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">IEEE</span> <span class="n">Transactions</span> <span class="n">on</span> <span class="n">Neural</span> <span class="n">Systems</span> <span class="ow">and</span> <span class="n">Rehabilitation</span> <span class="n">Engineering</span><span class="p">},</span> 
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Open</span> <span class="n">Access</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">Toolbox</span> <span class="ow">and</span> <span class="n">Benchmark</span> <span class="n">Processing</span> <span class="n">Results</span> <span class="n">of</span> <span class="n">High</span><span class="o">-</span><span class="n">Density</span> <span class="n">Surface</span> <span class="n">Electromyogram</span> <span class="n">Recordings</span><span class="p">},</span> 
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2021</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">29</span><span class="p">},</span>
+  <span class="n">number</span><span class="o">=</span><span class="p">{},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">1035</span><span class="o">-</span><span class="mi">1046</span><span class="p">},</span>
+  <span class="n">doi</span><span class="o">=</span><span class="p">{</span><span class="mf">10.1109</span><span class="o">/</span><span class="n">TNSRE</span><span class="mf">.2021.3082551</span><span class="p">}}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- DB8 -------------------- -->
+<details>
+<summary><b>DS20: NinaProDB8</b></summary>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>12</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>20 Training, 2 Testing</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p>9 <a class="reference external" href="http://ninapro.hevs.ch/DB8">NinaProDB8</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>Delsys</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1111 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>False</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;NinaProDB8&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+Note, this dataset will not be automatically downloaded. To download this dataset, please see <a class="reference external" href="http://ninapro.hevs.ch/DB8">Nina DB8</a>. Simply download the ZIPs and place them in a folder and LibEMG will handle the rest. All credit for this dataset should be given to the original authors.</p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@article</span><span class="p">{</span><span class="n">db8</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Effect</span> <span class="n">of</span> <span class="n">user</span> <span class="n">practice</span> <span class="n">on</span> <span class="n">prosthetic</span> <span class="n">finger</span> <span class="n">control</span> <span class="k">with</span> <span class="n">an</span> <span class="n">intuitive</span> <span class="n">myoelectric</span> <span class="n">decoder</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Krasoulis</span><span class="p">,</span> <span class="n">Agamemnon</span> <span class="ow">and</span> <span class="n">Vijayakumar</span><span class="p">,</span> <span class="n">Sethu</span> <span class="ow">and</span> <span class="n">Nazarpour</span><span class="p">,</span> <span class="n">Kianoush</span><span class="p">},</span>
+  <span class="n">journal</span><span class="o">=</span><span class="p">{</span><span class="n">Frontiers</span> <span class="ow">in</span> <span class="n">neuroscience</span><span class="p">},</span>
+  <span class="n">volume</span><span class="o">=</span><span class="p">{</span><span class="mi">13</span><span class="p">},</span>
+  <span class="n">pages</span><span class="o">=</span><span class="p">{</span><span class="mi">891</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2019</span><span class="p">},</span>
+  <span class="n">publisher</span><span class="o">=</span><span class="p">{</span><span class="n">Frontiers</span> <span class="n">Media</span> <span class="n">SA</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+<!-- ------------- User Compliance -------------------- -->
+<details>  
+<summary><b>DS21: UserCompliance</b></summary>  
+<br>
+<p><strong>Dataset Description:</strong><br />
+Regression dataset used for investigation into user compliance during mimic training.
+<br></p>
+<table class="colwidths-auto docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Num Subjects:</strong></p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Num Reps:</strong></p></td>
+<td><p>5</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Classes:</strong></p></td>
+<td><p><ul><li>0 - Hand Close (-) / Hand Open (+)</li><li>1 - Pronation (-) / Supination (+)</li></ul></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Device:</strong></p></td>
+<td><p>EMaGer</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Sampling Rates:</strong></p></td>
+<td><p>1010 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Auto Download:</strong></p></td>
+<td><p>True</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Using the Dataset:</strong></p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">get_dataset_list</span><span class="p">(</span><span class="s1">&#39;REGRESSION&#39;</span><span class="p">)[</span><span class="s1">&#39;UserCompliance&#39;</span><span class="p">]()</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">prepare_data</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><strong>Dataset Location</strong>
+<a class="reference external" href="https://github.com/LibEMG/UserComplianceDataset">https://github.com/LibEMG/UserComplianceDataset</a></p>
+<p><strong>References:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@inproceedings</span><span class="p">{</span><span class="n">morrell2024exploring</span><span class="p">,</span>
+  <span class="n">title</span><span class="o">=</span><span class="p">{</span><span class="n">Exploring</span> <span class="n">user</span> <span class="n">compliance</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">training</span> <span class="n">of</span> <span class="n">regression</span><span class="o">-</span><span class="n">based</span> <span class="n">myoelectric</span> <span class="n">control</span><span class="p">},</span>
+  <span class="n">author</span><span class="o">=</span><span class="p">{</span><span class="n">Morrell</span><span class="p">,</span> <span class="n">Christian</span> <span class="ow">and</span> <span class="n">Campbell</span><span class="p">,</span> <span class="n">Evan</span> <span class="ow">and</span> <span class="n">Scheme</span><span class="p">,</span> <span class="n">Erik</span><span class="p">},</span>
+  <span class="n">booktitle</span><span class="o">=</span><span class="p">{</span><span class="n">Myoelectric</span> <span class="n">Controls</span> <span class="n">Symposium</span><span class="p">},</span>
+  <span class="n">year</span><span class="o">=</span><span class="p">{</span><span class="mi">2024</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</details>
+</br>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="offline-data-handler">
+<h1>Offline Data Handler<a class="headerlink" href="#offline-data-handler" title="Permalink to this heading"></a></h1>
+<p>One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are either .csv or .txt files, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset’s file and folder structure. These expressions can be used to create a dictionary that is passed to the OfflineDataHandler. Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: <code class="docutils literal notranslate"><span class="pre">dataset/train/R_1_C_1_EMG.csv</span></code> where R is the rep and C is the class.</p>
+<details>
+<summary><b>Example Code</b></summary>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.data_handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">OfflineDataHandler</span><span class="p">,</span> <span class="n">RegexFilter</span>
+<span class="n">dataset_folder</span> <span class="o">=</span> <span class="s1">&#39;dataset&#39;</span>
+<span class="n">regex_filters</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;dataset/&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">sets_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;sets&#39;</span><span class="p">),</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;_EMG.csv&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">classes_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;classes&#39;</span><span class="p">),</span>
+    <span class="n">RegexFilter</span><span class="p">(</span><span class="n">left_bound</span> <span class="o">=</span> <span class="s2">&quot;R_&quot;</span><span class="p">,</span> <span class="n">right_bound</span><span class="o">=</span><span class="s2">&quot;_C_&quot;</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">reps_values</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;reps&#39;</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">OfflineDataHandler</span><span class="p">()</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">folder_location</span><span class="o">=</span><span class="n">dataset_folder</span><span class="p">,</span> <span class="n">regex_filters</span><span class="o">=</span><span class="n">regex_filters</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+
+<span class="c1"># Extract training data:</span>
+<span class="n">train_odh</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">isolate_data</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;sets&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">train_windows</span><span class="p">,</span> <span class="n">train_metadata</span> <span class="o">=</span> <span class="n">train_odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">25</span><span class="p">)</span>
+
+<span class="c1"># Extract features</span>
+<span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+<span class="n">feature_list</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">get_feature_list</span><span class="p">()</span>
+<span class="n">training_features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">train_windows</span><span class="p">)</span>
+</pre></div>
+</div>
+</details>
+</br>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="online-data-handler">
+<h1>Online Data Handler<a class="headerlink" href="#online-data-handler" title="Permalink to this heading"></a></h1>
+<p>One complication when using EMG devices is the lack of standardization, meaning that interfacing with hardware is a new undertaking for each device. A goal of LibEMG is to abstract these differences and enable a hardware-agnostic framework. Therefore, this module acts as a middle layer for processing real-time data streaming from any device. In this architecture - exemplified in Figure 1 – live data streaming is performed by using a shared memory buffer as the core. This shared memory buffer is created by the device streamer, where a process is spawned that continuously populates the buffer with samples. Other modules can gain access to the shared memory buffer using the shared memory items that the streamer returned, allowing for cross-process, low-latency, non-blocking access to the data of interest. We provide an OnlineDataHandler object that is a generic object for attaching to the shared memory buffer with added some utilities.</p>
+<p>An example of the online data streaming workflow is provided below:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># start the hardware streamer, receive a process handle and shared memory descriptors</span>
+<span class="n">streamer_process</span><span class="p">,</span> <span class="n">shared_memory_items</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">streamers</span><span class="o">.</span><span class="n">myo_streamer</span><span class="p">()</span>
+<span class="c1"># start an online data handler to attach to the shared memory buffer</span>
+<span class="n">odh</span> <span class="o">=</span> <span class="n">libemg</span><span class="o">.</span><span class="n">data_handler</span><span class="o">.</span><span class="n">OnlineDataHandler</span><span class="p">(</span><span class="n">shared_memory_items</span><span class="o">=</span><span class="n">shared_memory_items</span><span class="p">)</span>
+<span class="c1"># start logging the data to a file</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">log_to_file</span><span class="p">()</span>
+<span class="c1"># start visualizing the data</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">visualization</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><img alt="alt text" src="../../_images/online_dh.png" /></p>
+<center> <p> Figure 1: OnlineDataHandler Architecture</p> </center>
+<p><strong>For more information on the default streamers and creating your own, please reference the Supported Hardware section.</strong></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
