@@ -229,7 +229,7 @@ An electrode shift confounding factors dataset.
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['CIIL_ElectrodeShift']()
+dataset = get_dataset_list()['ElectrodeShift']()
 odh = dataset.prepare_data()
 ```
 
@@ -317,7 +317,7 @@ Twelve gestures elicited in three forearm orientations (neutral, pronation, and 
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['FORSEMG']()
+dataset = get_dataset_list()['FORS-EMG']()
 odh = dataset.prepare_data()
 ```
 
@@ -542,7 +542,7 @@ The goal of this Myo dataset is to explore how well models perform when they hav
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['CIIL_MinimalData']()
+dataset = get_dataset_list()['MinimalTrainingData']()
 odh = dataset.prepare_data()
 ```
 
@@ -677,8 +677,9 @@ https://github.com/LibEMG/LimbPosition
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['TMRShirleyRyanAbilityLab']()
-odh = dataset.prepare_data()
+dataset_pre = get_dataset_list()['TMR_Pre']()
+dataset_post = get_dataset_list()['TMR_Post']()
+odh = dataset_pre.prepare_data()
 ```
 
 **Dataset Location**
@@ -723,7 +724,7 @@ A weakly supervised environment with sparse supervised calibration.
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list('WEAKLYSUPERVISED')['CIIL_WeaklySupervised']()
+dataset = get_dataset_list('WEAKLYSUPERVISED')['WeaklySupervised']()
 odh = dataset.prepare_data()
 ```
 
@@ -773,12 +774,12 @@ Simple one subject regression dataset.
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list('REGRESSION')['OneSubjectMyo']()
+dataset = get_dataset_list('REGRESSION')['OneSubjectEMaGer']()
 odh = dataset.prepare_data()
 ```
 
 **Dataset Location**
-https://github.com/LibEMG/OneSubjectMyoDataset
+https://github.com/LibEMG/OneSubjectEMaGerDataset
 
 **References:**
 ```
