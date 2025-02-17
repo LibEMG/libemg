@@ -8,8 +8,6 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.preprocessing import StandardScaler
-from libemg.feature_extractor import FeatureExtractor
-from libemg.shared_memory_manager import SharedMemoryManager
 from multiprocessing import Process, Lock
 import numpy as np
 import pickle
@@ -24,10 +22,13 @@ import inspect
 from scipy import stats
 import csv
 from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import re
 from matplotlib.animation import FuncAnimation
 from functools import partial
 
+from libemg.feature_extractor import FeatureExtractor
+from libemg.shared_memory_manager import SharedMemoryManager
 from libemg.utils import get_windows
 from libemg.environments.controllers import RegressorController, ClassifierController
 
@@ -47,16 +48,24 @@ class EMGPredictor:
     silent: bool (default=False)
         If True, the outputs from the fix_feature_errors parameter will be silenced. 
     """
-    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False) -> None:
+    def __init__(self, 
+                 model, 
+                 model_parameters:   Optional[Dict[str, Any]] = None, 
+                 random_seed:        int = 0, 
+                 fix_feature_errors: bool = False, 
+                 silent:             bool = False) -> None:
+        
         self.model = model
         self.model_parameters = model_parameters
-        # default for feature parameters
         self.feature_params = {}
         self.fix_feature_errors = fix_feature_errors
         self.silent = silent
         random.seed(random_seed)
 
-    def fit(self, feature_dictionary = None, dataloader_dictionary = None, training_parameters = None):
+    def fit(self, 
+            feature_dictionary:    Optional[Dict[str, Any]] = None, 
+            dataloader_dictionary: Optional[Dict[str, Any]] = None, 
+            training_parameters:   Optional[Dict[str, Any]] = None) -> None:
         """The fit function for the EMG Prediction class. 
 
         This is the method called that actually optimizes model weights for the dataset. This method presents a fork for two 
@@ -89,7 +98,8 @@ class EMGPredictor:
             raise ValueError("Incorrect combination of values passed to fit method. A feature dictionary is needed for statistical models and a dataloader dictionary is needed for deep models.")
 
     @classmethod
-    def from_file(self, filename):
+    def from_file(self, 
+                  filename: str) -> "EMGPredictor":
         """Loads a classifier - rather than creates a new one.
 
         After saving a statistical model, you can recreate it by running EMGClassifier.from_file(). By default 
@@ -113,19 +123,48 @@ class EMGPredictor:
             model = pickle.load(f)
         return model
 
-    def _predict(self, data):
+    def _predict(self, 
+                 data: Any) -> Any:
+        """
+        Predict using the model.
+
+        Parameters
+        ----------
+        data: np.ndarray or torch.tensor
+            The input to be processed 
+
+        Returns
+        ----------
+        prediction: int
+             the output prediction (categorical)
+        """
         try:
             return self.model.predict(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict() method. Please ensure model has a valid predict() method.") from e
 
-    def _predict_proba(self, data):
+    def _predict_proba(self, 
+                       data: Any) -> Any:
+        """
+        Predict probabilities using the model.
+
+        Parameters
+        ----------
+        data: np.ndarray or torch.tensor
+            The input to be processed 
+
+        Returns
+        ----------
+        probabilities: np.ndarray or torch.tensor
+             the output probabilities (continuous valued)
+        """
         try:
             return self.model.predict_proba(data)
         except AttributeError as e:
             raise AttributeError("Attempted to perform prediction when model doesn't have a predict_proba() method. Please ensure model has a valid predict_proba() method.") from e
 
-    def save(self, filename):
+    def save(self, 
+             filename: str) -> None:
         """Saves (pickles) the EMGClassifier object to a file.
 
         Use this save function if you want to load the object later using the from_file function. Note that 
@@ -139,7 +178,8 @@ class EMGPredictor:
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
-    def install_feature_parameters(self, feature_params):
+    def install_feature_parameters(self, 
+                                   feature_params: Dict[str, Any]) -> None:
         """Installs the feature parameters for the classifier.
 
         This function is used to install the feature parameters for the classifier. This is necessary for the classifier
@@ -153,7 +193,13 @@ class EMGPredictor:
         self.feature_params = feature_params
 
     @staticmethod
-    def _validate_model_parameters(model, model_parameters, model_config):
+    def _validate_model_parameters(model, 
+                                   model_parameters: Optional[Dict[str, Any]], 
+                                   model_config:     Dict[str, Any]) -> Any:
+        """
+        Provide a string representing a sklearn model and this function will validate if the model parameter dictionary is valid
+        by checking the sklearn model constructor arguments.
+        """
         if not isinstance(model, str):
             # Custom model
             return model
@@ -174,7 +220,11 @@ class EMGPredictor:
         valid_model = model_reference(**valid_parameters)
         return valid_model
 
-    def _format_data(self, feature_dictionary):
+    def _format_data(self, 
+                     feature_dictionary: Union[Dict[str, Any], Any]) -> Any:
+        """
+        Format dictionary format of features into a single np.ndarray.
+        """
         if isinstance(feature_dictionary, dict):
             # Loop through each element and stack
             arr = None
@@ -191,7 +241,11 @@ class EMGPredictor:
                 arr = np.nan_to_num(arr, neginf=0, nan=0, posinf=0) 
         return arr
 
-    def _fit_statistical_model(self, feature_dictionary):
+    def _fit_statistical_model(self, 
+                               feature_dictionary: Dict[str, Any]) -> None:
+        """
+        Fit the model using a feature dictionary.
+        """
         assert 'training_features' in feature_dictionary.keys()
         assert 'training_labels'   in feature_dictionary.keys()
         # convert dictionary of features format to np.ndarray for test/train set (NwindowxNfeature)
@@ -199,11 +253,15 @@ class EMGPredictor:
         # self._set_up_classifier(model, feature_dictionary, parameters)
         self.model.fit(feature_dictionary['training_features'], feature_dictionary['training_labels'])
         
-    def _fit_deeplearning_model(self, dataloader_dictionary, parameters):
+    def _fit_deeplearning_model(self, 
+                                dataloader_dictionary: Dict[str, Any],
+                                parameters:            Dict[str, Any]) -> None:
+        """
+        Fit a deep learning model using a dataloader dictionary.
+        """
         assert 'training_dataloader' in dataloader_dictionary.keys()
         assert 'validation_dataloader'  in dataloader_dictionary.keys()
         self.model.fit(dataloader_dictionary, **parameters)
-
 
 class EMGClassifier(EMGPredictor):
     """The Offline EMG Classifier. 
@@ -225,7 +283,12 @@ class EMGClassifier(EMGPredictor):
     silent: bool (default=False)
         If True, the outputs from the fix_feature_errors parameter will be silenced. 
     """
-    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False):
+    def __init__(self, 
+                 model:              Union[str, Any], 
+                 model_parameters:   Optional[Dict[str, Any]] = None, 
+                 random_seed:        int = 0, 
+                 fix_feature_errors: bool = False, 
+                 silent:             bool = False):
         model_config = {
             'LDA': (LinearDiscriminantAnalysis, {}),
             'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
@@ -249,7 +312,8 @@ class EMGClassifier(EMGPredictor):
 
 
         
-    def run(self, test_data):
+    def run(self, 
+            test_data: Any) -> Tuple[np.ndarray, np.ndarray]:
         """Runs the classifier on a pre-defined set of training data.
 
         Parameters
@@ -265,7 +329,6 @@ class EMGClassifier(EMGPredictor):
             A list of the probabilities (for each prediction), based on the passed in testing features.
         """
         test_data = self._format_data(test_data)
-        
         prob_predictions = self._predict_proba(test_data)
             
         # Default
@@ -284,7 +347,8 @@ class EMGClassifier(EMGPredictor):
         # Accumulate Metrics
         return predictions, probabilities
 
-    def add_rejection(self, threshold=0.9):
+    def add_rejection(self, 
+                      threshold: float=0.9) -> None:
         """Adds the rejection post-processing block onto a classifier.
 
         Parameters
@@ -295,7 +359,8 @@ class EMGClassifier(EMGPredictor):
         self.rejection = True
         self.rejection_threshold = threshold
 
-    def add_majority_vote(self, num_samples=5):
+    def add_majority_vote(self, 
+                          num_samples: int=5) -> None:
         """Adds the majority voting post-processing block onto a classifier.
 
         Parameters
@@ -305,9 +370,11 @@ class EMGClassifier(EMGPredictor):
         """
         self.majority_vote = num_samples
 
-    def add_velocity(self, train_windows, train_labels,
-                     velocity_metric_handle = None,
-                     velocity_mapping_handle = None):
+    def add_velocity(self, 
+                     train_windows:           np.ndarray, 
+                     train_labels:            np.ndarray,
+                     velocity_metric_handle:  Optional[Callable[[Any], Any]] = None,
+                     velocity_mapping_handle: Optional[Callable[[Any], Any]] = None):
         """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
 
         Note, that when using this optional, ramp contractions should be captured for training. 
@@ -318,7 +385,6 @@ class EMGClassifier(EMGPredictor):
         self.velocity_metric_handle = velocity_metric_handle
         self.velocity_mapping_handle = velocity_mapping_handle
         self.velocity = True
-
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
 
 
@@ -326,7 +392,21 @@ class EMGClassifier(EMGPredictor):
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
-    def _prediction_helper(self, predictions):
+    def _prediction_helper(self, 
+                           predictions: Any) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Helper function to extract prediction and probability.
+        
+        Parameters
+        ----------
+        predictions : Any
+            Raw predictions.
+        
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Tuple of predicted classes and probabilities.
+        """
         probabilities = [] 
         prediction_vals = []
         for i in range(0, len(predictions)):
@@ -335,7 +415,12 @@ class EMGClassifier(EMGPredictor):
             probabilities.append(pred_list[pred_list.index(max(pred_list))])
         return np.array(prediction_vals), np.array(probabilities)
         
-    def _rejection_helper(self, prediction, prob):
+    def _rejection_helper(self, 
+                          prediction: Any, 
+                          prob:       Any) -> Any:
+        """
+        Helper function for rejection.
+        """
         if self.rejection:
             if prob > self.rejection_threshold:
                 return prediction
@@ -343,7 +428,11 @@ class EMGClassifier(EMGPredictor):
                 return -1
         return prediction
     
-    def _majority_vote_helper(self, predictions):
+    def _majority_vote_helper(self, 
+                              predictions: np.ndarray) -> np.ndarray:
+        """
+        Helper function for majority voting.
+        """
         updated_predictions = []
         for i in range(0, len(predictions)):
             idxs = np.array(range(i-self.majority_vote+1, i+1))
@@ -352,7 +441,24 @@ class EMGClassifier(EMGPredictor):
             updated_predictions.append(stats.mode(group, keepdims=False)[0])
         return np.array(updated_predictions)
     
-    def _get_velocity(self, window, c):
+    def _get_velocity(self, 
+                      window: Dict[str, Any], 
+                      c:      Any) -> str:
+        """
+        Compute velocity output based on window data.
+        
+        Parameters
+        ----------
+        window : dict
+            Window data.
+        c : Any
+            Class or index.
+        
+        Returns
+        -------
+        str
+            Formatted velocity.
+        """
         mod = "emg" # todo: specify another way to do this is needed
         
         if self.th_max_dic and self.th_min_dic:
@@ -366,7 +472,17 @@ class EMGClassifier(EMGPredictor):
                 velocity_output = self.velocity_mapping_handle(velocity_output)
             return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
 
-    def _set_up_velocity_control(self, train_windows, train_labels):
+    def _set_up_velocity_control(self, 
+                                 train_windows: np.ndarray, 
+                                 train_labels:  np.ndarray) -> Tuple[Dict[Any, float], Dict[Any, float]]:
+        """
+        Sets up velocity control thresholds.
+        
+        Returns
+        -------
+        Tuple[dict, dict]
+            Dictionaries for min and max thresholds.
+        """
         # Extract classes 
         th_min_dic = {}
         th_max_dic = {}
@@ -389,7 +505,10 @@ class EMGClassifier(EMGPredictor):
             th_max_dic[c] = th_max
         return th_min_dic, th_max_dic
 
-    def visualize(self, test_labels, predictions, probabilities):
+    def visualize(self, 
+                  test_labels:   np.ndarray, 
+                  predictions:   np.ndarray, 
+                  probabilities: np.ndarray) -> None:
         """Visualize the decision stream of the classifier on the testing data. 
 
         You can call this visualize function to get a visual output of what the decision stream of what 
@@ -438,7 +557,6 @@ class EMGClassifier(EMGPredictor):
         plt.legend(loc='lower right')
         plt.show()
     
-
 class EMGRegressor(EMGPredictor):
     """The Offline EMG Regressor. 
 
@@ -461,7 +579,13 @@ class EMGRegressor(EMGPredictor):
     deadband_threshold: float, default=0.0
         Threshold that controls deadband around 0 for output predictions. Values within this deadband will be output as 0 instead of their original prediction.
     """
-    def __init__(self, model, model_parameters = None, random_seed = 0, fix_feature_errors = False, silent = False, deadband_threshold = 0.):
+    def __init__(self, 
+                 model:              Union[str, Any],
+                 model_parameters:   Optional[Dict[str, Any]] = None, 
+                 random_seed:        int = 0, 
+                 fix_feature_errors: bool = False, 
+                 silent:             bool = False, 
+                 deadband_threshold: float = 0.):
         model_config = {
             'LR': (LinearRegression, {}),
             'SVM': (SVR, {"kernel": "linear"}),
@@ -477,16 +601,18 @@ class EMGRegressor(EMGPredictor):
         super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
     
-    def run(self, test_data):
+    def run(self, 
+            test_data: Any) -> np.ndarray:
         """Runs the regressor on a pre-defined set of training data.
 
         Parameters
         ----------
         test_data: list
             A dictionary, np.ndarray of inputs appropriate for the model of the EMGRegressor.
+    
         Returns
         ----------
-        list
+        np.ndarray
             A list of predictions, based on the passed in testing features.
         """
         test_data = self._format_data(test_data)
@@ -498,15 +624,20 @@ class EMGRegressor(EMGPredictor):
 
         return predictions
 
-    def visualize(self, test_labels, predictions):
+    def visualize(self, 
+                  test_labels: np.ndarray, 
+                  predictions: np.ndarray) -> None:
         """Visualize the decision stream of the regressor on test data.
 
         You can call this visualize function to get a visual output of what the decision stream looks like.
 
-        :param test_labels: np.ndarray
-        :type test_labels: N x M array, where N = # samples and M = # DOFs, containing the labels for the test data.
-        :param predictions: np.ndarray
-        :type predictions: N x M array, where N = # samples and M = # DOFs, containing the predictions for the test data.
+        Parameters
+        ----------
+        test_labels: np.ndarray
+            N x M array, where N = # samples and M = # DOFs, containing the labels for the test data.
+        predictions: np.ndarray
+            N x M array, where N = # samples and M = # DOFs, containing the predictions for the test data.
+
         """
         assert len(predictions) > 0, 'Empty list passed in for predictions to visualize.'
 
@@ -533,7 +664,8 @@ class EMGRegressor(EMGPredictor):
         plt.show()
         
 
-    def add_deadband(self, threshold):
+    def add_deadband(self, 
+                     threshold: float) -> None:
         """Add a deadband around regressor predictions that will instead be output as 0.
 
         Parameters
@@ -542,7 +674,6 @@ class EMGRegressor(EMGPredictor):
             Deadband threshold. All output predictions from -threshold to +threshold will instead output 0.
         """
         self.deadband_threshold = threshold
-
 
 class OnlineStreamer(ABC):
     """OnlineStreamer.
@@ -574,10 +705,6 @@ class OnlineStreamer(ABC):
     parameters: dict (optional)
         A dictionary including all of the parameters for the sklearn models. These parameters should match those found 
         in the sklearn docs for the given model.
-    port: int (optional), default = 12346
-        The port used for streaming predictions over UDP.
-    ip: string (optional), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
     velocity: bool (optional), default = False
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
@@ -585,42 +712,27 @@ class OnlineStreamer(ABC):
     """
 
     def __init__(self, 
-                 offline_predictor, 
-                 window_size, 
-                 window_increment, 
-                 online_data_handler, 
-                 file_path, 
-                 file, 
-                 smm, smm_items, 
-                 features, 
-                 port, ip, 
-                 std_out):
+                 offline_predictor:   EMGPredictor, 
+                 window_size:         int, 
+                 window_increment:    int, 
+                 online_data_handler: Any, 
+                 file_path:           str, 
+                 file:                bool, 
+                 smm:                 bool, 
+                 smm_items:           List[List[Any]], 
+                 features:            Optional[List[Any]],
+                 std_out:             bool):
 
         # setting arguments as class attributes
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
         self.features = features
-        self.port = port
-        self.ip = ip
         self.predictor = offline_predictor
         self.file = file
         self.file_path = file_path
         self.std_out = std_out
         self.scaler = None
-
-        # Function handles for the streaming pipeline
-        # these handles can be set by the user to override default behaviour
-        self.on_startup_function_handle     = self.default_startup
-        self.window_trigger_function_handle = self.default_window_trigger
-        self.model_flag_handle              = self.default_model_flag_handler
-        self.on_window_function_handle      = self.default_on_window
-        self.prediction_function_handle     = self.default_prediction_function
-        self.postprocessing_function_handle = self.default_postprocessing_function
-        self.output_write_function_handle   = self.default_output_write_function
-        # The overall on-prediction routine composes the three stages.
-        self.on_prediction_function_handle  = self.default_on_prediction
-
 
         required_smm_items = [
             ["adapt_flag", (1,1), np.int32],
@@ -633,45 +745,61 @@ class OnlineStreamer(ABC):
         self.smm = smm
         self.smm_items = smm_items
 
-        self.files = {}
+        self.smm_manager = None
+        self.model_smm_writes = 0
 
         self.process = Process(target=self._run_helper, daemon=True,)
     
-    def start_stream(self, block=True):
+    def start_stream(self, 
+                     block: bool =True) -> None:
+        """
+        Start the streaming process.
+        
+        Parameters
+        ----------
+        block : bool, default=True
+            Whether to run in blocking mode.
+        """
         if block:
             self._run_helper()
         else:
             self.process.start()
                     
-    def prepare_smm(self):
+    def prepare_smm(self) -> None:
+        """
+        Prepare shared memory by creating required variables.
+        """
         for i in self.smm_items:
             if len(i) == 3:
                 i.append(Lock())
         smm = SharedMemoryManager()
         for item in self.smm_items:
             smm.create_variable(*item)
-        self.options['smm'] = smm
-        self.options['model_smm_writes'] = 0
+        self.smm_manager = smm
+        self.model_smm_writes = 0
 
-    def analyze_predictor(self, analyze_time=10):
+    def analyze_predictor(self, 
+                          ip:           str="127.0.0.1", 
+                          port:         int=12346,
+                          analyze_time: int=10) -> None:
         """Analyzes the latency of the designed predictor. 
-
-        Parameters
-        ----------
-        analyze_time: int (optional), default=10 (seconds)
-            The time in seconds that you want to analyze the model for. 
-        port: int (optional), default = 12346
-            The port used for streaming predictions over UDP.
-        ip: string (optional), default = '127.0.0.1'
-            The ip used for streaming predictions over UDP.
         
         (1) Time Between Prediction (Average): The average time between subsequent predictions.
         (2) STD Between Predictions (Standard Deviation): The standard deviation between predictions. 
         (3) Total Number of Predictions: The number of predictions that were made. Sometimes if the increment is too small, samples will get dropped and this may be less than expected.  
+        
+        Parameters
+        ----------
+        ip: str (optional), default=localhost
+            The ip address to listen to for model outputs.
+        port: int (optional),  default=12346
+            The port to listen to for model outputs.
+        analyze_time: int (optional), default=10 (seconds)
+            The time in seconds that you want to analyze the model for.
         """
         print("Starting analysis of predictor " + "(" + str(analyze_time) + "s)...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-        sock.bind((self.ip, self.port))
+        sock.bind((ip, port))
         st = time.time()
         times = []
         while(time.time() - st < analyze_time):
@@ -685,7 +813,11 @@ class OnlineStreamer(ABC):
         print("Total Number of Predictions: " + str(len(times) + 1))
         self.stop_running()
 
-    def _format_data_sample(self, data):
+    def _format_data_sample(self, 
+                            data: Dict[str, Any]) -> np.ndarray:
+        """
+        Stack data from a dictionary into one array. In this case 'data' is the feature dictionary.
+        """
         arr = None
         for feat in data:
             if arr is None:
@@ -694,56 +826,95 @@ class OnlineStreamer(ABC):
                 arr = np.hstack((arr, data[feat]))
         return arr
 
-    def _get_data_helper(self):
+    def _get_data_helper(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """
+        Retrieve and reverse data.
+        """
         data, counts = self.odh.get_data(N=self.window_size)
+        # TODO: this probably adds latency and isn't really needed
+        # ODH has index 0=most recent sample
+        # if you trained using typical csv formats, the most recent sample is at the end of the list
+        # This inversion makes them the same, but is unnecessary like 99% of the time.
         for key in data.keys():
             data[key] = data[key][::-1]
         return data, counts
     
-    def get_interaction_items(self):
+    def get_interaction_items(self) -> List[List[Any]]:
+        """
+        Return the shared memory items.
+        """
         return self.smm_items
     
-    def load_emg_predictor(self, number):
-        with open(self.options['file_path'] +  'mdl' + str(number) + '.pkl', 'rb') as handle:
+    def load_emg_predictor(self, 
+                           number: int) -> None:
+        """
+        Load a predictor from a file.
+        
+        Parameters
+        ----------
+        number : int
+            Model number.
+        """
+        with open(self.file_path + 'mdl' + str(number) + '.pkl', 'rb') as handle:
             self.predictor = pickle.load(handle)
             print(f"Loaded model #{number}.")
     
 
     # ----- Default functions for the streaming pipeline -----
-    def default_startup(self):
+    def default_startup(self) -> None:
+        """
+        Default startup: prepare shared memory and reset online data handler.
+        """
         if self.smm:
             self.prepare_smm()
-            self.options['smm'].modify_variable("active_flag", lambda x: 1)
-            self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+            self.smm_manager.modify_variable("active_flag", lambda x: 1)
+            self.smm_manager.modify_variable("adapt_flag", lambda x: -1)
         self.odh.prepare_smm()
         self.expected_count = {mod: self.window_size for mod in self.odh.modalities}
         self.odh.reset()
 
-    def default_model_flag_handler(self):
+    def default_model_flag_handler(self) -> bool:
         """
         Checks and handles the shared memory flags: if the active flag is not set,
         returns False immediately. Also checks if the adapt flag is set and if so,
         loads a new predictor.
+
+        Returns
+        -------
+        bool
+            True if flags are acceptable to run model; False otherwise.
         """
         if self.smm:
-            # Check active flag.
-            if not self.options["smm"].get_variable("active_flag")[0, 0]:
+            if not self.smm_manager.get_variable("active_flag")[0, 0]:
                 return False
-            # Check adapt flag.
-            if self.options["smm"].get_variable("adapt_flag")[0][0] != -1:
-                self.load_emg_predictor(self.options["smm"].get_variable("adapt_flag")[0][0])
-                self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+            if self.smm_manager.get_variable("adapt_flag")[0][0] != -1:
+                self.load_emg_predictor(self.smm_manager.get_variable("adapt_flag")[0][0])
+                self.smm_manager.modify_variable("adapt_flag", lambda x: -1)
         return True
 
-    def default_window_trigger(self):
+
+    def default_window_trigger(self) -> bool:
         """
-        Checks whether enough data samples have been collected for all modalities.
+        Check whether enough data samples are collected.
+        
+        Returns
+        -------
+        bool
+            True if window is ready.
         """
         val, count = self.odh.get_data(N=self.window_size)
         modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
         return all(modality_ready)
         
-    def default_on_window(self):
+    def default_on_window(self) -> Tuple[Any, Dict[str, Any]]:
+        """
+        Extract window and prepare model input. This is the same for OnlineEMGRegressors or OnlineEMGClassifiers.
+        
+        Returns
+        -------
+        Tuple[Any, dict]
+            The model input (processed single window ready for model, optionally scaled) and the raw window (raw samples pre scaling).
+        """
         data, count = self._get_data_helper()
         window = {mod: get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
         fe = FeatureExtractor()
@@ -764,10 +935,22 @@ class OnlineStreamer(ABC):
             self.expected_count[mod] += self.window_increment
         return model_input, window
 
-    def default_on_prediction(self, model_input, window):
-        self.write_output(model_input, window)
+    def run(self, 
+            block: bool=True):
+        """Runs the streamer.
 
-    def _run_helper(self):
+        Parameters
+        ----------
+        block: bool (optional), default = True
+            If True, the run function blocks the main thread. Otherwise it runs in a 
+            seperate process.
+        """
+        self.start_stream(block)
+    
+    def _run_helper(self) -> None:
+        """
+        Main loop for online streaming.
+        """
         # Startup stage
         self.on_startup_function_handle()
 
@@ -787,14 +970,14 @@ class OnlineStreamer(ABC):
             # Prediction/Postprocessing stage
             self.on_prediction_function_handle(model_input, window)
     
-    def install_standardization(self, standardization: np.ndarray | StandardScaler):
+    def install_standardization(self, 
+                                standardization: np.ndarray | StandardScaler) -> None:
         """Install standardization to online model. Standardizes each feature based on training data (i.e., standardizes across windows).
         Standardization is only applied when features are extracted and is applied before feature queueing (i.e., features are standardized then queued)
-        if relevant.
-        To standardize data, use the standardize Filter.
+        if relevant. To standardize data, use the standardize Filter.
 
-        :param standardization: Standardization data. If an array, creates a scaler and fits to the provided array. If a StandardScaler, uses the StandardScaler.
-        :type standardization: np.ndarray | StandardScaler
+        standardization : np.ndarray or StandardScaler
+            Data or pre-fit scaler for standardization.
         """        
         scaler = standardization
 
@@ -804,17 +987,21 @@ class OnlineStreamer(ABC):
 
         self.scaler = scaler
 
+    def stop_running(self) -> None:
+        """Kills the process streaming decisions.
+        """
+        self.process.terminate()
+
     # ----- All of these are unique to each online streamer ----------
-    def run(self):
-        pass 
-
-    def stop_running(self):
-        pass
-
+    
     @abstractmethod
-    def write_output(self, model_input, window):
+    def default_on_prediction(self, 
+                              model_input: Any, 
+                              window:      Dict[str, Any]) -> None:
+        """
+        Default prediction routine.
+        """
         pass
-
 
 class OnlineEMGClassifier(OnlineStreamer):
     """OnlineEMGClassifier.
@@ -849,131 +1036,120 @@ class OnlineEMGClassifier(OnlineStreamer):
             ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
             ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
         ]
-    port: int (optional), default = 12346
-        The port used for streaming predictions over UDP.
-    ip: string (optional), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
-    tcp: bool (optional), default = False
-        If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
+    output_writers: OutputWriter, default = None
+        A list of OutputWriters. This defines what is typically done with the output of the OnlineStreamer.
     """
-    def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file=False, smm=False, 
-                 smm_items= None,
-                 port=12346, ip='127.0.0.1', std_out=False, tcp=False,
-                 output_format="predictions"):
+    def __init__(self, 
+                 offline_classifier:  EMGClassifier, 
+                 window_size:         int, 
+                 window_increment:    int, 
+                 online_data_handler: Any, 
+                 features:            Optional[List[Any]], 
+                 file_path:           str = '.', 
+                 file:                bool=False,
+                 smm:                 bool=False, 
+                 smm_items:           Optional[List[List[Any]]]= None,
+                 std_out:             bool=False,
+                 output_format:       str="predictions",
+                 output_writers:      Optional[List[Any]]=None) -> None:
         
+        # SMM logic:
         if smm_items is None:
             smm_items = [
-                ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                ["classifier_input", (100,1+32), np.double], # timestamp, <- features ->
+                ["model_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                ["model_input", (100,1+32), np.double], # timestamp, <- features ->
             ]
-        assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
-        assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
+        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
-        self.output_format = output_format
+                                                  file_path, file, smm, smm_items, features, std_out)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
+
+        # OutputWriter logic:
+        self.output_writers = output_writers if output_writers is not None else []
+        # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
+        self.output_format = output_format
+
+        # Set the streaming pipeline function handles in the classifier subclass.
+        self.on_startup_function_handle     = self.default_startup
+        self.window_trigger_function_handle = self.default_window_trigger
+        self.model_flag_handle              = self.default_model_flag_handler
+        self.on_window_function_handle      = self.default_on_window
+        self.prediction_function_handle     = self.default_prediction_function
+        self.postprocessing_function_handle = self.default_postprocessing_function
+        self.on_prediction_function_handle  = self.default_on_prediction
         
-    def run(self, block=True):
-        """Runs the classifier - continuously streams predictions over UDP.
-
-        Parameters
-        ----------
-        block: bool (optional), default = True
-            If True, the run function blocks the main thread. Otherwise it runs in a 
-            seperate process.
-        """
-        self.start_stream(block)
-
-    def stop_running(self):
-        """Kills the process streaming classification decisions.
-        """
-        self.process.terminate()
-
-    def write_output(self, model_input, window):
-        # Make prediction
+    def default_prediction_function(self, 
+                                    model_input: Any, 
+                                    window: Dict[str, Any]) -> Tuple[Any, Any]:
         probabilities = self.predictor.model.predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
-        prediction = prediction[0]
+        return (prediction[0], probability[0])
 
-        # Check for rejection
+    def default_postprocessing_function(self, 
+                                        pred_tuple:  Tuple[Any, Any],
+                                        model_input: Any, 
+                                        window:      Dict[str, Any]):
+        prediction, probability = pred_tuple
         if self.predictor.rejection:
-            #TODO: Right now this will default to -1
             prediction = self.predictor._rejection_helper(prediction, probability)
         self.previous_predictions.append(prediction)
-        
-        # Check for majority vote
         if self.predictor.majority_vote:
             values, counts = np.unique(list(self.previous_predictions), return_counts=True)
             prediction = values[np.argmax(counts)]
-        
-        # Check for velocity based control
         calculated_velocity = ""
         if self.predictor.velocity:
             calculated_velocity = " 0"
-            # Dont check if rejected 
             if prediction >= 0:
                 calculated_velocity = " " + str(self.predictor._get_velocity(window, prediction))
+        return (prediction, probability, calculated_velocity)
+
+    def format_output_info(self, 
+                           processed:   Tuple[Any, Any, Any],
+                           model_input: Any, 
+                           window:      Dict[str, Any]) -> Dict[str, Any]:
+        # Compose a dictionary with all information you wish to send.
+        prediction, probability, calculated_velocity = processed
+        info = {
+            "timestamp": time.time(),
+            "model_output": prediction,
+            "probability": probability,
+            "velocity": calculated_velocity,
+            "model_input": model_input,
+            "window":window
+        }
+        return info
 
 
-        time_stamp = time.time()
-        if calculated_velocity == "":
-            printed_velocity = "-1"
-        else:
-            printed_velocity = float(calculated_velocity)
-        if self.options['std_out']:
-            print(f"{int(prediction)} {printed_velocity} {time.time()}")
+    def default_on_prediction(self, 
+                              model_input: Any, 
+                              window:      Dict[str, Any]) -> None:
+        raw = self.prediction_function_handle(model_input, window)
+        processed = self.postprocessing_function_handle(raw, model_input, window)
+        info = self.format_output_info(processed, model_input, window)
+        for writer in self.output_writers:
+            writer.write(info)
 
-        # Write classifier output:
-        if self.options['file']:
-            if not 'file_handle' in self.files.keys():
-                self.files['file_handle'] = open(self.options['file_path'] + 'classifier_output.txt', "a", newline="")
-            writer = csv.writer(self.files['file_handle'])
-            feat_str = str(model_input[0]).replace('\n','')[1:-1]
-            row = [f"{time_stamp} {prediction} {probability[0]} {printed_velocity} {feat_str}"]
-            writer.writerow(row)
-            self.files['file_handle'].flush()
-        if "smm" in self.options.keys():
-            #assumed to have "classifier_input" and "classifier_output" keys
-            # these are (1+)
-            def insert_classifier_input(data):
-                input_size = self.options['smm'].variables['classifier_input']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
-                return data
-            def insert_classifier_output(data):
-                output_size = self.options['smm'].variables['classifier_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, prediction, probability[0], float(printed_velocity)]), data))[:output_size,:]
-                return data
-            self.options['smm'].modify_variable("classifier_input",
-                                                insert_classifier_input)
-            self.options['smm'].modify_variable("classifier_output",
-                                                insert_classifier_output)
-            self.options['model_smm_writes'] += 1
-
-        if self.output_format == "predictions":
-            message = str(prediction) + calculated_velocity + '\n'
-        elif self.output_format == "probabilities":
-            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-        else:
-            raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
-
-        if not self.tcp:
-            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
-        else:
-            self.conn.sendall(str.encode(message))
-
-    def visualize(self, max_len=50, legend=None):
+    def visualize(self, 
+                  ip: str="127.0.0.1", 
+                  port: int=12346, 
+                  max_len: int=50, 
+                  legend: Optional[List[str]]=None):
         """Produces a live plot of classifier decisions -- Note this consumes the decisions.
         Do not use this alongside the actual control operation of libemg. Online classifier has to
         be running in "probabilties" output mode for this plot.
 
         Parameters
         ----------
+        ip: (str) (optional), default=localhost
+            The ip address the classifier outputs decisions to.
+        port: (int) (optional), default=12346
+            The port the classifier outputs decisions to.
         max_len: (int) (optional) 
             number of decisions to visualize
         legend: (list) (optional)
@@ -988,7 +1164,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         num_classes = len(self.predictor.model.classes_)    # assumes that user is using an sklearn model
         cmap = cm.get_cmap('turbo', num_classes)
 
-        controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=self.ip, port=self.port)
+        controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=ip, port=port)
         controller.start()
 
         if legend is not None:
@@ -1029,13 +1205,11 @@ class OnlineEMGClassifier(OnlineStreamer):
             else:
                 return
             
-    def _get_data_helper(self):
+    def _get_data_helper(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         data, counts = self.odh.get_data(N=self.window_size)
         for key in data.keys():
             data[key] = data[key][::-1]
         return data, counts
-
-
     
 class OnlineEMGRegressor(OnlineStreamer):
     """OnlineEMGRegressor.
@@ -1070,18 +1244,23 @@ class OnlineEMGRegressor(OnlineStreamer):
             ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
             ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
         ]
-    port: int (optional), default = 12346
-        The port used for streaming predictions over UDP.
-    ip: string (optional), default = '127.0.0.1'
-        The ip used for streaming predictions over UDP.
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
-    tcp: bool (optional), default = False
-        If True, will stream predictions over TCP instead of UDP.
+    output_writers: OutputWriter, default = None
+        A list of OutputWriters. This defines what is typically done with the output of the OnlineStreamer.
     """
-    def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
-                 file_path = '.', file = False, smm = False, smm_items = None,
-                 port = 12346, ip = '127.0.0.1', std_out = False, tcp = False):
+    def __init__(self, 
+                 offline_regressor:   EMGRegressor, 
+                 window_size:         int, 
+                 window_increment:    int,
+                 online_data_handler: Any,
+                 features:            Optional[List[Any]], 
+                 file_path:           str = '.', 
+                 file:                bool = False, 
+                 smm:                 bool = False, 
+                 smm_items:           Optional[List[Any]] = None,
+                 std_out:             bool = False,
+                 output_writers:      Optional[List[Any]]=None) -> None:
         if smm_items is None:
             # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
@@ -1091,74 +1270,82 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
+                                                 file, smm, smm_items, features, std_out)
         self.smi = smm_items
+
+        # OutputWriter logic:
+        self.output_writers = output_writers if output_writers is not None else []
+
+        # Set the common function handles using the parent's defaults.
+        self.on_startup_function_handle     = self.default_startup
+        self.window_trigger_function_handle = self.default_window_trigger
+        self.model_flag_handle              = self.default_model_flag_handler
+        self.on_window_function_handle      = self.default_on_window
         
-    def run(self, block=True):
-        """Runs the regressor - continuously streams predictions over UDP or TCP.
+        # Now set the regressor-specific prediction pipeline function handles.
+        self.on_prediction_function_handle  = self.regressor_on_prediction
 
-        Parameters
-        ----------
-        block: bool (optional), default = True
-            If True, the run function blocks the main thread. Otherwise it runs in a 
-            seperate process.
+        # These get called by on_prediction_function_handle
+        self.prediction_function_handle     = self.regressor_prediction_function
+        self.postprocessing_function_handle = self.regressor_postprocessing_function
+        
+    
+    def regressor_prediction_function(self, 
+                                      model_input: Any, 
+                                      window:      Dict[str, Any]) -> Any:
         """
-        self.start_stream(block)
-
-    def stop_running(self):
-        """Kills the process streaming classification decisions.
+        Raw prediction: use the predictor's run() method and squeeze the output.
         """
-        self.process.terminate()
-
-    def write_output(self, model_input, window):
-        # Make prediction
         predictions = self.predictor.run(model_input).squeeze()
-        
-        time_stamp = time.time()
-        if self.options['std_out']:
-            print(f"{predictions} {time.time()}")
+        return predictions
 
-        # Write model output:
-        if self.options['file']:
-            if not 'file_handle' in self.files.keys():
-                self.files['file_handle'] = open(self.options['file_path'] + 'model_output.txt', "a", newline="")
-            writer = csv.writer(self.files['file_handle'])
-            feat_str = str(model_input[0]).replace('\n','')[1:-1]
-            row = [f"{time_stamp} {predictions} {feat_str}"]
-            writer.writerow(row)
-            self.files['file_handle'].flush()
+    def regressor_postprocessing_function(self, 
+                                          predictions: Any,
+                                          model_input: Any,
+                                          window:      Dict[str, Any]) -> Any:
+        """
+        Postprocessing: apply additional processing if needed (e.g., deadband).
+        In this simple example, we return the predictions unmodified (currently a pass-through).
+        """
+        return predictions
 
-        if "smm" in self.options.keys():
-            #assumed to have "model_input" and "model_output" keys
-            # these are (1+)
-            # This could maybe be moved to OnlineStreamer instead
-            def insert_model_input(data):
-                input_size = self.options['smm'].variables['model_input']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, model_input[0]]), data))[:input_size,:]
-                return data
-            def insert_model_output(data):
-                output_size = self.options['smm'].variables['model_output']["shape"][0]
-                data[:] = np.vstack((np.hstack([time_stamp, predictions]), data))[:output_size,:]
-                return data
-            self.options['smm'].modify_variable("model_input",
-                                                insert_model_input)
-            self.options['smm'].modify_variable("model_output",
-                                                insert_model_output)
-            self.options['model_smm_writes'] += 1
+    def regressor_on_prediction(self, 
+                                model_input: Any, 
+                                window:      Dict[str, Any]) -> None:
+        raw = self.prediction_function_handle(model_input, window)
+        processed = self.postprocessing_function_handle(raw, model_input, window)
+        info = self.format_output_info(processed, model_input, window)
+        for writer in self.output_writers:
+            writer.write(info)
 
-        message = f"{str(predictions)} {str(time_stamp)}\n"
-        if not self.tcp:
-            self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
-        else:
-            self.conn.sendall(str.encode(message))
+    def format_output_info(self, 
+                           processed:   Any, 
+                           model_input: Any, 
+                           window:      Dict[str, Any]) -> Dict[str, Any]:
+        predictions = processed
+        info = {
+            "timestamp": time.time(),
+            "model_output": predictions,
+            "model_input": model_input,
+            "window": window
+        }
+        return info
 
-    def visualize(self, max_len = 50, legend = False):
+    def visualize(self, 
+                  ip: str="127.0.0.1", 
+                  port: int=12346, 
+                  max_len: int = 50, 
+                  legend: bool = False):
         """Plot a live visualization of the online regressor's predictions. Please note that the animation updates every 5 milliseconds,
         so keep this in mind when choosing window size and increment. For example, a window increment that's too small may cause delay in the plotting
         if the regressor is making predictions faster than the plot can be updated.
 
         Parameters
         ----------
+        ip: str (optional), default="localhost"
+            The ip to monitor for regressor outputs.
+        port: int (optional), default=12346
+            The port to monitor for regressor outputs.
         max_len: int (optional), default = 50
             Maximum number of predictions to plot at a time. Defaults to 50.
         legend: bool (optional), default = False
@@ -1171,7 +1358,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         ax.set_xlabel('Time (s)')
         ax.set_ylabel('Prediction')
 
-        controller = RegressorController(ip=self.ip, port=self.port)
+        controller = RegressorController(ip=ip, port=port)
         controller.start()
 
         # Wait for controller to start receiving data
@@ -1212,3 +1399,4 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
         plt.show()
+
