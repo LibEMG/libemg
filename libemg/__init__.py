@@ -11,3 +11,4 @@ from libemg import animator
 from libemg import gui
 from libemg import shared_memory_manager
 from libemg import environments
+from libemg import output_writer
