@@ -30,12 +30,13 @@ class SharedMemoryManager:
         smh = SharedMemory(tag, create=True, size=int(type_size * np.prod(shape)))
         data = np.ndarray((shape),dtype=type,buffer=smh.buf)
         data.fill(0)
-        self.variables[tag] = {}
-        self.variables[tag]["data"] = data
-        self.variables[tag]["shape"] = shape
-        self.variables[tag]["type"]  = type
-        self.variables[tag]["smh"]  = smh
-        self.variables[tag]["lock"] = lock
+        self.variables[tag] = {
+            "data" : data,
+            "shape": shape,
+            "type" : type,
+            "smh"  : smh,
+            "lock" : lock
+        }
         return True
 
     def find_variable(self, tag, shape, type, lock):
@@ -48,12 +49,13 @@ class SharedMemoryManager:
             smh = SharedMemory(tag, size=int(type_size * np.prod(shape)))
             # create a new numpy array that uses the shared memory
             data = np.ndarray((shape), dtype=type, buffer=smh.buf)
-            self.variables[tag] = {}
-            self.variables[tag]["data"]   = data
-            self.variables[tag]["shape"]  = shape
-            self.variables[tag]["type"]   = type
-            self.variables[tag]["smh"]    = smh
-            self.variables[tag]["lock"]   = lock
+            self.variables[tag] = {
+                "data" : data,
+                "shape": shape,
+                "type" : type,
+                "smh"  : smh,
+                "lock" : lock
+        }
             return True
         except FileNotFoundError:
             return False
@@ -76,7 +78,7 @@ class SharedMemoryManager:
         self.variables = {}
     
     def get_variable_list(self):
-        result = []
-        for k in self.variables.keys():
-            result.append([k, self.variables[k]["shape"], self.variables[k]["type"]])
-        return result
+        return [[k, self.variables[k]["shape"], self.variables[k]["type"]] for k in self.variables.keys()]
+    
+    def get_shared_memory_items(self):
+        return [[i, self.variables[i]["shape"], self.variables[i]["type"], self.variables[i]["lock"]] for i in self.variables]
