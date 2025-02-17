@@ -582,12 +582,6 @@ class OnlineStreamer(ABC):
         If True, the classifier will output an associated velocity (used for velocity/proportional based control).
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
-    tcp: bool (optional), default = False
-        If True, will stream predictions over TCP instead of UDP.
-    feature_queue_length: int (optional), default = 0
-        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
-        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
-        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
 
     def __init__(self, 
@@ -595,14 +589,14 @@ class OnlineStreamer(ABC):
                  window_size, 
                  window_increment, 
                  online_data_handler, 
-                 file_path, file, 
+                 file_path, 
+                 file, 
                  smm, smm_items, 
                  features, 
                  port, ip, 
-                 std_out, 
-                 tcp,
-                 feature_queue_length):
+                 std_out):
 
+        # setting arguments as class attributes
         self.window_size = window_size
         self.window_increment = window_increment
         self.odh = online_data_handler
@@ -610,13 +604,25 @@ class OnlineStreamer(ABC):
         self.port = port
         self.ip = ip
         self.predictor = offline_predictor
-        self.feature_queue_length = feature_queue_length
-        self.queue = deque(maxlen=feature_queue_length) if self.feature_queue_length > 0 else None
+        self.file = file
+        self.file_path = file_path
+        self.std_out = std_out
         self.scaler = None
 
-        self.options = {'file': file, 'file_path': file_path, 'std_out': std_out}
+        # Function handles for the streaming pipeline
+        # these handles can be set by the user to override default behaviour
+        self.on_startup_function_handle     = self.default_startup
+        self.window_trigger_function_handle = self.default_window_trigger
+        self.model_flag_handle              = self.default_model_flag_handler
+        self.on_window_function_handle      = self.default_on_window
+        self.prediction_function_handle     = self.default_prediction_function
+        self.postprocessing_function_handle = self.default_postprocessing_function
+        self.output_write_function_handle   = self.default_output_write_function
+        # The overall on-prediction routine composes the three stages.
+        self.on_prediction_function_handle  = self.default_on_prediction
 
-        required_smm_items = [  # these tags are also required
+
+        required_smm_items = [
             ["adapt_flag", (1,1), np.int32],
             ["active_flag", (1,1), np.int8]
         ]
@@ -628,17 +634,6 @@ class OnlineStreamer(ABC):
         self.smm_items = smm_items
 
         self.files = {}
-        self.tcp = tcp
-        if not tcp:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        else:
-            print("Waiting for TCP connection...")
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            self.sock.bind((ip, port))
-            self.sock.listen()
-            self.conn, addr = self.sock.accept()
-            print(f"Connected by {addr}")
 
         self.process = Process(target=self._run_helper, daemon=True,)
     
@@ -714,72 +709,84 @@ class OnlineStreamer(ABC):
             print(f"Loaded model #{number}.")
     
 
-    def _run_helper(self):
+    # ----- Default functions for the streaming pipeline -----
+    def default_startup(self):
         if self.smm:
             self.prepare_smm()
-            self.options['smm'].modify_variable("active_flag", lambda x:1)
+            self.options['smm'].modify_variable("active_flag", lambda x: 1)
             self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
-        
         self.odh.prepare_smm()
-
-        
-        self.expected_count = {mod:self.window_size for mod in self.odh.modalities}
-        # todo: deal with different sampling frequencies for different modalities
+        self.expected_count = {mod: self.window_size for mod in self.odh.modalities}
         self.odh.reset()
+
+    def default_model_flag_handler(self):
+        """
+        Checks and handles the shared memory flags: if the active flag is not set,
+        returns False immediately. Also checks if the adapt flag is set and if so,
+        loads a new predictor.
+        """
+        if self.smm:
+            # Check active flag.
+            if not self.options["smm"].get_variable("active_flag")[0, 0]:
+                return False
+            # Check adapt flag.
+            if self.options["smm"].get_variable("adapt_flag")[0][0] != -1:
+                self.load_emg_predictor(self.options["smm"].get_variable("adapt_flag")[0][0])
+                self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
+        return True
+
+    def default_window_trigger(self):
+        """
+        Checks whether enough data samples have been collected for all modalities.
+        """
+        val, count = self.odh.get_data(N=self.window_size)
+        modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
+        return all(modality_ready)
         
-        files = {}
+    def default_on_window(self):
+        data, count = self._get_data_helper()
+        window = {mod: get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
         fe = FeatureExtractor()
-        while True:
-            if self.smm:
-                if not self.options["smm"].get_variable("active_flag")[0,0]:
-                    continue
-
-                if not (self.options["smm"].get_variable("adapt_flag")[0][0] == -1):
-                    self.load_emg_predictor(self.options["smm"].get_variable("adapt_flag")[0][0])
-                    self.options["smm"].modify_variable("adapt_flag", lambda x: -1)
-
-            val, count = self.odh.get_data(N=self.window_size)
-            modality_ready = [count[mod] > self.expected_count[mod] for mod in self.odh.modalities]
-
-            if all(modality_ready):
-                data, count = self._get_data_helper()
-
-                # Extract window and predict sample
-                window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
-
-                # Dealing with the case for CNNs when no features are used
-                if self.features is not None:
-                    model_input = None
-                    for mod in self.odh.modalities:
-                        # todo: features for each modality can be different
-                        mod_features = fe.extract_features(self.features, window[mod], feature_dic=self.predictor.feature_params, array=True)
-                        if model_input is None:
-                            model_input = mod_features
-                        else:
-                            model_input = np.hstack((model_input, mod_features)) 
-
-                    if self.scaler is not None:
-                        model_input = self.scaler.transform(model_input)
-
-                    if self.queue is not None:
-                        # Queue features from previous windows
-                        self.queue.append(model_input)  # oldest windows will automatically be dequeued if length exceeds maxlen
-
-                        if len(self.queue) < self.feature_queue_length:
-                            # Skip until buffer fills up
-                            continue
-
-                        model_input = np.concatenate(self.queue, axis=0)
-                        model_input = np.expand_dims(model_input, axis=0)   # cast to 3D here for time series models
-                    
+        if self.features is not None:
+            model_input = None
+            for mod in self.odh.modalities:
+                mod_features = fe.extract_features(self.features, window[mod], feature_dic=self.predictor.feature_params, array=True)
+                if model_input is None:
+                    model_input = mod_features
                 else:
-                    model_input = window[list(window.keys())[0]] #TODO: Change this
-                
-                for mod in self.odh.modalities:
-                    self.expected_count[mod] += self.window_increment 
-                
-                self.write_output(model_input, window)
+                    model_input = np.hstack((model_input, mod_features))
+            if self.scaler is not None:
+                model_input = self.scaler.transform(model_input)
+        else:
+            model_input = window[list(window.keys())[0]]
+        # TODO: This should be adding a per modality increment since they don't typically have the same Fs
+        for mod in self.odh.modalities:
+            self.expected_count[mod] += self.window_increment
+        return model_input, window
 
+    def default_on_prediction(self, model_input, window):
+        self.write_output(model_input, window)
+
+    def _run_helper(self):
+        # Startup stage
+        self.on_startup_function_handle()
+
+        while True:
+            # Check flags
+            if not self.model_flag_handle():
+                continue
+            # Window trigger stage
+            if not self.window_trigger_function_handle():
+                continue
+
+            # Window processing stage
+            model_input, window = self.on_window_function_handle()
+            if model_input is None:
+                continue
+
+            # Prediction/Postprocessing stage
+            self.on_prediction_function_handle(model_input, window)
+    
     def install_standardization(self, standardization: np.ndarray | StandardScaler):
         """Install standardization to online model. Standardizes each feature based on training data (i.e., standardizes across windows).
         Standardization is only applied when features are extracted and is applied before feature queueing (i.e., features are standardized then queued)
@@ -852,16 +859,12 @@ class OnlineEMGClassifier(OnlineStreamer):
         If True, will stream predictions over TCP instead of UDP.
     output_format: str (optional), default=predictions
         If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
-    feature_queue_length: int (optional), default = 0
-        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of feature windows
-        (batch x feature_queue_length x features) instead of raw EMG. If the value is greater than 0, creates a queue and passes the data to the model as 
-        a 1 x feature_queue_length x num_features. If the value is 0, no feature queue is created and predictions are made on a single window (1 x features). Defaults to 0.
     """
     def __init__(self, offline_classifier, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file=False, smm=False, 
                  smm_items= None,
                  port=12346, ip='127.0.0.1', std_out=False, tcp=False,
-                 output_format="predictions", feature_queue_length = 0):
+                 output_format="predictions"):
         
         if smm_items is None:
             smm_items = [
@@ -871,7 +874,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         assert 'classifier_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'classifier_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
+                                                  file_path, file, smm, smm_items, features, port, ip, std_out, tcp)
         self.output_format = output_format
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
@@ -1075,14 +1078,10 @@ class OnlineEMGRegressor(OnlineStreamer):
         If True, prints predictions to std_out.
     tcp: bool (optional), default = False
         If True, will stream predictions over TCP instead of UDP.
-    feature_queue_length: int (optional), default = 0
-        Number of windows to include in online feature queue. Used for time series models that make a prediction on a sequence of windows instead of raw EMG.
-        If the value is greater than 0, creates a queue and passes the data to the model as a 1 (window) x feature_queue_length x num_features. 
-        If the value is 0, no feature queue is created and predictions are made on a single window. Defaults to 0.
     """
     def __init__(self, offline_regressor, window_size, window_increment, online_data_handler, features, 
                  file_path = '.', file = False, smm = False, smm_items = None,
-                 port = 12346, ip = '127.0.0.1', std_out = False, tcp = False, feature_queue_length = 0):
+                 port = 12346, ip = '127.0.0.1', std_out = False, tcp = False):
         if smm_items is None:
             # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
             smm_items = [
@@ -1092,7 +1091,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, port, ip, std_out, tcp, feature_queue_length)
+                                                 file, smm, smm_items, features, port, ip, std_out, tcp)
         self.smi = smm_items
         
     def run(self, block=True):
