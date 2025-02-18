@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import socket
-from shared_memory_manager import SharedMemoryManager
+from libemg.shared_memory_manager import SharedMemoryManager
 import numpy as np
 
 class OutputWriter(ABC):
