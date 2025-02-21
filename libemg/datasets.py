@@ -1,5 +1,6 @@
 from libemg._datasets._3DC import _3DCDataset
 from libemg._datasets.one_subject_myo import OneSubjectMyoDataset
+from libemg._datasets.speaker_distortion import SpeakerDistortionDataset
 from libemg._datasets.one_subject_emager import OneSubjectEMaGerDataset
 from libemg._datasets.emg_epn612 import EMGEPN_UserDependent, EMGEPN_UserIndependent
 from libemg._datasets.ciil import CIIL_MinimalData, CIIL_ElectrodeShift, CIIL_WeaklySupervised
@@ -53,6 +54,7 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
     
     classification = {
         'OneSubjectMyo': OneSubjectMyoDataset,
+        'speaker_loading': SquareWaveResponseDatasetLoading,
         '3DC': _3DCDataset,
         'MinimalTrainingData': CIIL_MinimalData,
         'ElectrodeShift': CIIL_ElectrodeShift,
