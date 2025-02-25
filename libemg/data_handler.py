@@ -886,92 +886,95 @@ class OnlineDataHandler(DataHandler):
         animation = FuncAnimation(fig, update, interval=100)
         pyplot.show()
 
-    # TODO: Update this 
-    # def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
-    #     """Visualize a live pca plot. This is reliant on previously collected training data.
+    def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, class_labels=None, normalize=True):
+        """Visualize a live pca plot. This is reliant on previously collected training data.
 
-    #     Parameters
-    #     ----------
-    #     feature_dic: dict
-    #         A dictionary consisting of the different features acquired through screen guided training. This is the output from the 
-    #         extract_features method.
-    #     window_size: int
-    #         The number of samples in a window. 
-    #     window_increment: int
-    #         The number of samples that advances before next window.
-    #     sampling_rate: int
-    #         The sampling rate of the device. This impacts the refresh rate of the plot. 
-    #     hold_samples: int (optional), default=20
-    #         The number of live samples that are shown on the plot.
-    #     projection: string (optional), default=PCA
-    #         The projection method. Currently, the only available option, is PCA.
-    #     classes: list
-    #         A list of classes that is associated with each feature index.
-    #     normalize: boolean
-    #         Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
-    #     """
-    #     pyplot.style.use('ggplot')
-    #     feature_list = feature_dic.keys()
-    #     fe = FeatureExtractor()
+        Parameters
+        ----------
+        feature_dic: dict
+            A dictionary consisting of the different features acquired through screen guided training. This is the output from the 
+            extract_features method.
+        window_size: int
+            The number of samples in a window. 
+        window_increment: int
+            The number of samples that advances before next window.
+        sampling_rate: int
+            The sampling rate of the device. This impacts the refresh rate of the plot. 
+        hold_samples: int (optional), default=20
+            The number of live samples that are shown on the plot.
+        projection: string (optional), default=PCA
+            The projection method. Currently, the only available option, is PCA.
+        classes: list
+            A list of classes that is associated with each feature index.
+        class_labels: list
+            A list of class labels for the legend. 
+        normalize: boolean
+            Whether the user wants to scale features to zero mean and unit standard deviation before projection (recommended).
+        """
+        from sklearn.decomposition import PCA
+        pyplot.style.use('ggplot')
+        feature_list = feature_dic.keys()
+        fe = FeatureExtractor()
 
-    #     if projection == "PCA":
-    #         for i, k in enumerate(feature_dic.keys()):
-    #             feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
+        if projection == "PCA":
+            for i, k in enumerate(feature_dic.keys()):
+                feature_matrix = feature_dic[k] if i == 0 else np.hstack((feature_matrix, feature_dic[k]))
 
-    #         if normalize:
-    #             feature_means = np.mean(feature_matrix, axis=0)
-    #             feature_stds  = np.std(feature_matrix, axis=0)
-    #             feature_matrix = (feature_matrix - feature_means) / feature_stds
+            if normalize:
+                feature_means = np.mean(feature_matrix, axis=0)
+                feature_stds  = np.std(feature_matrix, axis=0)
+                feature_matrix = (feature_matrix - feature_means) / feature_stds
 
-    #         fig, ax = plt.subplots()
-    #         pca = PCA(n_components=feature_matrix.shape[1]) 
+            fig, ax = plt.subplots()
+            pca = PCA(n_components=feature_matrix.shape[1]) 
 
-    #         if classes is not None:
-    #             class_list = np.unique(classes)
+            if classes is not None:
+                class_list = np.unique(classes)
     
-    #         train_data = pca.fit_transform(feature_matrix)
-    #         if classes is not None:
-    #             for c in class_list:
-    #                 class_ids = classes == c
-    #                 ax.plot(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label="tr "+str(int(c)), linestyle="None")
-    #         else:
-    #             ax.plot(train_data[:,0], train_data[:,1], marker=".", label="tr", linestyle="None")
+            train_data = pca.fit_transform(feature_matrix)
+            if classes is not None:
+                for c in class_list:
+                    class_ids = classes == c
+                    c_label = "tr "+str(int(c)),
+                    if class_labels is not None:
+                        c_label = class_labels[c]
+                    ax.plot(train_data[class_ids,0], train_data[class_ids,1], marker='.', alpha=0.75, label=c_label, linestyle="None")
+            else:
+                ax.plot(train_data[:,0], train_data[:,1], marker=".", label="tr", linestyle="None")
             
-    #         graph = ax.plot(0, 0, marker='+', color='gray', alpha=0.75, label="new_data", linestyle="None")
+            graph = ax.plot(0, 0, marker='+', color='black', alpha=0.75, label="new_data", linestyle="None")
 
-    #         fig.legend()
-    #         self.reset()
+            fig.legend()
+            self.reset()
 
-    #         pc1 = [] 
-    #         pc2 = []      
+            pc1 = [] 
+            pc2 = []      
 
-    #         def update(frame):
-    #             data, count = self.get_data()
-    #             if len(data) >= window_size:
-    #                 window = {mod:get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
-    #                 window = get_windows(data, window_size, window_size)
-    #                 features = fe.extract_features(feature_list, window)
-    #                 for i, k in enumerate(features.keys()):
-    #                     formatted_data = features[k] if i == 0 else np.hstack((formatted_data, features[k]))
+            def update(frame):
+                data, counts = self.get_data(N=window_size)
+                if counts['emg'] > window_size:
+                    data = data['emg'][::-1]
+                    window = get_windows(data, window_size, window_size)
+                    features = fe.extract_features(feature_list, window)
+                    for i, k in enumerate(features.keys()):
+                        formatted_data = features[k] if i == 0 else np.hstack((formatted_data, features[k]))
                     
-    #                 if normalize:
-    #                     formatted_data = (formatted_data-feature_means)/feature_stds
+                    if normalize:
+                        formatted_data = (formatted_data-feature_means)/feature_stds
 
-    #                 data = pca.transform(formatted_data)
-    #                 pc1.append(data[0,0])
-    #                 pc2.append(data[0,1])
+                    data = pca.transform(formatted_data)
+                    pc1.append(data[0,0])
+                    pc2.append(data[0,1])
 
-    #                 pc1_data = pc1[-hold_samples:]
-    #                 pc2_data = pc2[-hold_samples:]
-    #                 graph[0].set_data(pc1_data, pc2_data)
+                    pc1_data = pc1[-hold_samples:]
+                    pc2_data = pc2[-hold_samples:]
+                    graph[0].set_data(pc1_data, pc2_data)
 
-    #                 ax.relim()
-    #                 ax.autoscale_view()
+                    ax.relim()
+                    ax.autoscale_view()
 
-    #                 self.online.adjust_increment(window_size, window_increment)
-
-    #         animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
-    #         plt.show()
+            animation = FuncAnimation(fig, update, interval=(1000/sampling_rate * window_increment))
+            plt.show()
 
     def get_data(self, N=0, filter=True):
         """Grab the data in the shared memory buffer across all modalities.
