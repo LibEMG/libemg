@@ -14,6 +14,7 @@ from libemg._datasets.intensity import ContractionIntensity
 from libemg._datasets.hyser import Hyser1DOF, HyserNDOF, HyserRandom, HyserPR, HyserMVC # HyserMVC is not used in this script but is imported so it's public in libemg API
 from libemg._datasets.kaufmann_md import KaufmannMD
 from libemg._datasets.tmr_shirleyryanabilitylab import TMR_Post, TMR_Pre
+from libemg._datasets.senic import SeNic
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
@@ -69,6 +70,7 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
         'TMR_Post' : TMR_Post,
         'TMR_Pre': TMR_Pre,
         'HyserPR': HyserPR,
+        'SeNic': SeNic,
     }
 
     regression = {
