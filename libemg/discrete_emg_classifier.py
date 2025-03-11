@@ -1,9 +1,9 @@
 from libemg.feature_extractor import FeatureExtractor
 from multiprocessing import Process
-import pyautogui
+# import pyautogui
 import numpy as np
 import torch
-from playsound import playsound
+# from playsound import playsound
 from libemg.utils import get_windows
  
 class OnlineEMGDiscreteClassifier:
@@ -61,8 +61,9 @@ class OnlineEMGDiscreteClassifier:
                 pred = self.model['mlp'].predict(self.model['fe'].forward_once(torch.tensor(features, dtype=torch.float32)))[0]
                 if pred != 0:
                     self.raw_data.adjust_increment(260, 260)
-                    pyautogui.press(keys[pred])
-                    playsound('Other/connect.mp3')
+                    print(keys[pred])
+                    # pyautogui.press(keys[pred])
+                    # playsound('Other/connect.mp3')
                 self.raw_data.adjust_increment(260, 10)
  
     def _get_data_helper(self):
