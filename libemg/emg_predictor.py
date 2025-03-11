@@ -503,10 +503,15 @@ class EMGRegressor(EMGPredictor):
 
         You can call this visualize function to get a visual output of what the decision stream looks like.
 
-        :param test_labels: np.ndarray
-        :type test_labels: N x M array, where N = # samples and M = # DOFs, containing the labels for the test data.
-        :param predictions: np.ndarray
-        :type predictions: N x M array, where N = # samples and M = # DOFs, containing the predictions for the test data.
+        Parameters
+        ----------
+        test_labels: np.ndarray
+            N x M array, where N = # samples and M = # DOFs, containing the labels for the test data.
+        predictions: np.ndarray
+            N x M array, where N = # samples and M = # DOFs, containing the predictions for the test data.
+        single_axis: bool
+            True if DOFs should be plotted on the same axis as different colours, False if DOFs should be plotted on separate axes.
+            Defaults to False.
         """
         assert len(predictions) > 0, 'Empty list passed in for predictions to visualize.'
 
