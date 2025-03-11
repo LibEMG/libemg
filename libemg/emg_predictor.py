@@ -548,7 +548,6 @@ class EMGRegressor(EMGPredictor):
             symbol_handles = [mpatches.Patch(color=label_color, label='Labels'), mlines.Line2D([], [], color=pred_color, marker='o', markersize=marker_size, linestyle='None', label='Predictions')]
             for dof_idx, ax in enumerate(axs):
                 ax.set_title(f"DOF {dof_idx}")
-                ax.set_ylim((-1.05, 1.05))
                 ax.xaxis.grid(False)
                 ax.fill_between(x, test_labels[:, dof_idx], alpha=0.5, color=label_color)
                 ax.scatter(x, predictions[:, dof_idx], color=pred_color, s=marker_size)
