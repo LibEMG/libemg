@@ -498,7 +498,7 @@ class EMGRegressor(EMGPredictor):
 
         return predictions
 
-    def visualize(self, test_labels, predictions):
+    def visualize(self, test_labels, predictions, single_axis = False):
         """Visualize the decision stream of the regressor on test data.
 
         You can call this visualize function to get a visual output of what the decision stream looks like.
@@ -512,24 +512,49 @@ class EMGRegressor(EMGPredictor):
 
         # Formatting
         plt.style.use('ggplot')
-        fig, axs = plt.subplots(nrows=test_labels.shape[1], ncols=1, sharex=True, layout='constrained')
-        fig.suptitle('Decision Stream')
-        fig.supxlabel('Prediction Index')
-        fig.supylabel('Model Output')
-
-        marker_size = 5
-        pred_color = 'black'
-        label_color = 'blue'
+        title = 'Decision Stream'
+        xlabel = 'Prediction Index'
+        ylabel = 'Model Output'
         x = np.arange(test_labels.shape[0])
-        handles = [mpatches.Patch(color=label_color, label='Labels'), mlines.Line2D([], [], color=pred_color, marker='o', markersize=marker_size, linestyle='None', label='Predictions')]
-        for dof_idx, ax in enumerate(axs):
-            ax.set_title(f"DOF {dof_idx}")
-            ax.set_ylim((-1.05, 1.05))
-            ax.xaxis.grid(False)
-            ax.fill_between(x, test_labels[:, dof_idx], alpha=0.5, color=label_color)
-            ax.scatter(x, predictions[:, dof_idx], color=pred_color, s=marker_size)
+        marker_size = 5
 
-        fig.legend(handles=handles, loc='upper right')
+        if single_axis:
+            fig, ax = plt.subplots(sharex=True, layout='constrained')
+            cmap = plt.cm.get_cmap('turbo')
+            colors = [cmap(idx / (test_labels.shape[1] - 1)) for idx in range(test_labels.shape[1])]
+            symbol_handles = [
+                mlines.Line2D([], [], color='black', marker='o', markersize=marker_size, linestyle='None', label='Predictions'),
+                mlines.Line2D([], [], color='black', markersize=marker_size, label='Labels')
+            ]
+            color_handles = []
+            for dof_idx, color in enumerate(colors):
+                ax.fill_between(x, test_labels[:, dof_idx], alpha=0.5, color=color)
+                ax.scatter(x, predictions[:, dof_idx], color=color, s=marker_size)
+                color_handles.append(mpatches.Patch(color=color, label=f"DOF {dof_idx}"))
+
+            symbol_legend = ax.legend(handles=symbol_handles, loc='lower left', bbox_to_anchor=(0, 1.))
+            ax.add_artist(symbol_legend)
+            ax.legend(handles=color_handles, loc='lower right', bbox_to_anchor=(1., 1.))
+            ax.set_title(title)
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+        else:
+            fig, axs = plt.subplots(nrows=test_labels.shape[1], ncols=1, sharex=True, layout='constrained')
+            fig.suptitle(title)
+            fig.supxlabel(xlabel)
+            fig.supylabel(ylabel)
+            label_color = 'blue'
+            pred_color = 'black'
+            symbol_handles = [mpatches.Patch(color=label_color, label='Labels'), mlines.Line2D([], [], color=pred_color, marker='o', markersize=marker_size, linestyle='None', label='Predictions')]
+            for dof_idx, ax in enumerate(axs):
+                ax.set_title(f"DOF {dof_idx}")
+                ax.set_ylim((-1.05, 1.05))
+                ax.xaxis.grid(False)
+                ax.fill_between(x, test_labels[:, dof_idx], alpha=0.5, color=label_color)
+                ax.scatter(x, predictions[:, dof_idx], color=pred_color, s=marker_size)
+
+            fig.legend(handles=symbol_handles, loc='upper right')
+
         plt.show()
         
 
