@@ -1108,6 +1108,8 @@ class OnlineEMGClassifier(OnlineStreamer):
 
     def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
         prediction, probability = raw
+        if self.predictor.rejection:
+            prediction = self.predictor._rejection_helper(prediction, probability)
         self.previous_predictions.append(prediction)
         if self.predictor.majority_vote:
             values, counts = np.unique(list(self.previous_predictions), return_counts=True)
