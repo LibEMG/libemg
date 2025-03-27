@@ -339,19 +339,6 @@ class EMGClassifier(EMGPredictor):
         # Accumulate Metrics
         return predictions, probabilities
 
-    def _apply_post_processing(self, predictions, probabilities):
-        # Rejection
-        if self.rejection:
-            predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
-            rejected = np.where(predictions == -1)[0]
-            predictions[rejected] = -1
-
-        # Majority Vote
-        if self.majority_vote:
-            predictions = self._majority_vote_helper(predictions)
-
-        return predictions
-
     def add_rejection(self, 
                       threshold: float=0.9) -> None:
         """Adds the rejection post-processing block onto a classifier.
@@ -397,6 +384,19 @@ class EMGClassifier(EMGPredictor):
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
+    def _apply_post_processing(self, predictions, probabilities):
+        # Rejection
+        if self.rejection:
+            predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
+            rejected = np.where(predictions == -1)[0]
+            predictions[rejected] = -1
+
+        # Majority Vote
+        if self.majority_vote:
+            predictions = self._majority_vote_helper(predictions)
+
+        return predictions
+
     def _prediction_helper(self, 
                            predictions: Any) -> Tuple[np.ndarray, np.ndarray]:
         """
