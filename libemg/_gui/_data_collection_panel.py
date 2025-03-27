@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 class DataCollectionPanel:
     def __init__(self,
+                 online_data_handler,
                  num_reps=3,
                  rep_time=3,
                  media_folder='media/',
@@ -23,10 +24,10 @@ class DataCollectionPanel:
                  rest_time=2,
                  auto_advance=True,
                  exclude_files=[],
-                 gui = None,
                  video_player_width = 720,
                  video_player_height = 480):
         
+        self.online_data_handler = online_data_handler
         self.num_reps = num_reps
         self.rep_time = rep_time
         self.media_folder = media_folder
@@ -34,7 +35,6 @@ class DataCollectionPanel:
         self.rest_time = rest_time
         self.auto_advance=auto_advance
         self.exclude_files = exclude_files
-        self.gui = gui
         self.video_player_width = video_player_width
         self.video_player_height = video_player_height
 
@@ -108,7 +108,7 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if not (self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values()))):
+        if not (self.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values()))):
             raise ConnectionError('Attempted to start data collection, but data are not being received. Please ensure the OnlineDataHandler is receiving data.')
 
         self.get_settings()
@@ -176,7 +176,7 @@ class DataCollectionPanel:
 
     def spawn_collection_window(self, media_list):
         # open first frame of gif
-        self.gui.online_data_handler.prepare_smm()
+        self.online_data_handler.prepare_smm()
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
         
@@ -225,15 +225,15 @@ class DataCollectionPanel:
     def run_sgt(self, media_list):
         self.i = 0
         self.advance = True
-        self.gui.online_data_handler.reset()
+        self.online_data_handler.reset()
         while self.i < len(media_list):
-            self.rep_buffer = {mod:[] for mod in self.gui.online_data_handler.modalities}
-            self.rep_count  = {mod:0 for mod in self.gui.online_data_handler.modalities}
+            self.rep_buffer = {mod:[] for mod in self.online_data_handler.modalities}
+            self.rep_count  = {mod:0 for mod in self.online_data_handler.modalities}
             # do the rest
             if self.rest_time and self.i < len(media_list):
                 self.play_collection_visual(media_list[self.i], active=False)
                 media_list[self.i][0].reset()
-            self.gui.online_data_handler.reset()
+            self.online_data_handler.reset()
             
             self.play_collection_visual(media_list[self.i], active=True)
             
@@ -305,8 +305,8 @@ class DataCollectionPanel:
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
             # grab incoming new data
             if active:
-                vals, count = self.gui.online_data_handler.get_data()
-                for mod in self.gui.online_data_handler.modalities:
+                vals, count = self.online_data_handler.get_data()
+                for mod in self.online_data_handler.modalities:
                     new_samples = count[mod][0][0]-self.rep_count[mod]
                     self.rep_buffer[mod] = [vals[mod][:new_samples,:]] + self.rep_buffer[mod]
                     self.rep_count[mod]  = self.rep_count[mod] + new_samples
@@ -331,4 +331,4 @@ class DataCollectionPanel:
         self.visualization_thread.start()
     
     def _run_visualization_helper(self):
-        self.gui.online_data_handler.visualize(block=False)
+        self.online_data_handler.visualize(block=False)
