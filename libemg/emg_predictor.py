@@ -334,7 +334,12 @@ class EMGClassifier(EMGPredictor):
             
         # Default
         predictions, probabilities = self._prediction_helper(prob_predictions)
+        predictions = self._apply_post_processing(predictions, probabilities)
 
+        # Accumulate Metrics
+        return predictions, probabilities
+
+    def _apply_post_processing(self, predictions, probabilities):
         # Rejection
         if self.rejection:
             predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
@@ -345,8 +350,7 @@ class EMGClassifier(EMGPredictor):
         if self.majority_vote:
             predictions = self._majority_vote_helper(predictions)
 
-        # Accumulate Metrics
-        return predictions, probabilities
+        return predictions
 
     def add_rejection(self, 
                       threshold: float=0.9) -> None:
@@ -1096,30 +1100,31 @@ class OnlineEMGClassifier(OnlineStreamer):
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, smm, smm_items, features, std_out, output_writers)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
+        self.previous_probabilities = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
 
         # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
         self.output_format = output_format
 
     def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
-        # self.previous_predictions.append(prediction)    # is it fine to append here, or do we need to do rejection first
-        # prediction, probability = self.predictor.run(self.previous_predictions) # need to pass in previous predictions for majority voting
-        # to use run method I think we'd need to pass in previous model inputs, not previous predictions...
-        # proper way is probably to have a hidden method that can pass in a bunch of stuff (handle offline and online) but keep the public run method the same so all this logic is in one place
-        # return prediction.squeeze(), probability.squeeze()
-        probabilities = self.predictor.model.predict_proba(model_input)
+        probabilities = self.predictor._predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
+        self.previous_predictions.append(prediction)
+        self.previous_probabilities.append(probability)
         return (prediction[0], probability[0])
+
 
     def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
         prediction, probability = raw
-        # TODO: I feel like these things should be handled in the offline classifier run method (same as we do with the regressor). The velocity should stay here though.
-        if self.predictor.rejection:
-            prediction = self.predictor._rejection_helper(prediction, probability)
+        predictions = self.predictor._apply_post_processing(list(self.previous_predictions), list(self.previous_probabilities))
+        prediction = predictions[-1]    # double check you want the last one
+        # TODO: Write an assertion to make sure this gives the same result as before
+        # if self.predictor.rejection:
+        #     prediction = self.predictor._rejection_helper(prediction, probability)
         # self.previous_predictions.append(prediction)
-        if self.predictor.majority_vote:
-            values, counts = np.unique(list(self.previous_predictions), return_counts=True)
-            prediction = values[np.argmax(counts)]
+        # if self.predictor.majority_vote:
+        #     values, counts = np.unique(list(self.previous_predictions), return_counts=True)
+        #     prediction = values[np.argmax(counts)]
         calculated_velocity = ""
         if self.predictor.velocity:
             calculated_velocity = " 0"
