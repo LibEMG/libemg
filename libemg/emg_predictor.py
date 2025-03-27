@@ -1359,7 +1359,6 @@ class OnlineEMGRegressor(OnlineStreamer):
         ax.set_ylabel('Prediction')
 
         controller = RegressorController(ip=ip, port=port)
-        controller.start()
 
         # Wait for controller to start receiving data
         predictions = None
