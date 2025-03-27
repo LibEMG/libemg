@@ -31,6 +31,7 @@ from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
 from libemg.utils import get_windows
 from libemg.environments.controllers import RegressorController, ClassifierController
+from libemg.data_handler import OnlineDataHandler
 
 class EMGPredictor:
     """Base class for EMG prediction. Parent class that shares common functionality between classifiers and regressors.
@@ -715,13 +716,14 @@ class OnlineStreamer(ABC):
                  offline_predictor:   EMGPredictor, 
                  window_size:         int, 
                  window_increment:    int, 
-                 online_data_handler: Any, 
+                 online_data_handler: OnlineDataHandler, 
                  file_path:           str, 
                  file:                bool, 
                  smm:                 bool, 
                  smm_items:           List[List[Any]], 
                  features:            Optional[List[Any]],
-                 std_out:             bool):
+                 std_out:             bool,
+                 output_writers:      Optional[List[Any]] = None):
 
         # setting arguments as class attributes
         self.window_size = window_size
@@ -733,6 +735,7 @@ class OnlineStreamer(ABC):
         self.file_path = file_path
         self.std_out = std_out
         self.scaler = None
+        self.output_writers = output_writers if output_writers is not None else []
 
         required_smm_items = [
             ["adapt_flag", (1,1), np.int32],
@@ -749,6 +752,14 @@ class OnlineStreamer(ABC):
         self.model_smm_writes = 0
 
         self.process = Process(target=self._run_helper, daemon=True,)
+
+        # Set the streaming pipeline function handles in the classifier subclass.
+        self.on_startup_function_handle     = self.default_startup
+        self.window_trigger_function_handle = self.default_window_trigger
+        self.model_flag_handle              = self.default_model_flag_handler
+        self.on_window_function_handle      = self.default_on_window
+        self.prediction_function_handle     = self.default_prediction_function
+        self.postprocessing_function_handle = self.default_postprocessing_function
     
     def start_stream(self, 
                      block: bool =True) -> None:
@@ -968,7 +979,11 @@ class OnlineStreamer(ABC):
                 continue
 
             # Prediction/Postprocessing stage
-            self.on_prediction_function_handle(model_input, window)
+            raw = self.prediction_function_handle(model_input, window)
+            processed = self.postprocessing_function_handle(raw, model_input, window)
+            info = self.format_output_info(processed, model_input, window)
+            for writer in self.output_writers:
+                writer.write(info)
     
     def install_standardization(self, 
                                 standardization: np.ndarray | StandardScaler) -> None:
@@ -995,13 +1010,26 @@ class OnlineStreamer(ABC):
     # ----- All of these are unique to each online streamer ----------
     
     @abstractmethod
-    def default_on_prediction(self, 
-                              model_input: Any, 
-                              window:      Dict[str, Any]) -> None:
+    def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
         """
         Default prediction routine.
         """
         pass
+
+    @abstractmethod
+    def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple:
+        """
+        Default prediction routine.
+        """
+        pass
+
+    @abstractmethod
+    def format_output_info(self, processed: Tuple[Any, Any, Any], model_input: Any, window: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Format output info as dictionary.
+        """
+        pass
+
 
 class OnlineEMGClassifier(OnlineStreamer):
     """OnlineEMGClassifier.
@@ -1066,38 +1094,20 @@ class OnlineEMGClassifier(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, std_out)
+                                                  file_path, file, smm, smm_items, features, std_out, output_writers)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
 
-        # OutputWriter logic:
-        self.output_writers = output_writers if output_writers is not None else []
         # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
         self.output_format = output_format
 
-        # Set the streaming pipeline function handles in the classifier subclass.
-        self.on_startup_function_handle     = self.default_startup
-        self.window_trigger_function_handle = self.default_window_trigger
-        self.model_flag_handle              = self.default_model_flag_handler
-        self.on_window_function_handle      = self.default_on_window
-        self.prediction_function_handle     = self.default_prediction_function
-        self.postprocessing_function_handle = self.default_postprocessing_function
-        self.on_prediction_function_handle  = self.default_on_prediction
-        
-    def default_prediction_function(self, 
-                                    model_input: Any, 
-                                    window: Dict[str, Any]) -> Tuple[Any, Any]:
+    def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
         probabilities = self.predictor.model.predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
         return (prediction[0], probability[0])
 
-    def default_postprocessing_function(self, 
-                                        pred_tuple:  Tuple[Any, Any],
-                                        model_input: Any, 
-                                        window:      Dict[str, Any]):
-        prediction, probability = pred_tuple
-        if self.predictor.rejection:
-            prediction = self.predictor._rejection_helper(prediction, probability)
+    def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
+        prediction, probability = raw
         self.previous_predictions.append(prediction)
         if self.predictor.majority_vote:
             values, counts = np.unique(list(self.previous_predictions), return_counts=True)
@@ -1121,19 +1131,9 @@ class OnlineEMGClassifier(OnlineStreamer):
             "probability": probability,
             "velocity": calculated_velocity,
             "model_input": model_input,
-            "window":window
+            "window": window
         }
         return info
-
-
-    def default_on_prediction(self, 
-                              model_input: Any, 
-                              window:      Dict[str, Any]) -> None:
-        raw = self.prediction_function_handle(model_input, window)
-        processed = self.postprocessing_function_handle(raw, model_input, window)
-        info = self.format_output_info(processed, model_input, window)
-        for writer in self.output_writers:
-            writer.write(info)
 
     def visualize(self, 
                   ip: str="127.0.0.1", 
@@ -1269,53 +1269,18 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, std_out)
+                                                 file, smm, smm_items, features, std_out, output_writers)
         self.smi = smm_items
-
-        # OutputWriter logic:
-        self.output_writers = output_writers if output_writers is not None else []
-
-        # Set the common function handles using the parent's defaults.
-        self.on_startup_function_handle     = self.default_startup
-        self.window_trigger_function_handle = self.default_window_trigger
-        self.model_flag_handle              = self.default_model_flag_handler
-        self.on_window_function_handle      = self.default_on_window
-        
-        # Now set the regressor-specific prediction pipeline function handles.
-        self.on_prediction_function_handle  = self.regressor_on_prediction
-
-        # These get called by on_prediction_function_handle
-        self.prediction_function_handle     = self.regressor_prediction_function
-        self.postprocessing_function_handle = self.regressor_postprocessing_function
-        
     
-    def regressor_prediction_function(self, 
-                                      model_input: Any, 
-                                      window:      Dict[str, Any]) -> Any:
-        """
-        Raw prediction: use the predictor's run() method and squeeze the output.
-        """
-        predictions = self.predictor.run(model_input).squeeze()
-        return predictions
+    def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
+        return self.predictor.run(model_input).squeeze()
 
-    def regressor_postprocessing_function(self, 
-                                          predictions: Any,
-                                          model_input: Any,
-                                          window:      Dict[str, Any]) -> Any:
+    def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
         """
         Postprocessing: apply additional processing if needed (e.g., deadband).
         In this simple example, we return the predictions unmodified (currently a pass-through).
         """
-        return predictions
-
-    def regressor_on_prediction(self, 
-                                model_input: Any, 
-                                window:      Dict[str, Any]) -> None:
-        raw = self.prediction_function_handle(model_input, window)
-        processed = self.postprocessing_function_handle(raw, model_input, window)
-        info = self.format_output_info(processed, model_input, window)
-        for writer in self.output_writers:
-            writer.write(info)
+        return raw
 
     def format_output_info(self, 
                            processed:   Any, 
