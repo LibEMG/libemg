@@ -108,7 +108,7 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if not (self.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values()))):
+        if not (self.online_data_handler and sum(list(self.online_data_handler.get_data()[1].values()))):
             raise ConnectionError('Attempted to start data collection, but data are not being received. Please ensure the OnlineDataHandler is receiving data.')
 
         self.get_settings()
