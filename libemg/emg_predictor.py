@@ -1102,15 +1102,21 @@ class OnlineEMGClassifier(OnlineStreamer):
         self.output_format = output_format
 
     def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
+        # self.previous_predictions.append(prediction)    # is it fine to append here, or do we need to do rejection first
+        # prediction, probability = self.predictor.run(self.previous_predictions) # need to pass in previous predictions for majority voting
+        # to use run method I think we'd need to pass in previous model inputs, not previous predictions...
+        # proper way is probably to have a hidden method that can pass in a bunch of stuff (handle offline and online) but keep the public run method the same so all this logic is in one place
+        # return prediction.squeeze(), probability.squeeze()
         probabilities = self.predictor.model.predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
         return (prediction[0], probability[0])
 
     def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
         prediction, probability = raw
+        # TODO: I feel like these things should be handled in the offline classifier run method (same as we do with the regressor). The velocity should stay here though.
         if self.predictor.rejection:
             prediction = self.predictor._rejection_helper(prediction, probability)
-        self.previous_predictions.append(prediction)
+        # self.previous_predictions.append(prediction)
         if self.predictor.majority_vote:
             values, counts = np.unique(list(self.previous_predictions), return_counts=True)
             prediction = values[np.argmax(counts)]
@@ -1364,4 +1370,3 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
         plt.show()
-
