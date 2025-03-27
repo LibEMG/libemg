@@ -1014,7 +1014,7 @@ class OnlineStreamer(ABC):
     # ----- All of these are unique to each online streamer ----------
     
     @abstractmethod
-    def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
+    def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
         """
         Default prediction routine.
         """
@@ -1106,7 +1106,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
         self.output_format = output_format
 
-    def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
+    def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
         probabilities = self.predictor._predict_proba(model_input)
         prediction, probability = self.predictor._prediction_helper(probabilities)
         self.previous_predictions.append(prediction)
@@ -1285,7 +1285,7 @@ class OnlineEMGRegressor(OnlineStreamer):
                                                  file, smm, smm_items, features, std_out, output_writers)
         self.smi = smm_items
     
-    def default_prediction_function(self, model_input: np.ndarray, window: Dict[str, Any]) -> Tuple[Any, Any]:
+    def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
         return self.predictor.run(model_input).squeeze()
 
     def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
