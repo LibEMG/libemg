@@ -334,7 +334,16 @@ class EMGClassifier(EMGPredictor):
             
         # Default
         predictions, probabilities = self._prediction_helper(prob_predictions)
-        predictions = self._apply_post_processing(predictions, probabilities)
+
+        # Rejection
+        if self.rejection:
+            predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
+            rejected = np.where(predictions == -1)[0]
+            predictions[rejected] = -1
+
+        # Majority Vote
+        if self.majority_vote:
+            predictions = self._majority_vote_helper(predictions)
 
         # Accumulate Metrics
         return predictions, probabilities
@@ -384,19 +393,6 @@ class EMGClassifier(EMGPredictor):
     '''
     ---------------------- Private Helper Functions ----------------------
     '''
-    def _apply_post_processing(self, predictions, probabilities):
-        # Rejection
-        if self.rejection:
-            predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
-            rejected = np.where(predictions == -1)[0]
-            predictions[rejected] = -1
-
-        # Majority Vote
-        if self.majority_vote:
-            predictions = self._majority_vote_helper(predictions)
-
-        return predictions
-
     def _prediction_helper(self, 
                            predictions: Any) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -983,7 +979,7 @@ class OnlineStreamer(ABC):
                 continue
 
             # Prediction/Postprocessing stage
-            raw = self.prediction_function_handle(model_input, window)
+            raw = self.prediction_function_handle(model_input)
             processed = self.postprocessing_function_handle(raw, model_input, window)
             info = self.format_output_info(processed, model_input, window)
             for writer in self.output_writers:
@@ -1100,7 +1096,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, smm, smm_items, features, std_out, output_writers)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
-        self.previous_probabilities = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
 
         # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
@@ -1108,43 +1103,47 @@ class OnlineEMGClassifier(OnlineStreamer):
 
     def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
         probabilities = self.predictor._predict_proba(model_input)
-        prediction, probability = self.predictor._prediction_helper(probabilities)
-        self.previous_predictions.append(prediction)
-        self.previous_probabilities.append(probability)
-        return (prediction[0], probability[0])
-
+        prediction, _ = self.predictor._prediction_helper(probabilities)
+        return (prediction[0], probabilities[0])
 
     def default_postprocessing_function(self, raw: Any, model_input: np.ndarray, window: Dict[str, Any]):
-        prediction, probability = raw
-        predictions = self.predictor._apply_post_processing(list(self.previous_predictions), list(self.previous_probabilities))
-        prediction = predictions[-1]    # double check you want the last one
-        # TODO: Write an assertion to make sure this gives the same result as before
-        # if self.predictor.rejection:
-        #     prediction = self.predictor._rejection_helper(prediction, probability)
-        # self.previous_predictions.append(prediction)
-        # if self.predictor.majority_vote:
-        #     values, counts = np.unique(list(self.previous_predictions), return_counts=True)
-        #     prediction = values[np.argmax(counts)]
+        prediction, probabilities = raw
+        if self.predictor.rejection:
+            prediction = self.predictor._rejection_helper(prediction, probabilities[prediction])
+        self.previous_predictions.append(prediction)
+        if self.predictor.majority_vote:
+            values, counts = np.unique(list(self.previous_predictions), return_counts=True)
+            prediction = values[np.argmax(counts)]
         calculated_velocity = ""
         if self.predictor.velocity:
             calculated_velocity = " 0"
             if prediction >= 0:
                 calculated_velocity = " " + str(self.predictor._get_velocity(window, prediction))
-        return (prediction, probability, calculated_velocity)
+        return (prediction, probabilities, calculated_velocity)
 
     def format_output_info(self, 
                            processed:   Tuple[Any, Any, Any],
                            model_input: Any, 
                            window:      Dict[str, Any]) -> Dict[str, Any]:
         # Compose a dictionary with all information you wish to send.
-        prediction, probability, calculated_velocity = processed
+        prediction, probabilities, calculated_velocity = processed
+        if isinstance(prediction, np.ndarray):
+            prediction = prediction.item()
+        timestamp = time.time()
+        # TODO: Probably remove output_format and just send everything...
+        if self.output_format == 'predictions':
+            message = str(prediction) + calculated_velocity + '\n'
+        else:
+            message = ' '.join([f'{i:.2f}' for i in probabilities]) + calculated_velocity + " " + str(timestamp)
+
         info = {
-            "timestamp": time.time(),
+            "timestamp": timestamp,
             "model_output": prediction,
-            "probability": probability,
+            "probability": probabilities,
             "velocity": calculated_velocity,
             "model_input": model_input,
-            "window": window
+            "window": window,
+            "message": message
         }
         return info
 
