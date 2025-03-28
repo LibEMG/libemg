@@ -217,6 +217,7 @@ class ClassifierController(SocketController):
         if self.output_format == 'predictions':
             raise ValueError("Output format is set to 'predictions', so probabilities cannot be parsed. Set output_format='probabilities' if this functionality is needed.")
 
+        print(action)
         return [float(prob) for prob in action.split(' ')[:self.num_classes]]
 
 
