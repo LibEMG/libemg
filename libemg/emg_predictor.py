@@ -387,7 +387,9 @@ class EMGClassifier(EMGPredictor):
     def _apply_post_processing(self, predictions, probabilities):
         # Rejection
         if self.rejection:
+            # TODO: This rejection method could be replaced with logical indexing... predictions[probabilities < threshold] = -1
             predictions = np.array([self._rejection_helper(predictions[i], probabilities[i]) for i in range(0,len(predictions))])
+            # TODO: Is this bit not redundant???? We find the predictions that are -1 and set them to -1...
             rejected = np.where(predictions == -1)[0]
             predictions[rejected] = -1
 
@@ -966,8 +968,11 @@ class OnlineStreamer(ABC):
         """
         Main loop for online streaming.
         """
+        print('HELLO')
         # Startup stage
         self.on_startup_function_handle()
+        print('HI')
+        print(self.output_writers)
 
         while True:
             # Check flags
@@ -982,10 +987,12 @@ class OnlineStreamer(ABC):
             if model_input is None:
                 continue
 
+
             # Prediction/Postprocessing stage
-            raw = self.prediction_function_handle(model_input, window)
+            raw = self.prediction_function_handle(model_input)
             processed = self.postprocessing_function_handle(raw, model_input, window)
             info = self.format_output_info(processed, model_input, window)
+            print(info['model_output'])
             for writer in self.output_writers:
                 writer.write(info)
     
