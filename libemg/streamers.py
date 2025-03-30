@@ -8,10 +8,7 @@ from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._delsys_API_streamer import DelsysAPIStreamer
-if platform.system() != 'Linux':
-    from libemg._streamers._oymotion_windows_streamer import Gforce
-else: 
-    from libemg._streamers._oymotion_streamer import OyMotionStreamer
+from libemg._streamers._oymotion_windows_streamer import Gforce
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
@@ -454,16 +451,9 @@ def oymotion_streamer(shared_memory_items : list | None = None,
         item.append(Lock())
 
     operating_system = platform.system().lower()
-
-    # I'm only addressing this atm.
-    if operating_system == "windows" or operating_system == 'darwin':
-        oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
-        oym.start()
-    else:
-        # This has not been updated to the new memory manager methods.
-        # oym = OyMotionStreamer(ip, port, sampRate=sampling, resolution=res)
-        # oym.start_stream()
-        raise Exception("Oymotion Streamer is not implemented for Linux.")
+    oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
+    oym.start()
+    
     return oym, shared_memory_items
 
 
