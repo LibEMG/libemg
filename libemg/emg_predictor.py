@@ -699,7 +699,7 @@ class OnlineStreamer(ABC):
         A location that the inputs and output of the classifier will be saved to.
     file: bool (optional)
         A toggle for activating the saving of inputs and outputs of the classifier.
-    smm: bool (optional)
+    enable_smm: bool (optional)
         A toggle for activating the storing of inputs and outputs of the classifier in the shared memory manager.
     smm_items: list (optional)
         A list of lists containing the tag, size, and multiprocessing locks for shared memory.
@@ -719,7 +719,7 @@ class OnlineStreamer(ABC):
                  online_data_handler: OnlineDataHandler, 
                  file_path:           str, 
                  file:                bool, 
-                 smm:                 bool, 
+                 enable_smm:                 bool, 
                  smm_items:           List[List[Any]], 
                  features:            Optional[List[Any]],
                  std_out:             bool,
@@ -737,6 +737,7 @@ class OnlineStreamer(ABC):
         self.scaler = None
         self.output_writers = output_writers if output_writers is not None else []
 
+        # TODO: Remove this now that it's more customizable... I don't think we benefit from having these and it just makes things confusing. Also the user should manage the Locks. Us creating them means they aren't actually locking anything...
         required_smm_items = [
             ["adapt_flag", (1,1), np.int32],
             ["active_flag", (1,1), np.int8]
@@ -745,10 +746,10 @@ class OnlineStreamer(ABC):
         for smm_item in required_smm_items:
             if smm_item[0] not in current_smm_tags:
                 smm_items.append(smm_item)
-        self.smm = smm
+        self.enable_smm = enable_smm
         self.smm_items = smm_items
 
-        self.smm_manager = None
+        self.smm = None
         self.model_smm_writes = 0
 
         self.process = Process(target=self._run_helper, daemon=True,)
@@ -786,7 +787,7 @@ class OnlineStreamer(ABC):
         smm = SharedMemoryManager()
         for item in self.smm_items:
             smm.create_variable(*item)
-        self.smm_manager = smm
+        self.smm = smm
         self.model_smm_writes = 0
 
     def analyze_predictor(self, 
@@ -876,10 +877,10 @@ class OnlineStreamer(ABC):
         """
         Default startup: prepare shared memory and reset online data handler.
         """
-        if self.smm:
+        if self.enable_smm:
             self.prepare_smm()
-            self.smm_manager.modify_variable("active_flag", lambda x: 1)
-            self.smm_manager.modify_variable("adapt_flag", lambda x: -1)
+            self.smm.modify_variable("active_flag", lambda x: 1)
+            self.smm.modify_variable("adapt_flag", lambda x: -1)
         self.odh.prepare_smm()
         self.expected_count = {mod: self.window_size for mod in self.odh.modalities}
         self.odh.reset()
@@ -895,12 +896,12 @@ class OnlineStreamer(ABC):
         bool
             True if flags are acceptable to run model; False otherwise.
         """
-        if self.smm:
-            if not self.smm_manager.get_variable("active_flag")[0, 0]:
+        if self.enable_smm:
+            if not self.smm.get_variable("active_flag")[0, 0]:
                 return False
-            if self.smm_manager.get_variable("adapt_flag")[0][0] != -1:
-                self.load_emg_predictor(self.smm_manager.get_variable("adapt_flag")[0][0])
-                self.smm_manager.modify_variable("adapt_flag", lambda x: -1)
+            if self.smm.get_variable("adapt_flag")[0][0] != -1:
+                self.load_emg_predictor(self.smm.get_variable("adapt_flag")[0][0])
+                self.smm.modify_variable("adapt_flag", lambda x: -1)
         return True
 
 
