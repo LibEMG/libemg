@@ -667,4 +667,5 @@ class Gforce(Process):
 
     def cleanup(self):
         self.disconnect()
+        self.smm.cleanup()
         print("Oymotion has disconnected.")
