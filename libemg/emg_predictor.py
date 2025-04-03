@@ -1134,7 +1134,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         timestamp = time.time()
         # TODO: Probably remove output_format and just send everything...
         if self.output_format == 'predictions':
-            message = str(prediction) + calculated_velocity + '\n'
+            message = str(prediction) + calculated_velocity + " " + str(timestamp)
         else:
             message = ' '.join([f'{i:.2f}' for i in probabilities]) + calculated_velocity + " " + str(timestamp)
 

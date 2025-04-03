@@ -194,8 +194,6 @@ class ClassifierController(SocketController):
         raise ValueError(self.error_message)
 
     def _parse_timestamp(self, action: str) -> float:
-        if self.output_format == 'predictions':
-            raise ValueError("Output format is set to 'predictions', so timestamp cannot be parsed because timestamp is not sent when output_format='predictions'.")
         return float(action.split(' ')[-1])
 
     def _parse_proportional_control(self, action: str) -> list[float]:
