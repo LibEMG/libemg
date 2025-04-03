@@ -1096,7 +1096,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, enable_smm, smm_items, features, std_out, output_writers)
-        self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
+        self.previous_predictions = deque(maxlen=100)   # add a max length just so it doesn't keep getting bigger
         self.smi = smm_items
 
         # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
@@ -1113,7 +1113,8 @@ class OnlineEMGClassifier(OnlineStreamer):
             prediction = self.predictor._rejection_helper(prediction, probabilities[prediction])
         self.previous_predictions.append(prediction)
         if self.predictor.majority_vote:
-            values, counts = np.unique(list(self.previous_predictions), return_counts=True)
+            mv_predictions = list(self.previous_predictions)[-self.predictor.majority_vote:]    # get last MV predictions
+            values, counts = np.unique(mv_predictions, return_counts=True)
             prediction = values[np.argmax(counts)]
         calculated_velocity = ""
         if self.predictor.velocity:
