@@ -1053,7 +1053,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         Location to store model outputs. Only used if file=True.
     file: bool, default = False
         True if model outputs should be stored in a file, otherwise False.
-    smm: bool, default = False
+    enable_smm: bool, default = False
         True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
     smm_items: list, default = None
         List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
@@ -1080,7 +1080,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                  features:            Optional[List[Any]], 
                  file_path:           str = '.', 
                  file:                bool=False,
-                 smm:                 bool=False, 
+                 enable_smm:          bool=False, 
                  smm_items:           Optional[List[List[Any]]]= None,
                  std_out:             bool=False,
                  output_format:       str="predictions",
@@ -1095,7 +1095,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
-                                                  file_path, file, smm, smm_items, features, std_out, output_writers)
+                                                  file_path, file, enable_smm, smm_items, features, std_out, output_writers)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
 
@@ -1244,7 +1244,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         Location to store model outputs. Only used if file=True.
     file: bool, default = False
         True if model outputs should be stored in a file, otherwise False.
-    smm: bool, default = False
+    enable_smm: bool, default = False
         True if shared memory items should be tracked while running, otherwise False. If True, 'model_input' and 'model_output' are expected to be passed in as smm_items.
     smm_items: list, default = None
         List of shared memory items. Each shared memory item should be a list of the format: [name: str, buffer size: tuple, dtype: dtype]. 
@@ -1269,7 +1269,7 @@ class OnlineEMGRegressor(OnlineStreamer):
                  features:            Optional[List[Any]], 
                  file_path:           str = '.', 
                  file:                bool = False, 
-                 smm:                 bool = False, 
+                 enable_smm:          bool = False, 
                  smm_items:           Optional[List[Any]] = None,
                  std_out:             bool = False,
                  output_writers:      Optional[List[Any]]=None) -> None:
@@ -1282,7 +1282,7 @@ class OnlineEMGRegressor(OnlineStreamer):
         assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
         assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
-                                                 file, smm, smm_items, features, std_out, output_writers)
+                                                 file, enable_smm, smm_items, features, std_out, output_writers)
         self.smi = smm_items
     
     def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
