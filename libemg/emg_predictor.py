@@ -753,14 +753,6 @@ class OnlineStreamer(ABC):
         self.model_smm_writes = 0
 
         self.process = Process(target=self._run_helper, daemon=True,)
-
-        # Set the streaming pipeline function handles in the classifier subclass.
-        self.on_startup_function_handle     = self.default_startup
-        self.window_trigger_function_handle = self.default_window_trigger
-        self.model_flag_handle              = self.default_model_flag_handler
-        self.on_window_function_handle      = self.default_on_window
-        self.prediction_function_handle     = self.default_prediction_function
-        self.postprocessing_function_handle = self.default_postprocessing_function
     
     def start_stream(self, 
                      block: bool =True) -> None:
@@ -1102,6 +1094,14 @@ class OnlineEMGClassifier(OnlineStreamer):
         # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
         self.output_format = output_format
 
+        # Set the streaming pipeline function handles in the classifier subclass.
+        self.on_startup_function_handle     = self.default_startup
+        self.window_trigger_function_handle = self.default_window_trigger
+        self.model_flag_handle              = self.default_model_flag_handler
+        self.on_window_function_handle      = self.default_on_window
+        self.prediction_function_handle     = self.default_prediction_function
+        self.postprocessing_function_handle = self.default_postprocessing_function
+
     def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
         probabilities = self.predictor._predict_proba(model_input)
         prediction, _ = self.predictor._prediction_helper(probabilities)
@@ -1284,6 +1284,14 @@ class OnlineEMGRegressor(OnlineStreamer):
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
                                                  file, smm, smm_items, features, std_out, output_writers)
         self.smi = smm_items
+
+        # Set the streaming pipeline function handles in the classifier subclass.
+        self.on_startup_function_handle     = self.default_startup
+        self.window_trigger_function_handle = self.default_window_trigger
+        self.model_flag_handle              = self.default_model_flag_handler
+        self.on_window_function_handle      = self.default_on_window
+        self.prediction_function_handle     = self.default_prediction_function
+        self.postprocessing_function_handle = self.default_postprocessing_function
     
     def default_prediction_function(self, model_input: np.ndarray) -> Tuple[Any, Any]:
         return self.predictor.run(model_input).squeeze()
