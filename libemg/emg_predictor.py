@@ -1310,11 +1310,14 @@ class OnlineEMGRegressor(OnlineStreamer):
                            model_input: Any, 
                            window:      Dict[str, Any]) -> Dict[str, Any]:
         predictions = processed
+        timestamp = time.time()
+        message = f"{predictions} {timestamp}\n"
         info = {
-            "timestamp": time.time(),
+            "timestamp": timestamp,
             "model_output": predictions,
             "model_input": model_input,
-            "window": window
+            "window": window,
+            "message": message
         }
         return info
 
