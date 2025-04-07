@@ -1116,33 +1116,42 @@ class OnlineEMGClassifier(OnlineStreamer):
             mv_predictions = list(self.previous_predictions)[-self.predictor.majority_vote:]    # get last MV predictions
             values, counts = np.unique(mv_predictions, return_counts=True)
             prediction = values[np.argmax(counts)]
-        calculated_velocity = ""
         if self.predictor.velocity:
-            calculated_velocity = " 0"
             if prediction >= 0:
-                calculated_velocity = " " + str(self.predictor._get_velocity(window, prediction))
-        return (prediction, probabilities, calculated_velocity)
+                velocity = " " + str(self.predictor._get_velocity(window, prediction))
+            else:
+                velocity = 0
+        else:
+            velocity = -1
+
+        return (prediction, probabilities, velocity)
 
     def format_output_info(self, 
                            processed:   Tuple[Any, Any, Any],
                            model_input: Any, 
                            window:      Dict[str, Any]) -> Dict[str, Any]:
         # Compose a dictionary with all information you wish to send.
-        prediction, probabilities, calculated_velocity = processed
+        prediction, probabilities, velocity = processed
+        if velocity == -1:
+            # TODO: Could always send velocity value
+            velocity_message = ''
+        else:
+            velocity_message = f" {velocity}"
+
         if isinstance(prediction, np.ndarray):
             prediction = prediction.item()
         timestamp = time.time()
         # TODO: Probably remove output_format and just send everything...
         if self.output_format == 'predictions':
-            message = str(prediction) + calculated_velocity + " " + str(timestamp)
+            message = str(prediction) + velocity_message + " " + str(timestamp)
         else:
-            message = ' '.join([f'{i:.2f}' for i in probabilities]) + calculated_velocity + " " + str(timestamp)
+            message = ' '.join([f'{i:.2f}' for i in probabilities]) + velocity_message + " " + str(timestamp)
 
         info = {
             "timestamp": timestamp,
             "model_output": prediction,
             "probability": probabilities,
-            "velocity": calculated_velocity,
+            "velocity": velocity,
             "model_input": model_input,
             "window": window,
             "message": message
