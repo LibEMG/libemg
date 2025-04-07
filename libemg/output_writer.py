@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import socket
 from libemg.shared_memory_manager import SharedMemoryManager
 import numpy as np
+from multiprocessing import Lock
 
 class OutputWriter(ABC):
     @abstractmethod
@@ -17,11 +18,14 @@ class OutputWriter(ABC):
         """
         pass
 class ConsoleOutputWriter(OutputWriter):
+    def __init__(self, tag):
+        self.tag = tag
+
     def write(self, info: dict) -> None:
-        print(info)
+        print(str(info['timestamp'])," ", info[self.tag])
 
 class FileOutputWriter(OutputWriter):
-    def __init__(self, file_path: str, file_name: str):
+    def __init__(self, tag, file_path: str, file_name: str):
         self.file_path = file_path
         self.file_name = file_name
         self.handle = open(self.file_path + self.file_name, "a", newline="")
@@ -33,11 +37,12 @@ class FileOutputWriter(OutputWriter):
         self.handle.flush()
 
 class SocketOutputWriter(OutputWriter):
-    def __init__(self, ip: str = '127.0.0.1', port: int = 12346, protocol: str = "UDP"):
+    def __init__(self, tag, ip: str = '127.0.0.1', port: int = 12346, protocol: str = "UDP"):
         self.ip = ip
         self.port = port
         self.protocol = protocol.upper()
         self.sock = None
+        self.tag = tag
         self._create_socket()
 
     def _create_socket(self):
@@ -50,7 +55,7 @@ class SocketOutputWriter(OutputWriter):
             raise ValueError("Protocol must be UDP or TCP.")
 
     def write(self, info: dict) -> None:
-        message = info.get("message", "")
+        message = str(info['timestamp']) + " " + str(info[self.tag])
         if self.sock is None:
             self._create_socket()
         if self.protocol == "UDP":
@@ -72,7 +77,7 @@ class SocketOutputWriter(OutputWriter):
         self._create_socket()
 
 class SharedMemoryOutputWriter(OutputWriter):
-    def __init__(self, tag: str, shape, dtype, lock, mod_fn=None):
+    def __init__(self, tag: str, shape, dtype, lock, mod_fn=None, mod_fn_count=None):
         """
         Parameters:
             tag (str): 
@@ -92,19 +97,26 @@ class SharedMemoryOutputWriter(OutputWriter):
         self.dtype = dtype
         self.lock = lock
         self.mod_fn = mod_fn if mod_fn is not None else self.default_mod_fn
+        self.mod_fn_count = mod_fn_count if mod_fn_count is not None else self.default_mod_fn_count
         # Create a new shared memory manager and create the variable.
         self.smm = SharedMemoryManager()
         self.smm.create_variable(tag, shape, dtype, lock)
+        self.smm.create_variable(tag+"_count", (1,1), np.int32, Lock())
 
     def write(self, info: dict) -> None:
         if self.smm is None:
             raise RuntimeError("SharedMemoryOutputWriter not attached to a manager.")
         # Use the provided mod_fn to modify the shared memory variable.
         self.smm.modify_variable(self.tag, lambda data: self.mod_fn(data, info))
+        self.smm.modify_variable(self.tag + "_count", lambda data: self.mod_fn_count(data, info))
     
     def default_mod_fn(self, data, info):
-        input_size = self.smm_manager.variables[self.tag]["shape"][0]
+        input_size = self.smm.variables[self.tag]["shape"][0]
         data[:] = np.vstack((info[self.tag], data))[:input_size, :]
+        return data
+    
+    def default_mod_fn_count(self, data, info):
+        data[:] = data[:] + info[self.tag].shape[0]
         return data
 
     def __getstate__(self):
