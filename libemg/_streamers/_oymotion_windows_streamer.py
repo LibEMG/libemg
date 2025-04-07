@@ -216,6 +216,10 @@ def _match_nus_uuid(_device: BLEDevice, adv: AdvertisementData):
         return True
     return False
 
+def gforce_filter(device, advertisement_data):
+    # Check if device.name exists and contains "gForcePro+"
+    return device.name is not None and "gForcePro+" in device.name
+
 from multiprocessing import Process, Event
 from libemg.shared_memory_manager import SharedMemoryManager
 import numpy as np
@@ -244,9 +248,17 @@ class Gforce(Process):
         self.data_packet = []
 
     async def connect(self):
-        device = await BleakScanner.find_device_by_filter(_match_nus_uuid)
-        if device is None:
-            raise Exception("No GForce device found")
+        device = None
+        count = 0
+        while device == None and count < 50:
+            device = await BleakScanner.find_device_by_filter(gforce_filter)
+            if device is None:
+                print(f"LibEMG -> OyMotionStreamer (No GForce device found). N={count}.")
+                count += 1
+
+                
+        if device == None:
+            raise Exception("LibEMG -> OyMotionStreamer (No GForce device found). Tries Exceeded.")
 
         def handle_disconnect(_: BleakClient):
             for task in asyncio.all_tasks():
@@ -260,6 +272,7 @@ class Gforce(Process):
         )
 
         self.client = client
+        print("LibEMG -> OyMotionStreamer (connected).")
 
     def _on_data_response(self, q: Queue, bs: bytearray):
         bs = bytes(bs)
@@ -593,7 +606,10 @@ class Gforce(Process):
             DATA_NOTIFY_CHAR_UUID,
             lambda _, data: self._on_data_response(q, data),
         )
+        print("LibEMG -> OyMotionStreamer (streaming started).")
         return q
+    
+        
 
     async def stop_streaming(self):
         exceptions = []
@@ -612,10 +628,12 @@ class Gforce(Process):
 
         if len(exceptions) > 0:
             raise Exception("Failed to stop streaming: %s" % exceptions)
+        print("LibEMG -> OyMotionStreamer (streaming stopped).")
 
     async def disconnect(self):
         with suppress(asyncio.CancelledError):
             await self.client.disconnect()
+        print("LibEMG -> OyMotionStreamer (disconnected).")
 
     def _get_response_channel(self, cmd: Command):
         q = Queue()
@@ -648,12 +666,11 @@ class Gforce(Process):
         await self.set_subscription(
             DataSubscription.EMG_RAW
         )
-        print("Connected to Oymotion Cuff!")
 
         q = await self.start_streaming()
         while True:
             if self.signal.is_set():
-                self.cleanup()
+                await self.cleanup()
                 break
             try:
                 for e in await q.get():
@@ -662,10 +679,13 @@ class Gforce(Process):
                     self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
                     
             except:
-                print("Worker Stopped.")
+                print("LibEMG -> OyMotionStreamer (process ended via exception).")
+                await self.cleanup()
                 quit()
 
-    def cleanup(self):
-        self.disconnect()
+    async def cleanup(self):
+        await self.stop_streaming()
+        await self.disconnect()
         self.smm.cleanup()
-        print("Oymotion has disconnected.")
+        print("LibEMG -> OyMotionStreamer (smm cleaned up).")
+        print("LibEMG -> OyMotionStreamer (process ended).")
