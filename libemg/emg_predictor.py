@@ -1118,11 +1118,11 @@ class OnlineEMGClassifier(OnlineStreamer):
             prediction = values[np.argmax(counts)]
         if self.predictor.velocity:
             if prediction >= 0:
-                velocity = " " + str(self.predictor._get_velocity(window, prediction))
+                velocity = self.predictor._get_velocity(window, prediction)
             else:
-                velocity = 0
+                velocity = 0.0
         else:
-            velocity = -1
+            velocity = -1.0
 
         return (prediction, probabilities, velocity)
 
@@ -1132,7 +1132,7 @@ class OnlineEMGClassifier(OnlineStreamer):
                            window:      Dict[str, Any]) -> Dict[str, Any]:
         # Compose a dictionary with all information you wish to send.
         prediction, probabilities, velocity = processed
-        if velocity == -1:
+        if velocity == -1.0:
             # TODO: Could always send velocity value... probably make it so we send a 1.0 if velocity control isn't enabled
             velocity_message = ''
         else:
