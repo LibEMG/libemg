@@ -1133,7 +1133,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         # Compose a dictionary with all information you wish to send.
         prediction, probabilities, velocity = processed
         if velocity == -1:
-            # TODO: Could always send velocity value
+            # TODO: Could always send velocity value... probably make it so we send a 1.0 if velocity control isn't enabled
             velocity_message = ''
         else:
             velocity_message = f" {velocity}"
