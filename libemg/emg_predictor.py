@@ -444,7 +444,7 @@ class EMGClassifier(EMGPredictor):
     
     def _get_velocity(self, 
                       window: Dict[str, Any], 
-                      c:      Any) -> str:
+                      c:      Any) -> float:
         """
         Compute velocity output based on window data.
         
@@ -471,7 +471,7 @@ class EMGClassifier(EMGPredictor):
             velocity_output = (velocity_metric - self.th_min_dic[c])/(self.th_max_dic[c] - self.th_min_dic[c])
             if self.velocity_mapping_handle:
                 velocity_output = self.velocity_mapping_handle(velocity_output)
-            return '{0:.2f}'.format(min([1, max([velocity_output, 0])]))
+            return min([1, max([velocity_output, 0])])
 
     def _set_up_velocity_control(self, 
                                  train_windows: np.ndarray, 
@@ -1136,7 +1136,7 @@ class OnlineEMGClassifier(OnlineStreamer):
             # TODO: Could always send velocity value... probably make it so we send a 1.0 if velocity control isn't enabled
             velocity_message = ''
         else:
-            velocity_message = f" {velocity}"
+            velocity_message = f" {velocity:.2f}"
 
         if isinstance(prediction, np.ndarray):
             prediction = prediction.item()
