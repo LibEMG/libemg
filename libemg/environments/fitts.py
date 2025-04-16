@@ -249,6 +249,7 @@ class Fitts(Environment):
         if len(self.log_dictionary['time_stamp']) == 0:
             # No data has been received, so don't start counting
             print('Waiting for Fitts to receive data...')
+            time.sleep(0.5)
             return
 
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
