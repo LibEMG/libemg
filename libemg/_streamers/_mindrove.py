@@ -12,10 +12,13 @@ class MindroveStreamer(Process):
         self.shared_memory_items = shared_memory_items
 
     def run(self):
-        def add_to_buffer(buffer, new_data):
-            new_buffer = np.vstack((new_data, buffer))  # put new data on top
-            new_buffer = new_buffer[:buffer.shape[0], :]    # ensure buffer stays the same size
-            return new_buffer
+        def write_emg(emg):
+            def add_to_buffer(buffer):
+                new_buffer = np.vstack((emg, buffer))  # put new data on top
+                new_buffer = new_buffer[:buffer.shape[0], :]    # ensure buffer stays the same size
+                return new_buffer
+            smm.modify_variable('emg', add_to_buffer)
+            smm.modify_variable('emg_count', lambda x: x + 1)
 
         # Initialize shared memory in this process
         smm = SharedMemoryManager()
@@ -27,24 +30,21 @@ class MindroveStreamer(Process):
         board_shim = BoardShim(board_id, params)
         board_shim.prepare_session()
         board_shim.start_stream()
-        # window_size_ms = 100
-        # sampling_rate = board_shim.get_sampling_rate(board_id)
-        # num_samples = int(window_size_ms / 1000 * sampling_rate)
         num_samples = 1 # number of samples to grab and add to buffer at a time
         emg_channels = board_shim.get_emg_channels(board_id)
 
         while True:
             data = board_shim.get_board_data(num_samples=num_samples)   # grabs data from ringbuffer AND DELETES IT
-            if data is None:
+            if data is None or data.shape[1] == 0:
                 continue
 
             # data is of shape: (num_params, num_samples)
             emg = data[emg_channels].T  # we expect data as (num_samples, num_channels)
-            print(emg.shape)
-            smm.modify_variable('emg', add_to_buffer)
-            smm.modify_variable('emg_count', lambda x: x + 1)
+            write_emg(emg)
 
         # TODO: Call cleanup somehow
-        if board_shim.is_prepared():
-            board_shim.release_session()
+        # if board_shim.is_prepared():
+        #     board_shim.release_session()
+
+    
 
