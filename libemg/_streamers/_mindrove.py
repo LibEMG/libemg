@@ -33,18 +33,19 @@ class MindroveStreamer(Process):
         num_samples = 1 # number of samples to grab and add to buffer at a time
         emg_channels = board_shim.get_emg_channels(board_id)    # we can get ppg channels from a similar method
 
-        while True:
-            data = board_shim.get_board_data(num_samples=num_samples)   # grabs data from ringbuffer AND DELETES IT
-            if data is None or data.shape[1] == 0:
-                continue
+        try:
+            while True:
+                data = board_shim.get_board_data(num_samples=num_samples)   # grabs data from ringbuffer AND DELETES IT
+                if data is None or data.shape[1] == 0:
+                    continue
 
-            # data is of shape: (num_params, num_samples)
-            emg = data[emg_channels].T  # we expect data as (num_samples, num_channels)
-            write_emg(emg)
-
-        # TODO: Call cleanup somehow
-        # if board_shim.is_prepared():
-        #     board_shim.release_session()
+                # data is of shape: (num_params, num_samples)
+                emg = data[emg_channels].T  # we expect data as (num_samples, num_channels)
+                write_emg(emg)
+        finally:
+            # This will only be called in the case of an exception or interrupt, but won't be called when parent process dies (b/c daemon=True)
+            if board_shim.is_prepared():
+                board_shim.release_session()
 
     
 
