@@ -31,3 +31,4 @@ websockets==8.1
 h5py
 onedrivedownloader
 sifi-bridge-py
+mindrove
