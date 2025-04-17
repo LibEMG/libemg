@@ -31,7 +31,7 @@ class MindroveStreamer(Process):
         board_shim.prepare_session()
         board_shim.start_stream()
         num_samples = 1 # number of samples to grab and add to buffer at a time
-        emg_channels = board_shim.get_emg_channels(board_id)
+        emg_channels = board_shim.get_emg_channels(board_id)    # we can get ppg channels from a similar method
 
         while True:
             data = board_shim.get_board_data(num_samples=num_samples)   # grabs data from ringbuffer AND DELETES IT
