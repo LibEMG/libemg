@@ -15,6 +15,7 @@ else:
 from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
+from libemg._streamers._mindrove import MindroveStreamer
 
 def sifi_biopoint_streamer(
     name = "BioPoint_v1_3",
@@ -648,3 +649,33 @@ def leap_streamer(shared_memory_items : list | None =None,
     ls = LeapStreamer(shared_memory_items)
     ls.start()
     return ls, shared_memory_items
+
+
+def mindrove_streamer(shared_memory_items = None):
+    """The streamer for the Mindrove EMG armband.
+
+    This function starts a process that listens for EMG data using Mindrove's Python SDK.
+    Please ensure that you are connected to the Mindrove armband's Wifi network before starting this 
+
+    Parameters
+    ----------
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype]
+        Tags "emg" and "emg_count" must be provided. If set to None, shared memory items are automatically created
+        based on the device properties.
+    """
+    if shared_memory_items is None:
+        shared_memory_items = [
+            ['emg', (1000, 8), np.double],
+            ['emg_count', (1, 1), np.int32]
+        ]
+
+    for item in shared_memory_items:
+        if len(item) == 3:
+            item.append(Lock())
+
+    m = MindroveStreamer(shared_memory_items)
+    m.start()
+    return m, shared_memory_items
+
