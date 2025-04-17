@@ -25,7 +25,7 @@ class MindroveStreamer(Process):
         for item in self.shared_memory_items:
             smm.create_variable(*item)
 
-        params = MindRoveInputParams()
+        params = MindRoveInputParams()  # not sure if we can get the IP here to avoid having to connect to the Wifi network...
         board_id = BoardIds.MINDROVE_WIFI_BOARD
         board_shim = BoardShim(board_id, params)
         board_shim.prepare_session()
