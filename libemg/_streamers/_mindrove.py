@@ -31,7 +31,7 @@ class MindroveStreamer(Process):
         board_shim.prepare_session()
         board_shim.start_stream()
         num_samples = 1 # number of samples to grab and add to buffer at a time
-        emg_channels = board_shim.get_emg_channels(board_id)    # we can get ppg channels from a similar method
+        emg_channel_mask = board_shim.get_emg_channels(board_id)    # we can get ppg channels from a similar method
 
         try:
             while True:
@@ -40,7 +40,7 @@ class MindroveStreamer(Process):
                     continue
 
                 # data is of shape: (num_params, num_samples)
-                emg = data[emg_channels].T  # we expect data as (num_samples, num_channels)
+                emg = data[emg_channel_mask].T  # we expect data as (num_samples, num_channels)
                 write_emg(emg)
         finally:
             # This will only be called in the case of an exception or interrupt, but won't be called when parent process dies (b/c daemon=True)
