@@ -516,53 +516,60 @@ class Myo(object):
 import numpy as np
 from multiprocessing import Process, Event
 class MyoStreamer(Process):
-    def __init__(self, filtered, emg, imu, shared_memory_items=[]):
-        Process.__init__(self, daemon=True)
-        self.filtered = filtered
-        self.emg = emg
-        self.imu = imu
-        self.smm = SharedMemoryManager()
-        self.shared_memory_items = shared_memory_items
-        self.signal = Event()
+	def __init__(self, filtered, emg, imu, shared_memory_items=[]):
+		Process.__init__(self, daemon=True)
+		self.filtered = filtered
+		self.emg = emg
+		self.imu = imu
+		self.smm = SharedMemoryManager()
+		self.shared_memory_items = shared_memory_items
+		self.signal = Event()
 
-    def run(self):
-        for item in self.shared_memory_items:
-            self.smm.create_variable(*item)
+	def run(self):
+		for item in self.shared_memory_items:
+			self.smm.create_variable(*item)
 
-        mode = emg_mode.FILTERED
-        if not self.filtered:
-            mode = emg_mode.RAW
-        self.m = Myo(mode=mode)
-        self.m.connect()
+		mode = emg_mode.FILTERED
+		if not self.filtered:
+			mode = emg_mode.RAW
+		self.m = Myo(mode=mode)
+		self.m.connect()
 
-        if self.emg:
-            def write_emg(emg):
-                emg = np.array(emg)
-                self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
-                self.smm.modify_variable("emg_count", lambda x: x + 2)
-            self.m.add_emg_handler(write_emg)
-        if self.imu:
-            def write_imu(quat, acc, gyro):
-                imu_arr = np.array([*quat, *acc, *gyro])
-                self.smm.modify_variable("imu", lambda x: np.vstack((imu_arr, x))[:x.shape[0],:])
-                self.smm.modify_variable("imu_count", lambda x: x + 1)
-            self.m.add_imu_handler(write_imu)
+		if self.emg:
+			def write_emg(emg):
+				emg = np.array(emg)
+				self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
+				self.smm.modify_variable("emg_count", lambda x: x + 2)
+			self.m.add_emg_handler(write_emg)
 
-        self.m.set_leds([128, 0, 0], [128, 0, 0])
+		if self.imu:
+			def write_imu(quat, acc, gyro):
+				imu_arr = np.array([*quat, *acc, *gyro])
+				self.smm.modify_variable("imu", lambda x: np.vstack((imu_arr, x))[:x.shape[0],:])
+				self.smm.modify_variable("imu_count", lambda x: x + 1)
+			self.m.add_imu_handler(write_imu)
+
+		self.m.set_leds([128, 0, 0], [128, 0, 0])
 		# Vibrate to show that its connected
-        self.m.vibrate(3)
+		self.m.vibrate(3)
 		# Disable vibrations
-        self.m.vibrate(0)
+		self.m.vibrate(0)
+		try:
+			while not self.signal.is_set():
+				self.m.run()
+		finally:
+			self._cleanup()
 
-        while True:
-            if self.signal.is_set():
-                self.cleanup()
-                break
-            try:
-                self.m.run()
-            except:
-                print("Worker Stopped.")
-                quit() 
-		
-    def cleanup(self):
-	     self.m.disconnect()
+	def stop(self):
+		"""Stops the streaming process and waits for all threads to finish execution.
+
+		This method sets a signal indicating that the streamer should stop. It then waits for all
+		background threads associated with the streamer to complete their current tasks before exiting.
+		"""
+		self.signal.set()
+		self.join()
+	
+	def _cleanup(self):
+		self.m.disconnect()
+		self.smm.cleanup()
+
