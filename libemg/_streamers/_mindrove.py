@@ -1,4 +1,4 @@
-from multiprocessing import Process
+from multiprocessing import Process, Event
 
 import numpy as np
 from mindrove.board_shim import BoardShim, MindRoveInputParams, BoardIds
@@ -10,6 +10,11 @@ class MindroveStreamer(Process):
     def __init__(self, shared_memory_items):
         super().__init__(daemon=True)
         self.shared_memory_items = shared_memory_items
+        params = MindRoveInputParams()  # not sure if we can get the IP here to avoid having to connect to the Wifi network...
+        self.board_id = BoardIds.MINDROVE_WIFI_BOARD
+        self.board_shim = BoardShim(self.board_id, params)
+        self.smm = SharedMemoryManager()
+        self._stop_event = Event()
 
     def run(self):
         def write_emg(emg):
@@ -17,25 +22,21 @@ class MindroveStreamer(Process):
                 new_buffer = np.vstack((emg, buffer))  # put new data on top
                 new_buffer = new_buffer[:buffer.shape[0], :]    # ensure buffer stays the same size
                 return new_buffer
-            smm.modify_variable('emg', add_to_buffer)
-            smm.modify_variable('emg_count', lambda x: x + 1)
+            self.smm.modify_variable('emg', add_to_buffer)
+            self.smm.modify_variable('emg_count', lambda x: x + 1)
 
         # Initialize shared memory in this process
-        smm = SharedMemoryManager()
         for item in self.shared_memory_items:
-            smm.create_variable(*item)
+            self.smm.create_variable(*item)
 
-        params = MindRoveInputParams()  # not sure if we can get the IP here to avoid having to connect to the Wifi network...
-        board_id = BoardIds.MINDROVE_WIFI_BOARD
-        board_shim = BoardShim(board_id, params)
-        board_shim.prepare_session()
-        board_shim.start_stream()
+        self.board_shim.prepare_session()
+        self.board_shim.start_stream()
         num_samples = 1 # number of samples to grab and add to buffer at a time
-        emg_channel_mask = board_shim.get_emg_channels(board_id)    # we can get ppg channels from a similar method
+        emg_channel_mask = self.board_shim.get_emg_channels(self.board_id)    # we can get ppg channels from a similar method
 
         try:
-            while True:
-                data = board_shim.get_board_data(num_samples=num_samples)   # grabs data from ringbuffer AND DELETES IT
+            while not self._stop_event.is_set():
+                data = self.board_shim.get_board_data(num_samples=num_samples)   # grabs data from ringbuffer AND DELETES IT
                 if data is None or data.shape[1] == 0:
                     continue
 
@@ -44,8 +45,14 @@ class MindroveStreamer(Process):
                 write_emg(emg)
         finally:
             # This will only be called in the case of an exception or interrupt, but won't be called when parent process dies (b/c daemon=True)
-            if board_shim.is_prepared():
-                board_shim.release_session()
+            self._cleanup()
 
-    
+    def stop(self):
+        self._stop_event.set()
+        self.join()
+
+    def _cleanup(self):
+        if self.board_shim.is_prepared():
+            self.board_shim.release_session()
+        self.smm.cleanup()
 
