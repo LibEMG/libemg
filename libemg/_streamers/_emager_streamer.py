@@ -1,7 +1,7 @@
 import serial # pyserial
 import numpy as np
 import platform
-from multiprocessing import Process
+from multiprocessing import Event, Process
 from libemg.shared_memory_manager import SharedMemoryManager
 
 
@@ -62,25 +62,19 @@ class Emager:
     def add_emg_handler(self, closure):
         self.emg_handlers.append(closure)
 
-    def run(self):
-        if self.ser.closed == True:
-            self.ser.open()
-        self.clear_buffer()
-        samples = np.zeros(64)
-        while True:
-            # get and organize data
-            bytes_available = self.ser.inWaiting()
-            bytesToRead = bytes_available - (bytes_available % 128)
-            data_packet = reorder(list(self.ser.read(bytesToRead)), self.mask, 63)
-            # if there was data
-            if len(data_packet):
-                for p in range(len(data_packet)):
-                    samples = [int.from_bytes(bytes([data_packet[p][s*2], data_packet[p][s*2+1]]), 'big',signed=True) for s in range(64)]
-                    samples = np.array(samples)[self.channel_map]    # sort columns so columns correspond to channels in ascending order
-                    for h in self.emg_handlers:
-                        h(samples)
-            else:
-                continue
+    def get_data(self):
+        # get and organize data
+        bytes_available = self.ser.inWaiting()
+        bytesToRead = bytes_available - (bytes_available % 128)
+        data_packet = reorder(list(self.ser.read(bytesToRead)), self.mask, 63)
+        if data_packet is None or len(data_packet) == 0:
+            # No data
+            return
+        for p in range(len(data_packet)):
+            samples = [int.from_bytes(bytes([data_packet[p][s*2], data_packet[p][s*2+1]]), 'big',signed=True) for s in range(64)]
+            samples = np.array(samples)[self.channel_map]    # sort columns so columns correspond to channels in ascending order
+            for h in self.emg_handlers:
+                h(samples)
     
     def clear_buffer(self):
         '''
@@ -99,23 +93,38 @@ class EmagerStreamer(Process):
         super().__init__(daemon=True)
         self.smm = SharedMemoryManager()
         self.shared_memory_items = shared_memory_items
+        self._stop_event = Event()
+        self.e = None
 
     def run(self):
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
         
-        e = Emager(1500000)
-        e.connect()
+        self.e = Emager(1500000)
+        self.e.connect()
 
         def write_emg(emg):
             emg = np.array(emg)
             self.smm.modify_variable('emg', lambda x: np.vstack((emg, x))[:x.shape[0], :])
             self.smm.modify_variable('emg_count', lambda x: x + 1)
             
-        e.add_emg_handler(write_emg)
+        self.e.add_emg_handler(write_emg)
 
-        while True:
-            try:
-                e.run()
-            except Exception as ex:
-                print("Error Occured.")
+        try:
+            if self.e.ser.closed == True:
+                self.e.ser.open()
+            self.e.clear_buffer()
+            while not self._stop_event.is_set():
+                self.e.get_data()
+        finally:
+            self._cleanup()
+
+    def stop(self):
+        self._stop_event.set()
+        self.join()
+
+    def _cleanup(self):
+        if self.e is not None:
+            self.e.close()
+        self.smm.cleanup()
+
