@@ -54,7 +54,7 @@ class Animator:
         frames: list
             List of frames, where each element is a PIL.Image object.
         """
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         video = cv2.VideoWriter(self.output_filepath, fourcc, fps=self.fps, frameSize=frames[0].size)
         
         for frame in frames:
