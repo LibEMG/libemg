@@ -12,7 +12,7 @@ class MemoryManager(Process):
     a user-in-the-loop setting and storing them in pickled memory classes. These memory classes may represent segments of data that have been collected (e.g., a trial of Fitts' Law).
     The memory manager contains a signal to trigger the adaptation manager to load these slices of memory, which is the other half of the adaptation suite provided by LibEMG.
 
-    The memory slices are composed by monitoring shared memory output writers from the environmet (which provide a timestamp and pseudo-label), and monitoring shared memory output writers from
+    The memory slices are composed by monitoring shared memory output writers from the environment (which provide a timestamp and pseudo-label), and monitoring shared memory output writers from
     the model (which provide an identical timestamp and model inputs such as EMG features). 
 
     Parameters
@@ -40,6 +40,7 @@ class MemoryManager(Process):
         self.ow = ow
         self.save_dir = save_dir
 
+        self.environment_feedback_count = 0
         self.trial_counter = 0
 
     def run(self):
@@ -52,9 +53,21 @@ class MemoryManager(Process):
             if self.signal.is_set():
                 self.memory.save(self.save_dir + "memory_"+str(self.trial_counter) + ".pkl")
                 break
-            # Get data from the environment
-            data = self.get_data()
 
+            # check if there is data to process, and if so process it
+            self.process_data()
+            
+
+    def process_data(self):
+        # if there has been no new environment feedback, just continue
+        environment_feedback_count = self.smm.get_variable("environment_feedback_count")
+        if environment_feedback_count == self.environmentfeedback_counter:
+            return
+        num_to_grab = self.environment_feedback_count - environment_feedback_count 
+        data = self.smm.get_variable("environment_feedback")
+        data = data[:num_to_grab,:]
+        # for every row in data:
+        for i in range(num_to_grab):
             if data.trial_counter != self.trial_counter:
                 # Save the memory
                 self.memory.save(self.save_dir + "memory_"+str(self.trial_counter) + ".pkl")
@@ -66,6 +79,8 @@ class MemoryManager(Process):
             # Append the data to the memory object
             self.append_to_memory(data)
 
+        # update the environment_feedback_count
+        self.environmentfeedback_counter = environment_feedback_count 
 
     def save_memory(self, loc: str):
         with open(loc, 'wb') as f:
@@ -94,6 +109,25 @@ class MemoryManager(Process):
         pass
 
 class AdaptationManager(Process):
+    """
+    This object is part of the adaptation suite provided by LibEMG. The adaptation manager is responsible for aggregating the slices of data that are packaged by the memory manager, and running 
+    the adaptation of the model given this data.
+
+    Parameters
+    ----------
+    model: Any
+        A custom object that defines the model. It should have a .adapt, .save(), .load() and .predict() methods.
+    smi: list
+        a list containing information to construct shared memory managers that receive messages from the memory manager to update the aggregated data for adptation. Consult libemg.adaptation._base.get_<type_of_adaptation>_adaptation_items() for more information.
+    ow: list[libemg.output_writer.OutputWriter]
+        A list of LibEMG output writers that are used by this class to write information out to other processes (i.e., the OnlineStreamer to load the updated model). Consult libemg.adaptation._base.get_<type_of_adaptation>_adaptation_items() for more information.
+    initial_memory_loc: str
+        The location of the initial memory slice. A typical use for this would be to load data from screen guided training prior to gather user-in-the-loop data. Not entirely necessary, but very beneficial for stability.
+    load_dir: str
+        The location that the memory slices will be loaded. This should be the save_dir argument of the libemg.adaptation.managers.MemoryManager.
+    save_dir: str
+        The location that the adapted models will be saved. This should be the file_path argument of the libemg.emg_predictor.OnlineStreamer (the live model for the user-in-the-loop setting.)
+    """
     def __init__(self,
                   model,
                   smi: list,
@@ -133,7 +167,7 @@ class AdaptationManager(Process):
         for smi in self.smi:
             self.smm.create_variable(*smi)
         while True:
-            
+
             if self.signal.is_set():
                 self.save_model(self.save_dir + "model_final.pkl")
                 break
