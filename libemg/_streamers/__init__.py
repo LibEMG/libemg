@@ -8,6 +8,5 @@ from libemg._streamers import _OTB_Muovi
 from libemg._streamers import _OTB_MuoviPlus
 from libemg._streamers import _OTB_SessantaquattroPlus
 from libemg._streamers import _OTB_Syncstation
-from libemg._streamers import _oymotion_windows_streamer
 from libemg._streamers import _emager_streamer
 from libemg._streamers import _leap_streamer
