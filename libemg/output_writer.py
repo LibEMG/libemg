@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import socket
 from libemg.shared_memory_manager import SharedMemoryManager
 import numpy as np
+import types
 from multiprocessing import Lock
 
 class OutputWriter(ABC):
@@ -55,7 +56,7 @@ class SocketOutputWriter(OutputWriter):
             raise ValueError("Protocol must be UDP or TCP.")
 
     def write(self, info: dict) -> None:
-        message = str(info['timestamp']) + " " + str(info[self.tag])
+        message = str(info[self.tag]) + " " + str(info['timestamp'])
         if self.sock is None:
             self._create_socket()
         if self.protocol == "UDP":
@@ -67,6 +68,7 @@ class SocketOutputWriter(OutputWriter):
         # Remove the socket from the state so it's not pickled.
         state = self.__dict__.copy()
         if "sock" in state:
+            state['sock'].close()
             del state["sock"]
         return state
 
@@ -96,8 +98,8 @@ class SharedMemoryOutputWriter(OutputWriter):
         self.shape = shape
         self.dtype = dtype
         self.lock = lock
-        self.mod_fn = mod_fn if mod_fn is not None else self.default_mod_fn
-        self.mod_fn_count = mod_fn_count if mod_fn_count is not None else self.default_mod_fn_count
+        self.mod_fn = types.MethodType(mod_fn, self) if mod_fn is not None else self.default_mod_fn
+        self.mod_fn_count = types.MethodType(mod_fn_count, self) if mod_fn_count is not None else self.default_mod_fn_count
         # Create a new shared memory manager and create the variable.
         self.smm = SharedMemoryManager()
         self.smm.create_variable(tag, shape, dtype, lock)
