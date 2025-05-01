@@ -8,7 +8,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier, MLPRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.preprocessing import StandardScaler
-from multiprocessing import Process, Lock
+from multiprocessing import Process, Lock, Event
 import numpy as np
 import pickle
 import socket
@@ -719,7 +719,7 @@ class OnlineStreamer(ABC):
                  online_data_handler: OnlineDataHandler, 
                  file_path:           str, 
                  file:                bool, 
-                 enable_smm:                 bool, 
+                 enable_smm:          bool, 
                  smm_items:           List[List[Any]], 
                  features:            Optional[List[Any]],
                  std_out:             bool,
@@ -737,15 +737,8 @@ class OnlineStreamer(ABC):
         self.scaler = None
         self.output_writers = output_writers if output_writers is not None else []
 
-        # TODO: Remove this now that it's more customizable... I don't think we benefit from having these and it just makes things confusing. Also the user should manage the Locks. Us creating them means they aren't actually locking anything...
-        required_smm_items = [
-            ["adapt_flag", (1,1), np.int32],
-            ["active_flag", (1,1), np.int8]
-        ]
-        current_smm_tags = [item[0] for item in smm_items]
-        for smm_item in required_smm_items:
-            if smm_item[0] not in current_smm_tags:
-                smm_items.append(smm_item)
+        self.signal = Event()
+
         self.enable_smm = enable_smm
         self.smm_items = smm_items
 
@@ -754,6 +747,9 @@ class OnlineStreamer(ABC):
 
         self.process = Process(target=self._run_helper, daemon=True,)
     
+    def stop(self):
+        self.signal.set()
+
     def start_stream(self, 
                      block: bool =True) -> None:
         """
@@ -773,9 +769,6 @@ class OnlineStreamer(ABC):
         """
         Prepare shared memory by creating required variables.
         """
-        for i in self.smm_items:
-            if len(i) == 3:
-                i.append(Lock())
         smm = SharedMemoryManager()
         for item in self.smm_items:
             smm.create_variable(*item)
@@ -959,6 +952,10 @@ class OnlineStreamer(ABC):
         self.on_startup_function_handle()
 
         while True:
+
+            if self.signal.is_set():
+                self.cleanup()
+                break
             # Check flags
             if not self.model_flag_handle():
                 continue
@@ -977,6 +974,12 @@ class OnlineStreamer(ABC):
             info = self.format_output_info(processed, model_input, window)
             for writer in self.output_writers:
                 writer.write(info)
+    
+    def cleanup(self) -> None:
+        self.smm.cleanup()
+        print("LibEMG -> OnlineStreamer (smm cleaned up).")
+        self.process.terminate()
+        print("LibEMG -> OnlineStreamer (process ended).")
     
     def install_standardization(self, 
                                 standardization: np.ndarray | StandardScaler) -> None:
@@ -1059,8 +1062,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         ]
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
-    output_format: str (optional), default=predictions
-        If predictions, it will broadcast an integer of the prediction, if probabilities it broacasts the posterior probabilities
     output_writers: OutputWriter, default = None
         A list of OutputWriters. This defines what is typically done with the output of the OnlineStreamer.
     """
@@ -1075,24 +1076,13 @@ class OnlineEMGClassifier(OnlineStreamer):
                  smm:                 bool=False, 
                  smm_items:           Optional[List[List[Any]]]= None,
                  std_out:             bool=False,
-                 output_format:       str="predictions",
                  output_writers:      Optional[List[Any]]=None) -> None:
         
-        # SMM logic:
-        if smm_items is None:
-            smm_items = [
-                ["model_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-                ["model_input", (100,1+32), np.double], # timestamp, <- features ->
-            ]
-        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
-        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
+        
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, smm, smm_items, features, std_out, output_writers)
         self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
         self.smi = smm_items
-
-        # TODO: remove output_format. it doesn't make much sense to me that we have this and output_writers 
-        self.output_format = output_format
 
         # Set the streaming pipeline function handles in the classifier subclass.
         self.on_startup_function_handle     = self.default_startup
@@ -1131,11 +1121,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         if isinstance(prediction, np.ndarray):
             prediction = prediction.item()
         timestamp = time.time()
-        # TODO: Probably remove output_format and just send everything...
-        if self.output_format == 'predictions':
-            message = str(prediction) + calculated_velocity + '\n'
-        else:
-            message = ' '.join([f'{i:.2f}' for i in probabilities]) + calculated_velocity + " " + str(timestamp)
+        message = ' '.join([f'{i:.2f}' for i in probabilities]) + calculated_velocity + " " + str(timestamp)
 
         info = {
             "timestamp": timestamp,
@@ -1168,8 +1154,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         legend: (list) (optional)
             Labels used to populate legend. Must be passed in order of output classes.
         """
-        if self.output_format != 'probabilities':
-            raise ValueError(f"OnlineEMGClassifier output_format must be 'probabailities' for visualize() method to work, but current value is {self.output_format}.")
         plt.style.use("ggplot")
         figure, ax = plt.subplots()
         figure.suptitle("Live Classifier Output", fontsize=16)
@@ -1177,7 +1161,7 @@ class OnlineEMGClassifier(OnlineStreamer):
         num_classes = len(self.predictor.model.classes_)    # assumes that user is using an sklearn model
         cmap = cm.get_cmap('turbo', num_classes)
 
-        controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=ip, port=port)
+        controller = ClassifierController(output_format="probabilities", num_classes=num_classes, ip=ip, port=port)
 
         if legend is not None:
             for i in range(num_classes):
@@ -1273,14 +1257,6 @@ class OnlineEMGRegressor(OnlineStreamer):
                  smm_items:           Optional[List[Any]] = None,
                  std_out:             bool = False,
                  output_writers:      Optional[List[Any]]=None) -> None:
-        if smm_items is None:
-            # I think probably just have smm_items default to None and remove the smm flag. Then if the user wants to track stuff, they can pass in smm_items and a function to handle them?
-            smm_items = [
-                ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
-                ['model_output', (100, 3), np.double]  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
-            ]
-        assert 'model_input' in [item[0] for item in smm_items], f"'model_input' tag not found in smm_items. Got: {smm_items}."
-        assert 'model_output' in [item[0] for item in smm_items], f"'model_output' tag not found in smm_items. Got: {smm_items}."
         super(OnlineEMGRegressor, self).__init__(offline_regressor, window_size, window_increment, online_data_handler, file_path,
                                                  file, smm, smm_items, features, std_out, output_writers)
         self.smi = smm_items
