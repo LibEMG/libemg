@@ -112,7 +112,7 @@ if __name__ == "__main__":
             classifier.fit(feature_dictionary=data_set.copy())
 
             # running the classifier analyzes the test data we already passed it
-            preds,probs = classifier.run(test_features, test_metadata['classes'])
+            preds,probs = classifier.run(test_features)
             # get the CA: classification accuracy offline metric and add it to the results
             results[i,s] = om.extract_offline_metrics(metrics, test_metadata['classes'], preds)[metrics[0]] * 100
             print(f"S{s} {f}: {results[i,s]}%")
