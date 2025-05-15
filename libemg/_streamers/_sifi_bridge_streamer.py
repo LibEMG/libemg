@@ -64,6 +64,9 @@ class SiFiBridgeStreamer(Process):
         eda_freq:       int = 0,
         streaming:      bool = False,
         mac:            str | None = None,
+        ble_power: sbp.BleTxPower = sbp.BleTxPower.HIGH,
+        memory_mode: sbp.MemoryMode = sbp.MemoryMode.BOTH, 
+        
     ):
 
         Process.__init__(self, daemon=True)
@@ -92,6 +95,8 @@ class SiFiBridgeStreamer(Process):
         self.eda_freq = eda_freq
         self.streaming = streaming
         self.mac = mac
+        self.ble_power = ble_power
+        self.memory_mode = memory_mode
 
     def configure(
         self,
@@ -106,6 +111,8 @@ class SiFiBridgeStreamer(Process):
         eda_bandpass: tuple = (0, 5),
         eda_freq: int = 0,
         streaming: bool = False,
+        ble_power: sbp.BleTxPower = sbp.BleTxPower.MEDIUM,
+        memory_mode: sbp.MemoryMode = sbp.MemoryMode.BOTH
     ):
         self.sb.set_channels(ecg, emg, eda, imu, ppg)
         self.sb.set_filters(filtering)
@@ -115,8 +122,8 @@ class SiFiBridgeStreamer(Process):
             self.sb.configure_eda(eda_bandpass, eda_freq)
 
         self.sb.set_low_latency_mode(streaming)
-        self.sb.set_ble_power(sbp.BleTxPower.HIGH)
-        self.sb.set_memory_mode(sbp.MemoryMode.BOTH)
+        self.sb.set_ble_power(ble_power)
+        self.sb.set_memory_mode(memory_mode)
 
     def connect(self):
         while not self.sb.connect(self.handle):
@@ -222,6 +229,8 @@ class SiFiBridgeStreamer(Process):
             self.eda_bandpass,
             self.eda_freq,
             self.streaming,
+            ble_power=self.ble_power,
+            memory_mode=self.memory_mode
         )
         self.handle = self.mac if self.mac is not None else self.name
 
