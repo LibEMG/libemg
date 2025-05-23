@@ -845,17 +845,37 @@ class OnlineStreamer(ABC):
     def load_emg_predictor(self, 
                            number: int) -> None:
         """
-        Load a predictor from a file.
+        Load a predictor from a file. Assumes that the files is treated as an EMGPredictor (LibEMG object) or the underlying model.
         
         Parameters
         ----------
         number : int
             Model number.
         """
-        with open(self.file_path + 'mdl' + str(number) + '.pkl', 'rb') as handle:
-            self.predictor = pickle.load(handle)
-            print(f"Loaded model #{number}.")
+        filepath = self.file_path + 'mdl' + str(number) + '.pkl'
+        loaded_content = self._load_emg_predictor_helper(filepath)
+        if type(loaded_content) == EMGPredictor:
+            self.predictor = loaded_content
+        else:
+            self.predictor.model = loaded_content
+        print(f"Loaded model #{number}.")
     
+    def _load_emg_predictor_helper(self, file_path: str) -> Any:
+            try:
+                with open(file_path,'rb') as handle:
+                    return pickle.load(handle)
+            except pickle.UnpicklingError as e:
+                #Only catch the specific "persistent id" error that comes from pytorch
+                msg = str(e)
+                if 'persistent id' not in msg:
+                    raise
+            try:
+                import torch
+            except ImportError:
+                raise RuntimeError("File to load contains pytorch tensor but torch is not installed.")
+            return torch.load(file_path)
+            
+
 
     # ----- Default functions for the streaming pipeline -----
     def default_startup(self) -> None:
