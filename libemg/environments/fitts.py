@@ -129,6 +129,7 @@ class Fitts(Environment):
 
         self.prediction_map = prediction_map
 
+    def game_setup(self):
         self.font = pygame.font.SysFont('helvetica', 40)
         self.screen = pygame.display.set_mode([self.config.width, self.config.height])
 
@@ -359,7 +360,7 @@ class Fitts(Environment):
             pygame.draw.circle(self.screen, color, self.polar_origin, semi_circle_radius, width=2, draw_top_right=True, draw_top_left=True)
             pygame.draw.line(self.screen, color, (self.polar_origin[0] - semi_circle_radius, self.polar_origin[1]), (self.polar_origin[0] + semi_circle_radius, self.polar_origin[1]))
 
-    def _run_helper(self):
+    def _run_loop(self):
         # updated frequently for graphics & gameplay
         self._update_game()
         pygame.display.set_caption(str(self.clock.get_fps()))
