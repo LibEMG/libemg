@@ -1,5 +1,6 @@
 import json
 from abc import ABC, abstractmethod
+from multiprocessing import Process
 from pathlib import Path
 import pickle
 import os
@@ -23,21 +24,30 @@ class Environment(ABC):
             Dictionary containing metrics to log.
         save_file : str | None, optional
             Name of save file (e.g., log.pkl). Supports .json and .pkl file formats. If None, no results are saved. Defaults to None.
-        """        # Assumes this is a pygame environment
+        """        
+        # Assumes this is a pygame environment
         self.controller = controller
         self.done = False   # flag to determine when loop should be exited
         self.clock = pygame.time.Clock()
         self.fps = fps
         self.log_dictionary = log_dictionary
         self.save_file = save_file
+        self.process = Process(target=self.run, daemon=True)
+        
+    @abstractmethod
+    def game_setup(self):
+        # setup things like font in here.
+        ...
+
+    def run(self):
+        """Run environment in main loop. Blocks all further execution. Results are saved after task is completed."""        
         pygame.init()
         pygame.font.init()
         pygame.mixer.init() 
 
-    def run(self):
-        """Run environment in main loop. Blocks all further execution. Results are saved after task is completed."""        
+        self.game_setup()
         while not self.done:
-            self._run_helper()
+            self._run_loop()
             pygame.display.update()
             self.clock.tick(self.fps)
 
@@ -45,9 +55,16 @@ class Environment(ABC):
         pygame.quit()
 
     @abstractmethod
-    def _run_helper(self):
-        # If there's a use case, we could a block = True flag so we'd put this in a different thread if False
+    def _run_loop(self):
         ...
+
+    def run_helper(self, block=True):
+        if block:
+            self.process.start()
+            self.process.join()
+        else:
+            self.process.start()
+    
 
     def save_results(self):
         if self.save_file is None:
