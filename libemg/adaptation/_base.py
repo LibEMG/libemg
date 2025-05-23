@@ -44,13 +44,17 @@ def get_edil_adaptation_objects(num_features, num_outputs):
     def mod_fn_flags(self, data, number):
         data[:] = number
         return data
+    
+    def mod_fn_flags_count(self, data, number):
+        data[:] = data[:] + 1
+        return data
 
 
     
-    adapt_flag_smow = SharedMemoryOutputWriter('adapt_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags)
-    memory_flag_smow = SharedMemoryOutputWriter('memory_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags)
-    active_flag_smow = SharedMemoryOutputWriter('active_flag', (1,1), np.int8, Lock(), mod_fn=mod_fn_flags)
-    environment_flag_smow = SharedMemoryOutputWriter('environment_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags)
+    adapt_flag_smow = SharedMemoryOutputWriter('adapt_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags, mod_fn_count=mod_fn_flags_count)
+    memory_flag_smow = SharedMemoryOutputWriter('memory_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags, mod_fn_count=mod_fn_flags_count)
+    active_flag_smow = SharedMemoryOutputWriter('active_flag', (1,1), np.int8, Lock(), mod_fn=mod_fn_flags, mod_fn_count=mod_fn_flags_count)
+    environment_flag_smow = SharedMemoryOutputWriter('environment_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags, mod_fn_count=mod_fn_flags_count)
 
     model_output_smow = SharedMemoryOutputWriter('model_output', (100, 1+num_outputs), np.float32, Lock(), mod_fn=mod_fn_output)
     model_input_smow = SharedMemoryOutputWriter('model_input', (100, 1+num_features), np.float32, Lock(), mod_fn=mod_fn_input)
@@ -68,8 +72,8 @@ def get_edil_adaptation_objects(num_features, num_outputs):
     RegressionController and ClassifierController are not set up to read from shared memory yet.
     """
     model_smi = [
-        adapt_flag_smow.smm.get_variable_list()[0], # notify the onlinestreamer to load a new model by this int
-        active_flag_smow.smm.get_variable_list()[0], # notify the online streamer to pause running with this flag
+        adapt_flag_smow.smm.get_shared_memory_items()[0], # notify the onlinestreamer to load a new model by this int
+        active_flag_smow.smm.get_shared_memory_items()[0], # notify the online streamer to pause running with this flag
     ]
     model_ow = [
         model_output_smow, # <- timestamp, DOF1, DOF2 ->
@@ -97,8 +101,8 @@ def get_edil_adaptation_objects(num_features, num_outputs):
     The adaptation manager writes to the model when a new model is ready to be loaded (i.e., when the model should be updated).
     """
     adaptation_manager_smi = [
-        memory_flag_smow.smm.get_variable_list()[0],
-        environment_flag_smow.smm.get_variable_list()[0]
+        memory_flag_smow.smm.get_shared_memory_items()[0],
+        environment_flag_smow.smm.get_shared_memory_items()[0]
     ]
     adaptation_manager_ow = [
         adapt_flag_smow
@@ -112,9 +116,9 @@ def get_edil_adaptation_objects(num_features, num_outputs):
     The memory manager outputs a message to the adaptation_manager which specifies the number of memory slices that have been saved thus far (written to .pkl files).
     """
     memory_manager_smi = [
-        model_input_smow.smm.get_variable_list()[0],
-        environment_feedback_smow.smm.get_variable_list()[0],
-        environment_flag_smow.smm.get_variable_list()[0],
+        model_input_smow.smm.get_shared_memory_items()[0],
+        environment_feedback_smow.smm.get_shared_memory_items()[0],
+        environment_flag_smow.smm.get_shared_memory_items()[0],
     ]
     memory_manager_ow = [
         memory_flag_smow
@@ -130,3 +134,38 @@ def get_uil_adaptation_items():
 
 def get_dodr_adaptation_items():
     ...
+
+def produce_tciil_feedback(current_location: list[int, int],
+                           target_location: list[int, int],
+                           target_size: int,
+                           trial_distance: int):
+    """
+    Example function handle to produce a tolerant context informed incremental learning pseudo-label to be used as feedback from a 2-DoF environment.
+    This is used in the default implementation of libemg.environment.curricular_environment.CurricularFittsEnvironment. This uses the procedure described
+    in "Context-Informed Incremental Learning Improves Throughput and Reduces Drift in Regression-Based Myoelectric Control", Morrell et al 2025.
+
+    Parameters
+    ----------
+    current location : list
+        A 2DoF location where the cursor is located.
+    target location : list
+        A 2DoF location where the target is located.
+    target size : int
+        The size of the target.
+    """
+
+
+
+    # # https://github.com/cbmorrell/adaptive-regression/blob/main/utils/adaptation.py
+    # distance = np.linalg.norm(current_location, target_location)
+    # distance_scaling = np.sqrt((distance - target_size)/trial_distance)
+    # distance_scaling = min(1, distance_scaling)
+    # # TODO: the quadrant stuff
+
+    # # TODO: no motion suppression
+
+    # # TODO: quadrant t-ciil stuff
+    
+    return False
+
+    
