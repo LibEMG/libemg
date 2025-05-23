@@ -17,7 +17,7 @@ class MemoryManager(Process):
 
     Parameters
     ----------
-    memory: libemg.adaptation.memory.Memory
+    memory: Any
         A custom object that defines the memory class. It should have a .append(), .save(), .load(), .reset(), and __add__ operator overload.
     smi: list
         a list containing information to construct shared memory managers that receive all data necessary to compile memories. Consult libemg.adaptation._base.get_<type_of_adaptation>_adaptation_items() for more information.
@@ -27,7 +27,7 @@ class MemoryManager(Process):
         The location that memory slices will be saved. If adaptation is actually running, this should be same as the load_dir argument of the libemg.adaptation.managers.AdaptationManager.
     """
     def __init__(self,
-                 memory: libemg.adaptation.memory.Memory,
+                 memory: Any,
                  smi: list,
                  ow: list[libemg.output_writer.OutputWriter],
                  save_dir: str):
@@ -42,6 +42,7 @@ class MemoryManager(Process):
 
         self.environment_feedback_count = 0
         self.trial_counter = 0
+        ensure_directory(self.save_dir)
 
     def run(self):
         self.smm = libemg.shared_memory_manager.SharedMemoryManager()
@@ -73,7 +74,7 @@ class MemoryManager(Process):
                 self.memory.save(self.save_dir + "memory_"+str(self.trial_counter) + ".pkl")
                 self.trial_counter += 1
                 # tell the adaptation manager a new slice is ready
-                self.ow[0].write({"timestamp": data.timestamp, "trial_counter": self.trial_counter})
+                self.ow[0].write(self.trial_counter)
                 # Start a fresh memory
                 self.memory.reset()
             # Append the data to the memory object
@@ -152,6 +153,10 @@ class AdaptationManager(Process):
         self.memory_count = 0
         self.adaptation_count = 0
 
+        # ensure save and load directories exist
+        ensure_directory(self.save_dir)
+        ensure_directory(self.load_dir)
+
     def run_helper(self, block=True):
         """
         Helper function to run the process. This is used to avoid blocking the main thread.
@@ -189,9 +194,8 @@ class AdaptationManager(Process):
             # Adapt the model
             self.model.adapt(self.memory)
             self.adaptation_count += 1
-            self.model.save(self.save_dir + "model_" + str(self.model_count) + ".pkl")
-            self.ow[0].write({"timestamp": time.time(),
-                              "adaptation_count":self.adaptation_count})
+            self.model.save(self.save_dir + "mdl" + str(self.adaptation_count) + ".pkl")
+            self.ow[0].write(self.adaptation_count)
     
     def load_memory(self, loc: str):
         with open(loc, 'rb') as f:
@@ -200,3 +204,16 @@ class AdaptationManager(Process):
     def save_model(self, loc: str):
         with open(loc, 'wb') as f:
             pickle.dump(self.model, f)
+
+def ensure_directory(directory: str) -> None:
+    """
+    Ensure that a directory exists. If it does not exist, create it.
+
+    Parameters
+    ----------
+    directory : str
+        The directory to ensure exists.
+    """
+    import os
+    if not os.path.exists(directory):
+        os.makedirs(directory)
