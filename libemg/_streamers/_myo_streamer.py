@@ -516,7 +516,7 @@ class Myo(object):
 import numpy as np
 from multiprocessing import Process, Event
 class MyoStreamer(Process):
-	def __init__(self, filtered, emg, imu, shared_memory_items=[]):
+	def __init__(self, filtered, emg, imu, shared_memory_items=[], addr=None):
 		Process.__init__(self, daemon=True)
 		self.filtered = filtered
 		self.emg = emg
@@ -524,6 +524,7 @@ class MyoStreamer(Process):
 		self.smm = SharedMemoryManager()
 		self.shared_memory_items = shared_memory_items
 		self.signal = Event()
+		self.addr = addr
 
 	def run(self):
 		for item in self.shared_memory_items:
@@ -533,7 +534,7 @@ class MyoStreamer(Process):
 		if not self.filtered:
 			mode = emg_mode.RAW
 		self.m = Myo(mode=mode)
-		self.m.connect()
+		self.m.connect(addr=self.addr)
 
 		if self.emg:
 			def write_emg(emg):
