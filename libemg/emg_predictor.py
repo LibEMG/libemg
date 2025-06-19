@@ -936,21 +936,27 @@ class OnlineStreamer(ABC):
         window = {mod: get_windows(data[mod], self.window_size, self.window_increment) for mod in self.odh.modalities}
         fe = FeatureExtractor()
         if self.features is not None:
-            model_input = None
+            model_input_raw = None
             for mod in self.odh.modalities:
                 mod_features = fe.extract_features(self.features, window[mod], feature_dic=self.predictor.feature_params, array=True)
-                if model_input is None:
-                    model_input = mod_features
+                if model_input_raw is None:
+                    model_input_raw = mod_features
                 else:
-                    model_input = np.hstack((model_input, mod_features))
+                    model_input_raw = np.hstack((model_input_raw, mod_features))
             if self.scaler is not None:
-                model_input = self.scaler.transform(model_input)
+                model_input = self.scaler.transform(model_input_raw)
+            else:
+                model_input = model_input_raw
         else:
-            model_input = window[list(window.keys())[0]]
+            model_input_raw = window[list(window.keys())[0]]
+            if self.scaler is not None:
+                model_input = self.scaler.transform(model_input_raw)
+            else:
+                model_input = model_input_raw
         # TODO: This should be adding a per modality increment since they don't typically have the same Fs
         for mod in self.odh.modalities:
             self.expected_count[mod] += self.window_increment
-        return model_input, window
+        return model_input, model_input_raw, window
 
     def run(self, 
             block: bool=True):
@@ -984,21 +990,20 @@ class OnlineStreamer(ABC):
                 continue
 
             # Window processing stage
-            model_input, window = self.on_window_function_handle()
+            model_input, model_input_raw, window = self.on_window_function_handle()
             if model_input is None:
                 continue
 
             # Prediction/Postprocessing stage
             raw = self.prediction_function_handle(model_input)
             processed = self.postprocessing_function_handle(raw, model_input, window)
-            info = self.format_output_info(processed, model_input, window)
+            info = self.format_output_info(processed, model_input, model_input_raw, window)
             for writer in self.output_writers:
                 writer.write(info)
     
     def cleanup(self) -> None:
         self.smm.cleanup()
         print("LibEMG -> OnlineStreamer (smm cleaned up).")
-        self.process.terminate()
         print("LibEMG -> OnlineStreamer (process ended).")
     
     def install_standardization(self, 
@@ -1040,7 +1045,7 @@ class OnlineStreamer(ABC):
         pass
 
     @abstractmethod
-    def format_output_info(self, processed: Tuple[Any, Any, Any], model_input: Any, window: Dict[str, Any]) -> Dict[str, Any]:
+    def format_output_info(self, processed: Tuple[Any, Any, Any], model_input: Any, model_input_raw: Any, window: Dict[str, Any]) -> Dict[str, Any]:
         """
         Format output info as dictionary.
         """
@@ -1135,6 +1140,7 @@ class OnlineEMGClassifier(OnlineStreamer):
     def format_output_info(self, 
                            processed:   Tuple[Any, Any, Any],
                            model_input: Any, 
+                           model_input_raw: Any,
                            window:      Dict[str, Any]) -> Dict[str, Any]:
         # Compose a dictionary with all information you wish to send.
         prediction, probabilities, calculated_velocity = processed
@@ -1149,6 +1155,7 @@ class OnlineEMGClassifier(OnlineStreamer):
             "probability": probabilities,
             "velocity": calculated_velocity,
             "model_input": model_input,
+            "model_input_raw": model_input_raw,
             "window": window,
             "message": message
         }
@@ -1301,13 +1308,15 @@ class OnlineEMGRegressor(OnlineStreamer):
 
     def format_output_info(self, 
                            processed:   Any, 
-                           model_input: Any, 
+                           model_input: Any,
+                           model_input_raw: Any, 
                            window:      Dict[str, Any]) -> Dict[str, Any]:
         predictions = processed
         info = {
             "timestamp": time.time(),
             "model_output": predictions,
             "model_input": model_input,
+            "model_input_raw": model_input_raw,
             "window": window
         }
         return info

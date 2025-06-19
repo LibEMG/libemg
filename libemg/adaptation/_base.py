@@ -23,8 +23,10 @@ def get_edil_adaptation_objects(num_features, num_outputs):
 
     # Every sharedmemoryoutputwriter should have a mod_fn that describes how to modify its data.
 
+    # there are two places to grab the model input (pre scaler and post scaler)
+    # for the setup of my experiments, I've worked with the pre-scaler (non-normalized) model inputs.
     def mod_fn_input(self, data, info):
-        new_slice = np.hstack((info['timestamp'],info['model_input'][-1,:]))
+        new_slice = np.hstack((info['timestamp'],info['model_input_raw'][-1,:]))
         input_size = self.smm.variables['model_input']["shape"][0]
         data[:] = np.vstack((new_slice, data))[:input_size, :]
         return data
@@ -56,11 +58,21 @@ def get_edil_adaptation_objects(num_features, num_outputs):
     active_flag_smow = SharedMemoryOutputWriter('active_flag', (1,1), np.int8, Lock(), mod_fn=mod_fn_flags, mod_fn_count=mod_fn_flags_count)
     environment_flag_smow = SharedMemoryOutputWriter('environment_flag', (1,1), np.int32, Lock(), mod_fn=mod_fn_flags, mod_fn_count=mod_fn_flags_count)
 
-    model_output_smow = SharedMemoryOutputWriter('model_output', (100, 1+num_outputs), np.float32, Lock(), mod_fn=mod_fn_output)
-    model_input_smow = SharedMemoryOutputWriter('model_input', (100, 1+num_features), np.float32, Lock(), mod_fn=mod_fn_input)
-    environment_feedback_smow = SharedMemoryOutputWriter('environment_feedback', (100, 1+1+num_outputs), np.float32, Lock(), mod_fn=mod_fn_env)
+    model_output_smow = SharedMemoryOutputWriter('model_output', (100, 1+num_outputs), np.float64, Lock(), mod_fn=mod_fn_output, mod_fn_count=mod_fn_flags_count)
+    model_input_smow = SharedMemoryOutputWriter('model_input', (100, 1+num_features), np.float64, Lock(), mod_fn=mod_fn_input, mod_fn_count=mod_fn_flags_count)
+    environment_feedback_smow = SharedMemoryOutputWriter('environment_feedback', (100, 1+1+num_outputs), np.float64, Lock(), mod_fn=mod_fn_env, mod_fn_count=mod_fn_flags_count)
     
     model_output_sow = SocketOutputWriter("model_output")
+
+    # initial values for flags
+    adapt_flag_smow.write(0)
+    memory_flag_smow.write(0)
+    active_flag_smow.write(1)
+    environment_flag_smow.write(1)
+
+    model_output_smow.reset()
+    model_input_smow.reset()
+    environment_feedback_smow.reset()
 
     """
     The model receives messages over shared memory via the adapt tag (to notify when a new model is ready to be loaded).
@@ -117,7 +129,8 @@ def get_edil_adaptation_objects(num_features, num_outputs):
     """
     memory_manager_smi = [
         model_input_smow.smm.get_shared_memory_items()[0],
-        environment_feedback_smow.smm.get_shared_memory_items()[0],
+        environment_feedback_smow.smm.get_shared_memory_items()[0], # the feedback itself
+        environment_feedback_smow.smm.get_shared_memory_items()[1], # the number of times the feedback has been written to (useful for only querying the new stuff to be appended to memory)
         environment_flag_smow.smm.get_shared_memory_items()[0],
     ]
     memory_manager_ow = [
@@ -136,6 +149,7 @@ def get_dodr_adaptation_items():
     ...
 
 def produce_tciil_feedback(current_location: list[int, int],
+                           current_direction: list[int, int],
                            target_location: list[int, int],
                            target_size: int,
                            trial_distance: int):
@@ -152,20 +166,52 @@ def produce_tciil_feedback(current_location: list[int, int],
         A 2DoF location where the target is located.
     target size : int
         The size of the target.
+    trial_distance : int
+        The distance between the cursor and target at the start of the trial.
     """
 
+    optimal_direction = get_optimal_direction(current_location, target_location)
 
+    PC = distance_to_proportional_control(np.linalg.norm(np.array(current_location) - np.array(target_location)), target_size, trial_distance)
 
-    # # https://github.com/cbmorrell/adaptive-regression/blob/main/utils/adaptation.py
-    # distance = np.linalg.norm(current_location, target_location)
-    # distance_scaling = np.sqrt((distance - target_size)/trial_distance)
-    # distance_scaling = min(1, distance_scaling)
-    # # TODO: the quadrant stuff
+    quadrant_check = check_quadrants(current_location, current_direction, target_location)
 
-    # # TODO: no motion suppression
-
-    # # TODO: quadrant t-ciil stuff
+    # silence bad directions
+    pseudo_label = [val if outcome else 0 for val, outcome in zip(optimal_direction, quadrant_check)]
+    # scale to correct value
+    pseudo_label_scale = np.linalg.norm(pseudo_label)
+    pseudo_label = [val * PC / pseudo_label_scale for val in pseudo_label]
+    pseudo_label = [0 if np.isnan(i) else i for i in pseudo_label] # remove NaNs (completely wrong quadrant is set to 0,0)
     
-    return False
+    return pseudo_label
 
-    
+def get_optimal_direction(current_location: list[int, int],
+                          target_location: list[int, int]) -> list[int, int]:
+    return [i - j for i, j in zip(target_location, current_location)]
+
+def distance_to_proportional_control(distance, target_size, trial_distance) -> float:
+    in_target = distance < target_size
+    if in_target:
+        PC = 0
+    else:
+        # trial distance makes sense as the normalizer for most shooting tasks, but sometimes with random distance targets, the new target can be very close
+        # in which case, the user wouldn't hit the max proportinal control value for that trial. 
+        # it probably makes more sense to just normalize by a consant value
+        #PC = min(1.41, np.sqrt((distance - target_size)/trial_distance))
+        PC = min(1.41, np.sqrt((distance - target_size)/400)) 
+        # the gameplay region in CurricularFittsLaw is about 1000 pixels, so any distance greater than half the playable 
+        # area should evoke max speed.
+    return PC
+
+def check_quadrants(current_location, current_direction, target_location) -> list[bool, bool]:
+    margins = [abs(i - j) for i, j in zip(target_location, current_location)]
+    del_margins = [abs(i - (0.01 * k + j)) for i, j, k in zip(target_location, current_location, current_direction)]
+    outcome = []
+    for i, j in zip(margins, del_margins):
+        if i > j :
+            # better after the step
+            outcome.append(True)
+        else:
+            # worse after the step
+            outcome.append(False)
+    return outcome

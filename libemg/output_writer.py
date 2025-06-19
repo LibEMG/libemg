@@ -112,6 +112,12 @@ class SharedMemoryOutputWriter(OutputWriter):
         self.smm.modify_variable(self.tag, lambda data: self.mod_fn(data, info))
         self.smm.modify_variable(self.tag + "_count", lambda data: self.mod_fn_count(data, info))
     
+    def reset(self) -> None:
+        if self.smm is None:
+            raise RuntimeError("SharedMemoryOutputWriter not attached to a manager.")
+        self.smm.modify_variable(self.tag, lambda data: np.zeros(self.shape, dtype=self.dtype))
+        self.smm.modify_variable(self.tag + "_count", lambda data: 0)
+
     def default_mod_fn(self, data, info):
         input_size = self.smm.variables[self.tag]["shape"][0]
         data[:] = np.vstack((info[self.tag], data))[:input_size, :]

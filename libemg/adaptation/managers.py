@@ -41,13 +41,14 @@ class MemoryManager(Process):
         self.save_dir = save_dir
 
         self.environment_feedback_count = 0
-        self.trial_counter = 0
+        self.trial_counter = 1
         ensure_directory(self.save_dir)
 
     def run(self):
         self.smm = libemg.shared_memory_manager.SharedMemoryManager()
         for smi in self.smi:
             self.smm.create_variable(*smi)
+        self.ow[0].write(0) # start at 0
         
         self.memory.reset()
         while True:
@@ -61,27 +62,35 @@ class MemoryManager(Process):
 
     def process_data(self):
         # if there has been no new environment feedback, just continue
-        environment_feedback_count = self.smm.get_variable("environment_feedback_count")
-        if environment_feedback_count == self.environmentfeedback_counter:
+        environment_feedback_count = self.smm.get_variable("environment_feedback_count")[0,0]
+        if environment_feedback_count == self.environment_feedback_count:
             return
-        num_to_grab = self.environment_feedback_count - environment_feedback_count 
-        data = self.smm.get_variable("environment_feedback")
-        data = data[:num_to_grab,:]
+        num_to_grab = environment_feedback_count - self.environment_feedback_count 
+        feedback_data = self.smm.get_variable("environment_feedback")
+        feedback_data = feedback_data[:num_to_grab,:]
+
+        input_data = self.smm.get_variable('model_input')
         # for every row in data:
-        for i in range(num_to_grab):
-            if data.trial_counter != self.trial_counter:
+        for i in range(feedback_data.shape[0]):
+            feedback_row = feedback_data[i,:]
+            trial = feedback_row[1]
+            if trial != self.trial_counter:
                 # Save the memory
-                self.memory.save(self.save_dir + "memory_"+str(self.trial_counter) + ".pkl")
-                self.trial_counter += 1
-                # tell the adaptation manager a new slice is ready
+                self.memory.save(self.save_dir + "memory_"+str(int(self.trial_counter)) + ".pkl")
                 self.ow[0].write(self.trial_counter)
+                self.trial_counter = trial
+                # tell the adaptation manager a new slice is ready
+                
                 # Start a fresh memory
                 self.memory.reset()
             # Append the data to the memory object
-            self.append_to_memory(data)
+            row_timestamp = feedback_row[0]
+            # find timestamp in classifier_input
+            timestamp_id = np.where(input_data[:,0]== row_timestamp)[0]
+            input_row  = input_data[timestamp_id,1:] # start at 2nd column to remove timestamp
+            self.append_to_memory(feedback_row[2:], input_row, trial-1)
 
-        # update the environment_feedback_count
-        self.environmentfeedback_counter = environment_feedback_count 
+        self.environment_feedback_count = environment_feedback_count
 
     def save_memory(self, loc: str):
         with open(loc, 'wb') as f:
@@ -92,10 +101,9 @@ class MemoryManager(Process):
         Helper function to run the process. This is used to avoid blocking the main thread.
         """
         if block:
-            self.start()
-            self.join()
-        else:
             self.run()
+        else:
+            self.start()
 
     @abstractmethod
     def setup_memorymanager() -> None:
@@ -106,8 +114,10 @@ class MemoryManager(Process):
         pass
 
     @abstractmethod
-    def append_to_memory() -> None:
-        pass
+    def append_to_memory(self, feedback, input, trial) -> None:
+        self.memory.append(feedback, input, trial)
+
+
 
 class AdaptationManager(Process):
     """
@@ -135,7 +145,10 @@ class AdaptationManager(Process):
                   ow: list[libemg.output_writer.OutputWriter],
                   initial_memory_loc: str|None,
                   load_dir: str,
-                  save_dir: str):
+                  save_dir: str,
+                  stop_condition: callable = lambda x: True,
+                  notify: bool = True):
+        
         Process.__init__(self, daemon=True)
 
         self.signal = Event()
@@ -146,7 +159,8 @@ class AdaptationManager(Process):
         self.initial_memory_loc = initial_memory_loc
         self.load_dir = load_dir
         self.save_dir = save_dir
-
+        self.stop_condition = stop_condition
+        self.notify = notify
 
         self.memory = self.load_memory(initial_memory_loc)
 
@@ -160,42 +174,44 @@ class AdaptationManager(Process):
     def run_helper(self, block=True):
         """
         Helper function to run the process. This is used to avoid blocking the main thread.
+        NOTE: if you're training on the GPU, you need to run this in the main loop. This is a CUDA thing and 
+        not something that can be worked around without sacrificing multiprocessing latency elsewhere (streaming).
         """
         if block:
-            self.start()
-            self.join()
-        else:
             self.run()
+        else:
+            self.start()
 
     def run(self):
         self.smm = libemg.shared_memory_manager.SharedMemoryManager()
         for smi in self.smi:
             self.smm.create_variable(*smi)
-        while True:
+
+        while not self.stop_condition(self.memory_count):
 
             if self.signal.is_set():
-                self.save_model(self.save_dir + "model_final.pkl")
                 break
             
-            memory_count = self.smm.get_variable("memory_flag")
-            if  memory_count != self.memory_count:
-                self.memory_count = memory_count
-                # Load memory
-                new_memory = self.load_memory(self.load_dir + "memory_" + str(self.memory_count) + ".pkl")
-                self.memory = self.memory + new_memory
-
-                # Save the model
-                self.model.save(self.save_dir)
-                # Load the next trial's memory slice
-                with open(self.load_dir + "_" + str(self.memory_count) + ".pkl", "rb") as f:
-                    new_memory = pickle.load(f)
-                self.memory = self.memory + new_memory
+            memory_count = self.smm.get_variable("memory_flag")[0,0]
+            if  memory_count > self.memory_count:
+                num_memories_to_load = memory_count - self.memory_count
+                for m in range(num_memories_to_load):
+                    # load the next memory
+                    self.memory_count += 1 
+                    # Load memory
+                    new_memory = self.load_memory(self.load_dir + "memory_" + str(self.memory_count) + ".pkl")
+                    print(f"{self.memory_count} : {new_memory.processed_data[0].shape}")
+                    self.memory = self.memory + new_memory
             
             # Adapt the model
             self.model.adapt(self.memory)
             self.adaptation_count += 1
             self.model.save(self.save_dir + "mdl" + str(self.adaptation_count) + ".pkl")
-            self.ow[0].write(self.adaptation_count)
+            if self.notify:
+                self.ow[0].write(self.adaptation_count)
+        
+        self.save_model(self.save_dir + "model_final.pkl")
+        
     
     def load_memory(self, loc: str):
         with open(loc, 'rb') as f:

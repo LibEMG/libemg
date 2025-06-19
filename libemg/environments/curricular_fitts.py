@@ -4,6 +4,7 @@ from libemg.environments._base import Environment
 from libemg.adaptation._base import produce_tciil_feedback
 from dataclasses import dataclass
 from multiprocessing import Process
+from typing import Sequence
 import time
 import pickle
 import pygame
@@ -36,6 +37,10 @@ class CurricularFittsConfig:
         Default speed of the target in pixels per second.
     cursor_radius : int
         Radius of the cursor in pixels.
+    brownian_motion : bool
+        Whether the target should move (randomly).
+    cursor_speed_multiplier : int
+        The number multiplied by the controller output to determine the cursor speed.
     color_bg : tuple[int, int, int]
         Background color of the main panel in RGB format.
     color_block_border : tuple[int, int, int]
@@ -64,6 +69,9 @@ class CurricularFittsConfig:
     default_timeout: float = 10.0
     default_speed: float = 1.0
     cursor_radius: int = 5
+    brownian_motion: bool = False
+    cursor_speed_multiplier: int = 20
+    target_countdown: float = 0.5 # seconds
 
     # color scheme - darkula by default
     color_bg: tuple[int, int, int] = (0,0,0)
@@ -71,10 +79,12 @@ class CurricularFittsConfig:
     color_block_fill: tuple[int, int, int] = (0, 70, 135)
     color_cursor: tuple[int, int, int] = (0, 255, 210)
     color_target: tuple[int, int, int] = (255, 68, 153)
+    color_target_good: tuple[int, int, int]  = (0, 255, 0)  # Color for successful target acquisition
 
     # controller related parameters
-    controller_fields = ['predictions', 'timestamp'] # for regression; add 'pc' for classification
-
+    controller_fields : tuple[str, str] = ('predictions', 'timestamp') # for regression; add 'pc' for classification
+    controller_map :  tuple[int, int] = (1,1)
+    
     # feedback configuration
     feedback_handle: callable = produce_tciil_feedback
 
@@ -83,24 +93,23 @@ class Target:
                  screen,
                  config: CurricularFittsConfig, 
                  radius : int = 10, 
-                 brownian_motion : bool = True, 
                  speed: float = 1):
         self.screen = screen
         self.config = config
-        self.color = config.color_target
+        self.color = [config.color_target, config.color_target_good]
+        self.contact = 0  # 0: not in contact, 1: in contact
         self.radius = radius
-        self.position = self.spawn_target()
-        self.brownian_motion = brownian_motion
+        self.randomize_location()
         self.speed = speed
         self.direction = [random.uniform(-1, 1), random.uniform(-1, 1)]
 
-    def spawn_target(self):
+    def randomize_location(self):
         x = random.randint(self.radius, self.config.width - self.radius)
         y = random.randint(self.config.block_height + self.radius, self.config.height - self.radius)  # Spawn below the information block
-        return [x, y]
+        self.position =  [x, y]
 
     def update(self):
-        if self.brownian_motion:
+        if self.config.brownian_motion:
             # Update target position with Brownian motion
             self.position[0] += self.direction[0] * self.speed
             self.position[1] += self.direction[1] * self.speed
@@ -116,10 +125,13 @@ class Target:
                 self.direction[1] *= -1
 
     def draw(self):
-        pygame.draw.circle(self.screen, self.color, (int(self.position[0]), int(self.position[1])), self.radius)
+        if self.contact:
+            pygame.draw.circle(self.screen, self.color[1], (int(self.position[0]), int(self.position[1])), self.radius)
+        else:
+            pygame.draw.circle(self.screen, self.color[0], (int(self.position[0]), int(self.position[1])), self.radius)
 
     def reset(self):
-        self.position = self.spawn_target()  # Spawn in a new location
+        self.randomize_location()  # Spawn in a new location
 
 class BaseTargetGenerator:
     def __init__(self,
@@ -173,22 +185,23 @@ class RadiusTargetGenerator(BaseTargetGenerator):
     def generate(self, result):
         # a success
         if result == 1:
-            factor = (1 - self.P / 100)
-            if int(self.current_radius * factor) == self.current_radius:
+            factor = 1 - (self.P / 100)
+            if int(self.current_radius * factor) == self.current_radius and self.P != 0:
+                # if its just marginally smaller, reduce by a whole pixel.
                 self.current_radius = self.current_radius - 1
             else:
                 self.current_radius *= factor
         # a fail
         elif result == 0:
-            factor = (1 + self.F / 100)
-            if int(self.current_radius * factor) == self.current_radius:
+            factor = 1 + (self.F / 100)
+            if int(self.current_radius * factor) == self.current_radius and self.F != 0:
                 self.current_radius = self.current_radius + 1
             else:
                 self.current_radius *= factor
         # first spawn
         else:
             pass
-        self.current_radius = int(max([1, self.current_radius]))
+        self.current_radius = int(max([self.config.cursor_radius, self.current_radius]))# don't allow it smaller than cursor radius
         
         # check reversals
         if self.last_result != -1:
@@ -277,18 +290,22 @@ class Log:
             "trial_number": [],
             "target_position": [],
             "cursor_position": [],
+            "target_size": [],
+            "feedback": [],
             "timestamp": []
         }
 
-    def record(self, trial_number, target_position, cursor_position, timestamp):
+    def record(self, trial_number, target_position, cursor_position, target_size, feedback, timestamp):
         self.entries['trial_number'].append(trial_number)
         self.entries['target_position'].append(target_position)
         self.entries['cursor_position'].append(cursor_position)
+        self.entries['target_size'].append(target_size)
+        self.entries['feedback'].append(feedback)
         self.entries['timestamp'].append(timestamp)
 
-    def save(self, trial_number, result):
+    def save(self, dir, trial_number, result):
         filename = f'trial_log_{trial_number}_{result}.pkl'
-        with open(filename, 'wb') as f:
+        with open(dir + "/" + filename, 'wb') as f:
             pickle.dump(self, f)
     
     def __add__(self, obj):
@@ -299,6 +316,10 @@ class Log:
         log.entries['target_position'].extend(obj.entries['target_position'])
         log.entries['cursor_position'].extend(self.entries['cursor_position'])
         log.entries['cursor_position'].extend(obj.entries['cursor_position'])
+        log.entries['target_size'].extend(self.entries['target_size'])
+        log.entries['target_size'].extend(obj.entries['target_size'])
+        log.entries['feedback'].extend(self.entries['feedback'])
+        log.entries['feedback'].extend(obj.entries['feedback'])
         log.entries['timestamp'].extend(self.entries['timestamp'])
         log.entries['timestamp'].extend(obj.entries['timestamp'])
         return log
@@ -368,10 +389,16 @@ class Cursor:
         self.color = config.color_cursor  # Cursor color
         self.position = [0, 0]  # Initial position
 
-    def update(self):
-        # TODO: this is updated by the controller
-        # Get the current position of the mouse pointer
-        self.position = pygame.mouse.get_pos()
+    def update(self, update_direction):
+        if update_direction is not None:
+            self.position[0] += update_direction[0] * self.config.cursor_speed_multiplier * self.config.controller_map[0]
+            self.position[1] += update_direction[1] * self.config.cursor_speed_multiplier * self.config.controller_map[1]
+
+            # Ensure cursor stays in the bounds of the screen
+            self.position[0] = max(0, self.position[0])
+            self.position[0] = min(self.config.width - self.radius, self.position[0])
+            self.position[1] = max(0, self.position[1])
+            self.position[1] = min(self.config.height - self.radius, self.position[1])
 
     def draw(self):
         pygame.draw.circle(self.screen, self.color, (int(self.position[0]), int(self.position[1])), self.radius)
@@ -402,6 +429,12 @@ class CurricularFitts(Environment):
 
         self.environment_ow = environment_ow
 
+        self.predictions = None
+        self.timestamp = None
+
+        self.game_feedback = None
+        self.model_feedback = None
+
     def game_setup(self):
         self.screen = pygame.display.set_mode((self.config.width, self.config.height))
         pygame.display.set_caption("LibEMG -> Curricular Fitts Law")
@@ -419,15 +452,21 @@ class CurricularFitts(Environment):
         """
         Get new target parameters (size, timeout, speed) from the generator, and use this to setup the next target.
         """
-        # if we've finished a trial, increment the trial counter
+        # if we've finished a trial, save the log, increment the trial counter
         if not initial:
+            self.log.save(self.save_file, self.trial_number, result)
+            self.log = Log()
             self.trial_number += 1
+        
+        self.cursor_timer = time.time()
 
         # get the radius, speed, and timeout from the generator
         radius, speed, timeout = self.target_generator.generate(result)
-        self.radius = radius
-        self.speed = speed
+
         self.timeout = timeout
+        self.target.radius = radius
+        self.target.speed = speed
+        self.target.randomize_location()
 
         # update the information block
         self.info_block = InformationBlock(
@@ -443,7 +482,9 @@ class CurricularFitts(Environment):
         self.input()
         self.update()
         self.draw()
-        pygame.time.Clock().tick(self.config.fps)
+        if self.trial_number > self.config.num_trials:
+            self.done = True
+            return
 
     def input(self):
         self.pygame_inputs()
@@ -453,40 +494,58 @@ class CurricularFitts(Environment):
     def pygame_inputs(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                self.done = True
 
     def controller_inputs(self):
         # get the controller message
 
         # get the feedback ready for this message
         data = self.controller.get_data(self.config.controller_fields)
-        self.predictions = data[0]
-        self.timestamp = data[1]
-        self.feedback = self.config.feedback_handle(self.cursor.position, self.target.position, self.target.radius, self.trial_distance)
-        # make self._info,
-        # save last timestamp, last controller output, etc.
+        if data is not None:
+            self.predictions = data[0] 
+            self.direction = [i*j for i,j in zip(self.predictions, self.config.controller_map)]
+            self.timestamp = data[1]
+            # game feedback is in the game space, i.e, down is positive y, right is positive x.
+            self.game_feedback = self.config.feedback_handle(self.cursor.position, self.direction, self.target.position, self.target.radius, self.trial_distance)
+            # model feedback is in the classifier space, so we need to transform it BACK via multiplying by controller_map again
+            self.model_feedback = [i*j for i,j in zip(self.game_feedback, self.config.controller_map)]
+            self.info = {'timestamp': self.timestamp,
+                         'environment_feedback': self.model_feedback,
+                         'game_feedback': self.game_feedback,
+                         'trial': self.trial_number,
+                         'prediction': self.predictions,
+                         'direction': self.direction}
+            self.log.record(self.trial_number, self.target.position, self.cursor.position, self.target.radius, self.game_feedback, self.timestamp)
+
+            if self.environment_ow is not None:
+                
+                self.environment_ow[0].write(self.info)
+            # make self._info,
+            # save last timestamp, last controller output, etc.
 
     
     def check_collisions(self):
-
         target_rect = pygame.Rect(self.target.position[0] - self.target.radius,
                                 self.target.position[1] - self.target.radius,
                                 self.target.radius * 2, self.target.radius * 2)
         
         # TODO: Make a countdown for this to acquire the target
         if target_rect.collidepoint(self.cursor.position):
-            self.info_block.update_metadata("Hit!")
-            self.next_trial(result=1)
+            self.target.contact = 1
+            if time.time() - self.cursor_timer > self.config.target_countdown:
+                self.info_block.update_metadata("Hit!")
+                self._start_new_trial(initial=False, result=1)
+        else:
+            self.cursor_timer = time.time()
+            self.target.contact = 0
 
     def update(self):
         self.target.update()
-        self.cursor.update()
-        # TODO get timestamp from the controller
-        self.log.record(self.trial_number, self.target.position, self.cursor.position, time.time())
+        self.cursor.update(self.predictions)
+        
         if self.info_block.get_remaining_time() <= 0:
             self.info_block.update_metadata("Timeout!")
-            self.next_trial(result=0)
-    
+            self._start_new_trial(initial=0, result=0)
 
     def draw(self):
         self.screen.fill(self.config.color_bg)
