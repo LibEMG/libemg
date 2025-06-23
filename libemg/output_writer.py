@@ -4,6 +4,9 @@ from libemg.shared_memory_manager import SharedMemoryManager
 import numpy as np
 import types
 from multiprocessing import Lock
+import struct
+import libemg
+from enum import IntEnum
 
 class OutputWriter(ABC):
     @abstractmethod
@@ -77,6 +80,74 @@ class SocketOutputWriter(OutputWriter):
         # Reinitialize the socket in the child process.
         self.sock = None
         self._create_socket()
+
+
+class SIMOutputWriter(SocketOutputWriter):
+    # Enum for Degrees of Actuation
+    class DOAs(IntEnum):
+        TH_ROT = 0
+        WFE = 6
+        WUR = 7
+        WPS = 8
+
+    def update_dictionary(self,d,k):
+        # k is model output
+        if k == 0:
+            d[self.DOAs.TH_ROT] = np.min([d[self.DOAs.TH_ROT] + self.constant_dof_speed, 1])
+        elif k == 1:
+            d[self.DOAs.TH_ROT] = np.max([d[self.DOAs.TH_ROT] - self.constant_dof_speed, -1])
+        if k == 3:
+            d[self.DOAs.WFE] = np.max([d[self.DOAs.WFE] - self.constant_dof_speed, -1])
+        elif k == 4:
+            d[self.DOAs.WFE] = np.min([d[self.DOAs.WFE] + self.constant_dof_speed, 1])
+        return d
+
+    def __init__(self, ip: str = '127.0.0.1', port: int = 12346, protocol: str = "UDP", constant_dof_speed = .05):
+        super(SIMOutputWriter, self).__init__(tag=None, ip = '127.0.0.1', port = 12346, protocol = "UDP")
+        self.constant_dof_speed = constant_dof_speed
+        self.DOA_dict = {doa: 0 for doa in self.DOAs}
+        self.udp_counter = 0
+
+    def write(self, info):
+        
+        self.DOA_dict = self.update_dictionary(self.DOA_dict, info["model_output"])
+        
+        for doa in self.DOA_dict:
+            message = self.compose_udp_message(time=info["timestamp"], num_count=1, val_type=float, data_type=bytes([1, doa]), data=struct.pack("d", self.DOA_dict[doa]))
+
+            if self.sock is None:
+                self._create_socket()
+
+            self.sock.sendto(message, (self.ip, self.port))
+
+    def get_byte_for_type(self, py_type):
+        floating_types = {float}
+        signed_types = {int}
+        unsigned_types = {bytes}
+
+        if py_type not in floating_types | signed_types | unsigned_types:
+            raise Exception(f"Unsupported data type: {py_type}")
+
+        type_info = 0b00000000
+        if py_type in floating_types:
+            type_info |= 0b00100000
+        elif py_type in signed_types:
+            type_info |= 0b00010000
+
+        type_info += struct.calcsize('d' if py_type is float else 'i')
+        return type_info
+    
+    def compose_udp_message(self, time, num_count, val_type, data_type, data):
+        message = bytearray()
+        message.append(num_count)
+        message.append(self.get_byte_for_type(val_type))
+        message.extend(data_type)
+        message.extend(struct.pack("d", time))
+        message.extend(data)
+        message.extend(struct.pack("H", self.udp_counter))
+
+        self.udp_counter = (self.udp_counter + 1) % 65536
+        return message
 
 class SharedMemoryOutputWriter(OutputWriter):
     def __init__(self, tag: str, shape, dtype, lock, mod_fn=None, mod_fn_count=None):
