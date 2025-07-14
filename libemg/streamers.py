@@ -16,6 +16,7 @@ from libemg._streamers._emager_streamer import EmagerStreamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 from libemg._streamers._mindrove import MindroveStreamer
+from libemg._streamers._OTB_MuoviPlus import OTBMuoviPlusEMGStreamer
 
 def sifi_biopoint_streamer(
     name = "BioPoint_v1_3",
@@ -683,3 +684,49 @@ def mindrove_streamer(shared_memory_items = None):
     m.start()
     return m, shared_memory_items
 
+
+def otb_muovi_plus_streamer(shared_memory_items = None,
+                            ip: str = '0.0.0.0',
+                            port: int = 54321,
+                            emg_channels: int = 128):
+    """The streamer for the OTB Muovi+ device.
+    
+    This function connects to the OTB Muovi+ device and streams its data over a network socket  and access it via shared memory.
+
+    Parameters
+    ----------
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
+
+    
+    ip : str (optional), default='0.0.0.0'
+        The IP address of the OTB Muovi+ device. Used to connect to the device.
+    port : int (optional), default=54321
+        The port number to connect to the OTB Muovi+ device.
+    emg_channels : int (optional), default=128
+        The number of EMG channels to stream from the OTB Muovi+ device. 
+        This should match the number of channels configured on the device.
+    Returns
+    ----------
+    Object: streamer
+        The OTB Muovi+ streamer object.
+    Object: shared memory
+        The shared memory object.
+    Examples
+    ---------
+    >>> streamer, shared_memory = otb_muovi_plus_streamer(ip='192.168.76.1', port=54320)
+    """
+    if shared_memory_items is None:
+        shared_memory_items = [
+            ["emg",       (2000, emg_channels), np.double],
+            ["emg_count", (1,1),    np.int32]
+        ]
+
+    for item in shared_memory_items:
+        item.append(Lock())
+
+    muoviplus = OTBMuoviPlusEMGStreamer(ip=ip, port=port, shared_memory_items=shared_memory_items, emg_channels=emg_channels)
+    muoviplus.start()
+
+    return muoviplus, shared_memory_items

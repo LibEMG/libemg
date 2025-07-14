@@ -1,6 +1,12 @@
 import socket
 import pickle
 import numpy as np
+import signal
+import atexit
+
+from multiprocessing import Event, Process
+from libemg.shared_memory_manager import SharedMemoryManager
+from crc.crc import Crc8, CrcCalculator
 
 """
 OT Bioelettronica
@@ -224,3 +230,178 @@ class OTBMuoviPlusStreamer:
                 print("Worker Stopped.")
                 device.stop()
                 quit()
+
+
+class PacketParser:
+    @staticmethod
+    def parse_raw(n, packet):
+        """
+        Parse raw binary packet into signed 16-bit EMG values.
+        Assumes each packet consists of 64 samples per channel and 9 bytes of overhead.
+        """
+        try:
+            int_data = np.frombuffer(packet, dtype='>i2').astype(np.int32)
+            int_data[int_data > 32767] -= 65536
+
+            if int_data.shape[0] < n * (292 // 2):
+                return None
+
+            parsed_packets = []
+            for i in range(n):
+                base = 2 * i * (64 + 9)
+                ch1_start = base
+                ch1_end = base + 64
+                ch2_start = base + 64 + 9
+                ch2_end = ch2_start + 64
+
+                ch1 = int_data[ch1_start:ch1_end]
+                ch2 = int_data[ch2_start:ch2_end]
+
+                if len(ch1) == 64 and len(ch2) == 64:
+                    parsed_packets.append(np.concatenate((ch1, ch2)))
+
+            return parsed_packets
+
+        except Exception as e:
+            print(f"[PacketParser Error] {e}")
+            return None
+        
+
+class OTBMuoviPlusEMGStreamer(Process):
+    """
+    Handles EMG streaming from the OTB MuoviPlus device using a TCP socket.
+    Parses, filters, and stores data into shared memory for real-time access.
+    """
+
+    # Define the start and stop signals for the device
+    START_SIGNAL = [0b00000101, 0b01011011, 0b01001011]
+    STOP_TCP = [0b00000000]
+
+    def __init__(self, ip: str, port: int, shared_memory_items: list, emg_channels=128):
+        super().__init__()
+        self.ip = ip
+        self.port = port
+        self.shared_memory_items = shared_memory_items
+        self.emg_channels = emg_channels
+
+        self.client = None
+        self.stop_event = Event()
+        self.smm = SharedMemoryManager()
+        
+        # Graceful exit
+        atexit.register(self.cleanup)
+        signal.signal(signal.SIGINT, self._handle_exit_signal)
+
+
+    def run(self):
+        """Main loop that runs in its own process to stream EMG data."""
+
+        self._setup_shared_memory()
+        
+        try:
+            # Connect to the device and start streaming
+            self._connect()
+            self._send_packet(self.START_SIGNAL)
+
+            while not self.stop_event.is_set():
+                # Receive raw data packets from the device
+                raw = self.client.recv(292 * 8)
+                if not raw:
+                    break
+
+                # Parse the raw data into EMG packets
+                emg_packets = PacketParser.parse_raw(n=8, packet=raw)
+
+                # Process the received EMG packets
+                if emg_packets and len(emg_packets) == 8:
+                    emg_packets = [self._filter_channels(packet) for packet in emg_packets]
+                    self._write_emg_data(emg_packets)
+
+        except Exception as e:
+            print(f"[OTBStreamer Error] {e}")
+        finally:
+            self.cleanup()
+    
+    
+    def stop(self):
+        """Stop the streaming process."""
+        self.stop_event.set()
+        self._send_packet(self.STOP_TCP)
+        self.join()
+    
+
+    def _connect(self):
+        """Connect to the OTB MuoviPlus device."""
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.settimeout(5)
+        self.client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.client.connect((socket.gethostbyname(self.ip), self.port))
+        print(f"[OTBStreamer] Connected to {self.ip}:{self.port}")
+
+
+    def _send_packet(self, sig_bits):
+        """Send a packet to the OTB MuoviPlus device."""
+        if self.client:
+            packet = bytearray(sig_bits)
+            crc_calc = CrcCalculator(Crc8.MAXIM_DOW)
+            packet.append(crc_calc.calculate_checksum(packet))
+            self.client.send(packet)
+
+    
+    def _disconnect(self):
+        """Disconnect from the OTB MuoviPlus device."""
+        if self.client:
+            try:
+                self.client.shutdown(socket.SHUT_RDWR)
+            except:
+                pass
+            self.client.close()
+            self.client = None
+            print("[OTBStreamer] Disconnected")
+
+    
+    def _filter_channels(self, packet):
+        """
+        Filters out the unused 64 channels if only 64 channels are configured.
+        """
+        if self.emg_channels == 128 or len(packet) != 128:
+            return packet
+        
+        first_half, second_half = packet[:64], packet[64:]
+
+        if np.all(first_half == 0):
+            return second_half
+        elif np.all(second_half == 0):
+            return first_half
+        else:
+            return first_half + second_half
+
+    
+    def _write_emg_data(self, packets):
+        """
+        Write EMG data to shared memory, FIFO-style.
+        """
+        emg_array = np.array(packets)
+        num_samples = emg_array.shape[0]
+
+        def update_buffer(buffer):
+            return np.vstack((emg_array, buffer[:-num_samples]))
+
+        self.smm.modify_variable('emg', update_buffer)
+        self.smm.modify_variable('emg_count', lambda x: x + num_samples)
+
+
+    def _setup_shared_memory(self):
+        """Initialize shared memory variables."""
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
+
+
+    def cleanup(self):
+        self._disconnect()
+        self.smm.cleanup()
+
+
+    def _handle_exit_signal(self, signum, frame):
+        print(f"[OTBStreamer] Received exit signal {signum}, cleaning up.")
+        self.cleanup()
