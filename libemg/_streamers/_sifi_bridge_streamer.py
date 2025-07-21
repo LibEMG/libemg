@@ -316,6 +316,8 @@ class SiFiBridgeStreamer(Process):
         self.old_ppg_packet = (
             None  # required for now since ppg sends non-uniform packet length
         )
+        
+        print("LibEMG -> SiFiBridgeStreamer (process started).")
         while True:
             try:
                 new_packet = self.sb.get_data()
@@ -326,8 +328,10 @@ class SiFiBridgeStreamer(Process):
                 traceback.print_exc()
                 continue
             if self.signal.is_set():
+                print("LibEMG -> SiFiBridgeStreamer (signal received).")
                 self.cleanup()
                 break
+            
         print("LibEMG -> SiFiBridgeStreamer (process ended).")
 
     def stop_sampling(self):
@@ -339,7 +343,17 @@ class SiFiBridgeStreamer(Process):
         return
 
     def disconnect(self):
-        self.connected = self.sb.disconnect()["connected"]
+        try:
+            result = self.sb.disconnect()
+            # Handle both dictionary and boolean return types
+            if isinstance(result, dict) and "connected" in result:
+                self.connected = result["connected"]
+            else:
+                # If it returns a boolean directly, assume False means disconnected
+                self.connected = not result if isinstance(result, bool) else False
+        except Exception as e:
+            print(f"Error during disconnect: {e}")
+            self.connected = False
         return self.connected
 
     def deep_sleep(self):
