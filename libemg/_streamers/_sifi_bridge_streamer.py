@@ -1,4 +1,5 @@
 from multiprocessing import Process, Event
+import time
 import numpy as np
 from collections.abc import Callable
 
@@ -362,8 +363,15 @@ class SiFiBridgeStreamer(Process):
     def cleanup(self):
         self.stop_sampling()  # stop sampling
         print("LibEMG -> SiFiBridgeStreamer (sampling stopped).")
-        self.deep_sleep()  # stops status packets
-        print("LibEMG -> SiFiBridgeStreamer (device sleeped).")
+        time.sleep(1)
+        if self.mac == "CE:9B:59:A6:BD:EC" or self.mac == "DD:67:FD:19:06:03":
+            self.turnoff()
+            print("LibEMG -> SiFiBridgeStreamer (device turned off).")
+        else:
+            self.deep_sleep()  # stops status packets
+            print("LibEMG -> SiFiBridgeStreamer (device sleeped).")
+        
+        time.sleep(1)
         self.disconnect()  # disconnect
         print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
         self.sb._bridge.kill()

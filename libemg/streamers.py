@@ -32,7 +32,9 @@ def sifi_biopoint_streamer(
     eda_bandpass = (0,5),
     eda_freq = 0,
     streaming=False,
-    mac= None
+    mac= None,
+    ble_power="high",
+    memory_mode="both"
 ):
     """
     The streamer for the SiFi BioPoint. 
@@ -128,7 +130,9 @@ def sifi_biopoint_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac
+        mac,
+        ble_power,
+        memory_mode,
     )
     sb.start()
     return sb, shared_memory_items
@@ -149,7 +153,9 @@ def sifi_bioarmband_streamer(
     eda_bandpass = (0,5),
     eda_freq = 0,
     streaming = False,
-    mac = None
+    mac = None,
+    ble_power = "high",
+    memory_mode = "both"
 ):
     """
     The streamer for the SiFi BioArmband. 
@@ -246,7 +252,9 @@ def sifi_bioarmband_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac
+        mac,
+        ble_power,
+        memory_mode,
     )
 
     sb.start()
