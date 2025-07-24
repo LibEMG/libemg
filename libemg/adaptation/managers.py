@@ -183,6 +183,7 @@ class AdaptationManager(Process):
             self.start()
 
     def run(self):
+        start_time = time.time()
         self.smm = libemg.shared_memory_manager.SharedMemoryManager()
         for smi in self.smi:
             self.smm.create_variable(*smi)
@@ -204,7 +205,9 @@ class AdaptationManager(Process):
                     self.memory = self.memory + new_memory
             
             # Adapt the model
-            self.model.adapt(self.memory)
+            loss_list = self.model.adapt(self.memory)
+            with open(self.save_dir + "losses.txt", 'a') as f:
+                f.write(str(time.time() - start_time) + "\t" + str(loss_list) + "\n")
             self.adaptation_count += 1
             self.model.save(self.save_dir + "mdl" + str(self.adaptation_count) + ".pkl")
             if self.notify:
