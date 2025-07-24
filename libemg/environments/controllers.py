@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import struct
 from typing import overload
 import socket
 import re
@@ -14,7 +15,8 @@ class Controller(ABC):
         self.info_function_map = {
             'predictions': self._parse_predictions,
             'pc': self._parse_proportional_control,
-            'timestamp': self._parse_timestamp
+            'timestamp': self._parse_timestamp,
+            'feedback': self._parse_feedback
         }
         # TODO: Maybe add a flag for continuous vs. not continuous... not sure if that's needed though
 
@@ -109,6 +111,22 @@ class Controller(ABC):
         ...
 
     @abstractmethod
+    def _parse_feedback(self, action) -> float:
+        """Parse the latest feedback from a message.
+
+        Parameters
+        ----------
+        action : UDPObject
+            Message to parse (most likely a UDPObject).
+
+        Returns
+        -------
+        float
+            Feedback.
+        """
+        ...
+
+    @abstractmethod
     def _get_action(self) -> str | None:
         """Grab the latest action.
 
@@ -117,7 +135,7 @@ class Controller(ABC):
         str or None
             Latest action or None if no action has occurred.
         """
-        ...
+        
 
 
 class SocketController(Controller):
@@ -159,6 +177,88 @@ class SocketController(Controller):
             action = None
         return action
     
+class SIM_UDP_Receiver(SocketController):
+    
+    class UdpObject:
+        def __init__(self, data_bytes:bytes):
+            """Creates SIM UDP object and applies conversion/interpretation of data
+
+            Args:
+                data_bytes (_type_): _description_
+            """
+            self.category:int = data_bytes[2]
+            self.sub_category:int = data_bytes[3]
+            self.dtype_code, self.dtype_size, self.dtype = self.parse_dtype(data_bytes[1])
+            self.timestamp = struct.unpack('<d', data_bytes[4:12])[0]
+            self.counter = struct.unpack('<H', data_bytes[-2:])[0]
+
+            data_len = data_bytes[0] * self.dtype_size
+            self.raw_data:bytearray = data_bytes[12:12 + data_len]
+
+
+        def parse_dtype(self, type_byte):
+            is_float = (type_byte & 0b00100000) != 0
+            is_signed = (type_byte & 0b00010000) != 0
+            size = type_byte & 0b00001111
+
+            if is_float:
+                if size == 4:
+                    return 'f', 4, float
+                elif size == 8:
+                    return 'd', 8, float
+            else:
+                if is_signed:
+                    return {1: 'b', 2: 'h', 4: 'i', 8: 'q'}[size], size, int
+                else:
+                    return {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}[size], size, int
+
+            raise ValueError("Unsupported type byte")
+
+        def process_data(self):
+            """Unpacks the raw data based on dtype into a list of typed values"""
+            count = len(self.raw_data) // self.dtype_size
+            fmt = f"<{count}{self.dtype_code}"  # Little-endian, e.g., '<64d' for 64 float64s
+            
+            # if we are sure this is correctly set up we can kick out the try => the dtype has to match the info
+            try: 
+                return list(struct.unpack(fmt, self.raw_data))
+            except Exception as e:
+                raise ValueError(f"Failed to unpack raw UDP data: {e}")
+
+    
+    def __init__(self, ip = '127.0.0.1', port = 12346):
+        super().__init__(ip, port)
+        
+    
+    def _get_action(self)->UdpObject:
+        try:
+            data, _ = self.sock.recvfrom(1024) # 526 bytes are needed for 64 channels streaming float64s, so this should be enough for now
+            action = self.UdpObject(data)
+
+        except BlockingIOError:
+            action = None
+        return action
+
+    def _parse_timestamp(self, action:UdpObject):
+        return action.timestamp
+    
+    def _parse_feedback(self, action:UdpObject):
+        
+        # it is a sensor signal 
+        if action.category == 5:
+            values_str = " ".join(str(x) for x in action.process_data())
+            print(f"[UDP] {time.time():.3f}, sensor:{action.sub_category}, "
+                          f"counter:{action.counter}, data:[{values_str}]")
+            return action.process_data()
+        
+        # this could be a reward etc
+        # elif action.category == 6:
+        #     pass
+
+    def _parse_predictions(self, action):
+        return super()._parse_predictions(action)
+    def _parse_proportional_control(self, action):
+        return super()._parse_proportional_control(action)
 
 class ClassifierController(SocketController):
     def __init__(self, output_format: str, num_classes: int, ip: str = '127.0.0.1', port: int = 12346) -> None:
