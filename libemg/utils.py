@@ -5,6 +5,7 @@ from PIL import Image, UnidentifiedImageError
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
+from datetime import datetime
 
 
 def get_windows(data, window_size, window_increment):
@@ -100,3 +101,29 @@ def make_regex(left_bound, right_bound, values = None):
 
     right_bound_str = "(?=" + right_bound +")"
     return left_bound_str + mid_str + right_bound_str
+
+def log_timestamp(path, file_name="timestamp_log.txt", tag="", append=True, print_timestamp=True):
+    """Logs the current timestamp to a file.
+
+    Parameters
+    ----------
+    path: str
+        The path to the directory where the log file will be saved.
+    file_name: str
+        The name of the log file.
+    tag: str
+        An optional tag to include in the log entry.
+    append: bool
+        Whether to append to the log file or overwrite it.
+    print_timestamp: bool
+        Whether to print the timestamp to the console.
+    """
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    log_file = os.path.join(path, file_name)
+    with open(log_file, "a" if append else "w") as f:
+        timestamp = datetime.now().isoformat()
+        f.write(f"{timestamp} - {tag}\n")
+        if print_timestamp:
+            print(f"Logged timestamp: {timestamp} - {tag}")
