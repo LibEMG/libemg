@@ -43,7 +43,7 @@ class Environment(ABC):
         """Run environment in main loop. Blocks all further execution. Results are saved after task is completed."""        
         pygame.init()
         pygame.font.init()
-        pygame.mixer.init() 
+        pygame.mixer.init()
 
         self.game_setup()
         while not self.done:
@@ -52,6 +52,10 @@ class Environment(ABC):
             self.clock.tick(self.fps)
 
         self.save_results()
+        
+        pygame.display.quit()
+        pygame.mixer.quit()
+        pygame.font.quit()
         pygame.quit()
 
     @abstractmethod

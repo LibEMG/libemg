@@ -128,6 +128,7 @@ class Fitts(Environment):
         assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
 
         self.prediction_map = prediction_map
+        self.current_direction = [0., 0.]
 
     def game_setup(self):
         self.font = pygame.font.SysFont('helvetica', 40)
@@ -211,7 +212,7 @@ class Fitts(Environment):
             
         data = self.controller.get_data(self._info)
         
-        self.current_direction = [0., 0.]
+        #self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
             predictions = data[0]
@@ -242,8 +243,8 @@ class Fitts(Environment):
                 
                 pc = [pc, pc]
 
-            self.current_direction[0] += self.config.velocity * float(predictions[0]) * pc[0]
-            self.current_direction[1] -= self.config.velocity * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
+            self.current_direction[0] = self.config.velocity * float(predictions[0]) * pc[0]
+            self.current_direction[1] = -1* self.config.velocity * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
             self._log(str(predictions), timestamp)
         

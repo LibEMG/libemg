@@ -172,8 +172,7 @@ def produce_tciil_feedback(current_location: list[int, int],
 
     optimal_direction = get_optimal_direction(current_location, target_location)
 
-    PC = distance_to_proportional_control(np.linalg.norm(np.array(current_location) - np.array(target_location)), target_size, trial_distance)
-
+    PC = distance_to_proportional_control(current_location, target_location, current_direction, target_size, trial_distance)
     quadrant_check = check_quadrants(current_location, current_direction, target_location)
 
     # silence bad directions
@@ -181,7 +180,7 @@ def produce_tciil_feedback(current_location: list[int, int],
     # scale to correct value
     pseudo_label_scale = np.linalg.norm(pseudo_label)
     pseudo_label = [val * PC / pseudo_label_scale for val in pseudo_label]
-    pseudo_label = [0 if np.isnan(i) else i for i in pseudo_label] # remove NaNs (completely wrong quadrant is set to 0,0)
+    # pseudo_label = [0 if np.isnan(i) else i for i in pseudo_label] # remove NaNs (completely wrong quadrant is set to 0,0)
     
     return pseudo_label
 
@@ -189,16 +188,23 @@ def get_optimal_direction(current_location: list[int, int],
                           target_location: list[int, int]) -> list[int, int]:
     return [i - j for i, j in zip(target_location, current_location)]
 
-def distance_to_proportional_control(distance, target_size, trial_distance) -> float:
+def distance_to_proportional_control(current_location, target_location, current_direction, target_size, trial_distance) -> float:
+    distance = np.linalg.norm(np.array(current_location) - np.array(target_location))
     in_target = distance < target_size
     if in_target:
-        PC = 0
+        # step_in_dir = [ x + 0.01*y for x,y in zip(current_location, current_direction)]
+        # if np.linalg.norm(np.array(step_in_dir) - np.array(target_location)) < distance:
+        #     PC = 0.05 # if we're still approaching the center of the target, output speed is 0.1
+        # else:
+        PC = 0 # if we're in the circle, but not approaching the center, output speed is 0
     else:
         # trial distance makes sense as the normalizer for most shooting tasks, but sometimes with random distance targets, the new target can be very close
         # in which case, the user wouldn't hit the max proportinal control value for that trial. 
         # it probably makes more sense to just normalize by a consant value
         #PC = min(1.41, np.sqrt((distance - target_size)/trial_distance))
-        PC = min(1.41, np.sqrt((distance - target_size)/400)) 
+        calculated_percentile = (distance - target_size) / 300
+        calculated_pc = 0.1+0.9/(1+np.exp(-10*(calculated_percentile-0.5)))
+        PC = min(1., calculated_pc) 
         # the gameplay region in CurricularFittsLaw is about 1000 pixels, so any distance greater than half the playable 
         # area should evoke max speed.
     return PC

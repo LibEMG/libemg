@@ -79,7 +79,7 @@ class CurricularFittsConfig:
     color_block_fill: tuple[int, int, int] = (0, 70, 135)
     color_cursor: tuple[int, int, int] = (0, 255, 210)
     color_target: tuple[int, int, int] = (255, 68, 153)
-    color_target_good: tuple[int, int, int]  = (0, 255, 0)  # Color for successful target acquisition
+    color_target_good: tuple[int, int, int]  = (255, 0, 0)  # Color for successful target acquisition
 
     # controller related parameters
     controller_fields : tuple[str, str] = ('predictions', 'timestamp') # for regression; add 'pc' for classification
@@ -295,12 +295,12 @@ class Log:
             "timestamp": []
         }
 
-    def record(self, trial_number, target_position, cursor_position, target_size, feedback, timestamp):
+    def record(self, trial_number, target_position: list, cursor_position: list, target_size, feedback:list, timestamp):
         self.entries['trial_number'].append(trial_number)
-        self.entries['target_position'].append(target_position)
-        self.entries['cursor_position'].append(cursor_position)
+        self.entries['target_position'].append(target_position.copy())
+        self.entries['cursor_position'].append(cursor_position.copy())
         self.entries['target_size'].append(target_size)
-        self.entries['feedback'].append(feedback)
+        self.entries['feedback'].append(feedback.copy())
         self.entries['timestamp'].append(timestamp)
 
     def save(self, dir, trial_number, result):
@@ -484,7 +484,6 @@ class CurricularFitts(Environment):
         self.draw()
         if self.trial_number > self.config.num_trials:
             self.done = True
-            return
 
     def input(self):
         self.pygame_inputs()
