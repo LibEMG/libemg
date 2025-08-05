@@ -1,4 +1,5 @@
 from libemg._streamers import _myo_streamer
+from libemg._streamers import _myo_ble_streamer
 from libemg._streamers import _delsys_streamer
 from libemg._streamers import _delsys_API_streamer
 from libemg._streamers import _oymotion_streamer

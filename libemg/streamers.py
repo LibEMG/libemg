@@ -6,6 +6,7 @@ import numpy as np
 
 from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
+from libemg._streamers._myo_ble_streamer import MyoBLE
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._delsys_API_streamer import DelsysAPIStreamer
 from libemg._streamers._oymotion_streamer import Gforce
@@ -283,6 +284,49 @@ def myo_streamer(
     for item in shared_memory_items:
         item.append(Lock())
     myo = MyoStreamer(filtered, emg, imu, shared_memory_items)
+    myo.start()
+    return myo, shared_memory_items
+
+
+def myo_ble_streamer(
+    mac_addresses :       list | str,
+    shared_memory_items : list | None = None):
+    """The streamer for the myo armband. 
+
+    This function connects to the Myo. It leverages the PyoMyo 
+    library. Note: this version requires the blue dongle to be plugged in.
+
+    Parameters
+    ----------
+
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype].
+    emg : bool (optional)
+        Specifies whether EMG data should be forwarded to shared memory.
+    Returns
+    ----------
+    Object: streamer
+        The sifi streamer object.
+    Object: shared memory
+        The shared memory object.
+    Examples
+    ---------
+    >>> streamer, shared_memory = myo_streamer()
+    """
+    if type(mac_addresses) == str:
+        mac_addresses = [mac_addresses]
+    num_devices = len(mac_addresses)
+
+    if shared_memory_items is None:
+        shared_memory_items = []
+        shared_memory_items.append(["emg",       (1000,8*num_devices), np.double])
+        shared_memory_items.append(["emg_count", (1,1),    np.int32])
+
+    for item in shared_memory_items:
+        item.append(Lock())
+
+    myo = MyoBLE(mac_addresses, shared_memory_items)
     myo.start()
     return myo, shared_memory_items
 
