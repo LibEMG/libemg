@@ -90,23 +90,35 @@ class SIMOutputWriter(SocketOutputWriter):
         WUR = 7
         WPS = 8
 
-    def update_dictionary(self,d,k):
-        # k is model output
-        if k == 0:
-            d[self.DOAs.TH_ROT] = np.min([d[self.DOAs.TH_ROT] + self.constant_dof_speed, 1])
-        elif k == 1:
-            d[self.DOAs.TH_ROT] = np.max([d[self.DOAs.TH_ROT] - self.constant_dof_speed, -1])
-        if k == 3:
-            d[self.DOAs.WFE] = np.max([d[self.DOAs.WFE] - self.constant_dof_speed, -1])
-        elif k == 4:
-            d[self.DOAs.WFE] = np.min([d[self.DOAs.WFE] + self.constant_dof_speed, 1])
-        return d
-
-    def __init__(self, ip: str = '127.0.0.1', port: int = 12346, protocol: str = "UDP", constant_dof_speed = .05):
-        super(SIMOutputWriter, self).__init__(tag=None, ip = '127.0.0.1', port = 12346, protocol = "UDP")
+    def __init__(self, ip: str = '127.0.0.1', port: int = 12346, protocol: str = "UDP", constant_dof_speed = .10):
+        super(SIMOutputWriter, self).__init__(tag=None, ip = ip, port = port, protocol = protocol)
         self.constant_dof_speed = constant_dof_speed
         self.DOA_dict = {doa: 0 for doa in self.DOAs}
         self.udp_counter = 0
+
+    def update_dictionary(self,d,k):
+        # ToDo make matching between DOFs and Actions in k modular
+
+        # k is model output, if it is a int, it's classification, ToDo combine with regression by one-hot-encoding
+        if np.issubdtype(k.dtype, np.integer):
+            if k == 0:
+                d[self.DOAs.TH_ROT] = np.min([d[self.DOAs.TH_ROT] + self.constant_dof_speed, 1])
+            elif k == 1:
+                d[self.DOAs.TH_ROT] = np.max([d[self.DOAs.TH_ROT] - self.constant_dof_speed, -1])
+            if k == 3:
+                d[self.DOAs.WFE] = np.max([d[self.DOAs.WFE] - self.constant_dof_speed, -1])
+            elif k == 4:
+                d[self.DOAs.WFE] = np.min([d[self.DOAs.WFE] + self.constant_dof_speed, 1])
+            
+        
+        # if k is np.float => regression
+        elif np.issubdtype(k.dtype, np.floating):
+            d[self.DOAs.TH_ROT] = np.clip(a=d[self.DOAs.TH_ROT] + self.constant_dof_speed * k[0], a_min=-1, a_max=1)
+            d[self.DOAs.WFE] = np.clip(a=d[self.DOAs.WFE] + self.constant_dof_speed * k[1], a_min=-1, a_max=1)
+            d[self.DOAs.WPS] = np.clip(a=d[self.DOAs.WPS] + self.constant_dof_speed * k[2], a_min=-1, a_max=1)
+        
+        return d
+    
 
     def write(self, info):
         
@@ -202,8 +214,10 @@ class SharedMemoryOutputWriter(OutputWriter):
         self._smm_item = self.smm.get_shared_memory_items()
         state = self.__dict__.copy()
         # Remove the non-serializable shared memory manager.
-        if "smm_manager" in state:
-            del state["smm_manager"]
+        if "smm" in state:
+            del state["smm"]
+            state['mod_fn'] = self.mod_fn.__func__
+            state["mod_fn_count"] = self.mod_fn_count.__func__
         return state
 
     def __setstate__(self, state):
@@ -211,9 +225,13 @@ class SharedMemoryOutputWriter(OutputWriter):
         # Reconstruct the shared memory manager using the stored _smm_item.
         if self._smm_item is not None:
             new_mgr = SharedMemoryManager()
-            tag, shape, dtype, lock = self._smm_item
-            new_mgr.create_variable(tag, shape, dtype, lock)
-            self.smm_manager = new_mgr
+            for i in self._smm_item:
+                tag, shape, dtype, lock = i
+                new_mgr.create_variable(tag, shape, dtype, lock)
+            self.smm = new_mgr
         else:
-            self.smm_manager = None
+            self.smm = None
+        
+        self.mod_fn = types.MethodType(self.__dict__['mod_fn'], self) if self.__dict__['mod_fn'] is not None else self.default_mod_fn
+        self.mod_fn_count = types.MethodType(self.__dict__['mod_fn_count'], self) if self.__dict__['mod_fn_count'] is not None else self.default_mod_fn_count
     

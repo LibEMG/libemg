@@ -26,6 +26,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import re
 from matplotlib.animation import FuncAnimation
 from functools import partial
+import types
 
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
@@ -1051,6 +1052,8 @@ class OnlineStreamer(ABC):
         """
         pass
 
+    
+
 
 class OnlineEMGClassifier(OnlineStreamer):
     """OnlineEMGClassifier.
@@ -1234,6 +1237,29 @@ class OnlineEMGClassifier(OnlineStreamer):
             data[key] = data[key][::-1]
         return data, counts
     
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # local associated functions cannot be pickled on windows, so make them generic function handles,
+        # then in the setstate remake them as bound functions.
+        state['on_startup_function_handle']     = state['on_startup_function_handle'].__func__
+        state['window_trigger_function_handle'] = state['window_trigger_function_handle'].__func__
+        state['model_flag_handle']              = state['model_flag_handle'].__func__
+        state['on_window_function_handle']      = state['on_window_function_handle'].__func__
+        state['prediction_function_handle']     = state['prediction_function_handle'].__func__
+        state['postprocessing_function_handle'] = state['postprocessing_function_handle'].__func__
+
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.on_startup_function_handle     = types.MethodType(state['on_startup_function_handle'], self)
+        self.window_trigger_function_handle = types.MethodType(state['window_trigger_function_handle'], self)
+        self.model_flag_handle              = types.MethodType(state['model_flag_handle'], self)
+        self.on_window_function_handle      = types.MethodType(state['on_window_function_handle'], self)
+        self.prediction_function_handle     = types.MethodType(state['prediction_function_handle'], self)
+        self.postprocessing_function_handle = types.MethodType(state['postprocessing_function_handle'], self)
+    
+
 class OnlineEMGRegressor(OnlineStreamer):
     """OnlineEMGRegressor.
 
@@ -1388,3 +1414,25 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
         plt.show()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # local associated functions cannot be pickled on windows, so make them generic function handles,
+        # then in the setstate remake them as bound functions.
+        state['on_startup_function_handle']     = state['on_startup_function_handle'].__func__
+        state['window_trigger_function_handle'] = state['window_trigger_function_handle'].__func__
+        state['model_flag_handle']              = state['model_flag_handle'].__func__
+        state['on_window_function_handle']      = state['on_window_function_handle'].__func__
+        state['prediction_function_handle']     = state['prediction_function_handle'].__func__
+        state['postprocessing_function_handle'] = state['postprocessing_function_handle'].__func__
+
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.on_startup_function_handle     = types.MethodType(state['on_startup_function_handle'], self)
+        self.window_trigger_function_handle = types.MethodType(state['window_trigger_function_handle'], self)
+        self.model_flag_handle              = types.MethodType(state['model_flag_handle'], self)
+        self.on_window_function_handle      = types.MethodType(state['on_window_function_handle'], self)
+        self.prediction_function_handle     = types.MethodType(state['prediction_function_handle'], self)
+        self.postprocessing_function_handle = types.MethodType(state['postprocessing_function_handle'], self)

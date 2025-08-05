@@ -153,9 +153,8 @@ class SocketController(Controller):
         super().__init__()
         self.ip = ip
         self.port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((self.ip, self.port))
-        self.sock.setblocking(False)
+        self.sock = None
+        
 
     @abstractmethod
     def _parse_predictions(self, action: str) -> list[float]:
@@ -170,6 +169,10 @@ class SocketController(Controller):
         ...
 
     def _get_action(self):
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind((self.ip, self.port))
+            self.sock.setblocking(False)
         try:
             data, _ = self.sock.recvfrom(1024)
             action = str(data.decode('utf-8'))
@@ -177,6 +180,13 @@ class SocketController(Controller):
             action = None
         return action
     
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
 class SIM_UDP_Receiver(SocketController):
     
     class UdpObject:
@@ -231,6 +241,10 @@ class SIM_UDP_Receiver(SocketController):
         
     
     def _get_action(self)->UdpObject:
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind((self.ip, self.port))
+            self.sock.setblocking(False)
         try:
             data, _ = self.sock.recvfrom(1024) # 526 bytes are needed for 64 channels streaming float64s, so this should be enough for now
             action = self.UdpObject(data)
@@ -251,7 +265,7 @@ class SIM_UDP_Receiver(SocketController):
                           f"counter:{action.counter}, data:[{values_str}]")
             return action.process_data()
         
-        # this could be a reward etc
+        # this pseudolabel etc
         # elif action.category == 6:
         #     pass
 

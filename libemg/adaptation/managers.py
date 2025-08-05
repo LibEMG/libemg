@@ -6,6 +6,10 @@ import pickle
 import numpy as np
 import time
 
+UDP_CAT_FEEDBACK = 6
+UDP_SUBCAT_PSEUDO = 0
+UDP_SUBCAT_REWARD = 1
+
 class MemoryManager(Process):
     """
     This object is part of the adaptation suite provided by LibEMG. The memory manager is responsible for managing the data (both the inputs and pseudolabels) that arise from
@@ -47,7 +51,8 @@ class MemoryManager(Process):
     def run(self):
         self.smm = libemg.shared_memory_manager.SharedMemoryManager()
         for smi in self.smi:
-            self.smm.create_variable(*smi)
+            if type(smi) is list:
+                self.smm.create_variable(*smi)
         self.ow[0].write(0) # start at 0
         
         self.memory.reset()
@@ -61,15 +66,43 @@ class MemoryManager(Process):
             
 
     def process_data(self):
+        if 'environment_feedback_count' in self.smm.variables:
         # if there has been no new environment feedback, just continue
-        environment_feedback_count = self.smm.get_variable("environment_feedback_count")[0,0]
-        if environment_feedback_count == self.environment_feedback_count:
-            return
-        num_to_grab = environment_feedback_count - self.environment_feedback_count 
-        feedback_data = self.smm.get_variable("environment_feedback")
-        feedback_data = feedback_data[:num_to_grab,:]
+            environment_feedback_count = self.smm.get_variable("environment_feedback_count")[0,0]
+            if environment_feedback_count == self.environment_feedback_count:
+                return
+            num_to_grab = environment_feedback_count - self.environment_feedback_count 
+            feedback_data = self.smm.get_variable("environment_feedback")
+            feedback_data = feedback_data[:num_to_grab,:]
+            
+            # FE: put it here
+            self.environment_feedback_count = environment_feedback_count
+        
+        # elif PAVE feedback is used 
+        elif any([type(i) == libemg.environments.controllers.SIM_UDP_Receiver for i in self.smi]):
+            receiver = self.smi[np.where([type(i) == libemg.environments.controllers.SIM_UDP_Receiver for i in self.smi])[0][0]]
+            udpobject = receiver._get_action()
+            if udpobject is None or udpobject.category != UDP_CAT_FEEDBACK:
+                return
+            
+            # if correct data type for pseudolabel do the difference (info['timestamp'], info['trial'], info['environment_feedback']
+            if(udpobject.sub_category == UDP_SUBCAT_PSEUDO):              
+                # get values
+                message = np.array(udpobject.process_data())
+                diffs = message[1::2] - message[::2] # calc should from actual
+                print(diffs)
+                trial = -1.0 # substitute later and maybe send from Unity
+                feedback_data = np.hstack([np.array([[udpobject.timestamp, trial]]), [diffs]])
 
+            # if correct data type for rewards do the reward processing
+            elif(udpobject.sub_category == UDP_SUBCAT_REWARD):
+                message = udpobject.process_data()
+                print(message)
+
+        
         input_data = self.smm.get_variable('model_input')
+        
+        
         # for every row in data:
         for i in range(feedback_data.shape[0]):
             feedback_row = feedback_data[i,:]
@@ -90,7 +123,7 @@ class MemoryManager(Process):
             input_row  = input_data[timestamp_id,1:] # start at 2nd column to remove timestamp
             self.append_to_memory(feedback_row[2:], input_row, trial-1)
 
-        self.environment_feedback_count = environment_feedback_count
+
 
     def save_memory(self, loc: str):
         with open(loc, 'wb') as f:
@@ -201,7 +234,7 @@ class AdaptationManager(Process):
                     self.memory_count += 1 
                     # Load memory
                     new_memory = self.load_memory(self.load_dir + "memory_" + str(self.memory_count) + ".pkl")
-                    print(f"{self.memory_count} : {new_memory.processed_data[0].shape}")
+                    # print(f"{self.memory_count} : {new_memory.processed_data[0].shape}")
                     self.memory = self.memory + new_memory
             
             # Adapt the model
