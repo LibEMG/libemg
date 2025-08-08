@@ -6,9 +6,17 @@ import pickle
 import numpy as np
 import time
 
-UDP_CAT_FEEDBACK = 6
-UDP_SUBCAT_PSEUDO = 0
-UDP_SUBCAT_REWARD = 1
+class udp_feedback_config:
+    UDP_CAT_FEEDBACK = 6
+    UDP_SUBCAT_PSEUDO = 0
+    UDP_SUBCAT_REWARD = 1
+
+    def feedback_scaler(x):
+        sign = np.sign(x)
+        abs_x = np.abs(x)
+        # y = 0.1*(0.1 + 0.9 / (1 + np.exp(-10 * (0.5 * abs_x - 0.5))))
+        y = (0.1 + 0.9 / (1 + np.exp(-10 * (0.5 * abs_x - 0.5))))
+        return sign * y
 
 class MemoryManager(Process):
     """
@@ -82,20 +90,21 @@ class MemoryManager(Process):
         elif any([type(i) == libemg.environments.controllers.SIM_UDP_Receiver for i in self.smi]):
             receiver = self.smi[np.where([type(i) == libemg.environments.controllers.SIM_UDP_Receiver for i in self.smi])[0][0]]
             udpobject = receiver._get_action()
-            if udpobject is None or udpobject.category != UDP_CAT_FEEDBACK:
+            if udpobject is None or udpobject.category != udp_feedback_config.UDP_CAT_FEEDBACK:
                 return
             
             # if correct data type for pseudolabel do the difference (info['timestamp'], info['trial'], info['environment_feedback']
-            if(udpobject.sub_category == UDP_SUBCAT_PSEUDO):              
+            if(udpobject.sub_category == udp_feedback_config.UDP_SUBCAT_PSEUDO):              
                 # get values
                 message = np.array(udpobject.process_data())
                 diffs = message[1::2] - message[::2] # calc should from actual
                 print(diffs)
-                trial = -1.0 # substitute later and maybe send from Unity
+                diffs = udp_feedback_config.feedback_scaler(diffs)
+                trial = udpobject.counter // 1000 # substitute later and maybe send from Unity
                 feedback_data = np.hstack([np.array([[udpobject.timestamp, trial]]), [diffs]])
 
             # if correct data type for rewards do the reward processing
-            elif(udpobject.sub_category == UDP_SUBCAT_REWARD):
+            elif(udpobject.sub_category == udp_feedback_config.UDP_SUBCAT_REWARD):
                 message = udpobject.process_data()
                 print(message)
 
@@ -119,11 +128,9 @@ class MemoryManager(Process):
             # Append the data to the memory object
             row_timestamp = feedback_row[0]
             # find timestamp in classifier_input
-            timestamp_id = np.where(input_data[:,0]== row_timestamp)[0]
+            timestamp_id = np.where(np.round(input_data[:,0], 6) == np.round(row_timestamp, 6))[0]
             input_row  = input_data[timestamp_id,1:] # start at 2nd column to remove timestamp
             self.append_to_memory(feedback_row[2:], input_row, trial-1)
-
-
 
     def save_memory(self, loc: str):
         with open(loc, 'wb') as f:

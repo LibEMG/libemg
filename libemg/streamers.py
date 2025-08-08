@@ -4,7 +4,7 @@ import pickle
 import platform
 import numpy as np
 
-from multiprocessing import Process, Event, Lock
+from multiprocessing import Process, Event, Lock, freeze_support
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._myo_ble_streamer import MyoBLE
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
