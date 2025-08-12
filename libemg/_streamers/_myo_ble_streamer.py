@@ -52,17 +52,20 @@ class MyoDevice():
         # conenct
         try:
             self.client = BleakClient(self.mac, timeout=20)
-            await asyncio.sleep(15)
-            await self.client.connect()
+            # await asyncio.sleep(15)
+            # Wait until we can actually connect or timeout after 20s
+            await asyncio.wait_for(self.client.connect(), timeout=20)
             print(f"[{self.mac}] Connected")
+            # await self.client.connect()
+            # print(f"[{self.mac}] Connected")
             await asyncio.sleep(2)
 
                 # no sleep, filtered signal, vibrate 
             for cmd in INITIAL_COMMANDS:
                 await self.client.write_gatt_char(CONTROL_CHAR_UUID, cmd)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.05)
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(0.5)
 
                 # for the emg uuids, call the _make_handler on data
             self.handlers = []
@@ -70,7 +73,7 @@ class MyoDevice():
                 handler = self._make_handler()
                 self.handlers.append(handler)  # Save reference!
                 await self.client.start_notify(uuid, handler)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.05)
 
 
             self.connected = True
@@ -147,7 +150,7 @@ class MyoBLE(Process):
 
         try:
             while not self.signal.is_set():
-                await asyncio.sleep(0.01)  # Sleep allows loop to process events/notifications
+                await asyncio.sleep(0.1)  # Sleep allows loop to process events/notifications
 
         except Exception as e:
             print(f"Errored within LibEMG-> MyoBLEStreamer: {e}")
@@ -156,7 +159,7 @@ class MyoBLE(Process):
             await self._cleanup()
             quit()
 
-    async def connect(self, mac, index, max_retries=5, retry_delay=5):
+    async def connect(self, mac, index, max_retries=5, retry_delay=1):
         attempt = 0
         while attempt < max_retries:
             dev = MyoDevice(mac, index, self.smm)
