@@ -51,10 +51,10 @@ class MyoDevice():
     async def connect(self):
         # conenct
         try:
-            self.client = BleakClient(self.mac, timeout=20)
+            self.client = BleakClient(self.mac, timeout=30)
             # await asyncio.sleep(15)
-            # Wait until we can actually connect or timeout after 20s
-            await asyncio.wait_for(self.client.connect(), timeout=20)
+            # Wait until we can actually connect or timeout after 25s
+            await asyncio.wait_for(self.client.connect(), timeout=30)
             print(f"[{self.mac}] Connected")
             # await self.client.connect()
             # print(f"[{self.mac}] Connected")

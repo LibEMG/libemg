@@ -5,18 +5,49 @@ from typing import Any, Tuple
 import pickle
 import numpy as np
 import time
+from libemg.adaptation._base import check_quadrants
 
 class udp_feedback_config:
     UDP_CAT_FEEDBACK = 6
     UDP_SUBCAT_PSEUDO = 0
     UDP_SUBCAT_REWARD = 1
 
+    # def feedback_scaler(x):
+    #     x = np.asarray(x)  # ensure x is a NumPy array
+    #     sign = np.sign(x)
+    #     abs_x = np.abs(x)
+    #     y = 0.05 + 0.9 / (1 + np.exp(-10 * (0.5 * abs_x - 0.5)))
+    #     y = np.where(abs_x <= 0.2, 0, y)  # set y=0 where abs_x <= 0.2
+    #     return sign * y
+    # def feedback_scaler(x):
+    #     x = np.asarray(x)  # ensure x is a NumPy array
+    #     sign = np.sign(x)
+    #     abs_x = np.abs(x)
+    #     y = 0.05 + 0.95 / (1 + np.exp(-10 * (abs_x - 0.5)))
+    #     y = np.where(abs_x <= 0.2, 0, y)  # set y=0 where abs_x <= 0.2
+    #     return sign * y
+
+    
     def feedback_scaler(x):
-        sign = np.sign(x)
-        abs_x = np.abs(x)
-        # y = 0.1*(0.1 + 0.9 / (1 + np.exp(-10 * (0.5 * abs_x - 0.5))))
-        y = (0.1 + 0.9 / (1 + np.exp(-10 * (0.5 * abs_x - 0.5))))
-        return sign * y
+        x = np.asarray(x)
+        norm = np.linalg.norm(x)
+
+        if norm == 0:
+            return np.zeros_like(x)
+
+        # Record which components were originally small
+        dead_mask = np.abs(x) <= 0.2
+
+        # Normalize and scale whole vector based on norm
+        scaled_magnitude = 0.05 + 0.95 / (1 + np.exp(-10 * (norm - 0.5)))
+        unit_vector = x / norm
+        y = unit_vector * scaled_magnitude
+
+        # Apply per-axis mask based on original x values (before scaling)
+        y[dead_mask] = 0
+
+        return y
+
 
 class MemoryManager(Process):
     """
@@ -100,8 +131,22 @@ class MemoryManager(Process):
                 diffs = message[1::2] - message[::2] # calc should from actual
                 print(diffs)
                 diffs = udp_feedback_config.feedback_scaler(diffs)
-                trial = udpobject.counter // 1000 # substitute later and maybe send from Unity
-                feedback_data = np.hstack([np.array([[udpobject.timestamp, trial]]), [diffs]])
+                trial = udpobject.counter // 3000 # substitute later and maybe send from Unity
+
+                # feedback_data = np.hstack([np.array([[udpobject.timestamp, trial]]), [diffs]])
+
+                # Make sure everything is a list
+                cur = message[::2].tolist()
+                tgt = message[1::2].tolist()
+                direction = diffs.tolist()  # diffs = target - current, as np.array
+
+                # Check per-axis improvement
+                quadrant_check = check_quadrants(cur, direction, tgt)
+
+                # Apply mask: zero out axes where step would make it worse
+                pseudo_label = [val if outcome else 0 for val, outcome in zip(direction, quadrant_check)]
+
+                feedback_data = np.hstack([np.array([[udpobject.timestamp, trial]]), [pseudo_label]])
 
             # if correct data type for rewards do the reward processing
             elif(udpobject.sub_category == udp_feedback_config.UDP_SUBCAT_REWARD):

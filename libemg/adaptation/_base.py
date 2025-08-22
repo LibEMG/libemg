@@ -3,6 +3,7 @@ from multiprocessing import Lock
 from libemg.output_writer import SharedMemoryOutputWriter, SocketOutputWriter, SIMOutputWriter
 from libemg.environments.controllers import SIM_UDP_Receiver
 
+
 def mod_fn_input(self, data, info):
     new_slice = np.hstack((info['timestamp'],info['model_input_raw'][-1,:]))
     input_size = self.smm.variables['model_input']["shape"][0]
