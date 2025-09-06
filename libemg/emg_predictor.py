@@ -27,7 +27,6 @@ from abc import ABC, abstractmethod
 import re
 from matplotlib.animation import FuncAnimation
 from functools import partial
-from typing import Callable
 
 from libemg.utils import get_windows
 from libemg.environments.controllers import RegressorController, ClassifierController
@@ -308,33 +307,20 @@ class EMGClassifier(EMGPredictor):
 
     def add_velocity(self, train_windows, train_labels,
                      velocity_metric_handle = None,
-                     velocity_mapping_handle: str | None | Callable[[int], int] = None):
+                     velocity_mapping_handle = None):
         """Adds velocity (i.e., proportional) control where a multiplier is generated for the level of contraction intensity.
 
         Note, that when using this optional, ramp contractions should be captured for training. 
 
         Parameters
         -----------
-        train_windows: np.ndarray
-            The training windows extracted from the offline data handler.
-        train_labels: np.ndarray
-            The labels associated with the train windows. Allows for per class proportional control mapping. 
-        velocity_mapping_handle: function or a string (valid options: "SIGMOID", "SQUARED", "LOG", "RELU") 
-            A function that maps the proportionality (bounded between 0-1) to some other value. 
         """
-        if isinstance(velocity_mapping_handle, str):
-            if not velocity_mapping_handle in ['SIGMOID', 'SQUARED', 'LOG', 'RELU']:
-                print("Invalid velocity mapping... Defaulting to linear.")
-            else:
-                if velocity_mapping_handle == 'SQUARED':
-                    self.velocity_mapping_handle = lambda x: x**2
-                # TODO: Fill out rest 
-        else:
-            self.velocity_metric_handle = velocity_metric_handle
-            self.velocity_mapping_handle = velocity_mapping_handle
-        
+        self.velocity_metric_handle = velocity_metric_handle
+        self.velocity_mapping_handle = velocity_mapping_handle
         self.velocity = True
+
         self.th_min_dic, self.th_max_dic = self._set_up_velocity_control(train_windows, train_labels)
+
 
     
     '''
@@ -995,13 +981,8 @@ class OnlineEMGClassifier(OnlineStreamer):
                                                 insert_classifier_output)
             self.options['model_smm_writes'] += 1
 
-        if self.output_format == "predictions":
-            message = str(prediction) + calculated_velocity + '\n'
-        elif self.output_format == "probabilities":
-            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-        else:
-            raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
-
+        message = str(prediction) + " " + str(np.abs(np.array(window['emg'])).mean(axis=2).mean()) + str(calculated_velocity)
+    
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
@@ -1029,7 +1010,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         cmap = cm.get_cmap('turbo', num_classes)
 
         controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=self.ip, port=self.port)
-        controller.start()
 
         if legend is not None:
             for i in range(num_classes):
@@ -1216,7 +1196,6 @@ class OnlineEMGRegressor(OnlineStreamer):
         ax.set_ylabel('Prediction')
 
         controller = RegressorController(ip=self.ip, port=self.port)
-        controller.start()
 
         # Wait for controller to start receiving data
         predictions = None
