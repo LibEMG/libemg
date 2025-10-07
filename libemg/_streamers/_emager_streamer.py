@@ -2,6 +2,8 @@ import serial # pyserial
 import numpy as np
 import platform
 from multiprocessing import Event, Process
+from queue import Queue, Empty
+import threading
 from libemg.shared_memory_manager import SharedMemoryManager
 
 
@@ -88,26 +90,257 @@ class Emager:
         self.ser.close()
         return
 
+class Emager3:
+    """Reader for the new Emager3 device which sends framed payloads:
+    HDR 0xAA55, APP_PAYLOAD=8192 bytes (64x64 samples x 2 bytes), TLR 0x55AA.
+    The payload is interpreted as 4096 16-bit samples arranged as (time x channel)
+    when reshaped to (64,64) and transposed to (channel x time). We emit one
+    64-channel sample vector to handlers per timepoint (64 vectors per frame).
+    """
+    HDR = b"\xAA\x55"
+    TLR = b"\x55\xAA"
+
+    def __init__(self, baud_rate, endianness='le', signed=False, com_name=None, vid_pid=(12259, 256),
+                 channels: int = 64, samples_per_frame: int = 64):
+        self.com_name = com_name
+        self.vid_pid = vid_pid
+        ports = list(serial.tools.list_ports.comports())
+        com_port = None
+        for p in ports:
+            if self.com_name is None:
+                if (p.vid, p.pid) == self.vid_pid:
+                    if platform.system() == 'Windows':
+                        com_port = p.name
+                    else:
+                        com_port = p.device.replace('cu', 'tty')
+                    break
+            else:
+                if self.com_name in p.description:
+                    if platform.system() == 'Windows':
+                        com_port = p.name
+                    else:
+                        com_port = p.device.replace('cu', 'tty')
+                    break
+
+        if com_port is None:
+            print(f"Could not find serial port for {self.com_name}")
+            # include a helpful error that lists all detected serial ports
+            ports_info = []
+            for p in ports:
+                dev = getattr(p, "device", None) or getattr(p, "name", None) or "<unknown>"
+                desc = getattr(p, "description", "") or "<no description>"
+                vid = getattr(p, "vid", None)
+                pid = getattr(p, "pid", None)
+                ports_info.append(f"{dev} - {desc} (VID: {vid}, PID: {pid})")
+
+            if ports_info:
+                avail = "\n".join(f"  - {pi}" for pi in ports_info)
+            else:
+                avail = "  (no serial ports found)"
+
+            raise RuntimeError(f"Could not find serial port for {self.com_name}. Available ports:\n{avail}")
+
+        self.ser = serial.Serial(com_port, baud_rate, timeout=1)
+        self.ser.close()
+        self._buf = bytearray()
+        self.channel_map = _get_channel_map()
+        self.emg_handlers = []
+
+        # dtype selection
+        if endianness == 'le':
+            self.sample_dtype = np.int16 if signed else np.uint16
+        else:
+            self.sample_dtype = np.dtype('>i2') if signed else np.dtype('>u2')
+
+        # framing params
+        self.channels = int(channels)
+        self.samples_per_frame = int(samples_per_frame)
+        self.expected_samples = self.channels * self.samples_per_frame
+        self.APP_PAYLOAD = self.expected_samples * 2
+        self.FRAME_SIZE = 2 + self.APP_PAYLOAD + 2
+        # frame and counter stats
+        self.frames_ok = 0
+        self.bad_tlr = 0
+        self.resyncs = 0
+        self.last_ctr = None
+        self.ctr_miss = 0
+        # parser position for incremental search
+        self.pos = 0
+
+    def connect(self):
+        self.ser.open()
+
+    def add_emg_handler(self, closure):
+        self.emg_handlers.append(closure)
+
+    def clear_buffer(self):
+        try:
+            self.ser.reset_input_buffer()
+        except Exception:
+            pass
+
+    def close(self):
+        try:
+            self.ser.close()
+        except Exception:
+            pass
+
+    def _process_frame_payload(self, payload_bytes):
+        # Decode payload into a full block (samples_per_frame x channels) and emit once per frame.
+        try:
+            arr = np.frombuffer(payload_bytes, dtype=self.sample_dtype)
+            if arr.size != self.expected_samples:
+                return
+            # payload is time-major: samples_per_frame x channels
+            block_time_ch = arr.reshape(self.samples_per_frame, self.channels)
+
+            # Reorder columns according to channel_map if present
+            if len(self.channel_map) == self.channels:
+                block_time_ch = block_time_ch[:, self.channel_map]
+
+            # Emit the whole block once to each handler (shape: samples x channels)
+            for h in self.emg_handlers:
+                try:
+                    h(block_time_ch)
+                except Exception:
+                    pass
+        except Exception:
+            return
+
+    def get_data(self):
+        # Read what's available and append to buffer, then parse frames
+        try:
+            n_av = self.ser.in_waiting
+        except Exception:
+            return
+
+        if n_av <= 0:
+            return
+
+        data = self.ser.read(n_av)
+        if not data:
+            return
+
+        self._buf += data
+
+        # incremental frame parsing (mirrors FrameParser.feed logic)
+        while True:
+            h = self._buf.find(self.HDR, self.pos)
+            if h < 0:
+                keep = min(len(self._buf), self.FRAME_SIZE - 1)
+                if keep:
+                    self._buf[:] = self._buf[-keep:]
+                else:
+                    self._buf.clear()
+                self.pos = 0
+                return
+
+            if len(self._buf) - h < self.FRAME_SIZE:
+                if h > 0:
+                    self._buf[:] = self._buf[h:]
+                    self.pos = 0
+                else:
+                    self.pos = h
+                return
+
+            t0 = h + 2 + self.APP_PAYLOAD
+            if self._buf[t0:t0+2] == self.TLR:
+                # good frame
+                self.frames_ok += 1
+                p = h + 2
+                # counter (first 4 bytes of payload, big-endian)
+                try:
+                    ctr = ((self._buf[p] << 24) |
+                           (self._buf[p+1] << 16) |
+                           (self._buf[p+2] << 8) |
+                            self._buf[p+3])
+                    if self.last_ctr is not None:
+                        expected = (self.last_ctr + 1) & 0xFFFFFFFF
+                        if ctr != expected:
+                            self.ctr_miss += 1
+                    self.last_ctr = ctr
+                except Exception:
+                    pass
+
+                try:
+                    payload_bytes = bytes(self._buf[p : p + self.APP_PAYLOAD])
+                    self._process_frame_payload(payload_bytes)
+                except Exception:
+                    pass
+
+                self.pos = h + self.FRAME_SIZE
+                if self.pos > (self.FRAME_SIZE * 2):
+                    self._buf[:] = self._buf[self.pos:]
+                    self.pos = 0
+            else:
+                self.bad_tlr += 1
+                self.resyncs += 1
+                self.pos = h + 1
+                if self.pos > (self.FRAME_SIZE * 2):
+                    self._buf[:] = self._buf[self.pos:]
+                    self.pos = 0
+
 class EmagerStreamer(Process):
-    def __init__(self, shared_memory_items):
+    def __init__(self, shared_memory_items, emager_version: int = 1, emager_kwargs: dict | None = None):
         super().__init__(daemon=True)
         self.smm = SharedMemoryManager()
         self.shared_memory_items = shared_memory_items
         self._stop_event = Event()
         self.e = None
+        self.emager_version = int(emager_version)
+        self.emager_kwargs = emager_kwargs or {}
 
     def run(self):
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
         
-        self.e = Emager(1500000)
+        # Instantiate the appropriate Emager reader based on version and kwargs
+        if self.emager_version == 3:
+            bw = self.emager_kwargs
+            baud = bw.get('baud_rate', 1500000)
+            endianness = bw.get('endianness', 'le')
+            signed = bw.get('signed', False)
+            com_name = bw.get('com_name', None)
+            vid_pid = bw.get('vid_pid', (12259, 256))
+            channels = bw.get('channels', 64)
+            samples_per_frame = bw.get('samples_per_frame', 64)
+            self.e = Emager3(baud, endianness=endianness, signed=signed, com_name=com_name, vid_pid=vid_pid,
+                              channels=channels, samples_per_frame=samples_per_frame)
+        else:
+            baud = self.emager_kwargs.get('baud_rate', 1500000)
+            self.e = Emager(baud)
         self.e.connect()
+        # Create a queue and writer thread to offload shared-memory writes
+        q: Queue = Queue(maxsize=100)
 
-        def write_emg(emg):
-            emg = np.array(emg)
-            self.smm.modify_variable('emg', lambda x: np.vstack((emg, x))[:x.shape[0], :])
-            self.smm.modify_variable('emg_count', lambda x: x + 1)
-            
+        def writer_thread_fn():
+            while not self._stop_event.is_set():
+                try:
+                    block = q.get(timeout=0.1)
+                except Empty:
+                    continue
+                try:
+                    # block is samples x channels; stack new rows on top and keep window
+                    self.smm.modify_variable('emg', lambda x, b=block: np.vstack((b, x))[:x.shape[0], :])
+                    # increment count by number of rows written
+                    rows = block.shape[0] if hasattr(block, 'shape') else 1
+                    self.smm.modify_variable('emg_count', lambda x, r=rows: x + r)
+                except Exception:
+                    pass
+                finally:
+                    q.task_done()
+
+        writer = threading.Thread(target=writer_thread_fn, daemon=True)
+        writer.start()
+
+        def write_emg(emg_block):
+            # emg_block expected shape: samples x channels (numpy array)
+            try:
+                q.put_nowait(np.array(emg_block))
+            except Exception:
+                # if queue full, drop
+                pass
+
         self.e.add_emg_handler(write_emg)
 
         try:
@@ -127,4 +360,7 @@ class EmagerStreamer(Process):
         if self.e is not None:
             self.e.close()
         self.smm.cleanup()
+
+
+# EmagerStreamer3 removed — EmagerStreamer supports emager_version parameter now
 
