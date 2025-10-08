@@ -282,6 +282,13 @@ class Emager3:
 
 class EmagerStreamer(Process):
     def __init__(self, shared_memory_items, emager_version: int = 1, emager_kwargs: dict | None = None):
+        """
+        :param shared_memory_items: list[(name, shape, dtype, lock)]
+        :param emager_version: 1 or 3
+        :param emager_kwargs: dict passed to Emager/Emager3. Supported keys:
+          baud_rate (int, default 1500000), endianness ('le'), signed (bool),
+          com_name, vid_pid (tuple), channels (int), samples_per_frame (int)
+        """
         super().__init__(daemon=True)
         self.smm = SharedMemoryManager()
         self.shared_memory_items = shared_memory_items

@@ -483,6 +483,11 @@ def emager_streamer(shared_memory_items = None, emager_version: int = 1, **kwarg
     shared_memory_items : list (optional)
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
+    emager_version: int of the version of the Emager device being used (1 or 3). Default is 1.
+    emager_kwargs: dict passed to Emager/Emager3. Supported keys:
+          baud_rate (int, default 1500000), endianness ('le'), signed (bool),
+          com_name, vid_pid (tuple), channels (int), samples_per_frame (int)
+    
     Returns
     ----------
     Object: streamer
