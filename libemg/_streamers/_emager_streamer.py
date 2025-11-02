@@ -7,11 +7,18 @@ import threading
 from libemg.shared_memory_manager import SharedMemoryManager
 
 
-def _get_channel_map():
-    channel_map = [10, 22, 12, 24, 13, 26, 7, 28, 1, 30, 59, 32, 53, 34, 48, 36] + \
-                    [62, 16, 14, 21, 11, 27, 5, 33, 63, 39, 57, 45, 51, 44, 50, 40] + \
-                    [8, 18, 15, 19, 9, 25, 3, 31, 61, 37, 55, 43, 49, 46, 52, 38] + \
-                    [6, 20, 4, 17, 2, 23, 0, 29, 60, 35, 58, 41, 56, 47, 54, 42]
+def _get_channel_map(version = 1.0):
+    if version == 1.1:
+        channel_map = [44, 49, 43, 55, 39, 59, 33, 2, 32, 3, 26, 6, 22, 13, 16, 10] + \
+                        [42, 48, 45, 54, 38, 58, 35, 0, 34, 1, 27, 7, 23, 11, 17, 12] + \
+                        [46, 52, 40, 51, 36, 56, 31, 60, 30, 63, 25, 4, 21, 8, 18, 15] + \
+                        [47, 50, 41, 53, 37, 57, 29, 62, 28, 61, 24, 5, 19, 9, 20, 14]      
+    else:
+        channel_map = [10, 22, 12, 24, 13, 26, 7, 28, 1, 30, 59, 32, 53, 34, 48, 36] + \
+                        [62, 16, 14, 21, 11, 27, 5, 33, 63, 39, 57, 45, 51, 44, 50, 40] + \
+                        [8, 18, 15, 19, 9, 25, 3, 31, 61, 37, 55, 43, 49, 46, 52, 38] + \
+                        [6, 20, 4, 17, 2, 23, 0, 29, 60, 35, 58, 41, 56, 47, 54, 42]
+
     return channel_map
 
 
@@ -37,7 +44,7 @@ def reorder(data, mask, match_result):
 
 
 class Emager:
-    def __init__(self, baud_rate):
+    def __init__(self, baud_rate, version = 1.0):
         com_name = 'KitProg3'
         ports = list(serial.tools.list_ports.comports())
         for p in ports:
@@ -54,7 +61,7 @@ class Emager:
         ### ^ Number of bytes in message (i.e. channel bytes + header/tail bytes)
         self.mask = np.array([0, 2] + [0, 1] * 63)
         ### ^ Template mask for template matching on input data
-        self.channel_map = _get_channel_map()
+        self.channel_map = _get_channel_map(version)
         self.emg_handlers = []
 
     def connect(self):
@@ -143,7 +150,6 @@ class Emager3:
         self.ser = serial.Serial(com_port, baud_rate, timeout=1)
         self.ser.close()
         self._buf = bytearray()
-        self.channel_map = _get_channel_map()
         self.emg_handlers = []
 
         # dtype selection
@@ -193,10 +199,6 @@ class Emager3:
                 return
             # payload is time-major: samples_per_frame x channels
             block_time_ch = arr.reshape(self.samples_per_frame, self.channels)
-
-            # Reorder columns according to channel_map if present
-            if len(self.channel_map) == self.channels:
-                block_time_ch = block_time_ch[:, self.channel_map]
 
             # Emit the whole block once to each handler (shape: samples x channels)
             for h in self.emg_handlers:
@@ -281,7 +283,7 @@ class Emager3:
                     self.pos = 0
 
 class EmagerStreamer(Process):
-    def __init__(self, shared_memory_items, emager_version: int = 1, emager_kwargs: dict | None = None):
+    def __init__(self, shared_memory_items, emager_version = 1, emager_kwargs: dict | None = None):
         """
         :param shared_memory_items: list[(name, shape, dtype, lock)]
         :param emager_version: 1 or 3
@@ -294,7 +296,7 @@ class EmagerStreamer(Process):
         self.shared_memory_items = shared_memory_items
         self._stop_event = Event()
         self.e = None
-        self.emager_version = int(emager_version)
+        self.emager_version = float(emager_version)
         self.emager_kwargs = emager_kwargs or {}
 
     def run(self):
@@ -302,7 +304,7 @@ class EmagerStreamer(Process):
             self.smm.create_variable(*item)
         
         # Instantiate the appropriate Emager reader based on version and kwargs
-        if self.emager_version == 3:
+        if self.emager_version == 3.0:
             bw = self.emager_kwargs
             baud = bw.get('baud_rate', 1500000)
             endianness = bw.get('endianness', 'le')
@@ -315,7 +317,7 @@ class EmagerStreamer(Process):
                               channels=channels, samples_per_frame=samples_per_frame)
         else:
             baud = self.emager_kwargs.get('baud_rate', 1500000)
-            self.e = Emager(baud)
+            self.e = Emager(baud, version=self.emager_version)
         self.e.connect()
         # Create a queue and writer thread to offload shared-memory writes
         q: Queue = Queue(maxsize=100)
@@ -367,7 +369,4 @@ class EmagerStreamer(Process):
         if self.e is not None:
             self.e.close()
         self.smm.cleanup()
-
-
-# EmagerStreamer3 removed — EmagerStreamer supports emager_version parameter now
 
