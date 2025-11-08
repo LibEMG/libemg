@@ -473,7 +473,7 @@ def oymotion_streamer(shared_memory_items : list | None = None,
 
 
 
-def emager_streamer(shared_memory_items = None, emager_version = 1, **kwargs):
+def emager_streamer(shared_memory_items = None, version:str = "v1.0", **kwargs):
     """The streamer for the emager armband. 
 
     This function connects to the emager cuff and streams its data over a serial port and access it via shared memory.
@@ -483,7 +483,7 @@ def emager_streamer(shared_memory_items = None, emager_version = 1, **kwargs):
     shared_memory_items : list (optional)
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
-    emager_version: int of the version of the Emager device being used (1 or 3). Default is 1.
+    version: str Emager version: 'v1.0', 'v1.1', 'v3.0'. Default is 'v1.0'.
     emager_kwargs: dict passed to Emager/Emager3. Supported keys:
           baud_rate (int, default 1500000), endianness ('le'), signed (bool),
           com_name, vid_pid (tuple), channels (int), samples_per_frame (int)
@@ -509,7 +509,7 @@ def emager_streamer(shared_memory_items = None, emager_version = 1, **kwargs):
             item.append(Lock())
 
     # Use unified EmagerStreamer and pass emager version + kwargs
-    ema = EmagerStreamer(shared_memory_items, emager_version=emager_version, emager_kwargs=kwargs)
+    ema = EmagerStreamer(shared_memory_items, version=version, emager_kwargs=kwargs)
     ema.start()
     return ema, shared_memory_items
 

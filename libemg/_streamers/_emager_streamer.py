@@ -7,8 +7,8 @@ import threading
 from libemg.shared_memory_manager import SharedMemoryManager
 
 
-def _get_channel_map(version = 1.0):
-    if version == 1.1:
+def _get_channel_map(version: str = "1.0"):
+    if version == "1.1":
         channel_map = [44, 49, 43, 55, 39, 59, 33, 2, 32, 3, 26, 6, 22, 13, 16, 10] + \
                         [42, 48, 45, 54, 38, 58, 35, 0, 34, 1, 27, 7, 23, 11, 17, 12] + \
                         [46, 52, 40, 51, 36, 56, 31, 60, 30, 63, 25, 4, 21, 8, 18, 15] + \
@@ -44,7 +44,7 @@ def reorder(data, mask, match_result):
 
 
 class Emager:
-    def __init__(self, baud_rate, version = 1.0):
+    def __init__(self, baud_rate, version: str = "1.0"):
         com_name = 'KitProg3'
         ports = list(serial.tools.list_ports.comports())
         for p in ports:
@@ -108,7 +108,7 @@ class Emager3:
     TLR = b"\x55\xAA"
 
     def __init__(self, baud_rate, endianness='le', signed=False, com_name=None, vid_pid=(12259, 256),
-                 channels: int = 64, samples_per_frame: int = 64):
+                 channels: int = 64, samples_per_frame: int = 64, version: str = "3.0"):
         self.com_name = com_name
         self.vid_pid = vid_pid
         ports = list(serial.tools.list_ports.comports())
@@ -283,12 +283,12 @@ class Emager3:
                     self.pos = 0
 
 class EmagerStreamer(Process):
-    def __init__(self, shared_memory_items, emager_version = 1, emager_kwargs: dict | None = None):
+    def __init__(self, shared_memory_items, version: str = "v1", emager_kwargs: dict | None = None):
         """
         :param shared_memory_items: list[(name, shape, dtype, lock)]
-        :param emager_version: 1 or 3
+        :param version: str Emager version: 'v1.0', 'v1.1', 'v3.0'
         :param emager_kwargs: dict passed to Emager/Emager3. Supported keys:
-          baud_rate (int, default 1500000), endianness ('le'), signed (bool),
+          baud_rate (int, default 1500000 or 5000000 for v3), endianness ('le'), signed (bool),
           com_name, vid_pid (tuple), channels (int), samples_per_frame (int)
         """
         super().__init__(daemon=True)
@@ -296,7 +296,13 @@ class EmagerStreamer(Process):
         self.shared_memory_items = shared_memory_items
         self._stop_event = Event()
         self.e = None
-        self.emager_version = float(emager_version)
+        
+        version = version.strip().lower().lstrip('v').replace('_', '.')
+        if '.' not in version:
+            version += '.0'
+        if version not in ['1.0', '1.1', '3.0']:
+            raise ValueError(f"Unsupported Emager version: {version}")
+        self.version = version
         self.emager_kwargs = emager_kwargs or {}
 
     def run(self):
@@ -304,9 +310,9 @@ class EmagerStreamer(Process):
             self.smm.create_variable(*item)
         
         # Instantiate the appropriate Emager reader based on version and kwargs
-        if self.emager_version == 3.0:
+        if self.version == "3.0":
             bw = self.emager_kwargs
-            baud = bw.get('baud_rate', 1500000)
+            baud = bw.get('baud_rate', 5000000)
             endianness = bw.get('endianness', 'le')
             signed = bw.get('signed', False)
             com_name = bw.get('com_name', None)
@@ -314,10 +320,10 @@ class EmagerStreamer(Process):
             channels = bw.get('channels', 64)
             samples_per_frame = bw.get('samples_per_frame', 64)
             self.e = Emager3(baud, endianness=endianness, signed=signed, com_name=com_name, vid_pid=vid_pid,
-                              channels=channels, samples_per_frame=samples_per_frame)
+                              channels=channels, samples_per_frame=samples_per_frame, version=self.version)
         else:
             baud = self.emager_kwargs.get('baud_rate', 1500000)
-            self.e = Emager(baud, version=self.emager_version)
+            self.e = Emager(baud, version=self.version)
         self.e.connect()
         # Create a queue and writer thread to offload shared-memory writes
         q: Queue = Queue(maxsize=100)
