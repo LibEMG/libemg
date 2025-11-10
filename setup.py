@@ -44,7 +44,8 @@ setup(
         "onedrivedownloader",
         "sifi-bridge-py",
         "pygame",
-        "mindrove"
+        "mindrove",
+        "crc"
     ],
     keywords=[
         "emg",

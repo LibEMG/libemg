@@ -7,6 +7,9 @@ The goal of this library is to provide an easy to use and feature-rich API for d
 ## Documentation
 All documentation can be found at: [Library Documentation](https://libemg.github.io/libemg/)
 
+## Datasets 
+All datasets can be found at: [Datasets](https://www.libemg.com/)
+
 ## Install 
 `pip install libemg`
 

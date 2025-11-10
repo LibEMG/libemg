@@ -32,3 +32,4 @@ h5py
 onedrivedownloader
 sifi-bridge-py
 mindrove
+crc
