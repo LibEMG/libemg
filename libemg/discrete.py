@@ -6,6 +6,7 @@ from libemg.utils import get_windows
 import pyautogui
 import time 
 import statistics
+import json 
 
 class DiscreteControl:
     """
@@ -25,25 +26,37 @@ class DiscreteControl:
         The trained PyTorch model for gesture classification.
     buffer: int, optional
         The size of the prediction buffer to use for mode filtering. Default is 1.
-    template_size: int, optional
-        The size of each EMG template (in samples). Default is 250 (1.5s for the Myo Armband).
-    min_template_size: int, optional
-        The minimum number of samples required before starting to make predictions (helps reduce the delay needed between subsequent gestures). Default is 100.
     key_mapping: dict, optional
         A dictionary mapping gesture names to keyboard keys. Default maps 'Close' to 'c', 'Flexion' to 'f', 'Extension' to 'e', 'Open' to 'o', and 'Pinch' to 'p'.
     debug: bool, optional
         If True, enables debug mode with additional print statements. Default is True.
     """
-    def __init__(self, odh, window_size, increment, model, buffer=5, template_size=250, min_template_size=150, key_mapping={'Close':'c', 'Flexion':'f', 'Extension':'e', 'Open':'o', 'Pinch':'p'}, debug=True):
+    def __init__(self, odh, window_size, increment, save_folder='data/', config='config.json', buffer=5, key_mapping={'Close':'c', 'Flexion':'f', 'Extension':'e', 'Open':'o', 'Pinch':'p'}, debug=True):
         self.odh = odh
         self.window_size = window_size
         self.increment = increment
         self.buffer_size = buffer
-        self.model = model 
-        self.template_size = template_size
-        self.min_template_size = min_template_size
+        self.model = None 
+        self.template_size = None
+        self.min_template_size = None 
         self.key_mapping = key_mapping
         self.debug = debug
+        self.save_folder = save_folder
+        self.config = config 
+        self.last_model_path = None 
+        self.load_config()
+
+    def load_config(self):
+        data = json.load(open(self.config, 'r'))
+        self.min_template_size = data['min_template_size']
+        self.template_size = data['template_size']
+        model_path = data['model_path']
+        if model_path != self.last_model_path:
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            self.model = torch.load(model_path, map_location=device)
+            self.model.to(device)
+            self.model.eval()
+            self.last_model_path = model_path
     
     def run(self):
         """
@@ -53,8 +66,14 @@ class DiscreteControl:
         gesture_mapping = ['Nothing', 'Close', 'Flexion', 'Extension', 'Open', 'Pinch']
         expected_count = self.min_template_size
         buffer = []
+        time_since_load = time.time()
 
         while True:
+            # Reload config every 10 seconds
+            if time.time() - time_since_load > 10:
+                self.load_config()
+                time_since_load = time.time()
+                
             # Get and process EMG data
             _, counts = self.odh.get_data(self.window_size)
             if counts['emg'][0][0] >= expected_count:
@@ -65,6 +84,8 @@ class DiscreteControl:
                 buffer.append(pred)
                 mode_pred = statistics.mode(buffer[-self.buffer_size:])
                 if mode_pred != 0: 
+                    # TODO: I need to figure out a way to better align the template including potentially thresholding it 
+                    np.save(self.save_folder + gesture_mapping[mode_pred] + '_' + str(int(time.time())) + '.npy', emg)
                     if self.debug:
                         print(str(time.time()) + ' ' + gesture_mapping[mode_pred])
                     self._key_press(mode_pred, gesture_mapping)
