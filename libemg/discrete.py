@@ -52,7 +52,7 @@ class DiscreteControl:
         self.template_size = data['template_size']
         model_path = data['model_path']
         if model_path != self.last_model_path:
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            device = torch.device('cpu')
             self.model = torch.load(model_path, map_location=device)
             self.model.to(device)
             self.model.eval()
@@ -67,6 +67,7 @@ class DiscreteControl:
         expected_count = self.min_template_size
         buffer = []
         time_since_load = time.time()
+        nm_data = []
 
         while True:
             # Reload config every 10 seconds
@@ -77,22 +78,28 @@ class DiscreteControl:
             # Get and process EMG data
             _, counts = self.odh.get_data(self.window_size)
             if counts['emg'][0][0] >= expected_count:
-                data, counts = self.odh.get_data(self.template_size)
+                data, counts = self.odh.get_data(min([self.template_size, counts['emg'][0][0]]))
                 emg = data['emg'][::-1]
                 feats = self._get_features([emg], self.window_size, self.increment, None, None)
                 pred, _ = self._predict(feats[0])
                 buffer.append(pred)
                 mode_pred = statistics.mode(buffer[-self.buffer_size:])
                 if mode_pred != 0: 
-                    # TODO: I need to figure out a way to better align the template including potentially thresholding it 
-                    np.save(self.save_folder + gesture_mapping[mode_pred] + '_' + str(int(time.time())) + '.npy', emg)
                     if self.debug:
                         print(str(time.time()) + ' ' + gesture_mapping[mode_pred])
                     self._key_press(mode_pred, gesture_mapping)
+                    
+                    # Save datga 
+                    np.save(self.save_folder + str(mode_pred) + '_' + str(int(time.time())) + '.npy', emg)
+                    if len(nm_data) > 0:
+                        np.save(self.save_folder + str(0) + '_' + str(int(time.time())) + '.npy', nm_data[0])
+                    
+                    nm_data = []
                     self.odh.reset()
                     expected_count = self.min_template_size
                     buffer = []
                 else:
+                    nm_data.append(emg)
                     expected_count += 10
 
     def _key_press(self, pred, mapping):
