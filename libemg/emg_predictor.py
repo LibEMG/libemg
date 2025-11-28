@@ -981,13 +981,8 @@ class OnlineEMGClassifier(OnlineStreamer):
                                                 insert_classifier_output)
             self.options['model_smm_writes'] += 1
 
-        if self.output_format == "predictions":
-            message = str(prediction) + calculated_velocity + '\n'
-        elif self.output_format == "probabilities":
-            message = ' '.join([f'{i:.2f}' for i in probabilities[0]]) + calculated_velocity + " " + str(time_stamp)
-        else:
-            raise ValueError(f"Unexpected value for output_format. Accepted values are 'predictions' and 'probabilities'. Got: {self.output_format}.")
-
+        message = str(prediction) + " " + str(np.abs(np.array(window['emg'])).mean(axis=2).mean()) + str(calculated_velocity)
+    
         if not self.tcp:
             self.sock.sendto(bytes(message, 'utf-8'), (self.ip, self.port))
         else:
@@ -1015,7 +1010,6 @@ class OnlineEMGClassifier(OnlineStreamer):
         cmap = cm.get_cmap('turbo', num_classes)
 
         controller = ClassifierController(output_format=self.output_format, num_classes=num_classes, ip=self.ip, port=self.port)
-        controller.start()
 
         if legend is not None:
             for i in range(num_classes):
@@ -1202,7 +1196,6 @@ class OnlineEMGRegressor(OnlineStreamer):
         ax.set_ylabel('Prediction')
 
         controller = RegressorController(ip=self.ip, port=self.port)
-        controller.start()
 
         # Wait for controller to start receiving data
         predictions = None
