@@ -20,12 +20,14 @@ class GUI:
     ----------
     online_data_handler: OnlineDataHandler
         Online data handler used for acquiring raw EMG data.
-    args: dic, default={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True}
-        The dictionary that defines the SGT window. Keys are: 'media_folder', 
-        'data_folder', 'num_reps', 'rep_time', 'rest_time', and 'auto_advance'. All media (i.e., images and videos) in 'media_folder' will be played in alphabetical order.
+    args: dic, default={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True, 'discrete': False}
+        The dictionary that defines the SGT window. Keys are: 'media_folder',
+        'data_folder', 'num_reps', 'rep_time', 'rest_time', 'auto_advance', and 'discrete'. All media (i.e., images and videos) in 'media_folder' will be played in alphabetical order.
         For video files, a matching labels file of the same name will be searched for and added to the 'data_folder' if found.
         'rep_time' is only used for images since the duration of videos is automatically calculated based on
-        the number of frames (assumed to be 24 FPS).  
+        the number of frames (assumed to be 24 FPS). When 'discrete' is True, recording is controlled by
+        holding the spacebar instead of using a timer - recording starts when spacebar is pressed and
+        stops when released.  
     width: int, default=1920
         The width of the SGT window. 
     height: int, default=1080
@@ -39,7 +41,7 @@ class GUI:
     """
     def __init__(self, 
                  online_data_handler,
-                 args={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True},
+                 args={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True, 'discrete': False},
                  width=1920,
                  height=1080,
                  debug=False,
@@ -73,8 +75,33 @@ class GUI:
         dpg.create_viewport(title="LibEMG",
                             width=width,
                             height=height)
+
+        # Scale UI based on viewport height (base: 1080p -> 18pt font)
+        self.ui_scale = height / 1080.0
+        font_size = int(18 * self.ui_scale)
+
+        # Load a proper TTF font for crisp text at any size
+        font_paths = [
+            "/System/Library/Fonts/SFNS.ttf",           # macOS San Francisco
+            "/System/Library/Fonts/Helvetica.ttc",      # macOS Helvetica
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
+            "C:/Windows/Fonts/segoeui.ttf",             # Windows
+        ]
+        with dpg.font_registry():
+            font_loaded = False
+            for font_path in font_paths:
+                if os.path.exists(font_path):
+                    default_font = dpg.add_font(font_path, font_size)
+                    font_loaded = True
+                    break
+            if not font_loaded:
+                # Fallback: scale the default bitmap font (lower quality)
+                default_font = None
+                dpg.set_global_font_scale(self.ui_scale)
+        if font_loaded:
+            dpg.bind_font(default_font)
+
         dpg.setup_dearpygui()
-        
 
         self._file_menu_init()
 
