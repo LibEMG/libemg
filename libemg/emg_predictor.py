@@ -1242,3 +1242,137 @@ class OnlineEMGRegressor(OnlineStreamer):
         
         _ = FuncAnimation(fig, partial(update, decision_horizon_predictions=[], timestamps=[]), interval=5, blit=False)  # must return value or animation won't work
         plt.show()
+
+
+class OnlineDiscreteClassifier:
+    """
+    A discrete control class for real-time gesture recognition using EMG signals.
+    Interfaces with a trained model (e.g., MVLDA, DTW, or any model with a predict method)
+    to classify gestures and map them to keyboard inputs.
+
+    Unlike OnlineEMGClassifier which operates on continuous sliding windows, this class
+    is designed for discrete gesture recognition where each gesture is a complete template
+    that gets classified as a whole.
+
+    Parameters
+    ----------
+    odh : OnlineDataHandler
+        The online data handler object for streaming EMG data.
+    window_size : int
+        The window size (in samples) to use for splitting up each template.
+    window_increment : int
+        The increment size (in samples) for the sliding window.
+    model : object
+        A trained model with a predict method (e.g., MVLDA, DTWClassifier, or sklearn classifier).
+        The predict method should accept a list of feature arrays and return predictions.
+    template_size : int
+        The size of each EMG template (in samples).
+    min_template_size : int, optional
+        The minimum number of samples required before starting to make predictions
+        (helps reduce the delay needed between subsequent gestures). Default is template_size.
+    key_mapping : dict, optional
+        A dictionary mapping gesture names to keyboard keys.
+        Default maps 'Close' to 'c', 'Flexion' to 'f', 'Extension' to 'e', 'Open' to 'o', and 'Pinch' to 'p'.
+    feature_list : list, optional
+        List of features to extract. Default is ['MAV', 'WL', 'ZC', 'SSC'] (HTD features).
+    feature_dic : dict, optional
+        Dictionary of feature-specific parameters. Default is empty dict.
+    gesture_mapping : list, optional
+        List mapping class indices to gesture names. Default is ['Nothing', 'Close', 'Flexion', 'Extension', 'Open', 'Pinch'].
+    debug : bool, optional
+        If True, enables debug mode with additional print statements. Default is True.
+
+    Examples
+    --------
+    >>> from libemg.streamers import myo_streamer
+    >>> from libemg.data_handler import OnlineDataHandler
+    >>> from libemg._discrete_models.MVLDA import MVLDA
+    >>> streamer, smm_items = myo_streamer()
+    >>> odh = OnlineDataHandler(smm_items)
+    >>> model = MVLDA()
+    >>> model.fit(training_features, training_labels)
+    >>> controller = OnlineDiscreteClassifier(odh, window_size=50, window_increment=25, model=model)
+    >>> controller.run()
+    """
+
+    def __init__(
+        self,
+        odh,
+        window_size,
+        window_increment,
+        model,
+        null_label,
+        feature_list,
+        template_size,
+        min_template_size=None,
+        key_mapping=None,
+        feature_dic=None,
+        gesture_mapping=None,
+        debug=True
+    ):
+        self.odh = odh
+        self.window_size = window_size
+        self.window_increment = window_increment
+        self.feature_list = feature_list 
+        self.model = model
+        self.null_label = null_label
+        self.template_size = template_size
+        if min_template_size is not None:
+            self.min_template_size = min_template_size
+        else:
+            self.min_template_size = template_size
+        self.key_mapping = key_mapping
+        self.feature_dic = feature_dic if feature_dic is not None else {}
+        self.gesture_mapping = gesture_mapping 
+        self.debug = debug
+        self.fe = FeatureExtractor()
+
+    def run(self):
+        """
+        Main loop for gesture detection.
+
+        Runs a sliding window over incoming EMG data and makes predictions based on the trained model.
+        When a gesture is detected (prediction != 0), the corresponding keyboard key is pressed.
+        The loop continues until interrupted.
+        """
+        expected_count = self.min_template_size
+
+        while True:
+            # Get and process EMG data
+            _, counts = self.odh.get_data(self.window_size)
+            if counts['emg'][0][0] >= expected_count:
+                data, counts = self.odh.get_data(self.template_size)
+                emg = data['emg'][::-1]  # Reverse to get most recent data first
+                windows = get_windows(emg, window_size=self.window_size, window_increment=self.window_increment)
+                feats = self.fe.extract_features(self.feature_list, windows, array=True)
+                pred = self.model.predict(np.array([feats]))[0]
+                
+                if pred != self.null_label:
+                    if self.debug:
+                        if self.gesture_mapping:
+                            print(f"{time.time()} {self.gesture_mapping[pred]}")
+                        else:   
+                            print(f"{time.time()} {[pred]}")
+                    if self.key_mapping is not None:
+                        self._key_press(pred)
+
+                    self.odh.reset()
+                    expected_count = self.min_template_size
+                else:
+                    expected_count += self.window_increment
+
+
+    def _key_press(self, pred):
+        """
+        Press the keyboard key corresponding to the predicted gesture.
+
+        Parameters
+        ----------
+        pred : int
+            The predicted gesture index.
+        """
+        import pyautogui
+
+        gesture_name = self.gesture_mapping[pred]
+        if gesture_name in self.key_mapping:
+            pyautogui.press(self.key_mapping[gesture_name])
