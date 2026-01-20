@@ -1,3 +1,3 @@
-from libemg._discrete_models import MVLDA
-from libemg._discrete_models import DTW
-from libemg._discrete_models import MyoCrossUser
+from libemg._discrete_models.MVLDA import MVLDA
+from libemg._discrete_models.DTW import DTWClassifier
+from libemg._discrete_models.MyoCrossUser import MyoCrossUserPretrained

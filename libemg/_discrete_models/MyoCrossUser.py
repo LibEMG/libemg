@@ -116,7 +116,8 @@ class MyoCrossUserPretrained:
             return
 
         model_dir = os.path.dirname(self.model_path)
-        os.makedirs(model_dir, exist_ok=True)
+        if model_dir:
+            os.makedirs(model_dir, exist_ok=True)
 
         print(f"Downloading model to {self.model_path}...")
         urllib.request.urlretrieve(MODEL_URL, self.model_path)

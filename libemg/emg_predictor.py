@@ -1244,11 +1244,6 @@ class OnlineEMGRegressor(OnlineStreamer):
         plt.show()
 
 
-import time
-import numpy as np
-from libemg.feature_extractor import FeatureExtractor
-from libemg.utils import get_windows
-
 class OnlineDiscreteClassifier:
     """OnlineDiscreteClassifier.
 
