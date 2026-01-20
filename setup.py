@@ -45,7 +45,8 @@ setup(
         "sifi-bridge-py",
         "pygame",
         "mindrove",
-        "crc"
+        "crc",
+        "tslearn"
     ],
     extras_require={
         "torch": ["torch"],

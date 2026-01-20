@@ -34,3 +34,4 @@ sifi-bridge-py
 mindrove
 crc
 torch
+tslearn
