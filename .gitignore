@@ -70,3 +70,4 @@ MLPR.py
 docs/Makefile
 sifibridge-*
 *.pyc
+*.model
