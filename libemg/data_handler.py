@@ -462,6 +462,24 @@ class OfflineDataHandler(DataHandler):
         return self._parse_windows_helper(window_size, window_increment, metadata_operations, discrete)
 
     def _parse_windows_helper(self, window_size, window_increment, metadata_operations, discrete=False):
+        """Internal helper for parse_windows.
+
+        Parameters
+        ----------
+        window_size: int
+            The number of samples in a window.
+        window_increment: int
+            The number of samples that advances before next window.
+        metadata_operations: dict or None
+            Operations to perform on metadata attributes during windowing.
+        discrete: bool, default=False
+            If True, keeps windows from each file/rep separate.
+
+        Returns
+        -------
+        tuple
+            Windows and metadata dictionary.
+        """
         common_metadata_operations = {
             'mean': np.mean,
             'median': np.median,

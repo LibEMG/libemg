@@ -1324,10 +1324,15 @@ class OnlineDiscreteClassifier:
         self.fe = FeatureExtractor()
 
     def run(self):
-        """
-        Main loop for gesture detection.
-        Uses predict_proba to apply an optional rejection threshold.
-        When buffer_size > 1, takes the mode across multiple successive predictions.
+        """Run the main gesture detection loop.
+
+        Continuously monitors EMG data and detects discrete gestures. Uses predict_proba
+        to apply an optional rejection threshold. When buffer_size > 1, takes the mode
+        across multiple successive predictions before accepting a gesture.
+
+        The loop runs indefinitely until interrupted. When a gesture is detected and
+        accepted (passes rejection threshold and buffer consensus), the data handler
+        is reset and the prediction buffer is cleared.
         """
         expected_count = self.min_template_size
 
@@ -1378,6 +1383,13 @@ class OnlineDiscreteClassifier:
                     expected_count += self.window_increment
 
     def _key_press(self, pred):
+        """Trigger a keyboard press for the predicted gesture.
+
+        Parameters
+        ----------
+        pred: int
+            The predicted class index to map to a key press.
+        """
         import pyautogui
         gesture_name = self.gesture_mapping[pred]
         if gesture_name in self.key_mapping:

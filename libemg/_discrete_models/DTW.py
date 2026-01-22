@@ -1,24 +1,97 @@
 from tslearn.metrics import dtw_path
 import numpy as np
 
+
 class DTWClassifier:
+    """Dynamic Time Warping k-Nearest Neighbors classifier.
+
+    A classifier that uses Dynamic Time Warping (DTW) distance for template
+    matching with k-nearest neighbors. Suitable for discrete gesture recognition
+    where temporal alignment between samples varies.
+
+    Parameters
+    ----------
+    n_neighbors: int, default=1
+        Number of neighbors to use for k-nearest neighbors voting.
+
+    Attributes
+    ----------
+    templates: list of ndarray
+        The training templates stored after fitting.
+    labels: ndarray
+        The labels corresponding to each template.
+    classes_: ndarray
+        The unique class labels known to the classifier.
+    """
+
     def __init__(self, n_neighbors=1):
+        """Initialize the DTW classifier.
+
+        Parameters
+        ----------
+        n_neighbors: int, default=1
+            Number of neighbors to use for k-nearest neighbors voting.
+        """
         self.n_neighbors = n_neighbors
         self.templates = None
         self.labels = None
         self.classes_ = None
 
     def fit(self, features, labels):
+        """Fit the DTW classifier by storing training templates.
+
+        Parameters
+        ----------
+        features: list of ndarray
+            A list of training samples (templates) where each sample is
+            a 2D array of shape (n_frames, n_features).
+        labels: array-like
+            The target labels for each template.
+        """
         self.templates = features
         self.labels = np.array(labels)
         self.classes_ = np.unique(labels)
 
     def predict(self, samples):
+        """Predict class labels for samples.
+
+        Parameters
+        ----------
+        samples: list of ndarray
+            A list of samples to classify where each sample is a 2D array
+            of shape (n_frames, n_features).
+
+        Returns
+        -------
+        ndarray
+            Predicted class labels for each sample.
+        """
         # We can reuse predict_proba logic to get the class with highest probability
         probas = self.predict_proba(samples)
         return self.classes_[np.argmax(probas, axis=1)]
 
     def predict_proba(self, samples, gamma=None, eps=1e-12):
+        """Predict class probabilities using DTW distance-weighted voting.
+
+        Computes DTW distances to all templates, selects k-nearest neighbors,
+        and computes class probabilities using exponentially weighted voting.
+
+        Parameters
+        ----------
+        samples: list of ndarray
+            A list of samples to classify where each sample is a 2D array
+            of shape (n_frames, n_features).
+        gamma: float, default=None
+            The kernel bandwidth for distance weighting. If None, automatically
+            computed based on median neighbor distance.
+        eps: float, default=1e-12
+            Small constant to prevent division by zero.
+
+        Returns
+        -------
+        ndarray
+            Predicted class probabilities of shape (n_samples, n_classes).
+        """
         if self.templates is None:
             raise ValueError("Call fit() before predict_proba().")
 

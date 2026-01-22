@@ -157,20 +157,18 @@ class FeatureExtractor:
         discrete: bool (optional), default=False
             If True, windows is expected to be a list of templates (from parse_windows with discrete=True).
             Features will be extracted for each template separately and returned as a list.
+
         Returns
-        ----------        When discrete=False:
-            dictionary or np.ndarray
-                A dictionary where each key is a specific feature and its value is a list of the computed
-                features for each window. If array=True, returns a np.ndarray instead.
-            tuple (np.ndarray, StandardScaler)
-                If normalize=True, returns a tuple of (features array, scaler). The scaler should be passed
-                into the feature extractor for test data.
-        When discrete=True:
-            list
-                A list of dictionaries/arrays (one per template). If array=True, each element is a np.ndarray.
-            tuple (list, StandardScaler)
-                If normalize=True, returns a tuple of (list of np.ndarrays, scaler). The scaler should be
-                passed into the feature extractor for test data.
+        ----------
+        dictionary or np.ndarray
+            When discrete=False: A dictionary where each key is a specific feature and its value is a list
+            of the computed features for each window. If array=True, returns a np.ndarray instead.
+            When discrete=True: A list of dictionaries/arrays (one per template). If array=True, each
+            element is a np.ndarray.
+        tuple (features, StandardScaler)
+            If normalize=True, returns a tuple of (features, scaler). When discrete=False, features is a
+            np.ndarray. When discrete=True, features is a list of np.ndarrays. The scaler should be passed
+            into the feature extractor for test data.
         """
         if discrete:
             # Handle discrete mode: windows is a list of templates
