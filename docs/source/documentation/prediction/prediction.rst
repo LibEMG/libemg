@@ -6,6 +6,9 @@ EMG Prediction
 .. include:: classification_doc.md
    :parser: myst_parser.sphinx_
 
+.. include:: discrete_classification_doc.md
+   :parser: myst_parser.sphinx_
+
 .. include:: regression_doc.md
    :parser: myst_parser.sphinx_
 

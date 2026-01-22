@@ -157,6 +157,7 @@ class FeatureExtractor:
         discrete: bool (optional), default=False
             If True, windows is expected to be a list of templates (from parse_windows with discrete=True).
             Features will be extracted for each template separately and returned as a list.
+            Note: Normalization is not currently supported in discrete mode.
 
         Returns
         ----------
@@ -165,37 +166,18 @@ class FeatureExtractor:
             of the computed features for each window. If array=True, returns a np.ndarray instead.
             When discrete=True: A list of dictionaries/arrays (one per template). If array=True, each
             element is a np.ndarray.
-        tuple (features, StandardScaler)
-            If normalize=True, returns a tuple of (features, scaler). When discrete=False, features is a
-            np.ndarray. When discrete=True, features is a list of np.ndarrays. The scaler should be passed
-            into the feature extractor for test data.
+        tuple (np.ndarray, StandardScaler)
+            If normalize=True (only supported when discrete=False), returns a tuple of (features array, scaler).
+            The scaler should be passed into the feature extractor for test data.
         """
         if discrete:
+            if normalize:
+                raise ValueError("Normalization is not currently supported in discrete mode.")
             # Handle discrete mode: windows is a list of templates
             all_features = []
             for template in windows:
                 template_features = self._extract_features_single(feature_list, template, feature_dic, array, fix_feature_errors)
                 all_features.append(template_features)
-
-            if normalize:
-                # For normalization in discrete mode, we need to flatten, normalize, then restructure
-                if not array:
-                    all_features = [self._format_data(f) for f in all_features]
-                combined = np.vstack(all_features)
-                if not normalizer:
-                    scaler = StandardScaler()
-                    combined = scaler.fit_transform(combined)
-                else:
-                    scaler = normalizer
-                    combined = normalizer.transform(combined)
-                # Split back into list based on original sizes
-                result = []
-                idx = 0
-                for template in windows:
-                    n_windows = template.shape[0]
-                    result.append(combined[idx:idx+n_windows])
-                    idx += n_windows
-                return result, scaler
             return all_features
 
         return self._extract_features_single(feature_list, windows, feature_dic, array, fix_feature_errors, normalize, normalizer)
