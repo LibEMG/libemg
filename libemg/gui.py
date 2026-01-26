@@ -141,6 +141,11 @@ class GUI:
             print("Window is closing. Performing clean-up...")
             if 'streamer' in self.args.keys():
                 self.args['streamer'].signal.set()
+                print("Streamer stopped in window closed.")
+            if 'streamers' in self.args.keys():
+                for streamer in self.args['streamers']:
+                    streamer.signal.set()
+                    print(f"Streamer stopped in window closed.")
             time.sleep(3)
     
     def download_gestures(self, gesture_ids, folder, download_imgs=True, download_gifs=False, redownload=False):

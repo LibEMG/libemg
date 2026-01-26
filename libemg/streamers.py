@@ -20,6 +20,7 @@ from libemg._streamers._OTB_MuoviPlus import OTBMuoviPlusEMGStreamer
 
 def sifi_biopoint_streamer(
     name = "BioPoint_v1_3",
+    device_id = None,
     shared_memory_items = None,
     ecg = False,
     emg = True, 
@@ -32,7 +33,9 @@ def sifi_biopoint_streamer(
     eda_bandpass = (0,5),
     eda_freq = 0,
     streaming=False,
-    mac= None
+    mac= None,
+    ble_power="high",
+    memory_mode="both"
 ):
     """
     The streamer for the SiFi BioPoint. 
@@ -49,6 +52,8 @@ def sifi_biopoint_streamer(
     
     device: string, default = BioPoint_v1_3
         The name or MAC of the device.
+    device_id : int | None
+        If multiple devices are connected, this is the device ID to differentiate them. None by default (just one device).
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
     ecg, default = False
@@ -113,6 +118,7 @@ def sifi_biopoint_streamer(
         
     sb = SiFiBridgeStreamer(
         name,
+        device_id,
         shared_memory_items,
         ecg,
         emg,
@@ -125,7 +131,9 @@ def sifi_biopoint_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac
+        mac,
+        ble_power,
+        memory_mode,
     )
     sb.start()
     return sb, shared_memory_items
@@ -133,6 +141,7 @@ def sifi_biopoint_streamer(
 
 def sifi_bioarmband_streamer(
     name = "BioPoint_v1_1",
+    device_id = None,
     shared_memory_items = None,
     ecg = False,
     emg = True, 
@@ -145,7 +154,9 @@ def sifi_bioarmband_streamer(
     eda_bandpass = (0,5),
     eda_freq = 0,
     streaming = False,
-    mac = None
+    mac = None,
+    ble_power = "high",
+    memory_mode = "both"
 ):
     """
     The streamer for the SiFi BioArmband. 
@@ -162,6 +173,8 @@ def sifi_bioarmband_streamer(
     
     name: string, default = BioArmband
         The name of the Sifi Device. For example: BioArmband, BioPoint_v1_3, etc.
+    device_id : int | None
+        If multiple devices are connected, this is the device ID to differentiate them. None by default (just one device).
     shared_memory_items, default = []
         The key, size, datatype, and multiprocessing Lock for all data to be shared between processes.
     ecg, default = False
@@ -227,6 +240,7 @@ def sifi_bioarmband_streamer(
         
     sb = SiFiBridgeStreamer(
         name,
+        device_id,
         shared_memory_items,
         ecg,
         emg,
@@ -239,7 +253,9 @@ def sifi_bioarmband_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac
+        mac,
+        ble_power,
+        memory_mode,
     )
 
     sb.start()

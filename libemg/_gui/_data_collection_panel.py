@@ -9,7 +9,7 @@ import csv
 import json
 from datetime import datetime
 from ._utils import Media, set_texture, init_matplotlib_canvas, matplotlib_to_numpy
-
+import libemg.utils
 import threading
 import matplotlib.pyplot as plt
 
@@ -234,7 +234,8 @@ class DataCollectionPanel:
                 self.play_collection_visual(media_list[self.i], active=False)
                 media_list[self.i][0].reset()
             self.gui.online_data_handler.reset()
-            
+
+            libemg.utils.log_timestamp(self.output_folder, tag=f"C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + " ACQUISITION START", append=True, print_timestamp=False)
             self.play_collection_visual(media_list[self.i], active=True)
             
             output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
@@ -265,6 +266,7 @@ class DataCollectionPanel:
                 dpg.configure_app(manual_callback_management=False)
                 if not is_final_media:
                     dpg.set_value('__dc_rep', value=f"Rep {media_list[self.i][3] + 1} of {self.num_reps}")
+
         
     def redo_collection_callback(self):
         if self.auto_advance:
@@ -274,11 +276,17 @@ class DataCollectionPanel:
         dpg.hide_item(item="__dc_redo_button")
         dpg.hide_item(item="__dc_continue_button")
         self.advance = True
+        
+        current_rep = (self.i // self.num_motions)
+        libemg.utils.log_timestamp(self.output_folder, tag=f"R_{current_rep} REDO", append=True, print_timestamp=False)
     
     def continue_collection_callback(self):
         dpg.hide_item(item="__dc_redo_button")
         dpg.hide_item(item="__dc_continue_button")
         self.advance = True
+
+        current_rep = (self.i // self.num_motions) - 1
+        libemg.utils.log_timestamp(self.output_folder, tag=f"R_{current_rep} CONTINUE", append=True, print_timestamp=False)
 
     def play_collection_visual(self, media, active=True):
         if active:
@@ -315,6 +323,11 @@ class DataCollectionPanel:
     
     def save_data(self, filename):
         file_parts = filename.split('.')
+        
+        folder = os.path.dirname(filename)
+        base_name = os.path.basename(filename)
+        tag = f"{base_name.split('.')[0]} SAVE"
+        libemg.utils.log_timestamp(folder, tag=tag, append=True, print_timestamp=False)
         
         for mod in self.rep_buffer:
             filename = file_parts[0] + "_" + mod + "." + file_parts[1]
