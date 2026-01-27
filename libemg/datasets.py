@@ -19,6 +19,7 @@ from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.offline_metrics import OfflineMetrics
 from libemg.filtering import Filter
 from libemg._datasets.emg2pose import EMG2POSEUD, EMG2POSECU
+from libemg._datasets.emg_epn100 import EMGEPN100
 from sklearn.preprocessing import StandardScaler
 import pickle
 import numpy as np
@@ -45,6 +46,7 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
     
     cross_user_classification = {
         'EMGEPN612': EMGEPN_UserIndependent,
+        'EMGEPN100': EMGEPN100,
     }
 
     cross_user_regression = {
@@ -69,6 +71,7 @@ def get_dataset_list(type='CLASSIFICATION', cross_user=False):
         'TMR_Post' : TMR_Post,
         'TMR_Pre': TMR_Pre,
         'HyserPR': HyserPR,
+        'EMGEPN100': EMGEPN100,
     }
 
     regression = {

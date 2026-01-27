@@ -73,6 +73,57 @@ https://github.com/LibEMG/OneSubjectEMaGerDataset
 
 <br>
 
+
+<!-- ------------- EMGEPN100 -------------------- -->
+<details>
+<summary><b>EMGEPN100</b></summary>
+
+<br>
+
+**Dataset Description:**
+Multi-hardware EMG dataset for 12 different hand gesture categories using the Myo armband and the G-force armband.
+
+| Attribute         | Description                                                                                          |
+|-------------------|------------------------------------------------------------------------------------------------------|
+| **Num Subjects:** | 85                                                                                                  |
+| **Num Reps:**     | 30 Reps x 12 Gestures x 43 Users (Train group), 15 Reps x 12 Gestures x 42 Users (Test group) --> Cross User Split                        |
+| **Classes:**      | <ul> <li>0 - Relax</li> <li>1 - Fist</li> <li>2 - Wave in</li> <li>3 - Wave out</li> <li>4 - Open</li> <li>5 - Pinch</li> <li>6 - Up</li> <li>7 - Down</li> <li>8 - Left</li> <li>9 - Right</li> <li>10 - Forward</li> <li>11 - Backward</li> </ul> |
+| **Device:**       | Myo, gForce                                                                                       |
+| **Sampling Rates:** | Myo: 200Hz, gForce: 500Hz                                                                                     |
+| **Auto Download:** | False       |
+
+**Using the Dataset:**
+```Python
+import libemg
+from libemg.datasets import get_dataset_list
+emg_epn100 = libemg.datasets.EMGEPN100() 
+# or get_dataset_list(cross_user=True)['EMGEPN100']()
+odh = emg_epn100.prepare_data(split=True, segment=True, relabel_seg=None, 
+                                    channel_last=True, subjects=None)['All']
+```
+
+**Dataset Location**
+https://laboratorio-ia.epn.edu.ec/es/recursos/dataset/emg-imu-epn-100
+
+**References:**
+```
+@article{vasconez-2022,
+	author = {Vásconez, Juan Pablo and López, Lorena Isabel Barona and Caraguay, Ángel Leonardo Valdivieso and Benalcázar, Marco E.},
+	journal = {Sensors},
+	month = {12},
+	number = {24},
+	pages = {9613},
+	title = {{Hand Gesture Recognition Using EMG-IMU Signals and Deep Q-Networks}},
+	volume = {22},
+	year = {2022},
+	doi = {10.3390/s22249613},
+	url = {https://doi.org/10.3390/s22249613},
+}
+```
+</details>
+</br>
+
+
 <!-- ------------- 3DC -------------------- -->
 
 <details>
@@ -747,7 +798,6 @@ https://github.com/LibEMG/WS_CIIL
 
 </details>
 </br>
-
 
 ## Regression 
 

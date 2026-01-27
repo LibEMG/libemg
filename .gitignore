@@ -70,3 +70,6 @@ MLPR.py
 docs/Makefile
 sifibridge-*
 *.pyc
+TEST.ipynb
+/DATASET_85
+/DATASET_85PROCESSED

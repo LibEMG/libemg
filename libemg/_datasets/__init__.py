@@ -3,6 +3,7 @@ from libemg._datasets import ciil
 from libemg._datasets import continous_transitions
 from libemg._datasets import dataset
 from libemg._datasets import emg_epn612
+from libemg._datasets import emg_epn100
 from libemg._datasets import fors_emg
 from libemg._datasets import fougner_lp
 from libemg._datasets import grab_myo
