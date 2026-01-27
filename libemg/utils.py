@@ -7,7 +7,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
 
 
-def get_windows(data, window_size, window_increment):
+def get_windows(data, window_size, window_increment, channel_last=False):
     """Extracts windows from a given set of data.
 
     Parameters
@@ -18,30 +18,33 @@ def get_windows(data, window_size, window_increment):
         The number of samples in a window. 
     window_increment: int
         The number of samples that advances before next window.
+    channel_last: bool, default=False
+        Output will be NxLxC if True.
 
     Returns
     ----------
     list
         The set of windows extracted from the data as a NxCxL where N is the number of windows, C is the number of channels 
-        and L is the length of each window. 
+        and L is the length of each window. Output will be NxLxC if channel_last is True.
 
     Examples
     ---------
     >>> data = np.loadtxt('data.csv', delimiter=',')
     >>> windows = get_windows(data, 100, 50)
     """
-    num_windows = int((data.shape[0]-window_size)/window_increment) + 1
-    windows = []
-    st_id=0
-    ed_id=st_id+window_size
-    for _ in range(num_windows):
-        if data.ndim == 1:
-            windows.append([data[st_id:ed_id].transpose()]) # One Channel EMG
-        else:
-            windows.append(data[st_id:ed_id,:].transpose())
-        st_id += window_increment
-        ed_id += window_increment
-    return np.array(windows)
+    data = np.array(data)
+    if data.ndim == 1:
+        data = np.expand_dims(data, axis=-1)
+
+    T = data.shape[0]
+    starts = np.arange(0, T - window_size + 1, window_increment)
+    idx = starts[:, None] + np.arange(window_size)[None, :]
+
+    windows = data[idx]
+    if not channel_last:
+        windows = np.transpose(windows, (0, 2, 1))
+
+    return windows
 
 def _get_mode_windows(data, window_size, window_increment):
     windows = get_windows(data, window_size, window_increment)

@@ -102,6 +102,8 @@ class EMGEPN_UserDependent(EMGEPN612):
 
         if split:
             data = {'All': odh, 'Train': odh_tr, 'Test': odh_te}
+        else:
+            data = odh_tr + odh_te
         return data
     
 class EMGEPN_UserIndependent(EMGEPN612):
@@ -112,8 +114,11 @@ class EMGEPN_UserIndependent(EMGEPN612):
         odh = self.get_odh(subjects, feature_list, window_size, window_inc, feature_dic)
         odh_tr = odh.isolate_data('subjects', values=list(range(0,306)))
         odh_te = odh.isolate_data('subjects', values=list(range(306,612)))
+        
         if split:
             data = {'All': odh_tr + odh_te, 'Train': odh_tr, 'Test': odh_te}
+        else:
+            data = odh_tr + odh_te
         return data
 
         
