@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discrete Classifiers &mdash; libemg 2.0.1 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> libemg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../data/data.html">Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../filtering/filtering.html">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/features.html">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../feature_selection/feature_selection.html">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prediction.html">EMG Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation/evaluation.html">Evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../animation/animation.html">Animation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../screen_guided_training/sgt.html">Screen Guided Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../supported_hardware/supported_hardware.html">Supported Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visualization/visualization.html">Visualizations</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html">Data Handler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.datasets">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.filtering">Filtering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_extractor">Feature Extraction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.feature_selector">Feature Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.emg_predictor">EMG Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.offline_metrics">Offline Evaluation Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.utils">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.streamers">Streamers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../emg_toolbox.html#module-libemg.gui">Screen Guided Training</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Offline Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/simple_offline_example/simple_offline_example.html">Simple Offline Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/features_and_group_example/features_and_group_example.html">Exploring Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/feature_optimization_example/feature_optimization_example.html">Optimizing Feature Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/deep_learning_example/deep_learning_example.html">Deep Learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/offline_regression_example/offline_regression_example.html">Offline Regression Analysis</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Online Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/snake_example/snake_example.html">Continuous Control (Snake)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/unity_example/unity_example.html">Cross Platform Control (Unity)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mouse_example/mouse_example.html">Proportional Control (Mouse Interface)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/mixed_reality_example/mixed_reality_example.html">Mixed Reality (Hololens 2)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/fitts_example/fitts_example.html">Online Evaluation (Iso Fitts)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">libemg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Discrete Classifiers</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/libemg/libemg/blob/main/docs/source/documentation/prediction/discrete_classification_doc.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="discrete-classifiers">
+<h1>Discrete Classifiers<a class="headerlink" href="#discrete-classifiers" title="Permalink to this heading"></a></h1>
+<p>Unlike continuous classifiers that output a prediction for every window of EMG data, discrete classifiers are designed for recognizing transient, isolated gestures. These classifiers operate on variable-length templates (sequences of windows) and are well-suited for detecting distinct movements like finger snaps, taps, or quick hand gestures.</p>
+<p>Discrete classifiers expect input data in a different format than continuous classifiers:</p>
+<ul class="simple">
+<li><p><strong>Continuous classifiers</strong>: Operate on individual windows of shape <code class="docutils literal notranslate"><span class="pre">(n_windows,</span> <span class="pre">n_features)</span></code>.</p></li>
+<li><p><strong>Discrete classifiers</strong>: Operate on templates (sequences of windows) where each template has shape <code class="docutils literal notranslate"><span class="pre">(n_frames,</span> <span class="pre">n_features)</span></code> and can vary in length.</p></li>
+</ul>
+<p>To prepare data for discrete classifiers, use the <code class="docutils literal notranslate"><span class="pre">discrete=True</span></code> parameter when calling <code class="docutils literal notranslate"><span class="pre">parse_windows()</span></code> on your <code class="docutils literal notranslate"><span class="pre">OfflineDataHandler</span></code>:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.data_handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">OfflineDataHandler</span>
+
+<span class="n">odh</span> <span class="o">=</span> <span class="n">OfflineDataHandler</span><span class="p">()</span>
+<span class="n">odh</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;./data/&#39;</span><span class="p">,</span> <span class="n">regex_filters</span><span class="p">)</span>
+<span class="n">windows</span><span class="p">,</span> <span class="n">metadata</span> <span class="o">=</span> <span class="n">odh</span><span class="o">.</span><span class="n">parse_windows</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">window_increment</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">discrete</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># windows is now a list of templates, one per file/rep</span>
+</pre></div>
+</div>
+<p>For feature extraction with discrete data, use the <code class="docutils literal notranslate"><span class="pre">discrete=True</span></code> parameter:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.feature_extractor</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureExtractor</span>
+
+<span class="n">fe</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">()</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">fe</span><span class="o">.</span><span class="n">extract_features</span><span class="p">([</span><span class="s1">&#39;MAV&#39;</span><span class="p">,</span> <span class="s1">&#39;ZC&#39;</span><span class="p">,</span> <span class="s1">&#39;SSC&#39;</span><span class="p">,</span> <span class="s1">&#39;WL&#39;</span><span class="p">],</span> <span class="n">windows</span><span class="p">,</span> <span class="n">discrete</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># features is a list of arrays, one per template</span>
+</pre></div>
+</div>
+<section id="majority-vote-lda-mvlda">
+<h2>Majority Vote LDA (MVLDA)<a class="headerlink" href="#majority-vote-lda-mvlda" title="Permalink to this heading"></a></h2>
+<p>A classifier that applies Linear Discriminant Analysis (LDA) to each frame within a template and uses majority voting to determine the final prediction. This approach is simple yet effective for discrete gesture recognition.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg._discrete_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">MVLDA</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">MVLDA</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_features</span><span class="p">,</span> <span class="n">train_labels</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">test_features</span><span class="p">)</span>
+<span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">test_features</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="dynamic-time-warping-classifier-dtwclassifier">
+<h2>Dynamic Time Warping Classifier (DTWClassifier)<a class="headerlink" href="#dynamic-time-warping-classifier-dtwclassifier" title="Permalink to this heading"></a></h2>
+<p>A template-matching classifier that uses Dynamic Time Warping (DTW) distance to compare test samples against stored training templates. DTW is particularly useful when gestures may vary in speed or duration, as it can align sequences with different temporal characteristics.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg._discrete_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">DTWClassifier</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">DTWClassifier</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_features</span><span class="p">,</span> <span class="n">train_labels</span><span class="p">)</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">test_features</span><span class="p">)</span>
+<span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">test_features</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">n_neighbors</span></code> parameter controls how many nearest templates are used for voting (k-nearest neighbors with DTW distance).</p>
+</section>
+<section id="pretrained-myo-cross-user-model-myocrossuserpretrained">
+<h2>Pretrained Myo Cross-User Model (MyoCrossUserPretrained)<a class="headerlink" href="#pretrained-myo-cross-user-model-myocrossuserpretrained" title="Permalink to this heading"></a></h2>
+<p>A pretrained deep learning model for cross-user discrete gesture recognition using the Myo armband. This model uses a convolutional-recurrent architecture and recognizes 6 gestures: Nothing, Close, Flexion, Extension, Open, and Pinch.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg._discrete_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyoCrossUserPretrained</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">MyoCrossUserPretrained</span><span class="p">()</span>
+<span class="c1"># Model is automatically downloaded on first use</span>
+
+<span class="c1"># The model provides recommended parameters for OnlineDiscreteClassifier</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+<span class="c1"># {&#39;window_size&#39;: 10, &#39;window_increment&#39;: 5, &#39;null_label&#39;: 0, ...}</span>
+
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">test_data</span><span class="p">)</span>
+<span class="n">probabilities</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">test_data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This model expects raw windowed EMG data (not extracted features) with shape <code class="docutils literal notranslate"><span class="pre">(batch_size,</span> <span class="pre">seq_len,</span> <span class="pre">n_channels,</span> <span class="pre">n_samples)</span></code>.</p>
+</section>
+<section id="online-discrete-classification">
+<h2>Online Discrete Classification<a class="headerlink" href="#online-discrete-classification" title="Permalink to this heading"></a></h2>
+<p>For real-time discrete gesture recognition, use the <code class="docutils literal notranslate"><span class="pre">OnlineDiscreteClassifier</span></code>:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">libemg.emg_predictor</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineDiscreteClassifier</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">libemg._discrete_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">MyoCrossUserPretrained</span>
+
+<span class="c1"># Load pretrained model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MyoCrossUserPretrained</span><span class="p">()</span>
+
+<span class="c1"># Create online classifier</span>
+<span class="n">classifier</span> <span class="o">=</span> <span class="n">OnlineDiscreteClassifier</span><span class="p">(</span>
+    <span class="n">odh</span><span class="o">=</span><span class="n">online_data_handler</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">window_size</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;window_size&#39;</span><span class="p">],</span>
+    <span class="n">window_increment</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;window_increment&#39;</span><span class="p">],</span>
+    <span class="n">null_label</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;null_label&#39;</span><span class="p">],</span>
+    <span class="n">feature_list</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;feature_list&#39;</span><span class="p">],</span>  <span class="c1"># None for raw data</span>
+    <span class="n">template_size</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;template_size&#39;</span><span class="p">],</span>
+    <span class="n">min_template_size</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;min_template_size&#39;</span><span class="p">],</span>
+    <span class="n">gesture_mapping</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;gesture_mapping&#39;</span><span class="p">],</span>
+    <span class="n">buffer_size</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;buffer_size&#39;</span><span class="p">],</span>
+    <span class="n">rejection_threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">debug</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Start recognition loop</span>
+<span class="n">classifier</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-custom-discrete-classifiers">
+<h2>Creating Custom Discrete Classifiers<a class="headerlink" href="#creating-custom-discrete-classifiers" title="Permalink to this heading"></a></h2>
+<p>Any custom discrete classifier should implement the following methods to work with LibEMG:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fit(x,</span> <span class="pre">y)</span></code>: Train the model where <code class="docutils literal notranslate"><span class="pre">x</span></code> is a list of templates and <code class="docutils literal notranslate"><span class="pre">y</span></code> is the corresponding labels.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">predict(x)</span></code>: Return predicted class labels for a list of templates.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">predict_proba(x)</span></code>: Return predicted class probabilities for a list of templates.</p></li>
+</ul>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CustomDiscreteClassifier</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classes_</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="c1"># x: list of templates (each template is an array of frames)</span>
+        <span class="c1"># y: labels for each template</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classes_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="c1"># ... training logic</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="c1"># Return array of predictions</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">predict_proba</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="c1"># Return array of shape (n_samples, n_classes)</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
