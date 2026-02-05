@@ -1287,6 +1287,17 @@ class OnlineDiscreteClassifier:
         Number of successive predictions to buffer before accepting a gesture.
         When buffer_size > 1, the mode (most frequent prediction) across the buffer
         is used to determine the final prediction. This helps filter noisy predictions.
+    save_folder: str, default=None
+        Path to folder for saving EMG data. If provided, saves gesture and no-motion
+        data as .npy files with format {label}_{timestamp}.npy.
+    nm_offset: int, default=0
+        Number of samples to trim from both ends of no-motion data before saving.
+        Trims the start to reduce residual data from the previous gesture, and
+        trims the end to avoid the transition into the current gesture.
+        For example, at 200Hz, use 100 for a 0.5 second offset at each end.
+    config: str, default=None
+        Path to a JSON config file containing 'min_template_size', 'template_size',
+        and optionally 'model_path'. Config is reloaded every 10 seconds during run().
     """
 
     def __init__(
@@ -1304,7 +1315,10 @@ class OnlineDiscreteClassifier:
         gesture_mapping=None,
         rejection_threshold=0.0,
         debug=True,
-        buffer_size=1
+        buffer_size=1,
+        save_folder=None,
+        nm_offset=0,
+        config=None
     ):
         self.odh = odh
         self.window_size = window_size
@@ -1322,6 +1336,40 @@ class OnlineDiscreteClassifier:
         self.buffer_size = buffer_size
         self.prediction_buffer = deque(maxlen=buffer_size)
         self.fe = FeatureExtractor()
+        self.save_folder = save_folder
+        self.nm_offset = nm_offset
+        self.config = config
+        self._last_model_path = None
+        self._time_since_config_load = time.time()
+
+        if self.config is not None:
+            self._load_config()
+
+    def _load_config(self):
+        """Load configuration from JSON file.
+
+        Updates min_template_size, template_size, and optionally reloads the model
+        if model_path has changed.
+        """
+        import json
+        import torch
+
+        with open(self.config, 'r') as f:
+            data = json.load(f)
+
+        self.min_template_size = data['min_template_size']
+        self.template_size = data['template_size']
+
+        if 'model_path' in data:
+            model_path = data['model_path']
+            if model_path != self._last_model_path:
+                device = torch.device('cpu')
+                self.model = torch.load(model_path, map_location=device)
+                self.model.to(device)
+                self.model.eval()
+                self._last_model_path = model_path
+
+        self._time_since_config_load = time.time()
 
     def run(self):
         """Run the main gesture detection loop.
@@ -1333,14 +1381,21 @@ class OnlineDiscreteClassifier:
         The loop runs indefinitely until interrupted. When a gesture is detected and
         accepted (passes rejection threshold and buffer consensus), the data handler
         is reset and the prediction buffer is cleared.
+
+        If a config file is set, it will be reloaded every 10 seconds.
+        If a save_folder is set, EMG data will be saved for detected gestures.
         """
         expected_count = self.min_template_size
 
         while True:
+            # Reload config every 10 seconds if set
+            if self.config is not None and time.time() - self._time_since_config_load > 10:
+                self._load_config()
+
             # Get and process EMG data
             _, counts = self.odh.get_data(self.window_size)
             if counts['emg'][0][0] >= expected_count:
-                data, _ = self.odh.get_data(self.template_size)
+                data, counts = self.odh.get_data(min(self.template_size, counts['emg'][0][0]))
                 emg = data['emg'][::-1]
                 feats = get_windows(emg, window_size=self.window_size, window_increment=self.window_increment)
                 if self.feature_list is not None:
@@ -1373,6 +1428,24 @@ class OnlineDiscreteClassifier:
 
                         if self.key_mapping is not None:
                             self._key_press(buffered_pred)
+
+                        # Save data if save_folder is set
+                        if self.save_folder is not None:
+                            # Get all available data from ODH
+                            _, all_counts = self.odh.get_data(self.window_size)
+                            total_samples = all_counts['emg'][0][0]
+                            all_data, _ = self.odh.get_data(total_samples)
+                            all_emg = all_data['emg'][::-1]
+
+                            # Save gesture template (last template_size samples)
+                            np.save(f"{self.save_folder}{buffered_pred}_{time.time()}.npy", emg)
+
+                            # Save no-motion data (everything before gesture, with offset at both ends)
+                            nm_start = int(self.nm_offset)  # trim start to reduce previous gesture
+                            nm_end = int(total_samples - len(emg) - self.nm_offset)  # trim end to reduce current gesture
+                            if nm_end > nm_start:
+                                nm_emg = all_emg[nm_start:nm_end]
+                                np.save(f"{self.save_folder}{self.null_label}_{time.time()}.npy", nm_emg)
 
                         self.odh.reset()
                         self.prediction_buffer.clear()
