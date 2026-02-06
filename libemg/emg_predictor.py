@@ -1431,6 +1431,11 @@ class OnlineDiscreteClassifier:
 
                         # Save data if save_folder is set
                         if self.save_folder is not None:
+                            gesture_length = min(self.template_size, counts['emg'][0][0]) + 30
+                            time.sleep(0.1) # Quick sleep to hopefully get offset of the gesture as well.
+                            data, counts = self.odh.get_data(gesture_length) # gesture_length)
+                            emg = data['emg'] # [::-1]
+
                             # Get all available data from ODH
                             _, all_counts = self.odh.get_data(self.window_size)
                             total_samples = all_counts['emg'][0][0]
