@@ -23,6 +23,7 @@ class DataCollectionPanel:
                  rest_time=2,
                  auto_advance=True,
                  discrete=False,
+                 transitions=False,
                  exclude_files=[],
                  gui = None,
                  video_player_width = 720,
@@ -35,14 +36,18 @@ class DataCollectionPanel:
         self.rest_time = rest_time
         self.auto_advance=auto_advance
         self.discrete = discrete
+        self.transitions = transitions
         self.exclude_files = exclude_files
         self.gui = gui
         self.video_player_width = video_player_width
         self.video_player_height = video_player_height
+        self.next_preview_width = video_player_width // 5
+        self.next_preview_height = video_player_height // 5
 
         self.widget_tags = {"configuration":['__dc_configuration_window','__dc_num_reps','__dc_rep_time','__dc_rest_time', '__dc_media_folder',\
-                                             '__dc_auto_advance', '__dc_discrete'],
-                            "collection":   ['__dc_collection_window', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button'],
+                                             '__dc_auto_advance', '__dc_discrete', '__dc_transitions'],
+                            "collection":   ['__dc_collection_window', '__dc_collection_visual', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button',
+                                             '__dc_next_group', '__dc_next_prompt', '__dc_next_visual'],
                             "visualization": ['__vls_visualize_window']}
         
 
@@ -111,6 +116,10 @@ class DataCollectionPanel:
                         dpg.add_text("Discrete Mode (Spacebar)")
                         dpg.add_checkbox(default_value=self.discrete,
                                         tag="__dc_discrete")
+                    with dpg.group(horizontal=True):
+                        dpg.add_text("Transitions")
+                        dpg.add_checkbox(default_value=self.transitions,
+                                        tag="__dc_transitions")
                 # BUTTON ROW
                 with dpg.table_row():
                     with dpg.group(horizontal=True):
@@ -144,6 +153,9 @@ class DataCollectionPanel:
         self.output_folder = dpg.get_value("__dc_output_folder")
         self.auto_advance  = bool(dpg.get_value("__dc_auto_advance"))
         self.discrete      = bool(dpg.get_value("__dc_discrete"))
+        self.transitions   = bool(dpg.get_value("__dc_transitions"))
+        if self.transitions:
+            self.rest_time = 0
 
     def gather_media(self):
         # find everything in the media folder
@@ -151,59 +163,110 @@ class DataCollectionPanel:
         files = sorted(files)
         labels_files = [file for file in files if file.endswith(('.txt', '.csv'))]
         files = [file for file in files if file.endswith((".gif",".png",".mp4","jpg"))]
-        self.num_motions = len(files)
         collection_conf = []
-        # make the collection_details.json file
-        collection_details = {}
-        collection_details["num_motions"] = self.num_motions
-        collection_details["num_reps"]    = self.num_reps
-        collection_details["classes"] =   [f.split('.')[0] for f in files]
-        collection_details["class_map"] = {index: f.split('.')[0] for index, f in enumerate(files)}
-        collection_details["time"]    = datetime.now().isoformat()
-        if not os.path.exists(self.output_folder):
-            os.makedirs(self.output_folder)
-        with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
-            json.dump(collection_details, f)
 
-        for media_file in files:
-            matching_labels_files = [labels_file for labels_file in labels_files if Path(labels_file).stem == Path(media_file).stem]
-            if len(matching_labels_files) == 1:
-                # Copy labels file to data directory
-                labels_file = matching_labels_files[0]
-                class_index = [idx for idx, filename in collection_details['class_map'].items() if filename == Path(labels_file).stem]
-                assert len(class_index) == 1, f"Expected a single matching filename in collection_details.json, but got {len(class_index)} for {labels_file}."
-                class_index = class_index[0]
-                labels_new_filename = Path(labels_file).with_stem(f"C_{class_index}").name
-                shutil.copy(Path(self.media_folder, labels_file).absolute(), Path(self.data_folder, labels_new_filename).absolute())
+        if self.transitions:
+            # Generate all N*(N-1) transition pairs, labeled by target gesture
+            class_names = [f.split('.')[0] for f in files]
+            num_gestures = len(class_names)
+            self.items_per_rep = num_gestures * (num_gestures - 1)
 
-        # make the media list for SGT progression
-        for rep_index in range(self.num_reps):
-            for class_index, motion_class in enumerate(files):
-                # entry for collection of rep
-                media = Media()
-                media.from_file(Path(self.media_folder, motion_class).absolute().as_posix())
+            # make the collection_details.json file
+            collection_details = {}
+            collection_details["num_motions"] = num_gestures
+            collection_details["num_reps"]    = self.num_reps
+            collection_details["classes"] =   class_names
+            collection_details["class_map"] = {index: name for index, name in enumerate(class_names)}
+            collection_details["time"]    = datetime.now().isoformat()
+            collection_details["collection_order"] = []
 
-                if media.type in ('mp4', 'gif'):
-                    # Automatically calculate length of video
-                    rep_time = media.n_frames / media.fps
-                else:
-                    rep_time = self.rep_time
-                collection_conf.append([media, motion_class.split('.')[0], class_index, rep_index, rep_time])
+            # make the media list for SGT progression
+            order = 0
+            for rep_index in range(self.num_reps):
+                for i, from_file in enumerate(files):
+                    for j, to_file in enumerate(files):
+                        if i != j:
+                            to_media = Media()
+                            to_media.from_file(Path(self.media_folder, to_file).absolute().as_posix())
+                            from_media = Media()
+                            from_media.from_file(Path(self.media_folder, from_file).absolute().as_posix())
+
+                            if to_media.type in ('mp4', 'gif'):
+                                rep_time = to_media.n_frames / to_media.fps
+                            else:
+                                rep_time = self.rep_time
+
+                            collection_details["collection_order"].append({
+                                "order": order,
+                                "class": j,
+                                "from_class": i,
+                                "rep": rep_index
+                            })
+                            collection_conf.append([to_media, class_names[j], j, rep_index, rep_time, from_media, order])
+                            order += 1
+
+            if not os.path.exists(self.output_folder):
+                os.makedirs(self.output_folder)
+            with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
+                json.dump(collection_details, f)
+        else:
+            self.items_per_rep = len(files)
+            # make the collection_details.json file
+            collection_details = {}
+            collection_details["num_motions"] = self.items_per_rep
+            collection_details["num_reps"]    = self.num_reps
+            collection_details["classes"] =   [f.split('.')[0] for f in files]
+            collection_details["class_map"] = {index: f.split('.')[0] for index, f in enumerate(files)}
+            collection_details["time"]    = datetime.now().isoformat()
+            if not os.path.exists(self.output_folder):
+                os.makedirs(self.output_folder)
+            with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
+                json.dump(collection_details, f)
+
+            for media_file in files:
+                matching_labels_files = [labels_file for labels_file in labels_files if Path(labels_file).stem == Path(media_file).stem]
+                if len(matching_labels_files) == 1:
+                    # Copy labels file to data directory
+                    labels_file = matching_labels_files[0]
+                    class_index = [idx for idx, filename in collection_details['class_map'].items() if filename == Path(labels_file).stem]
+                    assert len(class_index) == 1, f"Expected a single matching filename in collection_details.json, but got {len(class_index)} for {labels_file}."
+                    class_index = class_index[0]
+                    labels_new_filename = Path(labels_file).with_stem(f"C_{class_index}").name
+                    shutil.copy(Path(self.media_folder, labels_file).absolute(), Path(self.data_folder, labels_new_filename).absolute())
+
+            # make the media list for SGT progression
+            for rep_index in range(self.num_reps):
+                for class_index, motion_class in enumerate(files):
+                    # entry for collection of rep
+                    media = Media()
+                    media.from_file(Path(self.media_folder, motion_class).absolute().as_posix())
+
+                    if media.type in ('mp4', 'gif'):
+                        # Automatically calculate length of video
+                        rep_time = media.n_frames / media.fps
+                    else:
+                        rep_time = self.rep_time
+                    collection_conf.append([media, motion_class.split('.')[0], class_index, rep_index, rep_time])
         return collection_conf
 
     def spawn_collection_window(self, media_list):
         # open first frame of gif
         self.gui.online_data_handler.prepare_smm()
+
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
-        
-        collection_window_width  = self.video_player_width + 100
-        collection_window_height = self.video_player_height + 300
+
+        # Fullscreen window, content stays at original video player size
+        viewport_width = dpg.get_viewport_client_width()
+        viewport_height = dpg.get_viewport_client_height()
+
         with dpg.window(label="Collection Window",
                         tag="__dc_collection_window",
-                        width=collection_window_width,
-                        height=collection_window_height):
-            
+                        width=viewport_width,
+                        height=viewport_height,
+                        no_title_bar=True,
+                        pos=[0, 0]):
+
             with dpg.group(horizontal=True):
                 dpg.add_spacer(height=20,width=self.video_player_width/2+30-(7*len("Collection Menu"))/2)
                 dpg.add_text(default_value="Collection Menu")
@@ -216,6 +279,16 @@ class DataCollectionPanel:
             with dpg.group(horizontal=True):
                 dpg.add_spacer(height=20,width=30)
                 dpg.add_image("__dc_collection_visual")
+                if self.transitions:
+                    # "Next Up" preview to the right of the video
+                    next_texture = media_list[0][0].get_dpg_formatted_texture(
+                        width=self.next_preview_width, height=self.next_preview_height)
+                    set_texture("__dc_next_visual", next_texture,
+                                width=self.next_preview_width, height=self.next_preview_height)
+                    dpg.add_spacer(width=20)
+                    with dpg.group(tag="__dc_next_group"):
+                        dpg.add_text("", tag="__dc_next_prompt")
+                        dpg.add_image("__dc_next_visual")
             with dpg.group(horizontal=True):
                 dpg.add_spacer(height=20,width=30)
                 dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
@@ -231,13 +304,12 @@ class DataCollectionPanel:
                 dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback)
             dpg.hide_item(item="__dc_redo_button")
             dpg.hide_item(item="__dc_continue_button")
-                
-        
-        # dpg.set_primary_window("__dc_collection_window", True)
+
+        dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
         # clean up the window
-        
+        dpg.set_primary_window("__dc_collection_window", False)
         dpg.delete_item("__dc_collection_window")
         self.cleanup_window("collection")
         # open config back up
@@ -254,14 +326,32 @@ class DataCollectionPanel:
             if self.rest_time and self.i < len(media_list) and not self.discrete:
                 self.play_collection_visual(media_list[self.i], active=False)
                 media_list[self.i][0].reset()
+                if len(media_list[self.i]) > 5:
+                    media_list[self.i][5].reset()
             self.gui.online_data_handler.reset()
+
+            # Update the "Next Up" preview if transitions mode is active
+            if self.transitions:
+                if self.i + 1 < len(media_list):
+                    next_media = media_list[self.i + 1]
+                    dpg.set_value("__dc_next_prompt", value="Next: " + next_media[1])
+                    next_texture = next_media[0].get_dpg_formatted_texture(
+                        width=self.next_preview_width, height=self.next_preview_height)
+                    set_texture("__dc_next_visual", next_texture,
+                                self.next_preview_width, self.next_preview_height)
+                    dpg.show_item("__dc_next_group")
+                else:
+                    dpg.hide_item("__dc_next_group")
 
             if self.discrete:
                 self.play_collection_visual_discrete(media_list[self.i])
             else:
                 self.play_collection_visual(media_list[self.i], active=True)
 
-            output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
+            if self.transitions:
+                output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + "_O_" + str(media_list[self.i][6]) + ".csv").absolute().as_posix()
+            else:
+                output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
             self.save_data(output_path)
             last_rep = media_list[self.i][3]
             self.i = self.i+1
@@ -292,7 +382,7 @@ class DataCollectionPanel:
         
     def redo_collection_callback(self):
         if self.auto_advance:
-            self.i      = self.i - self.num_motions
+            self.i      = self.i - self.items_per_rep
         else:
             self.i      = self.i - 1 
         dpg.hide_item(item="__dc_redo_button")
@@ -306,24 +396,30 @@ class DataCollectionPanel:
 
     def play_collection_visual(self, media, active=True):
         if active:
-            timer_duration = media[-1]
+            timer_duration = media[4]
             dpg.set_value("__dc_prompt", value=media[1])
             dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len(media[1]))/2)
+            visual_media = media[0]
         else:
             timer_duration = self.rest_time
             dpg.set_value("__dc_prompt", value="Up next: "+media[1])
             dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len("Up next: "+media[1]))/2)
-        
-        
-        texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
+            # In transitions mode, show the FROM class during rest phase
+            if len(media) > 5:
+                visual_media = media[5]
+            else:
+                visual_media = media[0]
+
+
+        texture = visual_media.get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
         set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
         # initialize motion and frame timers
         motion_timer = time.perf_counter_ns()
         while (time.perf_counter_ns() - motion_timer)/1e9 < timer_duration:
-            time.sleep(1/media[0].fps) # never refresh faster than media fps
+            time.sleep(1/visual_media.fps) # never refresh faster than media fps
             # update visual
-            media[0].advance_to((time.perf_counter_ns() - motion_timer)/1e9)
-            texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
+            visual_media.advance_to((time.perf_counter_ns() - motion_timer)/1e9)
+            texture = visual_media.get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
             set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
