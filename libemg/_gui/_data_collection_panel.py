@@ -5,7 +5,7 @@ import numpy as np
 import os
 from itertools import compress
 import time
-import csv
+import copy
 import json
 from datetime import datetime
 from ._utils import Media, set_texture, init_matplotlib_canvas, matplotlib_to_numpy
@@ -318,6 +318,7 @@ class DataCollectionPanel:
     def run_sgt(self, media_list):
         self.i = 0
         self.advance = True
+        self._save_thread = None
         self.gui.online_data_handler.reset()
         while self.i < len(media_list):
             self.rep_buffer = {mod:[] for mod in self.gui.online_data_handler.modalities}
@@ -352,7 +353,11 @@ class DataCollectionPanel:
                 output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + "_O_" + str(media_list[self.i][6]) + ".csv").absolute().as_posix()
             else:
                 output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
-            self.save_data(output_path)
+            if self._save_thread is not None:
+                self._save_thread.join()
+            rep_buffer = copy.copy(self.rep_buffer)
+            self._save_thread = threading.Thread(target=self.save_data, args=(output_path, rep_buffer))
+            self._save_thread.start()
             last_rep = media_list[self.i][3]
             self.i = self.i+1
             is_final_media = self.i == len(media_list)
@@ -379,7 +384,9 @@ class DataCollectionPanel:
                 dpg.configure_app(manual_callback_management=False)
                 if not is_final_media:
                     dpg.set_value('__dc_rep', value=f"Rep {media_list[self.i][3] + 1} of {self.num_reps}")
-        
+        if self._save_thread is not None:
+            self._save_thread.join()
+
     def redo_collection_callback(self):
         if self.auto_advance:
             self.i      = self.i - self.items_per_rep
@@ -411,10 +418,10 @@ class DataCollectionPanel:
                 visual_media = media[0]
 
 
+        # initialize motion and frame timers before texture generation to minimize gap between recordings
+        motion_timer = time.perf_counter_ns()
         texture = visual_media.get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
         set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
-        # initialize motion and frame timers
-        motion_timer = time.perf_counter_ns()
         while (time.perf_counter_ns() - motion_timer)/1e9 < timer_duration:
             time.sleep(1/visual_media.fps) # never refresh faster than media fps
             # update visual
@@ -476,12 +483,14 @@ class DataCollectionPanel:
                 self.rep_buffer[mod] = [vals[mod][:new_samples, :]] + self.rep_buffer[mod]
                 self.rep_count[mod] = self.rep_count[mod] + new_samples
 
-    def save_data(self, filename):
+    def save_data(self, filename, rep_buffer=None):
+        if rep_buffer is None:
+            rep_buffer = self.rep_buffer
         file_parts = filename.split('.')
-        
-        for mod in self.rep_buffer:
+
+        for mod in rep_buffer:
             filename = file_parts[0] + "_" + mod + "." + file_parts[1]
-            data = np.vstack(self.rep_buffer[mod])[::-1,:]
+            data = np.vstack(rep_buffer[mod])[::-1,:]
             if data.size == 0:
                 raise ConnectionError('Attempting to store data, but received 0 samples during repetition, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
             np.savetxt(filename, data, delimiter=',')
