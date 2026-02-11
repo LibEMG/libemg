@@ -484,10 +484,7 @@ class DataCollectionPanel:
             data = np.vstack(self.rep_buffer[mod])[::-1,:]
             if data.size == 0:
                 raise ConnectionError('Attempting to store data, but received 0 samples during repetition, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
-            with open(filename, "w", newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                for row in data:
-                    writer.writerow(row)
+            np.savetxt(filename, data, delimiter=',')
 
     def visualize_callback(self):
         self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
