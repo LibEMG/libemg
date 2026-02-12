@@ -1244,6 +1244,9 @@ class OnlineEMGRegressor(OnlineStreamer):
         plt.show()
 
 
+import pyautogui
+pyautogui.PAUSE = 0 
+
 class OnlineDiscreteClassifier:
     """OnlineDiscreteClassifier.
 
@@ -1408,7 +1411,10 @@ class OnlineDiscreteClassifier:
                 confidence = probas[pred]
 
                 # Check rejection threshold
-                if confidence < self.rejection_threshold:
+                if type(self.rejection_threshold) == list:
+                    if confidence < self.rejection_threshold[pred]:
+                        pred = self.null_label
+                elif confidence < self.rejection_threshold:
                     pred = self.null_label
 
                 # Add prediction to buffer
@@ -1422,6 +1428,17 @@ class OnlineDiscreteClassifier:
                     buffered_pred = mode_result[0]
 
                     if buffered_pred != self.null_label:
+                        # Capture full buffer BEFORE reset for no-motion saving
+                        all_emg = None
+                        total_samples = 0
+                        if self.save_folder is not None:
+                            _, all_counts = self.odh.get_data(self.window_size)
+                            total_samples = all_counts['emg'][0][0]
+                            all_data, _ = self.odh.get_data(total_samples)
+                            all_emg = all_data['emg'][::-1]
+
+                        self.odh.reset()
+
                         if self.debug:
                             label = self.gesture_mapping[buffered_pred] if self.gesture_mapping else buffered_pred
                             print(f"{time.time()} ACCEPTED: {label} (Conf: {confidence:.2f})")
@@ -1431,19 +1448,13 @@ class OnlineDiscreteClassifier:
 
                         # Save data if save_folder is set
                         if self.save_folder is not None:
-                            gesture_length = min(self.template_size, counts['emg'][0][0]) + 30
                             time.sleep(0.1) # Quick sleep to hopefully get offset of the gesture as well.
-                            data, counts = self.odh.get_data(gesture_length) # gesture_length)
-                            emg = data['emg'] # [::-1]
-
-                            # Get all available data from ODH
-                            _, all_counts = self.odh.get_data(self.window_size)
-                            total_samples = all_counts['emg'][0][0]
-                            all_data, _ = self.odh.get_data(total_samples)
-                            all_emg = all_data['emg'][::-1]
+                            _, counts = self.odh.get_data(10)
+                            new_data, counts = self.odh.get_data(counts['emg'][0][0])
+                            new_data = new_data['emg'][::-1]
 
                             # Save gesture template (last template_size samples)
-                            np.save(f"{self.save_folder}{buffered_pred}_{time.time()}.npy", emg)
+                            np.save(f"{self.save_folder}{buffered_pred}_{time.time()}.npy", np.vstack([emg, new_data]))
 
                             # Save no-motion data (everything before gesture, with offset at both ends)
                             nm_start = int(self.nm_offset)  # trim start to reduce previous gesture
@@ -1452,7 +1463,6 @@ class OnlineDiscreteClassifier:
                                 nm_emg = all_emg[nm_start:nm_end]
                                 np.save(f"{self.save_folder}{self.null_label}_{time.time()}.npy", nm_emg)
 
-                        self.odh.reset()
                         self.prediction_buffer.clear()
                         expected_count = self.min_template_size
                     else:
@@ -1468,7 +1478,6 @@ class OnlineDiscreteClassifier:
         pred: int
             The predicted class index to map to a key press.
         """
-        import pyautogui
         gesture_name = self.gesture_mapping[pred]
         if gesture_name in self.key_mapping:
             pyautogui.press(self.key_mapping[gesture_name])
