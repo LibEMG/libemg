@@ -13,6 +13,7 @@ if platform.system() != 'Linux':
 else: 
     from libemg._streamers._oymotion_streamer import OyMotionStreamer
 from libemg._streamers._emager_streamer import EmagerStreamer
+from libemg._streamers._emagerv3_streamer import EmagerV3Streamer
 from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 from libemg._streamers._mindrove import MindroveStreamer
@@ -475,20 +476,21 @@ def oymotion_streamer(shared_memory_items : list | None = None,
 
 
 def emager_streamer(shared_memory_items = None, version:str = "v1.0", **kwargs):
-    """The streamer for the emager armband. 
+    """The streamer for the emager armband (v1.0 / v1.1).
 
-    This function connects to the emager cuff and streams its data over a serial port and access it via shared memory.
+    Connects to the emager cuff over a serial port and exposes EMG samples
+    via shared memory. For EMaGer v3 hardware, use :func:`emagerv3_streamer`
+    instead — its frame format and shared-memory layout differ.
 
     Parameters
     ----------
     shared_memory_items : list (optional)
         Shared memory configuration parameters for the streamer in format:
         ["tag", (size), datatype].
-    version: str Emager version: 'v1.0', 'v1.1', 'v3.0'. Default is 'v1.0'.
-    emager_kwargs: dict passed to Emager/Emager3. Supported keys:
-          baud_rate (int, default 1500000), endianness ('le'), signed (bool),
-          com_name, vid_pid (tuple), channels (int), samples_per_frame (int)
-    
+    version: str Emager version: 'v1.0' or 'v1.1'. Default is 'v1.0'.
+    emager_kwargs: dict passed to Emager. Supported keys:
+          baud_rate (int, default 1500000)
+
     Returns
     ----------
     Object: streamer
@@ -509,10 +511,61 @@ def emager_streamer(shared_memory_items = None, version:str = "v1.0", **kwargs):
         if len(item) == 3:
             item.append(Lock())
 
-    # Use unified EmagerStreamer and pass emager version + kwargs
     ema = EmagerStreamer(shared_memory_items, version=version, emager_kwargs=kwargs)
     ema.start()
     return ema, shared_memory_items
+
+
+def emagerv3_streamer(shared_memory_items=None, **kwargs):
+    """The streamer for the emager armband (v3).
+
+    Connects to the EMaGer v3 cuff (8192-byte framed protocol with packed
+    12-bit EMG, IMU, and a frame counter) over a serial port and exposes
+    decoded samples via shared memory. For v1.0/v1.1 hardware, use
+    :func:`emager_streamer` instead.
+
+    Parameters
+    ----------
+    shared_memory_items : list (optional)
+        Shared memory configuration parameters for the streamer in format:
+        ["tag", (size), datatype]. Defaults expose the modalities below.
+    emager_kwargs: dict passed to Emager3. Supported keys:
+          baud_rate (int, default 3000000), com_name (str),
+          vid_pid (tuple, default (12259, 256)), debug (bool).
+
+    The default shared memory exposes:
+      - 'emg'       : (2000, 64) uint16 rolling buffer (rows = EMG samples)
+      - 'imu'       : (2000, 6)  int16  rolling buffer (rows = IMU samples)
+      - 'sample_id' : (2000, 1)  int64  aligned row-for-row with EMG samples
+      - 'emg_count', 'imu_count', 'sample_id_count' as (1, 1) int64
+
+    Returns
+    ----------
+    Object: streamer
+        The emager streamer object.
+    Object: shared memory
+        The shared memory object.
+    Examples
+    ---------
+    >>> streamer, shared_memory = emagerv3_streamer()
+    """
+    if shared_memory_items is None:
+        shared_memory_items = []
+        shared_memory_items.append(['emg', (2000, 64), np.uint16])
+        shared_memory_items.append(['emg_count', (1, 1), np.int64])
+        shared_memory_items.append(['imu', (2000, 6), np.int16])
+        shared_memory_items.append(['imu_count', (1, 1), np.int64])
+        shared_memory_items.append(['sample_id', (2000, 1), np.int64])
+        shared_memory_items.append(['sample_id_count', (1, 1), np.int64])
+
+    for item in shared_memory_items:
+        if len(item) == 3:
+            item.append(Lock())
+
+    ema = EmagerV3Streamer(shared_memory_items, emager_kwargs=kwargs)
+    ema.start()
+    return ema, shared_memory_items
+
 
 #TODO: Update docs
 def leap_streamer(shared_memory_items : list | None =None,
