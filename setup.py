@@ -25,7 +25,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     install_requires=[
-        "numpy<2.0",
+        "numpy",
         "scipy",
         "scikit-learn",
         "pillow",
@@ -42,7 +42,7 @@ setup(
         "dearpygui",
         "h5py",
         "onedrivedownloader",
-        "sifi-bridge-py",
+        "sifi-bridge-py==2.0.0b18",
         "pygame",
     ],
     keywords=[
