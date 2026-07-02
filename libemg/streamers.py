@@ -3,6 +3,7 @@ import socket
 import pickle
 import platform
 import numpy as np
+import sifi_bridge_py
 
 from multiprocessing import Process, Event, Lock
 from libemg._streamers._myo_streamer import MyoStreamer
@@ -127,7 +128,7 @@ def sifi_biopoint_streamer(
 
 
 def sifi_bioarmband_streamer(
-    name = "BioPoint_v1_1",
+    name = None,
     shared_memory_items = None,
     ecg = False,
     emg = True, 

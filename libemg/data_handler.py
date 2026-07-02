@@ -1053,10 +1053,11 @@ class OnlineDataHandler(DataHandler):
         self.smm = SharedMemoryManager()
         for item in self.shared_memory_items:
             self.smm.find_variable(*item)
-        # initialize sample count for all modalities
+        # initialize sample count for all modalities by reading actual current counts from shared memory
         last_count = {}
+        _, counts = self.get_data(N=0, filter=False)
         for m in self.modalities:
-            last_count[m] = 0
+            last_count[m] = counts[m][0,0]
         while True:
             timestamp = time.time()
             vals, counts = self.get_data(N=0, filter=False)

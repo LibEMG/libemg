@@ -16,7 +16,7 @@ class SiFiBridgeStreamer(Process):
 
     Parameters
     ----------
-    name : str
+    name : sifi_bridge_py.DeviceType | None
         The name of the devie (eg BioArmband, BioPoint_v1_2, BioPoint_v1_3, etc.). None to auto-connect to any device.
     shared_memory_items : list
         Shared memory configuration parameters for the streamer in format:
@@ -78,8 +78,8 @@ class SiFiBridgeStreamer(Process):
         self.ecg_handlers = []
         self.ppg_handlers = []
 
-
-        self.name = name
+ 
+        self.device_name = name
         self.ecg = ecg
         self.emg = emg
         self.eda = eda
@@ -92,6 +92,8 @@ class SiFiBridgeStreamer(Process):
         self.eda_freq = eda_freq
         self.streaming = streaming
         self.mac = mac
+        # connecting to device can either have a string for the name, device class, or mac address. If None is provided, it autoconnects.
+        self.handle = self.mac if self.mac is not None else self.device_name
 
     def configure(
         self,
@@ -107,26 +109,72 @@ class SiFiBridgeStreamer(Process):
         eda_freq: int = 0,
         streaming: bool = False,
     ):
-        self.sb.set_channels(ecg, emg, eda, imu, ppg)
-        self.sb.set_filters(filtering)
-        
-        if filtering:
-            self.sb.configure_emg(emg_bandpass, notch_freq)
-            self.sb.configure_eda(eda_bandpass, eda_freq)
+        self.sb.configure_sensors(ecg, emg, eda, imu, ppg)
 
-        self.sb.set_low_latency_mode(streaming)
+        if ecg:
+            self.sb.configure_ecg(fs=500,
+                                  dc_notch=filtering,
+                                  mains_notch=notch_freq,
+                                  bandpass=filtering,
+                                  flo=0,
+                                  fhi=30)
+            
+        if emg:
+            self.sb.configure_emg(fs=1600,
+                                dc_notch=filtering,
+                                mains_notch=notch_freq,
+                                bandpass=filtering,
+                                flo=emg_bandpass[0],
+                                fhi=emg_bandpass[1])
+        
+        
+
+        if eda:
+            self.sb.configure_eda(fs=50,
+                                  dc_notch=filtering,
+                                  mains_notch=notch_freq,
+                                  bandpass=filtering,
+                                  flo=eda_bandpass[0],
+                                  fhi=eda_bandpass[1],)
+        
+        if imu:
+            self.sb.configure_imu(fs=100)
+            
+        if ppg:
+            self.sb.configure_ppg(sps=50)
+
+        self.sb.configure_temperature(fs=1)
+
+        self.sb.set_low_latency_mode(True)
         self.sb.set_ble_power(sbp.BleTxPower.HIGH)
-        self.sb.set_memory_mode(sbp.MemoryMode.BOTH)
+        self.sb.set_memory_mode(sbp.MemoryMode.STREAMING)
 
     def connect(self):
+         
         while not self.sb.connect(self.handle):
             print(f"Could not connect to {self.handle}. Retrying.")
-
+        
+        
         self.connected = True
         print("Connected to Sifi device.")
 
+        self.configure(
+            self.ecg,
+            self.emg,
+            self.eda,
+            self.imu,
+            self.ppg,
+            self.filtering,
+            self.emg_notch_freq,
+            self.emg_bandpass,
+            self.eda_bandpass,
+            self.eda_freq,
+            self.streaming,
+        )
+
         self.sb.stop()
         self.sb.start()
+        self.sb.clear_data_buffer()
 
     def add_emg_handler(self, closure: Callable):
         self.emg_handlers.append(closure)
@@ -160,6 +208,11 @@ class SiFiBridgeStreamer(Process):
                         data["data"]["emg7"],
                     )
                 ).T
+                if emg.dtype != 'float64':
+                    # Remove None rows while preserving 2D structure
+                    emg = emg.astype('float64')
+                    emg = emg[[any(~np.isnan(row)) for row in emg]]
+                    
                 for h in self.emg_handlers:
                     h(emg)
                 # print(data['sample_rate'])
@@ -190,40 +243,19 @@ class SiFiBridgeStreamer(Process):
                 ecg = np.stack((data["data"]["ecg"],)).T
                 for h in self.ecg_handlers:
                     h(ecg)
-            if "b" in list(data["data"].keys()):
-                if self.old_ppg_packet is None:
-                    self.old_ppg_packet = data
-                else:
-                    ppg = np.stack(
-                        (
-                            data["data"]["b"] + self.old_ppg_packet["data"]["b"],
-                            data["data"]["g"] + self.old_ppg_packet["data"]["g"],
-                            data["data"]["r"] + self.old_ppg_packet["data"]["r"],
-                            data["data"]["ir"] + self.old_ppg_packet["data"]["ir"],
-                        )
-                    ).T
-                    self.old_ppg_packet = None
-                    for h in self.ppg_handlers:
-                        h(ppg)
+            if "ir" in list(data["data"].keys()):
+                ppg = np.array([data["data"]["ir"], data["data"]["r"], data["data"]["g"], data["data"]["b"]]).T
+                for h in self.ppg_handlers:
+                    h(ppg)
 
     def run(self):
         # process is started beyond this point!
         self.sb = sbp.SifiBridge()
+        self.sb._DEFAULT_REQUEST_TIMEOUT = 10.0
 
-        self.configure(
-            self.ecg,
-            self.emg,
-            self.eda,
-            self.imu,
-            self.ppg,
-            self.filtering,
-            self.emg_notch_freq,
-            self.emg_bandpass,
-            self.eda_bandpass,
-            self.eda_freq,
-            self.streaming,
-        )
-        self.handle = self.mac if self.mac is not None else self.name
+        self.connect()
+
+        
 
         self.smm = SharedMemoryManager()
         for item in self.shared_memory_items:
@@ -279,8 +311,6 @@ class SiFiBridgeStreamer(Process):
             self.smm.modify_variable("ecg_count", lambda x: x + ecg.shape[0])
 
         self.add_ecg_handler(write_ecg)
-
-        self.connect()
 
         self.old_ppg_packet = (
             None  # required for now since ppg sends non-uniform packet length
