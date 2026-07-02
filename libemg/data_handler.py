@@ -1064,7 +1064,9 @@ class OnlineDataHandler(DataHandler):
             for m in vals.keys():
                 new_count       = counts[m][0,0]
                 num_new_samples = new_count - last_count[m]
-                new_samples     = vals[m][:num_new_samples,:]
+                # Shared-memory buffers are newest-first. Restore chronological
+                # order before appending each batch to the log file.
+                new_samples     = np.flip(vals[m][:num_new_samples,:], axis=0)
                 last_count[m] = new_count
                 if num_new_samples:
                     if not m in files.keys():
@@ -1076,6 +1078,8 @@ class OnlineDataHandler(DataHandler):
                         np.savetxt(files[m], new_samples)
             if self.log_signal.is_set():
                 print("ODH->log_to_file ended.")
+                for file in files.values():
+                    file.close()
                 break
 
     def _check_streaming(self, timeout=15):
