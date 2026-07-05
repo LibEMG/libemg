@@ -1,5 +1,37 @@
 import numpy as np
+from multiprocessing import Lock
 from multiprocessing.shared_memory import SharedMemory
+
+
+def assign_shared_memory_locks(shared_memory_items):
+    """Append a synchronization lock to each shared-memory item in place.
+
+    A modality buffer ``<mod>`` and its sample counter ``<mod>_count`` are
+    given the *same* lock object so that the (data, count) pair can be read as
+    a single atomic snapshot (see :meth:`SharedMemoryManager.get_variables`).
+    Without this, a reader can copy the buffer and its count in two separate
+    critical sections and observe a count that runs ahead of the data it just
+    copied, which splices dropped/duplicated samples into logged signals.
+
+    Parameters
+    ----------
+    shared_memory_items : list
+        A list of ``[tag, shape, dtype]`` items. A lock is appended to each,
+        shared between a tag and its matching ``<tag>_count`` entry.
+
+    Returns
+    -------
+    list
+        The same list, with a lock appended to every item.
+    """
+    locks = {}
+    for item in shared_memory_items:
+        tag = item[0]
+        base = tag[:-len("_count")] if tag.endswith("_count") else tag
+        lock = locks.setdefault(base, Lock())
+        item.append(lock)
+    return shared_memory_items
+
 
 class SharedMemoryManager:
     def __init__(self):
@@ -64,6 +96,45 @@ class SharedMemoryManager:
         assert tag in self.variables.keys()
         with self.variables[tag]["lock"]:
             return self.variables[tag]["data"].copy()
+
+    def get_variables(self, tags):
+        """Atomically copy several variables as one consistent snapshot.
+
+        Every distinct lock guarding the requested tags is held for the whole
+        copy, so the returned values reflect the same instant in time. When the
+        tags share a single lock (the convention established by
+        :func:`assign_shared_memory_locks` for a ``<mod>``/``<mod>_count``
+        pair), that lock is acquired exactly once.
+
+        Parameters
+        ----------
+        tags : list
+            The shared-memory tags to copy together.
+
+        Returns
+        -------
+        dict
+            A mapping from each requested tag to a copy of its current data.
+        """
+        for tag in tags:
+            assert tag in self.variables.keys()
+        # Collapse duplicate lock objects, then acquire each distinct lock once
+        # in a deterministic (id-sorted) order to avoid deadlock if a caller
+        # ever groups tags that don't share a lock.
+        distinct_locks = {}
+        for tag in tags:
+            lock = self.variables[tag]["lock"]
+            distinct_locks[id(lock)] = lock
+        ordered_locks = [distinct_locks[key] for key in sorted(distinct_locks.keys())]
+        acquired = []
+        try:
+            for lock in ordered_locks:
+                lock.acquire()
+                acquired.append(lock)
+            return {tag: self.variables[tag]["data"].copy() for tag in tags}
+        finally:
+            for lock in reversed(acquired):
+                lock.release()
 
     def modify_variable(self, tag, fn):
         assert tag in self.variables.keys()

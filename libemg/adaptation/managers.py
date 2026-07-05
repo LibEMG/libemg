@@ -61,14 +61,22 @@ class MemoryManager(Process):
             
 
     def process_data(self):
+        # Snapshot the feedback buffer and its counter together (they share a
+        # lock) so num_to_grab is always sliced against the exact buffer state
+        # it was measured from. Reading them separately lets the writer append
+        # rows in between, which misaligns the slice and splices in wrong rows.
+        feedback = self.smm.get_variables(["environment_feedback", "environment_feedback_count"])
+        environment_feedback_count = feedback["environment_feedback_count"][0,0]
         # if there has been no new environment feedback, just continue
-        environment_feedback_count = self.smm.get_variable("environment_feedback_count")[0,0]
         if environment_feedback_count == self.environment_feedback_count:
             return
-        num_to_grab = environment_feedback_count - self.environment_feedback_count 
-        feedback_data = self.smm.get_variable("environment_feedback")
+        num_to_grab = environment_feedback_count - self.environment_feedback_count
+        feedback_data = feedback["environment_feedback"]
         feedback_data = feedback_data[:num_to_grab,:]
 
+        # model_input is joined to feedback rows by timestamp (not by index), so
+        # it doesn't need to be part of the atomic snapshot; reading it here also
+        # keeps it as fresh as possible so matching timestamps are present.
         input_data = self.smm.get_variable('model_input')
         # for every row in data:
         for i in range(feedback_data.shape[0]):

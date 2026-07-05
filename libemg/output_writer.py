@@ -3,7 +3,6 @@ import socket
 from libemg.shared_memory_manager import SharedMemoryManager
 import numpy as np
 import types
-from multiprocessing import Lock
 
 class OutputWriter(ABC):
     @abstractmethod
@@ -103,7 +102,8 @@ class SharedMemoryOutputWriter(OutputWriter):
         # Create a new shared memory manager and create the variable.
         self.smm = SharedMemoryManager()
         self.smm.create_variable(tag, shape, dtype, lock)
-        self.smm.create_variable(tag+"_count", (1,1), np.int32, Lock())
+        # Share the buffer's lock so (data, count) can be snapshotted atomically.
+        self.smm.create_variable(tag+"_count", (1,1), np.int32, lock)
 
     def write(self, info: dict) -> None:
         if self.smm is None:

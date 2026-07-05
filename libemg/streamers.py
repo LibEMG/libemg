@@ -5,7 +5,8 @@ import platform
 import numpy as np
 import sifi_bridge_py
 
-from multiprocessing import Process, Event, Lock
+from multiprocessing import Process, Event
+from libemg.shared_memory_manager import assign_shared_memory_locks
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._delsys_API_streamer import DelsysAPIStreamer
@@ -104,8 +105,7 @@ def sifi_biopoint_streamer(
             shared_memory_items.append(["ppg",       (200,4), np.double])
             shared_memory_items.append(["ppg_count", (1,1),    np.int32])
 
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
         
     sb = SiFiBridgeStreamer(
         name,
@@ -217,8 +217,7 @@ def sifi_bioarmband_streamer(
             shared_memory_items.append(["ppg",       (200,4), np.double])
             shared_memory_items.append(["ppg_count", (1,1),    np.int32])
 
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
 
         
     sb = SiFiBridgeStreamer(
@@ -281,8 +280,7 @@ def myo_streamer(
             shared_memory_items.append(["imu",       (250,10), np.double])
             shared_memory_items.append(["imu_count", (1,1),    np.int32])
 
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
     myo = MyoStreamer(filtered, emg, imu, shared_memory_items)
     myo.start()
     return myo, shared_memory_items
@@ -336,8 +334,7 @@ def delsys_streamer(shared_memory_items : list | None = None,
         if imu:
             shared_memory_items.append(["imu",       (500,6), np.double])
             shared_memory_items.append(["imu_count", (1,1),    np.int32])
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
     
     delsys = DelsysEMGStreamer(shared_memory_items=shared_memory_items,
                                 emg=emg,
@@ -394,8 +391,7 @@ def delsys_api_streamer(license             : str,
         if emg:
             shared_memory_items.append(["emg",       (5300,num_channels), np.double])
             shared_memory_items.append(["emg_count", (1,1),    np.int32])
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
     
     delsys = DelsysAPIStreamer(key, license, dll_folder, shared_memory_items=shared_memory_items, emg=emg)
     delsys.start()
@@ -448,8 +444,7 @@ def oymotion_streamer(shared_memory_items : list | None = None,
         if imu:
             shared_memory_items.append(["imu",       (100,10), np.double])
             shared_memory_items.append(["imu_count", (1,1),    np.int32])
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
 
     oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
     oym.start()
@@ -484,8 +479,7 @@ def emager_streamer(shared_memory_items = None):
         shared_memory_items.append(['emg', (2000, 64), np.double])  # buffer size doesn't have a huge effect - pretty much as long as it's bigger than window size
         shared_memory_items.append(['emg_count', (1, 1), np.int32])
 
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
     ema = EmagerStreamer(shared_memory_items)
     ema.start()
     return ema, shared_memory_items
@@ -632,8 +626,7 @@ def leap_streamer(shared_memory_items : list | None =None,
             shared_memory_items.append(['finger_width', (230,3), np.double])
             shared_memory_items.append(['finger_width_count', (1,1), np.int32])
 
-    for item in shared_memory_items:
-        item.append(Lock())
+    assign_shared_memory_locks(shared_memory_items)
     
     ls = LeapStreamer(shared_memory_items)
     ls.start()

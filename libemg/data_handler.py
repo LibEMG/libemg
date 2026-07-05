@@ -994,7 +994,11 @@ class OnlineDataHandler(DataHandler):
         val   = {}
         count = {}
         for mod in self.modalities:
-            data = self.smm.get_variable(mod)
+            # Read the buffer and its sample counter as a single atomic
+            # snapshot. They share a lock (see assign_shared_memory_locks), so
+            # the count can never run ahead of the data copied alongside it.
+            snapshot = self.smm.get_variables([mod, mod + "_count"])
+            data = snapshot[mod]
             if filter:
                 if self.fi is not None:
                     if mod == "emg": # TODO: enable filter for each modality
@@ -1005,7 +1009,7 @@ class OnlineDataHandler(DataHandler):
                 val[mod]   = data[:,:]
             if self.channel_mask is not None:
                 val[mod] = val[mod][:, self.channel_mask]
-            count[mod] = self.smm.get_variable(mod+"_count")
+            count[mod] = snapshot[mod + "_count"]
         return val,count
 
     def reset(self, modality=None):
