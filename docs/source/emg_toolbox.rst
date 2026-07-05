@@ -29,6 +29,14 @@ EMG Prediction
 .. automodule:: libemg.emg_predictor
    :members:
 
+Adaptation
+------------------------------
+.. automodule:: libemg.adaptation.managers
+   :members:
+
+.. automodule:: libemg.adaptation.memory
+   :members:
+
 Offline Evaluation Metrics
 ------------------------------
 .. automodule:: libemg.offline_metrics
