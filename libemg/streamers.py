@@ -240,6 +240,39 @@ def sifi_bioarmband_streamer(
     sb.start()
     return sb, shared_memory_items
 
+
+def mock_emg_stream(file_path, num_channels, sampling_rate=100, port=12345, ip="127.0.0.1"):
+    """Stream EMG samples from a CSV file over UDP in a background process."""
+    Process(
+        target=_stream_mock_emg,
+        args=(file_path, num_channels, sampling_rate, port, ip),
+        daemon=True,
+    ).start()
+
+
+def _stream_mock_emg(file_path, num_channels, sampling_rate, port, ip):
+    if sampling_rate <= 0:
+        raise ValueError("sampling_rate must be greater than zero.")
+
+    data = np.loadtxt(file_path, delimiter=",")
+    if data.ndim == 1:
+        data = data[np.newaxis, :]
+    if not 0 < num_channels <= data.shape[1]:
+        raise ValueError(
+            f"num_channels must be between 1 and {data.shape[1]}, got {num_channels}."
+        )
+
+    interval = 1 / sampling_rate
+    next_sample_time = time.perf_counter()
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        for sample in data[:, :num_channels]:
+            next_sample_time += interval
+            delay = next_sample_time - time.perf_counter()
+            if delay > 0:
+                time.sleep(delay)
+            sock.sendto(pickle.dumps(list(sample)), (ip, port))
+
+
 def myo_streamer(
     shared_memory_items : list | None = None,
     emg                 : bool = True, 
