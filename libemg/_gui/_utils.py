@@ -95,7 +95,7 @@ class Media:
         if grayscale:
             dpg_img = dpg_img.convert("L")
         dpg_img = dpg_img.convert("RGBA")
-        dpg_img = np.asfarray(dpg_img, dtype='f').ravel()
+        dpg_img = np.asarray(dpg_img, dtype=np.float32).ravel()
         dpg_img = np.true_divide(dpg_img, 255.0)
         return dpg_img
 
