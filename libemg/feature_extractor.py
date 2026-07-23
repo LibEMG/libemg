@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import numpy.matlib as matlib
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA, KernelPCA, FastICA
 from sklearn.manifold import TSNE, Isomap
@@ -430,7 +429,7 @@ class FeatureExtractor:
                 pk = np.zeros((n+1,1))
                 for e in range(n-k+1,n+1,1):
                     pk[e-1] = (4*k-2)*pkm1[e]+ (1-2*k)*pkm1[e-1] + (1-k) * pkm2[e-1]
-                pk[n,0] = (1-2*k)*pkm1[n] + (1-k)*pkm2[n]
+                pk[n,0] = (1-2*k)*pkm1[n].item() + (1-k)*pkm2[n].item()
                 pk = pk/k
 
                 if k < n:
@@ -857,7 +856,7 @@ class FeatureExtractor:
         medfreq = np.zeros((windows.shape[0], windows.shape[1]))
         for i in range(0, windows.shape[0]):
             for j in range(0, windows.shape[1]):
-                medfreq[i,j] = (MDF_fs/2)*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0]/(nextpow2/2)
+                medfreq[i,j] = (MDF_fs/2)*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0, 0]/(nextpow2/2)
         return medfreq
 
     def getMNFfeat(self, windows, MNF_fs=1000):
@@ -1162,9 +1161,9 @@ class FeatureExtractor:
                     for k in range(N-m):
                         # compute the distance between each pattern and other patterns
                         if m == 1:
-                            tmp = np.abs(patterns - matlib.repmat(patterns[:,k],1,N-m+1))
+                            tmp = np.abs(patterns - np.tile(patterns[:,k], (1,N-m+1)))
                         else:
-                            tmp = np.max(np.abs(patterns - matlib.repmat(patterns[:,k,np.newaxis],1,N-m+1)),axis=0)
+                            tmp = np.max(np.abs(patterns - np.tile(patterns[:,k,np.newaxis], (1,N-m+1))),axis=0)
                         mask = (tmp <= SAMPEN_tolerance)
                         count[k] = (np.sum(mask)-1) # we remove 1 to avoid self comparison, in theory this means we can eventually do log of 0 (error)
                         # that is why we need the eps / np.spacing(1)
@@ -1232,9 +1231,9 @@ class FeatureExtractor:
                     for k in range(N-m):
                         # compute the distance between each pattern and other patterns
                         if m == 1:
-                            tmp = np.abs(dataMat - matlib.repmat(dataMat[:,k],1,N-m+1))
+                            tmp = np.abs(dataMat - np.tile(dataMat[:,k], (1,N-m+1)))
                         else:
-                            tmp = np.max(np.abs(dataMat - matlib.repmat(dataMat[:,k,np.newaxis],1,N-m+1)),axis=0)
+                            tmp = np.max(np.abs(dataMat - np.tile(dataMat[:,k,np.newaxis], (1,N-m+1))),axis=0)
                         # now get the similarity
                         simi = np.exp(((-1)*((tmp)**FUZZYEN_win))/FUZZYEN_tolerance[w,ch])
                         phi[k]=(np.sum(simi)-1) / (windows.shape[2]-m-1)
