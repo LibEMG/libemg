@@ -16,7 +16,7 @@ from libemg._streamers._sifi_bridge_streamer import SiFiBridgeStreamer
 from libemg._streamers._leap_streamer import LeapStreamer
 
 def sifi_biopoint_streamer(
-    name = "BioPoint_v1_3",
+    name = None,
     shared_memory_items = None,
     ecg = False,
     emg = True, 
@@ -29,10 +29,17 @@ def sifi_biopoint_streamer(
     eda_bandpass = (0,5),
     eda_freq = 0,
     streaming=False,
-    mac= None
+    mac= None,
+    ecg_fs = 500,
+    emg_fs = 2000,
+    eda_fs = 50,
+    imu_fs = 50,
+    ppg_sps = 50,
+    ppg_avg = 1,
+    temperature_fs = 1
 ):
     """
-    The streamer for the SiFi BioPoint. 
+    The streamer for the SiFi BioPoint.
     
     This function connects to SiFi Bridge and streams its data to the SharedMemory.
     
@@ -70,9 +77,23 @@ def sifi_biopoint_streamer(
         The excitation signal frequency for EDA/BIOZ. Setting an AC value may inject a lot of noise into the EMG sensor.
     streaming, default = False
         Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
-    mac, default = None:  
+    mac, default = None:
         Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
-          
+    ecg_fs, default = 500
+        The ECG sampling rate (Hz). Can be {250, 500, 1000, 2000}.
+    emg_fs, default = 2000
+        The EMG sampling rate (Hz). Can be {500, 1000, 2000}.
+    eda_fs, default = 50
+        The EDA sampling rate (Hz). Can be {4, 8, 16, 32, 50}.
+    imu_fs, default = 50
+        The IMU sampling rate (Hz). Can be {25, 50, 100, 200}.
+    ppg_sps, default = 50
+        The PPG sampling rate (Hz). Can be {50, 100, 200, 400, 800}.
+    ppg_avg, default = 1
+        The PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective PPG sampling rate (ppg_sps / ppg_avg) must be <= 400 Hz.
+    temperature_fs, default = 1
+        The temperature sampling rate (Hz). Can be {0.1, 1, 2, 10}.
+
     Returns
     ----------
     
@@ -121,7 +142,15 @@ def sifi_biopoint_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac
+        mac,
+        ecg_fs=ecg_fs,
+        emg_fs=emg_fs,
+        eda_fs=eda_fs,
+        imu_fs=imu_fs,
+        ppg_sps=ppg_sps,
+        ppg_avg=ppg_avg,
+        temperature_fs=temperature_fs,
+        bioarmband=False
     )
     sb.start()
     return sb, shared_memory_items
@@ -141,10 +170,17 @@ def sifi_bioarmband_streamer(
     eda_bandpass = (0,5),
     eda_freq = 0,
     streaming = False,
-    mac = None
+    mac = None,
+    ecg_fs = 500,
+    emg_fs = 1600,
+    eda_fs = 50,
+    imu_fs = 50,
+    ppg_sps = 50,
+    ppg_avg = 1,
+    temperature_fs = 1
 ):
     """
-    The streamer for the SiFi BioArmband. 
+    The streamer for the SiFi BioArmband.
     
     This function connects to SiFi Bridge and streams its data to the SharedMemory.
     
@@ -182,9 +218,23 @@ def sifi_bioarmband_streamer(
         The excitation signal frequency for EDA/BIOZ.  Setting an AC value may inject a lot of noise into the EMG sensor.
     streaming, default = False
         Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
-    mac, default = None:  
+    mac, default = None:
         Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
-         
+    ecg_fs, default = 500
+        The ECG sampling rate (Hz). Can be {250, 500, 1000, 2000}.
+    emg_fs, default = 1600
+        The EMG sampling rate (Hz). Can be {500, 1000, 1600, 2000}.
+    eda_fs, default = 50
+        The EDA sampling rate (Hz). Can be {4, 8, 16, 32, 50}.
+    imu_fs, default = 50
+        The IMU sampling rate (Hz). Can be {25, 50, 100, 200}.
+    ppg_sps, default = 50
+        The PPG sampling rate (Hz). Can be {50, 100, 200, 400, 800}.
+    ppg_avg, default = 1
+        The PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective PPG sampling rate (ppg_sps / ppg_avg) must be <= 400 Hz.
+    temperature_fs, default = 1
+        The temperature sampling rate (Hz). Can be {0.1, 1, 2, 10}.
+
     Returns
     ----------
     
@@ -234,7 +284,15 @@ def sifi_bioarmband_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
-        mac
+        mac,
+        ecg_fs=ecg_fs,
+        emg_fs=emg_fs,
+        eda_fs=eda_fs,
+        imu_fs=imu_fs,
+        ppg_sps=ppg_sps,
+        ppg_avg=ppg_avg,
+        temperature_fs=temperature_fs,
+        bioarmband=True
     )
 
     sb.start()

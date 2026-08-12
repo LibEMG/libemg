@@ -7,6 +7,72 @@ import sifi_bridge_py as sbp
 from libemg.shared_memory_manager import SharedMemoryManager
 
 
+# Sampling rates (Hz) accepted by the SiFi hardware for each modality.
+ECG_SAMPLING_RATES = (250, 500, 1000, 2000)
+EMG_SAMPLING_RATES = (500, 1000, 2000)
+EMG_SAMPLING_RATES_BIOARMBAND = (500, 1000, 1600, 2000)  # 1600 Hz is BioArmband only
+EDA_SAMPLING_RATES = (4, 8, 16, 32, 50)
+IMU_SAMPLING_RATES = (25, 50, 100, 200)
+PPG_SAMPLING_RATES = (50, 100, 200, 400, 800)
+PPG_AVERAGING_FACTORS = (1, 2, 4, 8, 16, 32)
+PPG_MAX_EFFECTIVE_RATE = 400  # sps / avg must not exceed this
+TEMPERATURE_SAMPLING_RATES = (0.1, 1, 2, 10)
+
+
+def _validate_setting(name: str, value, allowed):
+    """Raise a ValueError if value is not one of the hardware-supported settings."""
+    if value not in allowed:
+        raise ValueError(
+            f"Invalid {name} of {value}. Must be one of {list(allowed)}."
+        )
+    return value
+
+
+def validate_sifi_sampling_rates(
+    ecg_fs,
+    emg_fs,
+    eda_fs,
+    imu_fs,
+    ppg_sps,
+    ppg_avg,
+    temperature_fs,
+    bioarmband: bool = False,
+):
+    """
+    Check every SiFi sampling rate against the values the hardware supports.
+
+    Parameters
+    ----------
+    bioarmband : bool
+        Whether the target device is a BioArmband, which additionally supports a
+        1600 Hz EMG sampling rate.
+
+    Raises
+    ------
+    ValueError
+        If any setting is unsupported.
+    """
+    _validate_setting("ECG sampling rate", ecg_fs, ECG_SAMPLING_RATES)
+    _validate_setting(
+        "EMG sampling rate",
+        emg_fs,
+        EMG_SAMPLING_RATES_BIOARMBAND if bioarmband else EMG_SAMPLING_RATES,
+    )
+    _validate_setting("EDA sampling rate", eda_fs, EDA_SAMPLING_RATES)
+    _validate_setting("IMU sampling rate", imu_fs, IMU_SAMPLING_RATES)
+    _validate_setting("PPG sampling rate", ppg_sps, PPG_SAMPLING_RATES)
+    _validate_setting("PPG averaging factor", ppg_avg, PPG_AVERAGING_FACTORS)
+    if ppg_sps / ppg_avg > PPG_MAX_EFFECTIVE_RATE:
+        raise ValueError(
+            f"Invalid PPG configuration: sps of {ppg_sps} with an averaging factor of "
+            f"{ppg_avg} gives an effective sampling rate of {ppg_sps / ppg_avg} Hz, "
+            f"which exceeds the maximum of {PPG_MAX_EFFECTIVE_RATE} Hz."
+        )
+    _validate_setting(
+        "temperature sampling rate", temperature_fs, TEMPERATURE_SAMPLING_RATES
+    )
+
+
 class SiFiBridgeStreamer(Process):
     """
     SiFi Labs Hardware Streamer.
@@ -45,6 +111,24 @@ class SiFiBridgeStreamer(Process):
         Reduce latency by joining packets of different modalities together.
     mac : str | None
         MAC address of the device to be connected with.
+    ecg_fs : int
+        ECG sampling rate (Hz). Can be {250, 500, 1000, 2000}.
+    emg_fs : int
+        EMG sampling rate (Hz). Can be {500, 1000, 2000}, plus 1600 on the BioArmband.
+    eda_fs : int
+        EDA sampling rate (Hz). Can be {4, 8, 16, 32, 50}.
+    imu_fs : int
+        IMU sampling rate (Hz). Can be {25, 50, 100, 200}.
+    ppg_sps : int
+        PPG sampling rate (Hz). Can be {50, 100, 200, 400, 800}.
+    ppg_avg : int
+        PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective sampling rate
+        (ppg_sps / ppg_avg) must be <= 400 Hz.
+    temperature_fs : float
+        Temperature sampling rate (Hz). Can be {0.1, 1, 2, 10}.
+    bioarmband : bool | None
+        Whether the target device is a BioArmband, which additionally supports a
+        1600 Hz EMG sampling rate. None infers this from the device name.
 
     """
 
@@ -64,6 +148,14 @@ class SiFiBridgeStreamer(Process):
         eda_freq:       int = 0,
         streaming:      bool = False,
         mac:            str | None = None,
+        ecg_fs:         int = 500,
+        emg_fs:         int = 2000,
+        eda_fs:         int = 50,
+        imu_fs:         int = 50,
+        ppg_sps:        int = 50,
+        ppg_avg:        int = 1,
+        temperature_fs: float = 1,
+        bioarmband:     bool | None = None,
     ):
 
         Process.__init__(self, daemon=True)
@@ -92,6 +184,30 @@ class SiFiBridgeStreamer(Process):
         self.eda_freq = eda_freq
         self.streaming = streaming
         self.mac = mac
+        # 1600 Hz EMG is only available on the BioArmband. When the caller doesn't say
+        # which device this is, fall back to identifying an armband by its name.
+        self.bioarmband = (
+            bool(name is not None and "armband" in str(name).lower())
+            if bioarmband is None
+            else bioarmband
+        )
+        validate_sifi_sampling_rates(
+            ecg_fs,
+            emg_fs,
+            eda_fs,
+            imu_fs,
+            ppg_sps,
+            ppg_avg,
+            temperature_fs,
+            self.bioarmband,
+        )
+        self.ecg_fs = ecg_fs
+        self.emg_fs = emg_fs
+        self.eda_fs = eda_fs
+        self.imu_fs = imu_fs
+        self.ppg_sps = ppg_sps
+        self.ppg_avg = ppg_avg
+        self.temperature_fs = temperature_fs
         # connecting to device can either have a string for the name, device class, or mac address. If None is provided, it autoconnects.
         self.handle = self.mac if self.mac is not None else self.device_name
 
@@ -112,38 +228,38 @@ class SiFiBridgeStreamer(Process):
         self.sb.configure_sensors(ecg, emg, eda, imu, ppg)
 
         if ecg:
-            self.sb.configure_ecg(fs=500,
+            self.sb.configure_ecg(fs=self.ecg_fs,
                                   dc_notch=filtering,
                                   mains_notch=notch_freq,
                                   bandpass=filtering,
                                   flo=0,
                                   fhi=30)
-            
+
         if emg:
-            self.sb.configure_emg(fs=1600,
+            self.sb.configure_emg(fs=self.emg_fs,
                                 dc_notch=filtering,
                                 mains_notch=notch_freq,
                                 bandpass=filtering,
                                 flo=emg_bandpass[0],
                                 fhi=emg_bandpass[1])
-        
-        
+
+
 
         if eda:
-            self.sb.configure_eda(fs=50,
+            self.sb.configure_eda(fs=self.eda_fs,
                                   dc_notch=filtering,
                                   mains_notch=notch_freq,
                                   bandpass=filtering,
                                   flo=eda_bandpass[0],
                                   fhi=eda_bandpass[1],)
-        
-        if imu:
-            self.sb.configure_imu(fs=100)
-            
-        if ppg:
-            self.sb.configure_ppg(sps=50)
 
-        self.sb.configure_temperature(fs=1)
+        if imu:
+            self.sb.configure_imu(fs=self.imu_fs)
+
+        if ppg:
+            self.sb.configure_ppg(sps=self.ppg_sps, avg=self.ppg_avg)
+
+        self.sb.configure_temperature(fs=self.temperature_fs)
 
         self.sb.set_low_latency_mode(True)
         self.sb.set_ble_power(sbp.BleTxPower.HIGH)
