@@ -18,6 +18,17 @@ PPG_AVERAGING_FACTORS = (1, 2, 4, 8, 16, 32)
 PPG_MAX_EFFECTIVE_RATE = 400  # sps / avg must not exceed this
 TEMPERATURE_SAMPLING_RATES = (0.1, 1, 2, 10)
 
+# Seconds without a single data packet before the link is presumed down. Every
+# modality packetizes far faster than this even at its lowest supported rate, so
+# a gap this long is a dropped connection rather than a quiet stream.
+DATA_STALL_TIMEOUT = 1.0
+# Consecutive stalled reads tolerated before escalating from a BLE-level
+# reconnect to tearing down and rebuilding the whole sifibridge subprocess.
+STALLS_BEFORE_BRIDGE_REBUILD = 5
+# Cap on stderr lines read per drain, so a bridge flooding its stderr cannot
+# starve the recovery it was supposed to explain.
+MAX_STDERR_LINES_PER_DRAIN = 200
+
 
 def _validate_setting(name: str, value, allowed):
     """Raise a ValueError if value is not one of the hardware-supported settings."""
@@ -266,11 +277,23 @@ class SiFiBridgeStreamer(Process):
         self.sb.set_memory_mode(sbp.MemoryMode.STREAMING)
 
     def connect(self):
-         
+        """Join the device, apply the configuration, and begin sampling.
+
+        Returns
+        -------
+        bool
+            True once connected and sampling. False if the shutdown signal was
+            raised while retrying, so callers can abandon the attempt instead of
+            retrying forever against a device that is off or out of range.
+        """
         while not self.sb.connect(self.handle):
             print(f"Could not connect to {self.handle}. Retrying.")
-        
-        
+            # Without this check a device that is off or out of range wedges the
+            # process in a tight retry loop that ignores cleanup requests.
+            if self.signal.is_set():
+                print("LibEMG -> SiFiBridgeStreamer (connect abandoned, stopping).")
+                return False
+
         self.connected = True
         print("Connected to Sifi device.")
 
@@ -291,6 +314,81 @@ class SiFiBridgeStreamer(Process):
         self.sb.stop()
         self.sb.start()
         self.sb.clear_data_buffer()
+        return True
+
+    def _rebuild_bridge(self):
+        """Replace the sifibridge subprocess, then reconnect.
+
+        A BLE-level reconnect is not always enough. ``SifiBridge`` opens its data
+        socket and starts the thread that reads from it once, in its constructor;
+        if that socket closes (bridge subprocess died, host dropped the
+        connection) the reader thread exits and no packet ever reaches the queue
+        again. Reconnecting BLE alone would then appear to succeed while
+        delivering nothing, so the bridge itself has to be rebuilt.
+
+        Returns
+        -------
+        bool
+            Whether the rebuilt bridge is connected and sampling.
+        """
+        print("LibEMG -> SiFiBridgeStreamer (rebuilding bridge).")
+        try:
+            self.sb.close()
+        except Exception as e:
+            # Already-dead bridges raise here; the replacement matters, not this.
+            print(f"LibEMG -> SiFiBridgeStreamer (error closing old bridge: {e}).")
+        self.sb = sbp.SifiBridge()
+        self.sb._DEFAULT_REQUEST_TIMEOUT = 10.0
+        return self.connect()
+
+    def _drain_bridge_diagnostics(self):
+        """Print anything sifibridge wrote to stderr, and return the lines.
+
+        sifibridge explains link failures on its own stderr, which its Python
+        wrapper buffers in a queue that is only ever drained inside ``connect()``.
+        Nothing reads it while streaming, so the one message that says *why* a
+        recording stopped is discarded. Draining it here turns a bare stall into
+        an actionable reason, and keeps the unbounded queue from growing for the
+        length of a long session.
+        """
+        lines = []
+        stderr_queue = getattr(self.sb, "_stderr_queue", None)
+        if stderr_queue is None:
+            return lines
+        for _ in range(MAX_STDERR_LINES_PER_DRAIN):
+            try:
+                lines.append(str(stderr_queue.get_nowait()).strip())
+            except Exception:
+                # Empty, or a bridge object that does not expose this queue.
+                break
+        for line in lines:
+            if line:
+                print(f"LibEMG -> SiFiBridgeStreamer (bridge said: {line})")
+        return lines
+
+    def _recover_stream(self, stalls):
+        """Try to restore a stalled stream, escalating with the stall count.
+
+        Parameters
+        ----------
+        stalls : int
+            Number of consecutive stalled reads observed so far.
+
+        Returns
+        -------
+        bool
+            Whether data is expected to flow again.
+        """
+        self.connected = False
+        try:
+            if stalls < STALLS_BEFORE_BRIDGE_REBUILD:
+                # Cheap path: the socket is still live and only the BLE link
+                # dropped, which a reconnect plus reconfigure repairs.
+                return self.connect()
+            return self._rebuild_bridge()
+        except Exception as e:
+            print(f"LibEMG -> SiFiBridgeStreamer (recovery attempt failed: {e}).")
+            return False
 
     def add_emg_handler(self, closure: Callable):
         self.emg_handlers.append(closure)
@@ -431,16 +529,50 @@ class SiFiBridgeStreamer(Process):
         self.old_ppg_packet = (
             None  # required for now since ppg sends non-uniform packet length
         )
+        # Consecutive reads that returned no packet. Reset by any real packet.
+        stalls = 0
         while True:
-            try:
-                new_packet = self.sb.get_data()
-                self.process_packet(new_packet)
-            except Exception as e:
-                print("Error Occurred: " + str(e))
-                continue
+            # Checked first so a stalled or unrecoverable link still shuts down.
             if self.signal.is_set():
                 self.cleanup()
                 break
+            try:
+                # A bounded wait is what makes a dropped link observable at all.
+                # get_data() defaults to blocking forever, and the thread feeding
+                # its queue exits silently when the data socket closes, so an
+                # unbounded read parks here for the rest of the session: no
+                # exception to catch, no samples, and no way back out.
+                new_packet = self.sb.get_data(timeout=DATA_STALL_TIMEOUT)
+            except Exception as e:
+                print("Error Occurred: " + str(e))
+                stalls += 1
+                self._recover_stream(stalls)
+                continue
+
+            if new_packet:
+                if stalls:
+                    print(
+                        f"LibEMG -> SiFiBridgeStreamer (stream resumed after "
+                        f"~{stalls * DATA_STALL_TIMEOUT:.1f}s gap; samples in "
+                        f"that window are lost)."
+                    )
+                stalls = 0
+                try:
+                    self.process_packet(new_packet)
+                except Exception as e:
+                    print("Error Occurred: " + str(e))
+                continue
+
+            # No packet within the timeout: the link is down. Say so loudly, so a
+            # truncated recording is not mistaken for a complete one, and try to
+            # get it back rather than waiting on a queue nothing is filling.
+            stalls += 1
+            print(
+                f"LibEMG -> SiFiBridgeStreamer (no data for "
+                f"{stalls * DATA_STALL_TIMEOUT:.1f}s, attempting recovery)."
+            )
+            self._drain_bridge_diagnostics()
+            self._recover_stream(stalls)
         print("LibEMG -> SiFiBridgeStreamer (process ended).")
 
     def stop_sampling(self):
@@ -459,13 +591,22 @@ class SiFiBridgeStreamer(Process):
         self.sb.send_command(sbp.DeviceCommand.POWER_DEEP_SLEEP)
 
     def cleanup(self):
-        self.stop_sampling()  # stop sampling
-        print("LibEMG -> SiFiBridgeStreamer (sampling stopped).")
-        self.deep_sleep()  # stops status packets
-        print("LibEMG -> SiFiBridgeStreamer (device sleeped).")
-        self.disconnect()  # disconnect
-        print("LibEMG -> SiFiBridgeStreamer (device disconnected).")
-        self.sb._bridge.kill()
-        print("LibEMG -> SiFiBridgeStreamer (bridge killed).")
-        self.smm.cleanup()
-        print("LibEMG -> SiFiBridgeStreamer (SMM cleaned up).")
+        # Each step is attempted independently: shutdown often runs with the link
+        # already down, and letting an early failure propagate would skip the
+        # shared-memory release and leak the segments past process exit.
+        # Every callable is wrapped so attribute lookup happens inside the try
+        # too: a bridge that never finished starting has no _bridge to resolve,
+        # and that lookup failing here would skip the steps after it.
+        steps = (
+            (lambda: self.stop_sampling(), "sampling stopped"),
+            (lambda: self.deep_sleep(), "device sleeped"),  # stops status packets
+            (lambda: self.disconnect(), "device disconnected"),
+            (lambda: self.sb._bridge.kill(), "bridge killed"),
+            (lambda: self.smm.cleanup(), "SMM cleaned up"),
+        )
+        for step, message in steps:
+            try:
+                step()
+                print(f"LibEMG -> SiFiBridgeStreamer ({message}).")
+            except Exception as e:
+                print(f"LibEMG -> SiFiBridgeStreamer ({message} failed: {e}).")
