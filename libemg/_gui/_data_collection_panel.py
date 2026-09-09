@@ -1,17 +1,15 @@
 import shutil
 from pathlib import Path
 import dearpygui.dearpygui as dpg
-import numpy as np
 import os
 from itertools import compress
 import time
-import csv
 import json
 from datetime import datetime
-from ._utils import Media, set_texture, init_matplotlib_canvas, matplotlib_to_numpy
+from ._utils import Media, set_texture
+from ._visualization_panel import VisualizationPanel
 
 import threading
-import matplotlib.pyplot as plt
 
 
 class DataCollectionPanel:
@@ -24,6 +22,8 @@ class DataCollectionPanel:
                  rest_time=2,
                  auto_advance=True,
                  exclude_files=[],
+                 timestamps=False,
+                 visualize_num_samples=500,
                  video_player_width = 720,
                  video_player_height = 480):
         
@@ -35,6 +35,8 @@ class DataCollectionPanel:
         self.rest_time = rest_time
         self.auto_advance=auto_advance
         self.exclude_files = exclude_files
+        self.timestamps = timestamps
+        self.visualize_num_samples = visualize_num_samples
         self.video_player_width = video_player_width
         self.video_player_height = video_player_height
 
@@ -227,18 +229,24 @@ class DataCollectionPanel:
         self.advance = True
         self.online_data_handler.reset()
         while self.i < len(media_list):
-            self.rep_buffer = {mod:[] for mod in self.online_data_handler.modalities}
-            self.rep_count  = {mod:0 for mod in self.online_data_handler.modalities}
             # do the rest
             if self.rest_time and self.i < len(media_list):
                 self.play_collection_visual(media_list[self.i], active=False)
                 media_list[self.i][0].reset()
+
+            file_prefix = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + "_").absolute().as_posix()
+            self.clear_rep_files(file_prefix)
             self.online_data_handler.reset()
-            
-            self.play_collection_visual(media_list[self.i], active=True)
-            
-            output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
-            self.save_data(output_path)
+            # Arm the logger before the prompt goes up: start_log only returns
+            # once shared memory is being watched, so the file covers the whole
+            # collection phase and nothing else.
+            self.online_data_handler.start_log(file_path=file_prefix, timestamps=self.timestamps)
+            try:
+                self.play_collection_visual(media_list[self.i], active=True)
+            finally:
+                logged = self.online_data_handler.stop_log()
+            self.verify_rep_logged(logged, file_prefix)
+
             last_rep = media_list[self.i][3]
             self.i = self.i+1
             is_final_media = self.i == len(media_list)
@@ -303,32 +311,38 @@ class DataCollectionPanel:
             set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
-            # grab incoming new data
-            if active:
-                vals, count = self.online_data_handler.get_data()
-                for mod in self.online_data_handler.modalities:
-                    new_samples = count[mod][0][0]-self.rep_count[mod]
-                    self.rep_buffer[mod] = [vals[mod][:new_samples,:]] + self.rep_buffer[mod]
-                    self.rep_count[mod]  = self.rep_count[mod] + new_samples
-
             dpg.set_value("__dc_progress", value = progress)        
     
-    def save_data(self, filename):
-        file_parts = filename.split('.')
-        
-        for mod in self.rep_buffer:
-            filename = file_parts[0] + "_" + mod + "." + file_parts[1]
-            data = np.vstack(self.rep_buffer[mod])[::-1,:]
-            if data.size == 0:
-                raise ConnectionError('Attempting to store data, but received 0 samples during repetition, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
-            with open(filename, "w", newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                for row in data:
-                    writer.writerow(row)
+    def clear_rep_files(self, file_prefix):
+        """Remove a previous take of this rep, since the logger appends to its files."""
+        for mod in self.online_data_handler.modalities:
+            path = Path(file_prefix + mod + ".csv")
+            if path.exists():
+                path.unlink()
+
+    def verify_rep_logged(self, logged, file_prefix=''):
+        """Confirm every modality contributed samples to the rep that just finished.
+
+        A rep can also come back complete-looking but short: if the logger is
+        held off the shared memory long enough for the device to lap the buffer,
+        the samples it missed are simply absent from the file, with the samples
+        either side of the gap written adjacent to each other. Nothing in the
+        file marks that, so it is called out here while the rep can still be
+        redone.
+        """
+        empty = [mod for mod in self.online_data_handler.modalities if not logged.get(mod, 0)]
+        if empty:
+            raise ConnectionError(f'Attempting to store data, but received 0 samples during repetition for {", ".join(empty)}, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
+        dropped = getattr(self.online_data_handler, 'log_dropped', {})
+        incomplete = {mod: n for mod, n in dropped.items() if n}
+        if incomplete:
+            detail = ", ".join(f"{n} {mod}" for mod, n in sorted(incomplete.items()))
+            print(f'LibEMG -> DataCollectionPanel (this repetition is missing samples: {detail} '
+                  f'were overwritten in shared memory before they could be written to '
+                  f'{file_prefix}*.csv. The gap is not marked in the file. Redo the repetition '
+                  f'if the recording has to be continuous.)')
 
     def visualize_callback(self):
-        self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
-        self.visualization_thread.start()
-    
-    def _run_visualization_helper(self):
-        self.online_data_handler.visualize(block=False)
+        self.visualization_panel = VisualizationPanel(self.online_data_handler,
+                                                      num_samples=self.visualize_num_samples)
+        self.visualization_panel.spawn_window()

@@ -23,12 +23,15 @@ def sifi_biopoint_streamer(
     eda = False,
     imu = False,
     ppg = False,
+    temperature = False,
     filtering = True, 
     emg_notch_freq = 60,
     emg_bandpass = (20,450),
     eda_bandpass = (0,5),
     eda_freq = 0,
-    streaming=False,
+    streaming=True,
+    night_mode = False,
+    high_gain = False,
     mac= None,
     ecg_fs = 500,
     emg_fs = 2000,
@@ -65,6 +68,8 @@ def sifi_biopoint_streamer(
         Enable inertial measurement unit recording
     ppg, default = False
         The flag to enable photoplethysmography recording
+    temperature, default = False
+        The flag to record skin temperature. The device reports temperature in its status packet, so this only controls whether it is stored in shared memory.
     filtering, default = True
         Enable on-device filtering, including bandpass filters and notch filters.
     emg_notch_freq, default = 60
@@ -75,8 +80,12 @@ def sifi_biopoint_streamer(
         The low and high cutoff frequency of the EDA bandpass filter.
     eda_freq, default = 0
         The excitation signal frequency for EDA/BIOZ. Setting an AC value may inject a lot of noise into the EMG sensor.
-    streaming, default = False
-        Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
+    streaming, default = True
+        Whether to package the modalities together within packets for lower latency (sifibridge's low-latency mode), only supported for BioPoint v1.3 and up.
+    night_mode, default = False
+        Turn the device LEDs off during acquisition.
+    high_gain, default = False
+        Use more of the ECG/EMG ADC's dynamic range, at the cost of saturating more easily.
     mac, default = None:
         Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
     ecg_fs, default = 500
@@ -125,6 +134,9 @@ def sifi_biopoint_streamer(
         if ppg:
             shared_memory_items.append(["ppg",       (200,4), np.double])
             shared_memory_items.append(["ppg_count", (1,1),    np.int32])
+        if temperature:
+            shared_memory_items.append(["temperature",       (100,1), np.double])
+            shared_memory_items.append(["temperature_count", (1,1),   np.int32])
 
     assign_shared_memory_locks(shared_memory_items)
         
@@ -142,6 +154,8 @@ def sifi_biopoint_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
+        night_mode,
+        high_gain,
         mac,
         ecg_fs=ecg_fs,
         emg_fs=emg_fs,
@@ -164,12 +178,15 @@ def sifi_bioarmband_streamer(
     eda = False,
     imu = False,
     ppg = False,
+    temperature = False,
     filtering = True, 
     emg_notch_freq = 60,
     emg_bandpass = (20,450),
     eda_bandpass = (0,5),
     eda_freq = 0,
-    streaming = False,
+    streaming = True,
+    night_mode = False,
+    high_gain = False,
     mac = None,
     ecg_fs = 500,
     emg_fs = 1600,
@@ -206,6 +223,8 @@ def sifi_bioarmband_streamer(
         Enable inertial measurement unit recording
     ppg, default = False
         The flag to enable photoplethysmography recording
+    temperature, default = False
+        The flag to record skin temperature. The device reports temperature in its status packet, so this only controls whether it is stored in shared memory.
     filtering, default = True
         Enable on-device filtering, including bandpass filters and notch filters.
     emg_notch_freq, default = 60
@@ -216,8 +235,12 @@ def sifi_bioarmband_streamer(
         The low and high cutoff frequency of the EDA bandpass filter.
     eda_freq, default = 0
         The excitation signal frequency for EDA/BIOZ.  Setting an AC value may inject a lot of noise into the EMG sensor.
-    streaming, default = False
-        Whether to package the modalities together within packets for lower latency, only supported for BioPoint v1.3 and up.
+    streaming, default = True
+        Whether to package the modalities together within packets for lower latency (sifibridge's low-latency mode), only supported for BioPoint v1.3 and up.
+    night_mode, default = False
+        Turn the device LEDs off during acquisition.
+    high_gain, default = False
+        Use more of the ECG/EMG ADC's dynamic range, at the cost of saturating more easily.
     mac, default = None:
         Optional MAC address the device to connect to, useful when multiple devices are in the vicinity and you want to connect to a specific one.
     ecg_fs, default = 500
@@ -266,6 +289,9 @@ def sifi_bioarmband_streamer(
         if ppg:
             shared_memory_items.append(["ppg",       (200,4), np.double])
             shared_memory_items.append(["ppg_count", (1,1),    np.int32])
+        if temperature:
+            shared_memory_items.append(["temperature",       (100,1), np.double])
+            shared_memory_items.append(["temperature_count", (1,1),   np.int32])
 
     assign_shared_memory_locks(shared_memory_items)
 
@@ -284,6 +310,8 @@ def sifi_bioarmband_streamer(
         eda_bandpass,
         eda_freq,
         streaming,
+        night_mode,
+        high_gain,
         mac,
         ecg_fs=ecg_fs,
         emg_fs=emg_fs,

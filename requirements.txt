@@ -27,4 +27,4 @@ datetime
 websockets==8.1
 h5py
 onedrivedownloader
-sifi-bridge-py==2.0.0b18
+sifi-bridge-py==2.0.0b19

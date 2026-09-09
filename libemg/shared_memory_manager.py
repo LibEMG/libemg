@@ -136,6 +136,64 @@ class SharedMemoryManager:
             for lock in reversed(acquired):
                 lock.release()
 
+    def get_samples_since(self, tag, last_count, count_tag=None):
+        """Copy only the samples a writer has added since ``last_count``.
+
+        The counter and the buffer are read under the same lock acquisition as
+        :meth:`get_variables`, so the returned rows and count describe one
+        instant. Unlike :meth:`get_variables` the copy is proportional to what
+        actually arrived rather than to the whole buffer, which matters for a
+        poller running every few milliseconds: it holds the writer's lock for
+        less time, and -- because a poller that allocates a fresh copy of the
+        entire buffer hundreds of times a second is what drives the interpreter
+        into a garbage collection -- it keeps that thread from being the one
+        that pays for everyone else's finalizers.
+
+        Parameters
+        ----------
+        tag : str
+            The buffer to read from. Newest sample first, as written by the
+            streamers.
+        last_count : int
+            The counter value this caller has already consumed up to.
+        count_tag : str or None
+            The counter tag. Defaults to ``tag + "_count"``.
+
+        Returns
+        -------
+        count : int
+            The counter value at the instant of the read.
+        samples : numpy.ndarray
+            The rows that arrived since ``last_count``, newest first. Empty when
+            nothing new arrived.
+        dropped : int
+            How many of those samples the buffer had already overwritten, and so
+            could not be returned.
+        """
+        count_tag = count_tag if count_tag is not None else tag + "_count"
+        for t in (tag, count_tag):
+            assert t in self.variables.keys()
+        distinct_locks = {}
+        for t in (tag, count_tag):
+            lock = self.variables[t]["lock"]
+            distinct_locks[id(lock)] = lock
+        ordered_locks = [distinct_locks[key] for key in sorted(distinct_locks.keys())]
+        acquired = []
+        try:
+            for lock in ordered_locks:
+                lock.acquire()
+                acquired.append(lock)
+            data = self.variables[tag]["data"]
+            count = int(self.variables[count_tag]["data"][0, 0])
+            new = count - int(last_count)
+            if new <= 0:
+                return count, data[:0].copy(), 0
+            dropped = max(0, new - data.shape[0])
+            return count, data[:new - dropped].copy(), dropped
+        finally:
+            for lock in reversed(acquired):
+                lock.release()
+
     def modify_variable(self, tag, fn):
         assert tag in self.variables.keys()
         with self.variables[tag]["lock"]:

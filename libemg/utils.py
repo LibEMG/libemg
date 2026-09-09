@@ -1,3 +1,4 @@
+import gc
 import os
 
 import numpy as np
@@ -5,6 +6,45 @@ from PIL import Image, UnidentifiedImageError
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
+
+
+def _release_interactive_plot(show):
+    """Run something that opens an interactive plot, and dispose of it here.
+
+    An interactive matplotlib window is a pile of Tk widgets -- around twenty
+    ``tkinter.Variable`` and ``tkinter.PhotoImage`` objects per figure, most of
+    them the toolbar. Closing the window does not finalize them: they become
+    ordinary garbage, freed whenever some thread next triggers a collection. If
+    that thread is not the one running the Tk main loop, every single ``__del__``
+    marshals its Tcl call to the main loop, waits a full second for a loop that
+    has already exited, then gives up with ``RuntimeError: main thread is not in
+    main loop``. Twenty objects is twenty seconds of that thread stopped dead --
+    long enough for a shared-memory logger to miss an entire recording, since
+    what the device produces meanwhile is overwritten before it can be read.
+
+    Giving the plot a call frame of its own is what makes the cleanup possible.
+    The figure and every closure over it die with that frame, so by the time
+    ``show`` has returned there is nothing left holding the window together and
+    the collection below finalizes all of it here, on the thread that owns the
+    Tk main loop, where the calls are direct and immediate.
+
+    Parameters
+    ----------
+    show: callable
+        Builds the figure, shows it, and closes it (``matplotlib.pyplot.close``)
+        before returning. It must not hand the figure back or store it on
+        anything that outlives the call, or the window survives the collection
+        and is left for a worker thread to trip over.
+
+    Returns
+    ----------
+    result: object
+        Whatever ``show`` returned.
+    """
+    try:
+        return show()
+    finally:
+        gc.collect()
 
 
 def get_windows(data, window_size, window_increment):

@@ -1,6 +1,8 @@
 import dearpygui.dearpygui as dpg
 from libemg._gui._data_collection_panel import DataCollectionPanel
 from libemg._gui._data_import_panel import DataImportPanel
+from libemg._gui._visualization_panel import VisualizationPanel
+import gc
 import inspect
 import time
 import os
@@ -22,10 +24,12 @@ class GUI:
         Online data handler used for acquiring raw EMG data.
     args: dic, default={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True}
         The dictionary that defines the SGT window. Keys are: 'media_folder', 
-        'data_folder', 'num_reps', 'rep_time', 'rest_time', and 'auto_advance'. All media (i.e., images and videos) in 'media_folder' will be played in alphabetical order.
+        'data_folder', 'num_reps', 'rep_time', 'rest_time', 'auto_advance', and 'timestamps'. All media (i.e., images and videos) in 'media_folder' will be played in alphabetical order.
         For video files, a matching labels file of the same name will be searched for and added to the 'data_folder' if found.
         'rep_time' is only used for images since the duration of videos is automatically calculated based on
-        the number of frames (assumed to be 24 FPS).  
+        the number of frames (assumed to be 24 FPS). 'timestamps' (default False) prepends a timestamp column to
+        every logged sample.
+        Visualize > Live Signal reads 'num_samples', 'refresh_rate' and 'plot_height' from this same dictionary.
     width: int, default=1920
         The width of the SGT window. 
     height: int, default=1080
@@ -61,6 +65,14 @@ class GUI:
         """
         Launches the Screen Guided Training UI.
         """
+        # Everything past this point runs alongside worker threads that must not
+        # be stalled -- the file logger above all. Anything left unfinalized by
+        # the script that got us here is collected now, on the main thread, so a
+        # worker is not the one to trigger it later. A matplotlib window closed
+        # before this call is the usual culprit: its Tk widgets each block a
+        # non-main thread for a full second on finalization (see
+        # libemg.utils._release_interactive_plot).
+        gc.collect()
         self._window_init(self.width, self.height, self.debug)
         
     def _install_global_fields(self):
@@ -103,9 +115,9 @@ class GUI:
                 #dpg.add_menu_item(label="Export Data",  callback=self._export_data_callback)
                 #dpg.add_menu_item(label="Inspect Data", callback=self._inspect_data_callback)
             
-            # with dpg.menu(label="Visualize"):
-                # dpg.add_menu_item(label="Live Signal", callback=self._visualize_livesignal_callback)
-            
+            with dpg.menu(label="Visualize"):
+                dpg.add_menu_item(label="Live Signal", callback=self._visualize_livesignal_callback)
+
             # with dpg.menu(label="Model"):
                 # dpg.add_menu_item(label="Train Classifier", callback=self._train_classifier_callback)
 
@@ -117,6 +129,12 @@ class GUI:
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
         self.dcp = DataCollectionPanel(self.online_data_handler, **passed_arguments, video_player_width=self.video_player_width, video_player_height=self.video_player_height)
         self.dcp.spawn_configuration_window()
+
+    def _visualize_livesignal_callback(self):
+        panel_arguments = list(inspect.signature(VisualizationPanel.__init__).parameters)
+        passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
+        self.vp = VisualizationPanel(self.online_data_handler, **passed_arguments)
+        self.vp.spawn_window()
 
     def _import_data_callback(self):
         panel_arguments = list(inspect.signature(DataImportPanel.__init__).parameters)

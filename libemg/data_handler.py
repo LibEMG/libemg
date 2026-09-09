@@ -20,10 +20,11 @@ from pathlib import Path
 from glob import glob
 from multiprocessing import Process
 from multiprocessing import Process, Event
+import threading
 from libemg.feature_extractor import FeatureExtractor
 from libemg.shared_memory_manager import SharedMemoryManager
 from scipy.signal import welch
-from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex
+from libemg.utils import get_windows, _get_fn_windows, _get_mode_windows, make_regex, _release_interactive_plot
 
 class RegexFilter:
     """
@@ -583,7 +584,25 @@ class OnlineDataHandler(DataHandler):
         self.visualize_signal = Event()        
         self.fi = None
         self.channel_mask = channel_mask
-    
+        # File logging state. log_to_file() spawns a process, start_log() runs a
+        # thread against the shared memory this process already holds open.
+        self._log_process = None
+        self._log_thread = None
+        self._log_stop_event = None
+        self._log_counts = {}
+        # Samples the last start_log() recording lost to shared memory being
+        # overwritten before the logger could read it. See stop_log().
+        self.log_dropped = {}
+
+    def __getstate__(self):
+        # Thread/process handles are local to the interpreter that made them.
+        # Drop them so the handler stays picklable for log_to_file()'s Process.
+        state = self.__dict__.copy()
+        state["_log_process"] = None
+        state["_log_thread"] = None
+        state["_log_stop_event"] = None
+        return state
+
     def prepare_smm(self):
         self.modalities = []
         self.smm = SharedMemoryManager()
@@ -605,9 +624,37 @@ class OnlineDataHandler(DataHandler):
         self.stop_visualize()
 
     def stop_log(self):
-        self.log_signal.set()
-        time.sleep(0.5)
-        self.log_signal.clear()
+        """Stop any active file logging.
+
+        A logger started by :meth:`start_log` is torn down promptly: the call
+        returns once the logging thread has drained the samples that arrived up
+        to this instant and closed its files.
+
+        Returns
+        ----------
+        counts: dict
+            A dictionary keyed by modality holding the number of samples the
+            thread logger wrote. Empty when no thread logger was running.
+            ``log_dropped`` holds, for the same recording, the samples shared
+            memory overwrote before the logger could read them; anything
+            non-zero there means the file it just closed is missing data.
+        """
+        counts = {}
+        thread = getattr(self, "_log_thread", None)
+        if thread is not None:
+            self._log_stop_event.set()
+            thread.join(timeout=5)
+            counts = dict(self._log_counts)
+            self._log_thread = None
+            self._log_stop_event = None
+        # Only signal the spawned logger when one could be listening, otherwise
+        # every stop pays the half second the process needs to notice the flag.
+        if thread is None or getattr(self, "_log_process", None) is not None:
+            self.log_signal.set()
+            time.sleep(0.5)
+            self.log_signal.clear()
+            self._log_process = None
+        return counts
 
     def stop_visualize(self):
         self.visualize_signal.set()
@@ -696,6 +743,12 @@ class OnlineDataHandler(DataHandler):
             p.start()
 
     def _visualize(self, num_samples):
+        # Built and shown one frame down so that nothing of the window outlives
+        # the call, and the collection that follows can finalize it here rather
+        # than leaving it for a worker thread. See _release_interactive_plot.
+        _release_interactive_plot(lambda: self._show_raw_data_plot(num_samples))
+
+    def _show_raw_data_plot(self, num_samples):
         self.prepare_smm()
 
         pyplot.style.use('ggplot')
@@ -734,12 +787,15 @@ class OnlineDataHandler(DataHandler):
                 ax[i][0].set_title(self.modalities[i])
             return plots,
     
-        while True:
-            animation = FuncAnimation(fig, update, interval=100, repeat=False)
-            pyplot.show()
-            if self.visualize_signal.is_set():
-                print("ODH->visualize ended.")
-                break
+        try:
+            while True:
+                animation = FuncAnimation(fig, update, interval=100, repeat=False)
+                pyplot.show()
+                if self.visualize_signal.is_set():
+                    print("ODH->visualize ended.")
+                    break
+        finally:
+            pyplot.close(fig)
 
     def visualize_channels(self, channels, num_samples=500, y_axes=None):
         """Visualize individual channels (each channel in its own plot).
@@ -753,6 +809,12 @@ class OnlineDataHandler(DataHandler):
         y_axes: list (optional)
             A list of two elements consisting of the y-axes.
         """
+        # One frame down, so the window can be disposed of when it returns.
+        # See _release_interactive_plot.
+        _release_interactive_plot(
+            lambda: self._show_channel_plots(channels, num_samples, y_axes))
+
+    def _show_channel_plots(self, channels, num_samples, y_axes):
         self.prepare_smm()
         pyplot.style.use('ggplot')
         while not self._check_streaming():
@@ -781,8 +843,11 @@ class OnlineDataHandler(DataHandler):
             return emg_plots,
 
         animation = FuncAnimation(fig, update, interval=100)
-        pyplot.show()
-    
+        try:
+            pyplot.show()
+        finally:
+            pyplot.close(fig)
+
     def visualize_heatmap(self, num_samples = 500, feature_list = None, remap_function = None, cmap = None):
         """Visualize heatmap representation of EMG signals. This is commonly used to represent HD-EMG signals.
 
@@ -800,6 +865,12 @@ class OnlineDataHandler(DataHandler):
         cmap: colormap or None (optional), default=None
             matplotlib colormap used to plot heatmap.
         """
+        # One frame down, so the window can be disposed of when it returns.
+        # See _release_interactive_plot.
+        _release_interactive_plot(
+            lambda: self._show_heatmap(num_samples, feature_list, remap_function, cmap))
+
+    def _show_heatmap(self, num_samples, feature_list, remap_function, cmap):
         # Create figure
         pyplot.style.use('ggplot')
         if not self._check_streaming():
@@ -884,7 +955,10 @@ class OnlineDataHandler(DataHandler):
             return plots, 
         
         animation = FuncAnimation(fig, update, interval=100)
-        pyplot.show()
+        try:
+            pyplot.show()
+        finally:
+            pyplot.close(fig)
 
     # TODO: Update this 
     # def visualize_feature_space(self, feature_dic, window_size, window_increment, sampling_rate, hold_samples=20, projection="PCA", classes=None, normalize=True):
@@ -1028,8 +1102,13 @@ class OnlineDataHandler(DataHandler):
             self.smm.modify_variable(mod, lambda x: np.zeros_like(x))
             self.smm.modify_variable(mod+"_count", lambda x: np.zeros_like(x))
 
-    def log_to_file(self, block=False, file_path='', timestamps=True):
+    def log_to_file(self, block=False, file_path='', timestamps=True, delimiter=','):
         """Logs the raw data being read to a file.
+
+        The logger runs in a spawned process, so it only becomes active once a
+        fresh interpreter has started. Use :meth:`start_log` instead when the
+        logging window has to line up tightly with something else (e.g. a
+        prompt shown during screen guided training).
 
         Parameters
         ----------
@@ -1039,52 +1118,142 @@ class OnlineDataHandler(DataHandler):
             The prefix to the file path that will be logged for each modality.
         timestamps: bool (optional), default=True
             If true, this will log the timestamps with each recording.
+        delimiter: str (optional), default=','
+            The delimiter separating columns in the log files. Matches the
+            default of :meth:`OfflineDataHandler.get_data` so logged files can
+            be read back without extra configuration.
         """
         print("ODH->log_to_file begin.")
         self.file_path = file_path
         self.timestamps = timestamps
+        self.delimiter = delimiter
         if block:
             self._log_to_file()
-            print("ODH->log_to_file ended.")
         else:
             p = Process(target=self._log_to_file, daemon=True)
             p.start()
+            self._log_process = p
+
+    def start_log(self, file_path='', timestamps=True, delimiter=',', poll_delay=0.005):
+        """Logs the raw data being read to a file from a background thread.
+
+        The thread reads the shared memory this process already has open, so
+        logging starts as soon as this call is made rather than after a process
+        spawn. The call only returns once the logger has recorded its baseline
+        sample counters, meaning every sample produced from here on is written
+        to file. Call :meth:`stop_log` to end the recording.
+
+        Files are opened in append mode, matching :meth:`log_to_file`. Delete
+        the previous files first if a recording should not be added onto.
+
+        Parameters
+        ----------
+        file_path: str (optional), default=''
+            The prefix to the file path that will be logged for each modality.
+            The modality and '.csv' are appended to it.
+        timestamps: bool (optional), default=True
+            If true, this will log the timestamps with each recording.
+        delimiter: str (optional), default=','
+            The delimiter separating columns in the log files.
+        poll_delay: float (optional), default=0.005
+            Seconds to wait between reads of shared memory. Keep it well under
+            the time the device takes to fill its shared memory buffer.
+        """
+        if getattr(self, "_log_thread", None) is not None:
+            self.stop_log()
+        self._log_counts = {}
+        self.log_dropped = {}
+        self._log_stop_event = threading.Event()
+        armed = threading.Event()
+        thread = threading.Thread(
+            target=self._run_log_loop,
+            args=(self._log_stop_event.is_set, file_path, timestamps, delimiter),
+            kwargs={"poll_delay": poll_delay, "armed": armed, "counts_out": self._log_counts,
+                    "dropped_out": self.log_dropped},
+            daemon=True)
+        thread.start()
+        self._log_thread = thread
+        if not armed.wait(timeout=5):
+            self._log_stop_event.set()
+            self._log_thread = None
+            raise RuntimeError("Timed out waiting for the file logger to read the shared memory sample counters.")
 
     def _log_to_file(self):
-
-        files = {}
-        # start shared memory manager to access sensor
+        # Entry point for the process spawned by log_to_file. Shared memory has
+        # to be re-attached here because this runs in a fresh interpreter.
         self.smm = SharedMemoryManager()
         for item in self.shared_memory_items:
             self.smm.find_variable(*item)
-        # initialize sample count for all modalities by reading actual current counts from shared memory
+        self._run_log_loop(self.log_signal.is_set, self.file_path, self.timestamps,
+                           getattr(self, "delimiter", ","))
+
+    def _run_log_loop(self, should_stop, file_path, timestamps, delimiter,
+                      poll_delay=0.0, armed=None, counts_out=None, dropped_out=None):
+        """Append every newly arrived sample to a file, per modality.
+
+        Parameters
+        ----------
+        should_stop: callable
+            Polled once per pass; the loop exits after the pass that returns True,
+            so the samples produced up to that point are still written.
+        armed: threading.Event or None
+            Set once the baseline sample counters have been read, i.e. once no
+            further samples can be missed.
+        counts_out: dict or None
+            Updated in place with the number of samples logged per modality.
+        dropped_out: dict or None
+            Updated in place with the number of samples per modality that shared
+            memory overwrote before this loop could read them. Non-zero means the
+            file has a hole in it: the samples either side of the gap are written
+            adjacent to each other, so nothing in the file marks where it is.
+        """
+        files = {}
+        # Baseline the counters so only data produced from this point on is
+        # logged. The counter is written after the samples it counts, so reading
+        # it alone is enough to fix the starting point.
         last_count = {}
-        _, counts = self.get_data(N=0, filter=False)
         for m in self.modalities:
-            last_count[m] = counts[m][0,0]
-        while True:
-            timestamp = time.time()
-            vals, counts = self.get_data(N=0, filter=False)
-            for m in vals.keys():
-                new_count       = counts[m][0,0]
-                num_new_samples = new_count - last_count[m]
-                # Shared-memory buffers are newest-first. Restore chronological
-                # order before appending each batch to the log file.
-                new_samples     = np.flip(vals[m][:num_new_samples,:], axis=0)
-                last_count[m] = new_count
-                if num_new_samples:
+            last_count[m] = int(self.smm.get_variable(m + "_count")[0, 0])
+            if counts_out is not None:
+                counts_out[m] = 0
+            if dropped_out is not None:
+                dropped_out[m] = 0
+        if armed is not None:
+            armed.set()
+        try:
+            while True:
+                timestamp = time.time()
+                for m in self.modalities:
+                    new_count, new_samples, dropped = self.smm.get_samples_since(m, last_count[m])
+                    last_count[m] = new_count
+                    if dropped:
+                        if dropped_out is not None:
+                            dropped_out[m] = dropped_out.get(m, 0) + dropped
+                        print(f"ODH->log_to_file: {dropped} {m} samples "
+                              "were overwritten in shared memory before they could be logged.")
+                    if new_samples.shape[0] == 0:
+                        continue
+                    if self.channel_mask is not None:
+                        new_samples = new_samples[:, self.channel_mask]
+                    # Shared-memory buffers are newest-first. Restore chronological
+                    # order before appending each batch to the log file.
+                    new_samples = np.flip(new_samples, axis=0)
                     if not m in files.keys():
-                        files[m] = open(self.file_path + m + '.csv', "a", newline='')
-                    if self.timestamps:
-                        np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)))
-                        # check to see if they're in the right order, or if they need to be reversed again!
+                        files[m] = open(file_path + m + '.csv', "a", newline='')
+                    if timestamps:
+                        np.savetxt(files[m], np.hstack((np.ones((new_samples.shape[0],1))*timestamp, new_samples)), delimiter=delimiter)
                     else:
-                        np.savetxt(files[m], new_samples)
-            if self.log_signal.is_set():
-                print("ODH->log_to_file ended.")
-                for file in files.values():
-                    file.close()
-                break
+                        np.savetxt(files[m], new_samples, delimiter=delimiter)
+                    if counts_out is not None:
+                        counts_out[m] = counts_out.get(m, 0) + new_samples.shape[0]
+                if should_stop():
+                    break
+                if poll_delay:
+                    time.sleep(poll_delay)
+        finally:
+            print("ODH->log_to_file ended.")
+            for file in files.values():
+                file.close()
 
     def _check_streaming(self, timeout=15):
         wt = time.time()
