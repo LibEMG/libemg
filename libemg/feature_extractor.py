@@ -1,3 +1,5 @@
+import contextlib
+import functools
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +10,92 @@ from scipy.stats import skew, kurtosis
 from librosa import lpc
 from pywt import wavedec, upcoef
 from sklearn.preprocessing import StandardScaler
+
+
+_MISSING = object()
+
+
+def _next_power_of_two(window_size):
+    """Smallest power of two at least as large as ``window_size``.
+
+    Every frequency-domain feature needs this to pick its FFT length. It used
+    to be re-declared as an inner closure inside each of them.
+    """
+    return 1 if window_size == 0 else 2 ** math.ceil(math.log2(window_size))
+
+
+class _PrerequisiteCache:
+    """Memoizes prerequisite results for the span of a single extraction.
+
+    Several features are built from the same expensive intermediate: the five
+    frequency-domain features all want one FFT of the same windows, the four
+    wavelet features all want one ``sym8`` decomposition, and the six temporal
+    moment features all want the same ``m0``/``m2``/``m4`` and the same
+    log-energy array. Without somewhere to put those, each feature recomputes
+    them from scratch.
+
+    Entries are keyed partly on ``id()`` of the array a prerequisite was called
+    with, so the cache also holds a reference to that array. That reference is
+    what makes the key sound: while the entry is alive the array cannot be
+    collected, so its id cannot be handed to a different object.
+    """
+
+    def __init__(self):
+        self.store = {}
+        self._pinned = []
+
+    def lookup(self, key):
+        return self.store.get(key, _MISSING)
+
+    def insert(self, key, array, value):
+        self.store[key] = value
+        self._pinned.append(array)
+
+
+def prerequisite(fn):
+    """Declare a method as a shared prerequisite of one or more features.
+
+    A prerequisite is a computation that features depend on rather than a
+    feature itself -- an FFT, a wavelet decomposition, a set of temporal
+    moments. Decorating it means that within one :meth:`extract_features` call
+    (or one :meth:`shared_prerequisites` block) the work happens once, no
+    matter how many features ask for it, and the later askers get the stored
+    result.
+
+    The decorated method takes the array it operates on as its first argument
+    after ``self``. Its remaining arguments participate in the cache key, so
+    the same prerequisite computed at two different FFT lengths or two
+    different wavelet orders is stored separately.
+
+    Outside an extraction there is nothing to share with, so the call falls
+    straight through and nothing is retained. That keeps a lone
+    ``getMDFfeat(windows)`` behaving exactly as it did, and it is why the cache
+    can be keyed on array identity at all: it never outlives the call that
+    owns the array.
+
+    A prerequisite must be a pure function of its arguments, and callers must
+    not mutate what it returns -- the value handed back is the stored one, not
+    a copy.
+    """
+    name = fn.__name__
+
+    @functools.wraps(fn)
+    def wrapper(self, array, *args, **kwargs):
+        cache = getattr(self, "_prerequisite_cache", None)
+        if cache is None:
+            return fn(self, array, *args, **kwargs)
+        key = (name, id(array), array.shape, array.dtype.str,
+               args, tuple(sorted(kwargs.items())))
+        cached = cache.lookup(key)
+        if cached is not _MISSING:
+            return cached
+        value = fn(self, array, *args, **kwargs)
+        cache.insert(key, array, value)
+        return value
+
+    wrapper.is_prerequisite = True
+    return wrapper
+
 
 class FeatureExtractor:
     """
@@ -163,8 +251,22 @@ class FeatureExtractor:
         """
         features = {}
         scaler = None
-        for feature in feature_list:
-            if feature in self.get_feature_list():
+        available = set(self.get_feature_list())
+        unknown = [f for f in feature_list if f not in available]
+        if unknown:
+            # Silently skipping an unrecognised name used to return a narrower
+            # feature matrix than the caller asked for. Because a model is fit
+            # at a particular width, a typo here surfaced much later as a
+            # confusing dimension mismatch, so refuse it at the source.
+            raise ValueError(
+                f"Unknown feature(s) requested: {unknown}. "
+                "Run FeatureExtractor().get_feature_list() for the available features."
+            )
+        # Features are extracted under one prerequisite cache, so shared
+        # intermediates (FFTs, wavelet decompositions, temporal moments) are
+        # computed once for this set of windows rather than once per feature.
+        with self.shared_prerequisites():
+            for feature in feature_list:
                 method_to_call = getattr(self, 'get' + feature + 'feat')
                 valid_keys = [i for i in list(feature_dic.keys()) if feature+"_" in i]
                 smaller_dictionary = dict((k, feature_dic[k]) for k in valid_keys if k in feature_dic)
@@ -186,8 +288,183 @@ class FeatureExtractor:
             return features, scaler 
         return features 
 
+    @contextlib.contextmanager
+    def shared_prerequisites(self):
+        """Share prerequisite computations across everything called inside the block.
+
+        :meth:`extract_features` already does this for you. Use it directly
+        when calling feature methods one at a time and you want them to share
+        their intermediates anyway::
+
+            with fe.shared_prerequisites():
+                m0 = fe.getM0feat(windows)   # computes the temporal moments
+                m2 = fe.getM2feat(windows)   # reuses them
+
+        Outside such a block each call recomputes its own intermediates, which
+        is the safe default: results are cached against the identity of the
+        array passed in, so the cache must not outlive the caller's ownership
+        of that array. Nothing is retained once the block exits.
+
+        Nesting is allowed; the innermost block shares the outermost cache. The
+        cache lives on the instance, so a single FeatureExtractor must not be
+        driven from several threads at once -- give each thread its own.
+
+        See :func:`prerequisite` for how a computation is declared shareable,
+        and :meth:`get_prerequisite_list` for the ones that are.
+        """
+        previous = getattr(self, "_prerequisite_cache", None)
+        if previous is None:
+            self._prerequisite_cache = _PrerequisiteCache()
+        try:
+            yield self._prerequisite_cache
+        finally:
+            self._prerequisite_cache = previous
+
+    def get_prerequisite_list(self):
+        """Names of the shared prerequisite computations features are built on.
+
+        Returns
+        ----------
+        list
+            The methods decorated with :func:`prerequisite`. These are not
+            features; they are the intermediates that features share when
+            extracted together.
+        """
+        names = []
+        for name in dir(type(self)):
+            attribute = getattr(type(self), name, None)
+            if getattr(attribute, "is_prerequisite", False):
+                names.append(name)
+        return sorted(names)
+
+    # ------------------------------------------------------------------
+    # Shared prerequisites
+    #
+    # Each of these is depended on by more than one feature. They are declared
+    # with @prerequisite so that when those features are extracted together the
+    # computation happens once. See the decorator's docstring for the contract.
+    # ------------------------------------------------------------------
+
+    @prerequisite
+    def _fft_spectrum(self, windows, nextpow2):
+        """One-sided normalized spectrum. Shared by MDF, MNF, MNP, SM and DFTR.
+
+        ``rfft`` is used rather than ``fft`` because the input is real, so the
+        negative-frequency half that ``fft`` computes was being discarded by
+        every caller anyway. ``rfft`` returns bins 0..n/2 inclusive; slicing to
+        ``n//2`` reproduces exactly the bins the callers kept.
+        """
+        spec = np.fft.rfft(windows, n=nextpow2, axis=2) / windows.shape[2]
+        return spec[:, :, :nextpow2 // 2]
+
+    @prerequisite
+    def _fft_power(self, windows, nextpow2):
+        """Power spectrum. Shared by MDF, MNF, MNP and SM."""
+        spec = self._fft_spectrum(windows, nextpow2)
+        return np.real(spec * np.conj(spec))
+
+    @prerequisite
+    def _fft_magnitude(self, windows, nextpow2):
+        """Magnitude spectrum. Used by DFTR."""
+        return np.abs(self._fft_spectrum(windows, nextpow2))
+
+    def _fft_frequencies(self, nextpow2, sampling_frequency):
+        """Frequency of each retained bin, shaped to broadcast over windows.
+
+        Returned with two leading singleton axes so it broadcasts against a
+        (windows, channels, bins) power spectrum. The callers used to expand it
+        to the full spectrum shape with two np.repeat calls, which allocated an
+        array as large as the spectrum itself to hold one distinct value per
+        bin.
+        """
+        frequencies = np.fft.rfftfreq(nextpow2) * sampling_frequency
+        return frequencies[:nextpow2 // 2][np.newaxis, np.newaxis, :]
+
+    @prerequisite
+    def _wavelet_decompose(self, windows, wavelet, level):
+        """``wavedec`` coefficients. Shared by WENG, WV, WWL and WENT.
+
+        The order Khushaba et al. prescribe is higher than the window length
+        strictly supports, so pywt warns about boundary effects. That warning is
+        expected here and is suppressed, as the original WENG implementation
+        already did -- suppressing it in one place keeps it from depending on
+        which of the four features happens to run first.
+        """
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return wavedec(windows, wavelet=wavelet, level=level, axis=2)
+
+    @prerequisite
+    def _wavelet_energy(self, windows, wavelet, level):
+        """Squared ``wavedec`` coefficients. Shared by WENG, WV, WWL and WENT."""
+        return [coefficients ** 2
+                for coefficients in self._wavelet_decompose(windows, wavelet, level)]
+
+    @prerequisite
+    def _tdpsd_log_energy(self, windows):
+        """The log-energy branch input, shared by all six temporal moment features.
+
+        Each of M0, M2, M4, SPARSI, IRF and WLF is the combination of a
+        statistic taken over the windows themselves and the same statistic
+        taken over this array, so all six used to build it independently.
+        """
+        return np.log(windows ** 2 + np.spacing(1))
+
+    @prerequisite
+    def _tdpsd_d1(self, windows):
+        """First difference along the sample axis. Shared by the moment features."""
+        return np.diff(windows, n=1, axis=2)
+
+    @prerequisite
+    def _tdpsd_d2(self, windows):
+        """Second difference along the sample axis. Shared by the moment features."""
+        return np.diff(self._tdpsd_d1(windows), n=1, axis=2)
+
+    @prerequisite
+    def _tdpsd_m0(self, windows):
+        """Zeroth temporal moment, normalized as the TDPSD set defines it.
+
+        Note that the sample count divides outside the square root here and
+        inside it for m2 and m4. That asymmetry is what the original
+        implementation does and it is preserved deliberately -- changing it
+        would change every feature in the set.
+        """
+        m0 = np.sqrt(np.sum(windows ** 2, axis=2)) / (windows.shape[2] - 1)
+        return m0 ** 0.1 / 0.1
+
+    @prerequisite
+    def _tdpsd_m2(self, windows):
+        """Second temporal moment. Shared by M2, SPARSI and IRF."""
+        d1 = self._tdpsd_d1(windows)
+        m2 = np.sqrt(np.sum(d1 ** 2, axis=2) / (windows.shape[2] - 1))
+        return m2 ** 0.1 / 0.1
+
+    @prerequisite
+    def _tdpsd_m4(self, windows):
+        """Fourth temporal moment. Shared by M4, SPARSI and IRF."""
+        d2 = self._tdpsd_d2(windows)
+        m4 = np.sqrt(np.sum(d2 ** 2, axis=2) / (windows.shape[2] - 1))
+        return m4 ** 0.1 / 0.1
+
+    @prerequisite
+    def _tdpsd_abs_differences(self, windows):
+        """Summed absolute first and second differences. Used by WLF."""
+        d1 = self._tdpsd_d1(windows)
+        d2 = self._tdpsd_d2(windows)
+        return np.sum(np.abs(d1), axis=2), np.sum(np.abs(d2), axis=2)
+
+    def _tdpsd_combine(self, ebp, efp):
+        """Combine a statistic's two branches the way the TDPSD set defines it.
+
+        Identical arithmetic in all six features, so it lives in one place.
+        """
+        num = -2 * np.multiply(efp, ebp)
+        den = np.multiply(efp, efp) + np.multiply(ebp, ebp)
+        return num / den
+
     def check_features(self, features, silent=False):
-        """Assesses a features object for np.nan, np.inf, and -np.inf. Can be used to check for clean data. 
+        """Assesses a features object for np.nan, np.inf, and -np.inf. Can be used to check for clean data.
         
         Parameters
         ----------
@@ -226,15 +503,20 @@ class FeatureExtractor:
         # sanity check that no errors were found in feature computation
         violations = 0
         for fk in feature_list:
-            if (features[fk] == np.nan).any():
+            # NaN has to be found with np.isnan: it compares unequal to
+            # everything including itself, so the equality test that used to be
+            # here could never fire and a NaN-bearing feature was reported
+            # clean. That in turn meant extract_features(fix_feature_errors=True)
+            # skipped np.nan_to_num and handed the NaN back.
+            if np.isnan(features[fk]).any():
                 violations += 1
                 if not silent:
                     print(f"nan in  feature {fk}.")
-            if (features[fk] == np.inf).any():
+            if np.isposinf(features[fk]).any():
                 violations += 1
                 if not silent:
                     print(f"inf in feature {fk}.")
-            if (features[fk] == -1*np.inf).any():
+            if np.isneginf(features[fk]).any():
                 violations += 1
                 if not silent:
                     print(f"-inf in feature {fk}.")
@@ -255,15 +537,16 @@ class FeatureExtractor:
             does not indicate the feature the violation arose from.
         """
         violations = 0
-        if (features == np.nan).any():
+        # See _check_dict_features: NaN needs np.isnan, not an equality test.
+        if np.isnan(features).any():
             violations += 1
             if not silent:
                 print(f"nan in  features.")
-        if (features == np.inf).any():
+        if np.isposinf(features).any():
             violations += 1
             if not silent:
                 print(f"inf in features.")
-        if (features == -1*np.inf).any():
+        if np.isneginf(features).any():
             violations += 1
             if not silent:
                 print(f"-inf in features.")
@@ -567,17 +850,9 @@ class FeatureExtractor:
         """
         
         def closure(w):
-            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
-            m0 = m0 ** 0.1 / 0.1
-            return np.log(np.abs(m0))
-        m0_ebp=closure(windows)
-        m0_efp=closure(np.log(windows**2+np.spacing(1)))
-
-        num=-2*np.multiply(m0_efp,m0_ebp)
-        den=np.multiply(m0_efp, m0_efp) + np.multiply(m0_ebp, m0_ebp)
-
-        #Feature extraction goes here
-        return num/den
+            return np.log(np.abs(self._tdpsd_m0(w)))
+        return self._tdpsd_combine(closure(windows),
+                                   closure(self._tdpsd_log_energy(windows)))
     
     def getM2feat(self, windows):
         """Extract Second Temporal Moment (M2) feature.
@@ -593,19 +868,9 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         def closure(w):
-            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
-            m0 = m0 ** 0.1 / 0.1
-            d1 = np.diff(w, n=1, axis=2)
-            m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (w.shape[2]-1))
-            m2 = m2 ** 0.1 / 0.1
-            return np.log(np.abs(m0-m2))
-        m2_ebp=closure(windows)
-        m2_efp=closure(np.log(windows**2+np.spacing(1)))
-
-        num=-2*np.multiply(m2_efp,m2_ebp)
-        den=np.multiply(m2_efp, m2_efp) + np.multiply(m2_ebp, m2_ebp)
-        
-        return num/den
+            return np.log(np.abs(self._tdpsd_m0(w) - self._tdpsd_m2(w)))
+        return self._tdpsd_combine(closure(windows),
+                                   closure(self._tdpsd_log_energy(windows)))
 
     def getM4feat(self, windows):
         """Extract Fourth Temporal Moment (M4) feature.
@@ -621,20 +886,9 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         def closure(w):
-            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
-            m0 = m0 ** 0.1 / 0.1
-            d1 = np.diff(w, n=1, axis=2)
-            d2 = np.diff(d1, n=1, axis=2)
-            m4 = np.sqrt(np.sum(d2 **2, axis=2)/ (w.shape[2]-1))
-            m4 = m4 ** 0.1 / 0.1
-            return np.log(np.abs(m0-m4))
-        m4_ebp=closure(windows)
-        m4_efp=closure(np.log(windows**2+np.spacing(1)))
-        
-        num=-2*np.multiply(m4_efp,m4_ebp)
-        den=np.multiply(m4_efp, m4_efp) + np.multiply(m4_ebp, m4_ebp)
-        
-        return num/den
+            return np.log(np.abs(self._tdpsd_m0(w) - self._tdpsd_m4(w)))
+        return self._tdpsd_combine(closure(windows),
+                                   closure(self._tdpsd_log_energy(windows)))
     
     def getSPARSIfeat(self, windows):
         """Extract Sparsness (SPARSI) feature.
@@ -650,23 +904,13 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         def closure(w):
-            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
-            m0 = m0 ** 0.1 / 0.1
-            d1 = np.diff(w, n=1, axis=2)
-            m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (w.shape[2]-1))
-            m2 = m2 ** 0.1 / 0.1
-            d2 = np.diff(d1, n=1, axis=2)
-            m4 = np.sqrt(np.sum(d2 **2, axis=2)/ (w.shape[2]-1))
-            m4 = m4 ** 0.1 / 0.1
+            m0 = self._tdpsd_m0(w)
+            m2 = self._tdpsd_m2(w)
+            m4 = self._tdpsd_m4(w)
             sparsi = np.sqrt(np.abs((m0-m2)*(m0-m4)))/m0
             return np.log(np.abs(sparsi))
-        sparsi_ebp=closure(windows)
-        sparsi_efp=closure(np.log(windows**2+np.spacing(1)))
-        
-        num=-2*np.multiply(sparsi_efp,sparsi_ebp)
-        den=np.multiply(sparsi_efp, sparsi_efp) + np.multiply(sparsi_ebp, sparsi_ebp)
-
-        return num/den
+        return self._tdpsd_combine(closure(windows),
+                                   closure(self._tdpsd_log_energy(windows)))
 
     def getIRFfeat(self, windows):
         """Extract Irregularity Factor (IRF) feature.
@@ -682,23 +926,10 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         def closure(w):
-            m0 = np.sqrt(np.sum(w**2,axis=2))/(w.shape[2]-1)
-            m0 = m0 ** 0.1 / 0.1
-            d1 = np.diff(w, n=1, axis=2)
-            m2 = np.sqrt(np.sum(d1 **2, axis=2)/ (w.shape[2]-1))
-            m2 = m2 ** 0.1 / 0.1
-            d2 = np.diff(d1, n=1, axis=2)
-            m4 = np.sqrt(np.sum(d2 **2, axis=2)/ (w.shape[2]-1))
-            m4 = m4 ** 0.1 / 0.1
-            irf = m2/np.sqrt(m0*m4)
+            irf = self._tdpsd_m2(w)/np.sqrt(self._tdpsd_m0(w)*self._tdpsd_m4(w))
             return np.log(np.abs(irf))
-        irf_ebp=closure(windows)
-        irf_efp=closure(np.log(windows**2+np.spacing(1)))
-        
-        num=-2*np.multiply(irf_efp,irf_ebp)
-        den=np.multiply(irf_efp, irf_efp) + np.multiply(irf_ebp, irf_ebp)
-
-        return num/den
+        return self._tdpsd_combine(closure(windows),
+                                   closure(self._tdpsd_log_energy(windows)))
 
     def getWLFfeat(self, windows):
         """Waveform Length Factor (WLF) feature.
@@ -714,19 +945,11 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         def closure(w):
-            d1 = np.diff(w, n=1, axis=2)
-            
-            d2 = np.diff(d1, n=1, axis=2)
-            
-            wlf = np.sqrt(np.sum(np.abs(d1),axis=2)/np.sum(np.abs(d2),axis=2))
+            absd1, absd2 = self._tdpsd_abs_differences(w)
+            wlf = np.sqrt(absd1/absd2)
             return np.log(np.abs(wlf))
-        wlf_ebp=closure(windows)
-        wlf_efp=closure(np.log(windows**2+np.spacing(1)))
-        
-        num=-2*np.multiply(wlf_efp,wlf_ebp)
-        den=np.multiply(wlf_efp, wlf_efp) + np.multiply(wlf_ebp, wlf_ebp)
-
-        return num/den
+        return self._tdpsd_combine(closure(windows),
+                                   closure(self._tdpsd_log_energy(windows)))
 
     def getARfeat(self, windows, AR_order=4):
         """Extract Autoregressive Coefficients (AR) feature.
@@ -844,20 +1067,22 @@ class FeatureExtractor:
         list
             The computed features associated with each window. 
         """
-        assert type(MDF_fs) == int or type(MDF_fs) == float 
-        def closure(winsize):
-            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
-        nextpow2 = closure(windows.shape[2])
-        spec = np.fft.fft(windows,nextpow2, axis=2)/windows.shape[2]
-        spec = spec[:,:,0:int(nextpow2/2)]
-        POW = np.real(spec * np.conj(spec))
+        assert type(MDF_fs) == int or type(MDF_fs) == float
+        nextpow2 = _next_power_of_two(windows.shape[2])
+        POW = self._fft_power(windows, nextpow2)
         totalPOW = np.sum(POW, axis=2)
         cumPOW   = np.cumsum(POW, axis=2)
-        medfreq = np.zeros((windows.shape[0], windows.shape[1]))
-        for i in range(0, windows.shape[0]):
-            for j in range(0, windows.shape[1]):
-                medfreq[i,j] = (MDF_fs/2)*np.argwhere(cumPOW[i,j,:] > totalPOW[i,j] /2)[0, 0]/(nextpow2/2)
-        return medfreq
+        # The first bin whose cumulative power passes half the total. argmax on
+        # a boolean array returns the first True, which is what the per-element
+        # np.argwhere in the old nested loop was reading -- but argwhere built a
+        # full index array of every match just to take element zero, once per
+        # window per channel.
+        # Behaviour note: for a window with no power at all the condition is
+        # never satisfied; argmax then yields bin 0 (a median frequency of 0)
+        # where the old code raised IndexError. Cumulative power reaches the
+        # total by construction, so only an all-zero window can reach this.
+        first_bin = np.argmax(cumPOW > totalPOW[:, :, np.newaxis] / 2, axis=2)
+        return (MDF_fs/2) * first_bin / (nextpow2/2)
 
     def getMNFfeat(self, windows, MNF_fs=1000):
         """Extract Mean Frequency (MNF) feature.
@@ -873,18 +1098,11 @@ class FeatureExtractor:
         list
             The computed features associated with each window. 
         """
-        assert type(MNF_fs) == int or type(MNF_fs) == float 
-        def closure(winsize):
-            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
-        nextpow2 = closure(windows.shape[2])
-        spec = np.fft.fft(windows, n=nextpow2,axis=2)/windows.shape[2]
-        f = np.fft.fftfreq(nextpow2)*MNF_fs
-        spec = spec[:,:,0:int(round(spec.shape[2]/2))]
-        f = f[0:int(round(nextpow2/2))]
-        f = np.repeat(f[np.newaxis, :], spec.shape[0], axis=0)
-        f = np.repeat(f[:, np.newaxis,:], spec.shape[1], axis=1)
-        POW = spec * np.conj(spec)
-        return np.real(np.sum(POW*f,axis=2)/np.sum(POW,axis=2))
+        assert type(MNF_fs) == int or type(MNF_fs) == float
+        nextpow2 = _next_power_of_two(windows.shape[2])
+        POW = self._fft_power(windows, nextpow2)
+        f = self._fft_frequencies(nextpow2, MNF_fs)
+        return np.sum(POW*f, axis=2)/np.sum(POW, axis=2)
 
     def getMNPfeat(self, windows):
         """Extract Mean Power (MNP) feature.
@@ -899,12 +1117,8 @@ class FeatureExtractor:
         list
             The computed features associated with each window. 
         """
-        def closure(winsize):
-            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
-        nextpow2 = closure(windows.shape[2])
-        spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
-        spec = spec[:,:,0:int(round(nextpow2/2))]
-        POW  = np.real(spec[:,:,:int(nextpow2)]*np.conj(spec[:,:,:int(nextpow2)]))
+        nextpow2 = _next_power_of_two(windows.shape[2])
+        POW = self._fft_power(windows, nextpow2)
         return np.sum(POW, axis=2)/POW.shape[2]
 
     def getMPKfeat(self, windows):
@@ -1099,16 +1313,10 @@ class FeatureExtractor:
         """
         assert type(SM_order)==int
         assert type(SM_fs)==int or type(SM_fs) == float
-        def closure(winsize):
-            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
-        nextpow2 = closure(windows.shape[2])
-        spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
-        pow  =  np.real(spec[:,:,0:int(round(nextpow2/2))] * np.conj(spec[:,:,0:int(round(nextpow2/2))]))
-        f = np.fft.fftfreq(nextpow2)*SM_fs
-        f = f[0:int(round(nextpow2/2))]
-        f = np.repeat(f[np.newaxis, :], spec.shape[0], axis=0)
-        f = np.repeat(f[:, np.newaxis,:], spec.shape[1], axis=1)
-        return np.sum( pow*(f**SM_order),axis=2)
+        nextpow2 = _next_power_of_two(windows.shape[2])
+        pow = self._fft_power(windows, nextpow2)
+        f = self._fft_frequencies(nextpow2, SM_fs)
+        return np.sum(pow*(f**SM_order), axis=2)
 
     def getSAMPENfeat(self, windows, SAMPEN_dim=2, SAMPEN_tolerance=0.3):
         """Extract Sample Entropy (SAMPEN) feature. SAMPEN_dim should be specified and is the number of samaples that 
@@ -1262,19 +1470,15 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         assert type(DFTR_fs)==int or type(DFTR_fs) == float
-        def closure(winsize):
-            return 1 if winsize==0 else 2**math.ceil(math.log2(winsize))
         init_freq = 20
         upper_freqs = [92, 163, 235, 305, 378, 450]
         nyquist = DFTR_fs/2
         num_bins = sum([i <nyquist for i in upper_freqs])
         feat = np.zeros((windows.shape[0], windows.shape[1]*num_bins))
 
-        nextpow2 = closure(windows.shape[2])
-        spec = np.fft.fft(windows,n=nextpow2,axis=2)/windows.shape[2]
-        pow  =  np.abs(spec[:,:,0:int(round(nextpow2/2))])
-        f = np.fft.fftfreq(nextpow2)*DFTR_fs
-        f = f[0:int(round(nextpow2/2))]
+        nextpow2 = _next_power_of_two(windows.shape[2])
+        pow = self._fft_magnitude(windows, nextpow2)
+        f = self._fft_frequencies(nextpow2, DFTR_fs).ravel()
         for bin in range(num_bins):
             upper_freq = upper_freqs[bin]
             included_bins =  np.logical_and((f > init_freq) , (f < upper_freq))
@@ -1382,8 +1586,19 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """
         m0 =  self.getACTfeat(windows)
-        m2 =  np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
+        m2 =  self._hjorth_m2(windows)
         return np.sqrt(m2/m0)
+
+    @prerequisite
+    def _hjorth_m2(self, windows):
+        """Second Hjorth moment. Shared by MOB and COMP."""
+        return np.sum(np.diff(windows, axis=2) ** 2, axis=2) / windows.shape[2]
+
+    @prerequisite
+    def _hjorth_m4(self, windows):
+        """Fourth Hjorth moment. Used by COMP."""
+        d2 = np.diff(np.diff(windows, axis=2), axis=2)
+        return np.sum(d2 ** 2, axis=2) / windows.shape[2]
 
     def getCOMPfeat(self, windows):
         """Extract Complexity (COMP) feature. This feature is sqrt(m4/m2), where m2 and m4 are the second and fourth order moments found via
@@ -1400,8 +1615,13 @@ class FeatureExtractor:
         list
             The computed features associated with each window. 
         """
-        m2 =  np.sum(np.diff(windows,axis=2)**2,axis=2)/windows.shape[2]
-        m4 =  np.sum(np.diff(np.diff(windows, axis=2),axis=2)**2)/windows.shape[2]
+        # m4 previously omitted axis=2, so np.sum reduced the whole batch to a
+        # single scalar and every window/channel was divided by the same global
+        # numerator. One window's data therefore changed another window's
+        # feature, and the value depended on what else happened to be in the
+        # batch. Both moments now reduce along the sample axis only.
+        m2 =  self._hjorth_m2(windows)
+        m4 =  self._hjorth_m4(windows)
         return np.sqrt(m4/m2)
     
     def getWENGfeat(self, windows, WENG_fs = 1000):
@@ -1419,18 +1639,14 @@ class FeatureExtractor:
         list
             The computed features associated with each window. Size: Wx((order+1)*Nchannels)
         """
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # get the highest power of 2 the nyquist rate is divisible by
-            order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
-            # Khushaba et al suggests using sym8
-            # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
-            # original paper suggests using as the order.
-            wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
-            # for every order, compute the energy (sum of DWT) - total of the squared signal
-            features = np.hstack([np.log(np.sum(i**2, axis=2)+1e-10) for i in wavelets])
-            return features
+        # get the highest power of 2 the nyquist rate is divisible by
+        order    = math.floor(np.log(WENG_fs/2)/np.log(2) - 1)
+        # Khushaba et al suggests using sym8. The decomposition is shared with
+        # WV, WWL and WENT, which all ask for the same one.
+        window_energy = self._wavelet_energy(windows, 'sym8', order)
+        # for every order, compute the energy (sum of DWT) - total of the squared signal
+        features = np.hstack([np.log(np.sum(i, axis=2)+1e-10) for i in window_energy])
+        return features
 
 
     def getWVfeat(self, windows, WV_fs=1000):
@@ -1449,12 +1665,10 @@ class FeatureExtractor:
         """
         # get the highest power of 2 the nyquist rate is divisible by
         order    = math.floor(np.log(WV_fs/2)/np.log(2) - 1)
-        # Khushaba et al suggests using sym8
-        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
-        # original paper suggests using as the order.
-        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+        # Khushaba et al suggests using sym8. Shared with WENG, WWL and WENT.
+        window_energy = self._wavelet_energy(windows, 'sym8', order)
         # for every order, compute the variance  (squared sum of DWT) - this is variance of the energy, so we keep the square
-        features = np.hstack([np.log(np.var(i**2, axis=2)+1e-10) for i in wavelets])
+        features = np.hstack([np.log(np.var(i, axis=2)+1e-10) for i in window_energy])
         return features
 
     def getWWLfeat(self, windows, WWL_fs=1000):
@@ -1473,12 +1687,10 @@ class FeatureExtractor:
         """
         # get the highest power of 2 the nyquist rate is divisible by
         order    = math.floor(np.log(WWL_fs/2)/np.log(2) - 1)
-        # Khushaba et al suggests using sym8
-        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
-        # original paper suggests using as the order.
-        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
+        # Khushaba et al suggests using sym8. Shared with WENG, WV and WENT.
+        window_energy = self._wavelet_energy(windows, 'sym8', order)
         # for every order, compute the waveform length (sum of absolute differences) -- this is WL of the energy, so we keep the square
-        features = np.hstack([np.log(np.sum(np.abs(np.diff(i**2, axis=2)),axis=2)+1e-10) for i in wavelets])
+        features = np.hstack([np.log(np.sum(np.abs(np.diff(i, axis=2)),axis=2)+1e-10) for i in window_energy])
         return features
 
     def getWENTfeat(self, windows, WENT_fs=1000):
@@ -1496,13 +1708,9 @@ class FeatureExtractor:
             The computed features associated with each window. 
         """# get the highest power of 2 the nyquist rate is divisible by
         order    = math.floor(np.log(WENT_fs/2)/np.log(2) - 1)
-        # Khushaba et al suggests using sym8
-        # note, this will often throw a WARNING saying the user specified order is too high -- but this is what the 
-        # original paper suggests using as the order.
-        wavelets =  wavedec(windows, wavelet='sym8', level=order,axis=2)
-        longs    = np.expand_dims(np.array([i.shape[2] for i in wavelets]),(1,2))
+        # Khushaba et al suggests using sym8. Shared with WENG, WV and WWL.
         # for every order, compute the energy (squared sum of DWT)
-        window_energy = [i **2 for i in wavelets]
+        window_energy = self._wavelet_energy(windows, 'sym8', order)
         # within each window:
         # 1. find the percentage of total energy a sample has (normalize by channel/wavelet amplitude)
         # 2. once you have this "probability" convert it to an entropy on a per sample basis with:
