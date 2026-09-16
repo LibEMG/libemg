@@ -44,7 +44,13 @@ class DataCollectionPanel:
                                              '__dc_auto_advance'],
                             "collection":   ['__dc_collection_window', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button'],
                             "visualization": ['__vls_visualize_window']}
-        
+        # The texture registry set_texture parents its textures to
+        # (_utils.TEXTURE_REGISTRY_TAG) is deliberately absent from these lists.
+        # It is process-global and shared with every other panel, so deleting it
+        # on this panel's teardown would take out the textures those panels are
+        # still holding. It is a single item that is reused for the life of the
+        # process, so leaving it alive leaks nothing.
+
 
     def cleanup_window(self, window_name):
         widget_list = self.widget_tags[window_name]

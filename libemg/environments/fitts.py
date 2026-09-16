@@ -160,6 +160,8 @@ class Fitts(Environment):
             self._info.append('pc')
         self.start_time = time.time()
         self.dwell_timer = None
+        self.duration = 0
+        self.Event_Flag = False  # _check_events now reads this, so make sure it always exists
 
     def _draw(self):
         self.screen.fill(self.config.background_color)
@@ -192,11 +194,12 @@ class Fitts(Environment):
         self._check_events()
 
     def _check_collisions(self):
+        # Collision state is communicated to _check_events through self.Event_Flag. It used to also be
+        # posted as an INSIDE_TARGET/OUTSIDE_TARGET pygame event, but nothing consumes those events
+        # (only _check_events read them, and it now uses the flag), so the per-frame posts are dropped.
         if math.sqrt((self.goal_target.centerx - self.cursor.centerx)**2 + (self.goal_target.centery - self.cursor.centery)**2) < (self.goal_target[2]/2 + self.cursor[2]/2):
-            pygame.event.post(pygame.event.Event(INSIDE_TARGET))
             self.Event_Flag = True
         else:
-            pygame.event.post(pygame.event.Event(OUTSIDE_TARGET))
             self.Event_Flag = False
 
     def _check_events(self):
@@ -254,11 +257,13 @@ class Fitts(Environment):
             return
 
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
-        if event.type == OUTSIDE_TARGET:
-            if self.Event_Flag == False:
-                self.dwell_timer = None
-                self.duration = 0
-        elif event.type == INSIDE_TARGET:
+        # This used to read `event`, the leftover loop variable from the pygame.event.get() loop above,
+        # which raises NameError whenever the event queue is empty. self.Event_Flag, set by
+        # _check_collisions immediately before this call, is the explicit collision state.
+        if not self.Event_Flag:
+            self.dwell_timer = None
+            self.duration = 0
+        else:
             if self.dwell_timer is None:
                 self.dwell_timer = time.perf_counter()
             else:

@@ -422,10 +422,11 @@ class CurricularFitts(Environment):
         
         self.config = config
 
-        self.target_generator = target_generator or ConstantTargetGenerator(
-            radius  = self.config.default_target_radius,
-            timeout = self.config.default_timeout 
-        )
+        # ConstantTargetGenerator takes the config, and reads the radius and
+        # the timeout off it itself. Passing them as keywords raised a
+        # TypeError, which meant a CurricularFitts could not be built at all
+        # without supplying a target generator explicitly.
+        self.target_generator = target_generator or ConstantTargetGenerator(self.config)
 
         self.environment_ow = environment_ow
 
@@ -516,8 +517,11 @@ class CurricularFitts(Environment):
                          'direction': self.direction}
             self.log.record(self.trial_number, self.target.position, self.cursor.position, self.target.radius, self.game_feedback, self.timestamp)
 
-            if self.environment_ow is not None:
-                
+            # Truthiness, not "is not None". environment_ow defaults to an
+            # empty list, which is not None, so the index below raised
+            # IndexError on the first frame that produced a control signal
+            # whenever the task was run without adaptation writers attached.
+            if self.environment_ow:
                 self.environment_ow[0].write(self.info)
             # make self._info,
             # save last timestamp, last controller output, etc.

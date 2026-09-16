@@ -147,18 +147,27 @@ class EMGHero(Environment):
         pygame.draw.circle(self.screen, (0, 0, 255), (325, 500), 35, width=8  - (self.key_pressed==2) * 8)
         pygame.draw.circle(self.screen, (255, 165, 0), (450, 500), 35, width=8  - (self.key_pressed==3) * 8)
 
-        # Move and deal with notes coming down 
+        # Move and deal with notes coming down
+        # speed only depends on the frame time, so compute it once per frame rather than per note
+        speed = (1 - (self.start_time - time.time())/self.test_time) * (self.max_speed - self.min_speed) + self.min_speed
+        # Rebuild the list instead of calling self.notes.remove(n) while iterating over self.notes:
+        # removing during iteration skips the following element, so off-screen notes leaked and the
+        # per-frame log below grew over that ever-growing list. Order of the surviving notes is preserved.
+        remaining_notes = []
         for n in self.notes:
-            speed = (1 - (self.start_time - time.time())/self.test_time) * (self.max_speed - self.min_speed) + self.min_speed
             if n.move_note(speed=speed) == -1:
-                self.notes.remove(n)
-            # Check to see if the shape is over top of the note 
+                # Note has travelled past the bottom of the window (y > 1000 on a 700px tall screen),
+                # so it is discarded and no longer drawn.
+                continue
+            remaining_notes.append(n)
+            # Check to see if the shape is over top of the note
             w = 0
             if n.type == self.key_pressed and n.y_pos >= 500 and n.y_pos - 60 - n.length <= 500:
                 w = 5
             pygame.draw.circle(self.screen, n.color, (n.x_pos, n.y_pos), 35, width=w)
             pygame.draw.rect(self.screen, n.color, (n.x_pos - 20, n.y_pos - 30 - n.length, 40, n.length), width=w)
             pygame.draw.circle(self.screen, n.color, (n.x_pos, n.y_pos - 60 - n.length), 35, width=w)
+        self.notes = remaining_notes
 
         pygame.draw.rect(self.screen, (255,255,255), (0, 550, 1000, 300))
 

@@ -42,7 +42,7 @@ class GUI:
         If true, this will cleanup (and kill) the streamer reference.
     """
     def __init__(self, 
-                 online_data_handler,
+                 online_data_handler=None,
                  args={'media_folder': 'images/', 'data_folder':'data/', 'num_reps': 3, 'rep_time': 5, 'rest_time': 3, 'auto_advance': True},
                  width=1920,
                  height=1080,
@@ -59,6 +59,10 @@ class GUI:
         self.video_player_width = gesture_width
         self.video_player_height = gesture_height
         self.clean_up_on_kill = clean_up_on_kill
+        # Panels that need a live handler are disabled without one. The
+        # pipeline editor creates its own sources, so it must be reachable with
+        # no handler at all.
+        self.panels = []
         self._install_global_fields()
 
     def start_gui(self):
@@ -93,15 +97,36 @@ class GUI:
         dpg.show_viewport()
         dpg.set_exit_callback(self._on_window_close)
 
+        # A manual render loop on every path, not just in debug. Anything that
+        # has to be refreshed while the window is open -- a probe drawing live
+        # data, a progress bar -- needs a per-frame callback, and
+        # start_dearpygui() blocks with nowhere to put one. The loop below is
+        # what the debug path already ran.
         if debug:
             dpg.configure_app(manual_callback_management=True)
-            while dpg.is_dearpygui_running():
-                jobs = dpg.get_callback_queue()
-                dpg.run_callbacks(jobs)
-                dpg.render_dearpygui_frame()
-        else:
-            dpg.start_dearpygui()
+        while dpg.is_dearpygui_running():
+            if debug:
+                dpg.run_callbacks(dpg.get_callback_queue())
+            self._poll_panels()
+            dpg.render_dearpygui_frame()
         dpg.destroy_context()
+
+    def _poll_panels(self):
+        """Give every open panel its per-frame slice, on the render thread.
+
+        This is the only thread that may touch DearPyGui items, so it is the
+        only place a panel may draw what a running pipeline has produced.
+        """
+        for panel in list(self.panels):
+            poll = getattr(panel, "poll", None)
+            if poll is None:
+                continue
+            try:
+                poll()
+            except Exception:
+                # A panel that fails mid-frame must not take the window down
+                # with it, or a transient read error closes the whole GUI.
+                self.panels.remove(panel)
 
     def _file_menu_init(self):
 
@@ -109,6 +134,9 @@ class GUI:
             with dpg.menu(label="File"):
                 dpg.add_menu_item(label="Exit")
                 
+            with dpg.menu(label="Device"):
+                dpg.add_menu_item(label="Streamer", callback=self._streamer_callback)
+
             with dpg.menu(label="Data"):
                 dpg.add_menu_item(label="Collect Data", callback=self._data_collection_callback)
                 #dpg.add_menu_item(label="Import Data",  callback=self._import_data_callback )
@@ -118,11 +146,62 @@ class GUI:
             with dpg.menu(label="Visualize"):
                 dpg.add_menu_item(label="Live Signal", callback=self._visualize_livesignal_callback)
 
+            with dpg.menu(label="Pipeline"):
+                dpg.add_menu_item(label="Pipeline Editor", callback=self._pipeline_editor_callback)
+
+            with dpg.menu(label="Environments"):
+                dpg.add_menu_item(label="Launch Environment",
+                                  callback=self._environments_callback)
+
             # with dpg.menu(label="Model"):
                 # dpg.add_menu_item(label="Train Classifier", callback=self._train_classifier_callback)
 
             # with dpg.menu(label="HCI"):
                 # dpg.add_menu_item(label="Fitts Law", callback=self._fitts_law_callback)
+
+    def _open_panel(self, attribute, build):
+        """Show a panel, reusing the one already open.
+
+        Clicking a menu item twice used to build a second panel, and the second
+        one's setup deletes the window tag the first one owns. What was left
+        was an invisible first panel still in the poll list, writing into
+        widgets the second panel now owns, and still holding whatever it had
+        started -- a streaming device or a running pipeline -- with no window
+        able to stop it. Reusing the panel that is already there is what a menu
+        click means anyway: bring it to the front.
+
+        Parameters
+        ----------
+        attribute: str
+            Where the panel is remembered on this object.
+        build: callable
+            Makes a fresh panel, called only when there is not one open.
+
+        Returns
+        ----------
+        object
+            The panel now on screen.
+        """
+        panel = getattr(self, attribute, None)
+        tag = getattr(panel, "window_tag", None)
+        if panel is not None and tag is not None and dpg.does_alias_exist(tag):
+            dpg.focus_item(tag)
+            return panel
+        # The window is gone, so whatever this panel held goes with it rather
+        # than outliving the only thing that could stop it.
+        if panel is not None:
+            try:
+                panel.cleanup()
+            except Exception:
+                pass
+            if panel in self.panels:
+                self.panels.remove(panel)
+        panel = build()
+        panel.spawn_window()
+        setattr(self, attribute, panel)
+        if panel not in self.panels:
+            self.panels.append(panel)
+        return panel
 
     def _data_collection_callback(self):
         panel_arguments = list(inspect.signature(DataCollectionPanel.__init__).parameters)
@@ -135,6 +214,39 @@ class GUI:
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
         self.vp = VisualizationPanel(self.online_data_handler, **passed_arguments)
         self.vp.spawn_window()
+
+    def _pipeline_editor_callback(self):
+        from libemg._gui._pipeline.editor_panel import PipelineEditorPanel
+        self._open_panel("pep", lambda: PipelineEditorPanel(
+            width=self.width, height=self.height))
+
+    def _streamer_callback(self):
+        from libemg._gui._streamer_panel import StreamerPanel
+        self._open_panel("sp", lambda: StreamerPanel(
+            on_started=self._streamer_started,
+            on_stopped=self._streamer_stopped))
+
+    def _streamer_started(self, online_data_handler, shared_memory_items):
+        """Make a device started here available to every other panel.
+
+        The panels that need live data read this attribute when they are
+        opened, so publishing it is what lets somebody start a device and then
+        collect training data or watch the signal without leaving the window.
+        """
+        self.online_data_handler = online_data_handler
+        self.args["shared_memory_items"] = shared_memory_items
+
+    def _streamer_stopped(self):
+        self.online_data_handler = None
+
+    def _environments_callback(self):
+        from libemg._gui._environments.panel import EnvironmentsPanel
+        panel = self._open_panel("env_panel", lambda: EnvironmentsPanel(
+            online_data_handler=self.online_data_handler,
+            width=min(self.width, 1280), height=min(self.height, 820)))
+        # A device may have been started since this panel was first opened, and
+        # an environment launched afterwards should be driven by it.
+        panel.online_data_handler = self.online_data_handler
 
     def _import_data_callback(self):
         panel_arguments = list(inspect.signature(DataImportPanel.__init__).parameters)
