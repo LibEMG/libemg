@@ -35,7 +35,7 @@ setup(
         "pyserial",
         "PyWavelets",
         "requests",
-        "websockets",
+        "websockets>=14",
         "opencv-python",
         "pythonnet",
         "bleak",

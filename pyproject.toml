@@ -1,33 +1,63 @@
 [project]
 name = "libemg"
-version = "0.1.0"
-description = "Add your description here"
+version = "2.0.0"
+description = "LibEMG - Myoelectric Control Library"
 readme = "README.md"
 requires-python = ">=3.13"
+# Runtime only. Test and documentation tooling live in [dependency-groups]
+# below: none of it is imported by the library, and declaring it here made
+# every downstream project inherit an exact pytest/sphinx pin, which collides
+# with whatever test runner that project already uses.
+#
+# Floors are deliberately conservative. They were previously generated from
+# whichever versions happened to be installed, which pinned consumers to
+# near-latest releases for no reason -- requests>=2.34.2 alone was enough to
+# make libemg uninstallable alongside label-studio. requires-python >=3.13
+# already rules out genuinely old releases, so a low floor here cannot resolve
+# to one that predates Python 3.13 support.
+#
+# websockets was pinned to ==8.1, which cannot run here at all: 8.1 passes
+# loop= to asyncio.Lock, removed in Python 3.10, so importing _leap_streamer
+# and connecting raised TypeError on every supported interpreter. 14.2 and
+# 16.0 both run _leap_streamer's `await client.connect(...)` / `async for`
+# unchanged, so the floor is >=14.
 dependencies = [
-    "bleak>=3.0.2",
-    "datetime>=6.0",
-    "dearpygui>=2.3.1",
-    "h5py>=3.16.0",
-    "librosa>=0.11.0",
-    "linkify-it-py==2.0.0",
-    "matplotlib>=3.11.0",
-    "myst-parser>=4.0.0",
-    "onedrivedownloader>=1.1.3",
-    "opencv-python>=4.13.0.92",
-    "pillow>=12.2.0",
+    "bleak>=0.21",
+    "datetime>=4.3",
+    "dearpygui>=1.9",
+    "h5py>=3.8",
+    "librosa>=0.10",
+    "matplotlib>=3.7",
+    "numpy>=1.24",
+    "onedrivedownloader>=1.1",
+    "opencv-python>=4.8",
+    "pillow>=10.0",
+    "pygame>=2.5",
     "pyomyo==0.0.5",
     "pyserial>=3.5",
-    "pytest==7.1.3",
-    "pytest-cov==4.0.0",
-    "pytest-skip-slow==0.0.3",
-    "pywavelets>=1.9.0",
-    "requests>=2.34.2",
-    "scikit-learn>=1.9.0",
-    "scipy>=1.18.0",
+    "pywavelets>=1.4",
+    "requests>=2.31",
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
     "sifi-bridge-py==2.0.0b19",
+    "websockets>=14",
+    "wfdb>=4.1",
+]
+
+[project.optional-dependencies]
+# _delsys_API_streamer imports pythonnet lazily, inside a try, so only users of
+# the Delsys API streamer need the .NET runtime bindings.
+delsys = ["pythonnet>=3.0"]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.1.3",
+    "pytest-cov>=4.0.0",
+    "pytest-skip-slow>=0.0.3",
+]
+docs = [
+    "linkify-it-py>=2.0.0",
+    "myst-parser>=4.0.0",
     "sphinx>=8.1.3",
     "sphinx-rtd-theme>=3.0.2",
-    "websockets==8.1",
-    "wfdb>=4.3.1",
 ]

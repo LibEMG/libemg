@@ -24,7 +24,7 @@ PyWavelets
 dearpygui
 opencv-python
 datetime
-websockets==8.1
+websockets>=14
 h5py
 onedrivedownloader
 sifi-bridge-py==2.0.0b19
