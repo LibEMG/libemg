@@ -7,6 +7,7 @@ import sifi_bridge_py
 
 from multiprocessing import Process, Event
 from libemg.shared_memory_manager import assign_shared_memory_locks
+from libemg.reactive import default_notifier_pool
 from libemg._streamers._myo_streamer import MyoStreamer
 from libemg._streamers._delsys_streamer import DelsysEMGStreamer
 from libemg._streamers._delsys_API_streamer import DelsysAPIStreamer
@@ -166,6 +167,9 @@ def sifi_biopoint_streamer(
         temperature_fs=temperature_fs,
         bioarmband=False
     )
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    sb.notifier_pool = default_notifier_pool()
     sb.start()
     return sb, shared_memory_items
 
@@ -323,6 +327,9 @@ def sifi_bioarmband_streamer(
         bioarmband=True
     )
 
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    sb.notifier_pool = default_notifier_pool()
     sb.start()
     return sb, shared_memory_items
 
@@ -401,6 +408,9 @@ def myo_streamer(
 
     assign_shared_memory_locks(shared_memory_items)
     myo = MyoStreamer(filtered, emg, imu, shared_memory_items)
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    myo.notifier_pool = default_notifier_pool()
     myo.start()
     return myo, shared_memory_items
 
@@ -464,6 +474,9 @@ def delsys_streamer(shared_memory_items : list | None = None,
                                 aux_port=aux_port,
                                 channel_list=channel_list,
                                 timeout=timeout)
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    delsys.notifier_pool = default_notifier_pool()
     delsys.start()
     return delsys, shared_memory_items
 
@@ -513,6 +526,9 @@ def delsys_api_streamer(license             : str,
     assign_shared_memory_locks(shared_memory_items)
     
     delsys = DelsysAPIStreamer(key, license, dll_folder, shared_memory_items=shared_memory_items, emg=emg)
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    delsys.notifier_pool = default_notifier_pool()
     delsys.start()
     return delsys, shared_memory_items
 
@@ -566,6 +582,9 @@ def oymotion_streamer(shared_memory_items : list | None = None,
     assign_shared_memory_locks(shared_memory_items)
 
     oym = Gforce(sampling_rate, res, emg, imu, shared_memory_items)
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    oym.notifier_pool = default_notifier_pool()
     oym.start()
     
     return oym, shared_memory_items
@@ -600,6 +619,9 @@ def emager_streamer(shared_memory_items = None):
 
     assign_shared_memory_locks(shared_memory_items)
     ema = EmagerStreamer(shared_memory_items)
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    ema.notifier_pool = default_notifier_pool()
     ema.start()
     return ema, shared_memory_items
 
@@ -748,5 +770,8 @@ def leap_streamer(shared_memory_items : list | None =None,
     assign_shared_memory_locks(shared_memory_items)
     
     ls = LeapStreamer(shared_memory_items)
+    # Inherited by the child process: a commit can only wake an observer that
+    # holds the same pool, and a pool cannot be looked up by name.
+    ls.notifier_pool = default_notifier_pool()
     ls.start()
     return ls, shared_memory_items

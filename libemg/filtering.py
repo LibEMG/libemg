@@ -187,7 +187,9 @@ class Filter:
     def visualize_filters(self):
         '''Visualizes the bode plot of the installed filters.
         '''
-        fig, ax = plt.subplots(len(self.filters), 2, figsize=(10, 5*len(self.filters)))
+        # squeeze=False keeps ax 2-D even for a single filter, otherwise the ax[fl,0] indexing
+        # below raises when only one filter is installed (matches visualize_effect).
+        fig, ax = plt.subplots(len(self.filters), 2, figsize=(10, 5*len(self.filters)), squeeze=False)
         for fl in range(len(self.filters)):
             if self.filters[fl]["name"] == "standardize":
                 continue# no visualization of standardize filter

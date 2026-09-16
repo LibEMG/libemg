@@ -107,23 +107,19 @@ class DelsysEMGStreamer(Process):
         self.imu_handlers.append(h)
 
     def run(self):
-        self.smm = SharedMemoryManager()
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
 
         def write_emg(emg):
-            # update the samples in "emg"
-            self.smm.modify_variable("emg", lambda x: np.vstack((np.flip(emg,0), x))[:x.shape[0],:])
-            # update the number of samples retrieved
-            self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+            # Oldest-first packet, which is what commit() takes; it prepends and
+            # keeps "emg_count" in step under one lock.
+            self.smm.commit("emg", emg)
         self.add_emg_handler(write_emg)
 
         def write_imu(imu):
-            # update the samples in "imu"
-            self.smm.modify_variable("imu", lambda x: np.vstack((np.flip(imu,0), x))[:x.shape[0],:])
-            # update the number of samples retrieved
-            self.smm.modify_variable("imu_count", lambda x: x + imu.shape[0])
-            # sock.sendto(data_arr, (self.ip, self.port))
+            # Oldest-first packet, as commit() expects.
+            self.smm.commit("imu", imu)
         self.add_imu_handler(write_imu)
 
         self.connect()

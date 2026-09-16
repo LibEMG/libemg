@@ -33,6 +33,30 @@ from libemg.utils import get_windows
 from libemg.environments.controllers import RegressorController, ClassifierController
 from libemg.data_handler import OnlineDataHandler
 
+# The models each predictor accepts, as {name: (class, default parameters)}.
+# Module level so tooling can enumerate the available models without having to
+# construct a predictor first; the pipeline editor's registry generates its
+# model dropdowns from these.
+CLASSIFIER_MODELS = {
+    'LDA': (LinearDiscriminantAnalysis, {}),
+    'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
+    'SVM': (SVC, {"kernel": "linear", "probability": True, "random_state": 0}),
+    'QDA': (QuadraticDiscriminantAnalysis, {}),
+    'RF': (RandomForestClassifier, {"random_state": 0}),
+    'NB': (GaussianNB, {}),
+    'GB': (GradientBoostingClassifier, {"random_state": 0}),
+    'MLP': (MLPClassifier, {"random_state": 0, "hidden_layer_sizes": 126})
+}
+
+REGRESSOR_MODELS = {
+    'LR': (LinearRegression, {}),
+    'SVM': (SVR, {"kernel": "linear"}),
+    'RF': (RandomForestRegressor, {"random_state": 0}),
+    'GB': (GradientBoostingRegressor, {"random_state": 0}),
+    'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
+}
+
+
 class EMGPredictor:
     """Base class for EMG prediction. Parent class that shares common functionality between classifiers and regressors.
 
@@ -208,7 +232,10 @@ class EMGPredictor:
         assert model in valid_models, f"Please pass in one of the approved models: {valid_models}."
         
         model_reference, default_parameters = model_config[model]
-        valid_parameters = default_parameters
+        # A copy. The defaults now live in a module-level table shared by every
+        # predictor, so updating them in place would leak one caller's model
+        # parameters into the next caller's defaults.
+        valid_parameters = dict(default_parameters)
 
         if model_parameters is not None:
             signature = list(inspect.signature(model_reference).parameters.keys())
@@ -290,16 +317,7 @@ class EMGClassifier(EMGPredictor):
                  random_seed:        int = 0, 
                  fix_feature_errors: bool = False, 
                  silent:             bool = False):
-        model_config = {
-            'LDA': (LinearDiscriminantAnalysis, {}),
-            'KNN': (KNeighborsClassifier, {"n_neighbors": 5}),
-            'SVM': (SVC, {"kernel": "linear", "probability": True, "random_state": 0}),
-            'QDA': (QuadraticDiscriminantAnalysis, {}),
-            'RF': (RandomForestClassifier, {"random_state": 0}),
-            'NB': (GaussianNB, {}),
-            'GB': (GradientBoostingClassifier, {"random_state": 0}),
-            'MLP': (MLPClassifier, {"random_state": 0, "hidden_layer_sizes": 126})
-        }
+        model_config = CLASSIFIER_MODELS
         model = self._validate_model_parameters(model, model_parameters, model_config)
         super().__init__(model, model_parameters, random_seed=random_seed, fix_feature_errors=fix_feature_errors, silent=silent)
 
@@ -587,13 +605,7 @@ class EMGRegressor(EMGPredictor):
                  fix_feature_errors: bool = False, 
                  silent:             bool = False, 
                  deadband_threshold: float = 0.):
-        model_config = {
-            'LR': (LinearRegression, {}),
-            'SVM': (SVR, {"kernel": "linear"}),
-            'RF': (RandomForestRegressor, {"random_state": 0}),
-            'GB': (GradientBoostingRegressor, {"random_state": 0}),
-            'MLP': (MLPRegressor, {"random_state": 0, "hidden_layer_sizes": 126})
-        }
+        model_config = REGRESSOR_MODELS
         convert_to_multioutput = isinstance(model, str)
         model = self._validate_model_parameters(model, model_parameters, model_config)
         if convert_to_multioutput:
@@ -745,6 +757,19 @@ class OnlineStreamer(ABC):
         self.smm = None
         self.model_smm_writes = 0
 
+        # Reactive streaming. The streamer is woken when a window's worth of
+        # samples has arrived instead of asking repeatedly whether one has.
+        # Set reactive=False to fall back to the original polling loop; a
+        # custom window trigger selects that automatically.
+        self.reactive = True
+        self.event_log = None
+        self.notifier_pool = None
+        self._notifier_slot = None
+        # Only consulted when the writer does not share our notifier pool, in
+        # which case this is how often we re-read the state block. That read is
+        # a few integers, not a buffer copy.
+        self.poll_fallback = 0.002
+
         self.process = Process(target=self._run_helper, daemon=True,)
     
     def stop(self):
@@ -760,6 +785,15 @@ class OnlineStreamer(ABC):
         block : bool, default=True
             Whether to run in blocking mode.
         """
+        # The slot and the pool are claimed here, in the parent, so they reach
+        # the streaming process as part of its state. Claiming inside the child
+        # would hand out a slot the parent never recorded, and two children
+        # could claim the same one.
+        if self.reactive and self._notifier_slot is None:
+            from libemg.reactive import default_notifier_pool
+            if self.notifier_pool is None:
+                self.notifier_pool = default_notifier_pool()
+            self._notifier_slot = self.notifier_pool.claim()
         if block:
             self._run_helper()
         else:
@@ -854,7 +888,13 @@ class OnlineStreamer(ABC):
         """
         filepath = self.file_path + 'mdl' + str(number) + '.pkl'
         loaded_content = self._load_emg_predictor_helper(filepath)
-        if type(loaded_content) == EMGPredictor:
+        # isinstance, not exact type equality. EMGClassifier and EMGRegressor
+        # both subclass EMGPredictor, and they are what an adaptation run
+        # actually saves, so an exact-type check sent a saved classifier down
+        # the branch meant for a bare sklearn model. It landed in .model, and
+        # the next prediction failed on a classifier having no predict_proba --
+        # after the swap had already been reported as successful.
+        if isinstance(loaded_content, EMGPredictor):
             self.predictor = loaded_content
         else:
             self.predictor.model = loaded_content
@@ -896,6 +936,12 @@ class OnlineStreamer(ABC):
         returns False immediately. Also checks if the adapt flag is set and if so,
         loads a new predictor.
 
+        The adaptation flag is consulted through its state block rather than by
+        reading its value. A new model is rare and the check runs on every wake,
+        so the common answer -- nothing has changed -- is now a few integers
+        instead of three locked reads of the variable itself. The value is only
+        read when the state says somebody wrote it.
+
         Returns
         -------
         bool
@@ -904,10 +950,58 @@ class OnlineStreamer(ABC):
         if self.enable_smm:
             if not self.smm.get_variable("active_flag")[0, 0]:
                 return False
-            if self.smm.get_variable("adapt_flag")[0][0] != -1:
-                self.load_emg_predictor(self.smm.get_variable("adapt_flag")[0][0])
-                self.smm.modify_variable("adapt_flag", lambda x: -1)
+            if self._adapt_flag_changed():
+                number = self.smm.get_variable("adapt_flag")[0][0]
+                if number != -1:
+                    self.load_emg_predictor(number)
+                    self.on_model_update(number)
+                    # Cleared with modify_variable on purpose: that write does
+                    # not advance the state block, so clearing the flag cannot
+                    # look like somebody publishing another model.
+                    self.smm.modify_variable("adapt_flag", lambda x: -1)
         return True
+
+    def _adapt_flag_changed(self) -> bool:
+        """Whether the adaptation flag has been written since we last looked."""
+        try:
+            generation = int(self.smm._block("adapt_flag")[0])
+        except (AssertionError, KeyError, AttributeError):
+            # No state block for the flag, which is the case when something
+            # other than an adaptation hook owns it. Fall back to reading the
+            # value every time, as this always used to.
+            return True
+        seen = getattr(self, "_adapt_generation", None)
+        if seen is None:
+            # First look. The flag is initialised to -1 at startup, so there is
+            # nothing to load; record where it stands and wait for a change.
+            self._adapt_generation = generation
+            return False
+        if generation > seen:
+            self._adapt_generation = generation
+            return True
+        return False
+
+    def on_model_update(self, number) -> None:
+        """Called in the streaming process when a newly adapted model is loaded.
+
+        An extension point for anything that has to happen where the model
+        actually lives: resetting a decision history that the old model's
+        outputs populated, re-fitting a scaler, marking the moment in a log.
+        Override it, or assign to it.
+
+        Anything that does *not* need to be in this process should observe the
+        adaptation flag instead; see
+        :class:`libemg.adaptation.hooks.ModelSwapHook`.
+
+        Override this in a subclass rather than assigning a lambda to it. The
+        streamer is a spawned process, so whatever is attached here has to
+        survive being pickled, and a lambda does not.
+
+        Parameters
+        ----------
+        number: int
+            The model number that was loaded.
+        """
 
 
     def default_window_trigger(self) -> bool:
@@ -973,12 +1067,124 @@ class OnlineStreamer(ABC):
     def _run_helper(self) -> None:
         """
         Main loop for online streaming.
+
+        Two implementations sit behind this. The reactive one hooks the data
+        the handler is receiving and is woken when a window's worth of samples
+        has arrived; the polled one is the original loop and is used only when
+        a custom window trigger has been installed, since such a trigger is an
+        arbitrary predicate the reactive path cannot express as a criterion.
         """
         # Startup stage
         self.on_startup_function_handle()
+        if self._reactive_is_available():
+            self._run_reactive()
+        else:
+            self._run_polled()
+
+    def _reactive_is_available(self) -> bool:
+        """Whether this streamer can be driven by hooks rather than by polling.
+
+        A caller that replaced ``window_trigger_function_handle`` gets the
+        original loop, because their predicate may depend on anything at all
+        and cannot be restated as a per-item criterion. Everything else -- the
+        startup, window, prediction and postprocessing handles -- is used
+        identically either way.
+        """
+        if not getattr(self, "reactive", True):
+            return False
+        try:
+            return self.window_trigger_function_handle == self.default_window_trigger
+        except Exception:
+            return False
+
+    def _run_reactive(self) -> None:
+        """Wait to be told a window is ready, rather than asking repeatedly.
+
+        The old loop asked ``window_trigger_function_handle`` as fast as the
+        interpreter allowed, and each ask copied and filtered a whole
+        shared-memory buffer to read one counter. Here the streamer subscribes
+        to the items it consumes and blocks. It is woken when one of them is
+        committed to, then applies :class:`~libemg.reactive.OnSamples` -- its
+        own definition of a meaningful change, one window increment -- to
+        decide whether to run.
+        """
+        from libemg.reactive import (CriterionMemory, OnSamples,
+                                     default_notifier_pool)
+        from libemg import event_log
+
+        log = getattr(self, "event_log", None) or event_log.NULL_LOG
+        pool = getattr(self, "notifier_pool", None) or default_notifier_pool()
+        slot = self._notifier_slot if getattr(self, "_notifier_slot", None) is not None \
+            else pool.claim()
+
+        smm = self.odh.smm
+        modalities = list(self.odh.modalities)
+        for mod in modalities:
+            smm.subscribe(mod, slot)
+
+        criteria = {mod: OnSamples(self.window_increment) for mod in modalities}
+        memories = {mod: CriterionMemory() for mod in modalities}
+        # The fallback only matters when the writer does not hold the notifier
+        # pool. It re-reads state blocks, which is a few integers rather than a
+        # buffer copy, so a short interval here is cheap.
+        fallback = getattr(self, "poll_fallback", 0.002)
+        name = type(self).__name__
+
+        log.emit(event_log.LIFECYCLE, origin="online_streamer", observer=name,
+                 phase="reactive", slot=slot, modalities=",".join(modalities))
+
+        def ready():
+            for mod in modalities:
+                block = smm._block(mod)
+                if int(block[1]) - memories[mod].samples >= self.window_increment:
+                    return True
+            return False
 
         while True:
+            if self.signal.is_set():
+                self.cleanup()
+                break
+            pool.wait(slot, ready, fallback)
+            if self.signal.is_set():
+                self.cleanup()
+                break
+            if not self.model_flag_handle():
+                continue
 
+            snapshots = smm.snapshots(modalities)
+            verdicts = {}
+            for mod in modalities:
+                snapshot = snapshots[mod]
+                memory = memories[mod]
+                if snapshot.epoch != memory.epoch:
+                    # default_startup resets the handler, which moves the
+                    # counters backwards. Without noticing that, the criterion
+                    # would wait for samples that have already been renumbered.
+                    memory.generation = 0
+                    memory.samples = 0
+                    memory.epoch = snapshot.epoch
+                verdicts[mod] = criteria[mod].is_dirty(snapshot, memory)
+                if log.enabled:
+                    log.emit(event_log.DIRTY if verdicts[mod] else event_log.CLEAN,
+                             origin=mod, observer=name,
+                             criterion=criteria[mod].describe(),
+                             generation=snapshot.generation,
+                             total_samples=snapshot.total_samples,
+                             consumed_samples=memory.samples)
+            # Every modality has to have advanced: a window built from one
+            # modality's new samples and another's stale ones is not a window.
+            if not all(verdicts.values()):
+                continue
+            for mod in modalities:
+                criteria[mod].consume(snapshots[mod], memories[mod])
+
+            if log.enabled:
+                log.emit(event_log.INVOKE, origin=",".join(modalities), observer=name)
+            self._process_window(log=log, name=name)
+
+    def _run_polled(self) -> None:
+        """The original polling loop, kept for custom window triggers."""
+        while True:
             if self.signal.is_set():
                 self.cleanup()
                 break
@@ -988,22 +1194,45 @@ class OnlineStreamer(ABC):
             # Window trigger stage
             if not self.window_trigger_function_handle():
                 continue
+            self._process_window()
 
-            # Window processing stage
-            model_input, model_input_raw, window = self.on_window_function_handle()
-            if model_input is None:
-                continue
+    def _process_window(self, log=None, name="") -> None:
+        """Window, predict, postprocess and write. Shared by both loops."""
+        from libemg import event_log
 
-            # Prediction/Postprocessing stage
-            raw = self.prediction_function_handle(model_input)
-            processed = self.postprocessing_function_handle(raw, model_input, window)
-            info = self.format_output_info(processed, model_input, model_input_raw, window)
-            for writer in self.output_writers:
-                writer.write(info)
+        started = time.perf_counter()
+        # Window processing stage
+        model_input, model_input_raw, window = self.on_window_function_handle()
+        if model_input is None:
+            return
+
+        # Prediction/Postprocessing stage
+        raw = self.prediction_function_handle(model_input)
+        processed = self.postprocessing_function_handle(raw, model_input, window)
+        info = self.format_output_info(processed, model_input, model_input_raw, window)
+        for writer in self.output_writers:
+            writer.write(info)
+        if log is not None and log.enabled:
+            log.emit(event_log.COMPLETE, origin=name, observer=name,
+                     duration_ms=(time.perf_counter() - started) * 1e3)
+
+    def install_event_log(self, log) -> None:
+        """Record what wakes this streamer and what it decides.
+
+        Parameters
+        ----------
+        log: libemg.event_log.EventLog
+            The log to write to. Install it before :meth:`run`, because the
+            streaming process receives it when it is created.
+        """
+        self.event_log = log
     
     def cleanup(self) -> None:
-        self.smm.cleanup()
-        print("LibEMG -> OnlineStreamer (smm cleaned up).")
+        # smm is only built when enable_smm was requested, so a streamer
+        # running without it reaches shutdown with nothing to release.
+        if self.smm is not None:
+            self.smm.cleanup()
+            print("LibEMG -> OnlineStreamer (smm cleaned up).")
         print("LibEMG -> OnlineStreamer (process ended).")
     
     def install_standardization(self, 
@@ -1080,11 +1309,13 @@ class OnlineEMGClassifier(OnlineStreamer):
         When modifying this variable, items with the name 'classifier_output' and 'classifier_input' are expected to be passed in to track classifier inputs and outputs.
         The 'classifier_input' item should be of the format ['classifier_input', (100, 1 + num_features), np.double]
         The 'classifier_output' item should be of the format ['classifier_output', (100, 1 + num_dofs), np.double].
-        If None, defaults to:
-        [
-            ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
-            ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
-        ]
+        If None, defaults to::
+
+            [
+                ["classifier_output", (100,4), np.double], #timestamp, class prediction, confidence, velocity
+                ['classifier_input', (100, 1 + 32), np.double], # timestamp <- features ->
+            ]
+
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     output_writers: OutputWriter, default = None
@@ -1106,7 +1337,10 @@ class OnlineEMGClassifier(OnlineStreamer):
         
         super(OnlineEMGClassifier, self).__init__(offline_classifier, window_size, window_increment, online_data_handler,
                                                   file_path, file, smm, smm_items, features, std_out, output_writers)
-        self.previous_predictions = deque(maxlen=self.predictor.majority_vote)
+        # majority_vote defaults to None, and deque(maxlen=None) is UNBOUNDED -- with voting off the
+        # deque would grow for the lifetime of the stream (~1.7M entries/day) holding values nothing
+        # reads. `or 1` keeps it bounded in that case.
+        self.previous_predictions = deque(maxlen=self.predictor.majority_vote or 1)
         self.smi = smm_items
 
         # Set the streaming pipeline function handles in the classifier subclass.
@@ -1126,8 +1360,9 @@ class OnlineEMGClassifier(OnlineStreamer):
         prediction, probabilities = raw
         if self.predictor.rejection:
             prediction = self.predictor._rejection_helper(prediction, probabilities[prediction])
-        self.previous_predictions.append(prediction)
         if self.predictor.majority_vote:
+            # Only accumulate history when it is actually voted over; the deque is unread otherwise.
+            self.previous_predictions.append(prediction)
             values, counts = np.unique(list(self.previous_predictions), return_counts=True)
             prediction = values[np.argmax(counts)]
         calculated_velocity = ""
@@ -1262,11 +1497,13 @@ class OnlineEMGRegressor(OnlineStreamer):
         When modifying this variable, items with the name 'model_output' and 'model_input' are expected to be passed in to track model inputs and outputs.
         The 'model_input' item should be of the format ['model_input', (100, 1 + num_features), np.double]
         The 'model_output' item should be of the format ['model_output', (100, 1 + num_dofs), np.double].
-        If None, defaults to:
-        [
-            ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
-            ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
-        ]
+        If None, defaults to::
+
+            [
+                ['model_output', (100, 3), np.double],  # timestamp, prediction 1, prediction 2... (assumes 2 DOFs)
+                ['model_input', (100, 1 + 32), np.double], # timestamp <- features ->
+            ]
+
     std_out: bool (optional), default = False
         If True, prints predictions to std_out.
     output_writers: OutputWriter, default = None

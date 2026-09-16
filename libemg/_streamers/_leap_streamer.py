@@ -15,13 +15,15 @@ class LeapStreamer(Process):
         self.data_handlers = []
 
     def run(self):
-        self.smm = SharedMemoryManager()
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
         
         def write_key(value, key):
-            self.smm.modify_variable(key, lambda x: np.vstack((value, x))[:x.shape[0],:])
-            self.smm.modify_variable(key+"_count", lambda x: x + value.shape[0])
+            # The rows handed over are newest-first, so they are flipped into the
+            # oldest-first orientation commit() takes. count_tag is named
+            # explicitly because the tag varies from call to call.
+            self.smm.commit(key, np.flip(value, 0), count_tag=key + "_count")
         self.data_handlers.append(write_key)
 
         asyncio.run(self.start_stream())

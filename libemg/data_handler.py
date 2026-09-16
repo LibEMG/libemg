@@ -461,8 +461,14 @@ class OfflineDataHandler(DataHandler):
         metadata = {k: [] for k in self.extra_attributes}
         for i, file in enumerate(self.data):
             # emg data windowing
-            window_data.append(get_windows(file,window_size,window_increment))
-    
+            file_windows = get_windows(file,window_size,window_increment)
+            if file_windows.shape[0] == 0:
+                # A file shorter than one window yields no windows at all (it
+                # used to yield a single short one). Skip it: there is nothing
+                # to stack, and the per-window metadata below would be empty.
+                continue
+            window_data.append(file_windows)
+
             for k in self.extra_attributes:
                 if type(getattr(self,k)[i]) != np.ndarray:
                     file_metadata = np.ones((window_data[-1].shape[0])) * getattr(self, k)[i]
@@ -604,8 +610,20 @@ class OnlineDataHandler(DataHandler):
         return state
 
     def prepare_smm(self):
+        # visualize() re-runs this on every call. Building a fresh manager
+        # without releasing the previous one leaks an OS handle per segment per
+        # call, so close what we already hold first. parent=False closes only
+        # *our* handles -- parent=True would unlink the segments and destroy the
+        # streamer's buffers out from under it.
+        previous = getattr(self, "smm", None)
+        if previous is not None:
+            previous.cleanup(parent=False)
         self.modalities = []
-        self.smm = SharedMemoryManager()
+        # The pool is what lets a writer in another process wake an observer
+        # here. Sharing the process-wide one means a streamer started earlier
+        # in the same script can reach whatever is built later.
+        from libemg.reactive import default_notifier_pool
+        self.smm = SharedMemoryManager(notifier_pool=default_notifier_pool())
         for i in self.shared_memory_items:
             counter = 0
             while not self.smm.find_variable(*i):
@@ -759,7 +777,15 @@ class OnlineDataHandler(DataHandler):
         fig.canvas.mpl_connect('close_event', on_close)
         fig.suptitle('Raw Data', fontsize=16)
         for i,mod in enumerate(self.modalities):
-            num_channels = self.smm.get_variable(mod).shape[1]
+            # Read the channel count from the recorded shape metadata rather
+            # than get_variable(), which copies the whole buffer under the
+            # writer's lock just to look at .shape[1]. A channel mask narrows
+            # what get_data() (and so update() below) actually returns, so the
+            # mask has to be applied here too or the plot lines and the data
+            # they are fed come out misaligned.
+            num_channels = self.smm.variables[mod]["shape"][1]
+            if self.channel_mask is not None:
+                num_channels = len(np.arange(num_channels)[self.channel_mask])
             for j in range(0,num_channels):
                 plots.append(ax[i][0].plot([],[],label=mod+"_CH"+str(j+1)))
         
@@ -1086,6 +1112,87 @@ class OnlineDataHandler(DataHandler):
             count[mod] = snapshot[mod + "_count"]
         return val,count
 
+    def get_state(self, modality=None):
+        """Read what has happened to a modality without copying its data.
+
+        This is the cheap question :meth:`get_data` cannot answer cheaply: how
+        many samples have arrived, how many writes there have been, whether the
+        streamer has stopped. It reads a handful of integers rather than the
+        whole buffer, which is why the reactive layer can afford to ask it
+        often.
+
+        Parameters
+        ----------
+        modality: str or None (optional), default=None
+            The modality to inspect. If None, all modalities are returned.
+
+        Returns
+        ----------
+        Snapshot or dict
+            A :class:`~libemg.shared_memory_manager.Snapshot` for a single
+            modality, or a dict of them keyed by modality.
+
+        Examples
+        ---------
+        >>> odh.get_state('emg').total_samples
+        14000
+        """
+        if modality is None:
+            return self.smm.snapshots(self.modalities)
+        return self.smm.snapshot(modality)
+
+    def install_hook(self, hook, executor="odh"):
+        """Run a hook against the data this handler is receiving.
+
+        A convenience over building a :class:`~libemg.reactive.ReactiveGraph`
+        by hand, for the common case of hanging one or two observers off a live
+        stream. Hooks are started by :meth:`start_hooks` and stopped by
+        :meth:`stop_hooks`.
+
+        Parameters
+        ----------
+        hook: libemg.reactive.Hook
+            What to run. Its inputs should name this handler's modalities.
+        executor: str (optional), default='odh'
+            Which process to run it in. Hooks sharing a name share a process.
+
+        Examples
+        ---------
+        >>> from libemg.reactive import ProbeHook
+        >>> odh.install_hook(ProbeHook('watch', 'emg', print, hz=5))
+        >>> odh.start_hooks()
+        """
+        from libemg.reactive import ReactiveGraph, default_notifier_pool
+        if getattr(self, "_hook_graph", None) is None:
+            self._hook_graph = ReactiveGraph(
+                self.shared_memory_items,
+                log=getattr(self, "_event_log", None),
+                notifier_pool=default_notifier_pool())
+        self._hook_graph.add(hook, executor=executor)
+        return self._hook_graph
+
+    def start_hooks(self):
+        """Start the hooks registered with :meth:`install_hook`."""
+        if getattr(self, "_hook_graph", None) is not None:
+            self._hook_graph.start()
+
+    def stop_hooks(self):
+        """Stop the hooks registered with :meth:`install_hook`."""
+        if getattr(self, "_hook_graph", None) is not None:
+            self._hook_graph.stop()
+
+    def install_event_log(self, log):
+        """Record hook activity on this handler's data.
+
+        Parameters
+        ----------
+        log: libemg.event_log.EventLog
+            Install it before :meth:`install_hook`, since the graph is built on
+            first registration.
+        """
+        self._event_log = log
+        self.smm.log = log
+
     def reset(self, modality=None):
         """Reset the data within the shared memory buffer.
  
@@ -1101,6 +1208,13 @@ class OnlineDataHandler(DataHandler):
         for mod in modality:
             self.smm.modify_variable(mod, lambda x: np.zeros_like(x))
             self.smm.modify_variable(mod+"_count", lambda x: np.zeros_like(x))
+            # The stateful counters have to go back to zero alongside the
+            # buffer, and the epoch has to advance so observers can tell this
+            # apart from a long silence. An observer that missed the reset
+            # would compare its consumed-sample count against a total that had
+            # gone backwards and conclude nothing had arrived, or fire
+            # immediately on a buffer that is now all zeros.
+            self.smm.reset_state(mod)
 
     def log_to_file(self, block=False, file_path='', timestamps=True, delimiter=','):
         """Logs the raw data being read to a file.

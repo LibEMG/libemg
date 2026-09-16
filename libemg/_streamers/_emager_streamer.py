@@ -97,10 +97,12 @@ class Emager:
 class EmagerStreamer(Process):
     def __init__(self, shared_memory_items):
         super().__init__(daemon=True)
-        self.smm = SharedMemoryManager()
         self.shared_memory_items = shared_memory_items
 
     def run(self):
+        # Built here rather than in __init__ so it picks up the notifier pool the
+        # parent attached to this process before starting it.
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
         
@@ -108,9 +110,10 @@ class EmagerStreamer(Process):
         e.connect()
 
         def write_emg(emg):
+            # One 1-D sample per callback, so it is simultaneously oldest- and
+            # newest-first, and commit() counts the single row the old "+ 1" did.
             emg = np.array(emg)
-            self.smm.modify_variable('emg', lambda x: np.vstack((emg, x))[:x.shape[0], :])
-            self.smm.modify_variable('emg_count', lambda x: x + 1)
+            self.smm.commit('emg', emg)
             
         e.add_emg_handler(write_emg)
 

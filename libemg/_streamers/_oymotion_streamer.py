@@ -235,7 +235,6 @@ class Gforce(Process):
             self.emg_conf = EmgRawDataConfig(fs = SamplingRate.HZ_500, resolution=SampleResolution.BITS_12)
         
         self.shared_memory_items = shared_memory_items
-        self.smm = SharedMemoryManager()
         self.signal = Event()
 
         self.client = None # bluetooth client
@@ -656,6 +655,9 @@ class Gforce(Process):
         return await asyncio.wait_for(q.get(), 5)
 
     def run(self):
+        # Built here rather than in __init__ so it picks up the notifier pool the
+        # parent attached to this process before starting it.
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         asyncio.run(self.start_stream())
 
     async def start_stream(self):
@@ -674,9 +676,10 @@ class Gforce(Process):
                     break
                 
                 for e in await q.get():
+                    # One row per sample, so orientation does not arise; commit()
+                    # counts that row exactly as "+ emg.shape[0]" did.
                     emg = np.expand_dims(np.array(e),0)
-                    self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
-                    self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+                    self.smm.commit("emg", emg)
                     
         except Exception as e:
             print(f"Errored within LibEMG-> OyMotionStreamer: {e}")

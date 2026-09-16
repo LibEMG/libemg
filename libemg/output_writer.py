@@ -99,8 +99,14 @@ class SharedMemoryOutputWriter(OutputWriter):
         self.lock = lock
         self.mod_fn = types.MethodType(mod_fn, self) if mod_fn is not None else self.default_mod_fn
         self.mod_fn_count = types.MethodType(mod_fn_count, self) if mod_fn_count is not None else self.default_mod_fn_count
-        # Create a new shared memory manager and create the variable.
-        self.smm = SharedMemoryManager()
+        # Imported here rather than at module scope to keep the import graph
+        # acyclic: reactive builds on shared memory, which this module also
+        # builds on.
+        from libemg.reactive import default_notifier_pool
+        # The pool is what lets a write here wake an observer in another
+        # process. Without it the write still advances the state block, so a
+        # hook would see the change on its next check rather than immediately.
+        self.smm = SharedMemoryManager(notifier_pool=default_notifier_pool())
         self.smm.create_variable(tag, shape, dtype, lock)
         # Share the buffer's lock so (data, count) can be snapshotted atomically.
         self.smm.create_variable(tag+"_count", (1,1), np.int32, lock)
@@ -108,9 +114,16 @@ class SharedMemoryOutputWriter(OutputWriter):
     def write(self, info: dict) -> None:
         if self.smm is None:
             raise RuntimeError("SharedMemoryOutputWriter not attached to a manager.")
-        # Use the provided mod_fn to modify the shared memory variable.
-        self.smm.modify_variable(self.tag, lambda data: self.mod_fn(data, info))
-        self.smm.modify_variable(self.tag + "_count", lambda data: self.mod_fn_count(data, info))
+        # apply() runs both transforms under one acquisition of the variable's
+        # lock, where the old pair of modify_variable calls took it twice and
+        # let a reader see a count that ran ahead of the data. It also advances
+        # the variable's state block and wakes subscribers, which is what makes
+        # a write here observable: an adaptation flag or a slice of environment
+        # feedback becomes something a hook can be triggered by rather than
+        # something another process has to poll for.
+        self.smm.apply(self.tag,
+                       lambda data: self.mod_fn(data, info),
+                       lambda data: self.mod_fn_count(data, info))
     
     def reset(self) -> None:
         if self.smm is None:

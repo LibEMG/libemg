@@ -521,11 +521,13 @@ class MyoStreamer(Process):
         self.filtered = filtered
         self.emg = emg
         self.imu = imu
-        self.smm = SharedMemoryManager()
         self.shared_memory_items = shared_memory_items
         self.signal = Event()
 
     def run(self):
+        # Built here rather than in __init__ so it picks up the notifier pool the
+        # parent attached to this process before starting it.
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
 
@@ -537,15 +539,19 @@ class MyoStreamer(Process):
 
         if self.emg:
             def write_emg(emg):
+                # Each notification carries the two sequential readings already
+                # stacked newest-first, so they are flipped into the oldest-first
+                # orientation commit() takes. Two rows, which is exactly the "+ 2"
+                # the counter used to be advanced by.
                 emg = np.array(emg)
-                self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
-                self.smm.modify_variable("emg_count", lambda x: x + 2)
+                self.smm.commit("emg", np.flip(emg, 0))
             self.m.add_emg_handler(write_emg)
         if self.imu:
             def write_imu(quat, acc, gyro):
+                # A single 1-D row, so orientation does not arise, and commit()
+                # counts the one row the old "+ 1" did.
                 imu_arr = np.array([*quat, *acc, *gyro])
-                self.smm.modify_variable("imu", lambda x: np.vstack((imu_arr, x))[:x.shape[0],:])
-                self.smm.modify_variable("imu_count", lambda x: x + 1)
+                self.smm.commit("imu", imu_arr)
             self.m.add_imu_handler(write_imu)
 
         self.m.set_leds([128, 0, 0], [128, 0, 0])

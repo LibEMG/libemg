@@ -10,6 +10,8 @@ from libemg import streamers
 from libemg import animator
 from libemg import gui
 from libemg import shared_memory_manager
+from libemg import reactive
+from libemg import event_log
 from libemg import environments
 from libemg import output_writer
 from libemg import environments

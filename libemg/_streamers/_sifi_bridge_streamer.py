@@ -764,71 +764,48 @@ class SiFiBridgeStreamer(Process):
 
         
 
-        self.smm = SharedMemoryManager()
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
 
         def write_emg(emg):
-            # update the samples in "emg"
-            self.smm.modify_variable(
-                "emg", lambda x: np.vstack((np.flip(emg, 0), x))[: x.shape[0], :]
-            )
-            # update the number of samples retrieved
-            self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+            # Oldest-first packet, as commit() expects; it prepends and keeps
+            # "emg_count" in step under one lock.
+            self.smm.commit("emg", emg)
 
         self.add_emg_handler(write_emg)
 
         def write_imu(imu):
-            # update the samples in "imu"
-            self.smm.modify_variable(
-                "imu", lambda x: np.vstack((np.flip(imu, 0), x))[: x.shape[0], :]
-            )
-            # update the number of samples retrieved
-            self.smm.modify_variable("imu_count", lambda x: x + imu.shape[0])
-            # sock.sendto(data_arr, (self.ip, self.port))
+            # Oldest-first packet, as commit() expects; it prepends and keeps
+            # "imu_count" in step under one lock.
+            self.smm.commit("imu", imu)
 
         self.add_imu_handler(write_imu)
 
         def write_eda(eda):
-            # update the samples in "eda"
-            self.smm.modify_variable(
-                "eda", lambda x: np.vstack((np.flip(eda, 0), x))[: x.shape[0], :]
-            )
-            # update the number of samples retrieved
-            self.smm.modify_variable("eda_count", lambda x: x + eda.shape[0])
+            # Oldest-first packet, as commit() expects; it prepends and keeps
+            # "eda_count" in step under one lock.
+            self.smm.commit("eda", eda)
 
         self.add_eda_handler(write_eda)
 
         def write_ppg(ppg):
-            # update the samples in "ppg"
-            self.smm.modify_variable(
-                "ppg", lambda x: np.vstack((np.flip(ppg, 0), x))[: x.shape[0], :]
-            )
-            # update the number of samples retrieved
-            self.smm.modify_variable("ppg_count", lambda x: x + ppg.shape[0])
+            # Oldest-first packet, as commit() expects; it prepends and keeps
+            # "ppg_count" in step under one lock.
+            self.smm.commit("ppg", ppg)
 
         self.add_ppg_handler(write_ppg)
 
         def write_ecg(ecg):
-            # update the samples in "ecg"
-            self.smm.modify_variable(
-                "ecg", lambda x: np.vstack((np.flip(ecg, 0), x))[: x.shape[0], :]
-            )
-            # update the number of samples retrieved
-            self.smm.modify_variable("ecg_count", lambda x: x + ecg.shape[0])
+            # Oldest-first packet, as commit() expects; it prepends and keeps
+            # "ecg_count" in step under one lock.
+            self.smm.commit("ecg", ecg)
 
         self.add_ecg_handler(write_ecg)
 
         def write_temperature(temperature):
-            # update the samples in "temperature"
-            self.smm.modify_variable(
-                "temperature",
-                lambda x: np.vstack((np.flip(temperature, 0), x))[: x.shape[0], :],
-            )
-            # update the number of samples retrieved
-            self.smm.modify_variable(
-                "temperature_count", lambda x: x + temperature.shape[0]
-            )
+            # Oldest-first packet, as commit() expects.
+            self.smm.commit("temperature", temperature)
 
         # Unlike every other modality, status packets arrive whether or not the
         # caller asked for temperature, so the handler is only wired up when a
