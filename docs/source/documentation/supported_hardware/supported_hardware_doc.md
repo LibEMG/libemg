@@ -71,6 +71,8 @@ Repeating Values: 0
 ## Creating Custom Streamers
 Custom UDP streamers can be created to interface with other hardware. A UDP streamer reads a value from a device, pickles it, and sends it over UDP. An example streamer for the Myo Armband is shown in the code snippet below.
 
+The default streamers write into shared memory with `SharedMemoryManager.commit`. One call stores the new samples, advances the item's state block and wakes anything hooked into that item, all under a single acquisition of the item's lock. A custom streamer that writes the same way gets those notifications for free, and the online classifier and any installed hooks pick its data up without further work. See the Reactive Pipelines section for what is being notified.
+
 <details>
 <summary><b>Example Code</b></summary>
 

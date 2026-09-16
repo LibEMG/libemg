@@ -1081,6 +1081,8 @@ training_features = fe.extract_features(feature_list, train_windows)
 # Online Data Handler 
 
 One complication when using EMG devices is the lack of standardization, meaning that interfacing with hardware is a new undertaking for each device. A goal of LibEMG is to abstract these differences and enable a hardware-agnostic framework. Therefore, this module acts as a middle layer for processing real-time data streaming from any device. In this architecture - exemplified in Figure 1 – live data streaming is performed by using a shared memory buffer as the core. This shared memory buffer is created by the device streamer, where a process is spawned that continuously populates the buffer with samples. Other modules can gain access to the shared memory buffer using the shared memory items that the streamer returned, allowing for cross-process, low-latency, non-blocking access to the data of interest. We provide an OnlineDataHandler object that is a generic object for attaching to the shared memory buffer with added some utilities.
+
+Each write to the buffer announces itself. The streamer commits its samples, which advances a small block of counters stored alongside the buffer and wakes anything hooked into that data. Consumers such as the OnlineEMGClassifier are therefore told when data arrives instead of asking for it. The Reactive Pipelines section describes that layer, and this section covers the parts of it the OnlineDataHandler exposes directly.
  
 An example of the online data streaming workflow is provided below:
  
@@ -1098,4 +1100,51 @@ odh.visualization()
 ![alt text](online_dh.png)
 <center> <p> Figure 1: OnlineDataHandler Architecture</p> </center>
 
-**For more information on the default streamers and creating your own, please reference the Supported Hardware section.** 
+**For more information on the default streamers and creating your own, please reference the Supported Hardware section.**
+
+## Reading the State of a Modality
+
+`get_state` answers what has happened to a modality without copying its buffer. It returns a `Snapshot` of the counters the streamer maintains, so the question costs a handful of integers rather than a buffer copy.
+
+```Python
+streamer_process, shared_memory_items = libemg.streamers.myo_streamer()
+odh = libemg.data_handler.OnlineDataHandler(shared_memory_items=shared_memory_items)
+
+state = odh.get_state('emg')
+print(state.total_samples)  # rows ever committed
+print(state.generation)     # writes so far
+print(state.closed)         # True once the streamer has finished
+```
+
+The remaining fields are `epoch`, which advances whenever the modality is reset, `commits` and `dropped` for diagnostics, and `t_last_ns` for latency accounting. Calling `get_state` with no modality returns a snapshot for every modality the handler is attached to.
+
+`reset` still empties the buffer for a modality as before. It now also zeroes that modality's counters and advances its epoch. Without the epoch, an observer that missed the reset would compare what it had consumed against a total that had gone backwards and conclude nothing had arrived.
+
+## Hooks
+
+A hook is a piece of work that runs whenever the data it watches changes enough to matter. `install_hook` registers one, `start_hooks` starts them in their own process, and `stop_hooks` shuts them down. The handler builds and owns the reactive graph, so this is the short path when you only want one or two observers on a live stream.
+
+```Python
+from libemg.reactive import ProbeHook
+
+streamer_process, shared_memory_items = libemg.streamers.myo_streamer()
+odh = libemg.data_handler.OnlineDataHandler(shared_memory_items=shared_memory_items)
+
+# Print the newest EMG sample at most five times a second
+odh.install_hook(ProbeHook('watch', 'emg', print, hz=5))
+odh.start_hooks()
+...
+odh.stop_hooks()
+```
+
+`install_event_log` records what the hooks did and why, which is the way to answer "why did this not fire?". Install it before the first `install_hook`, since the graph is built on the first registration.
+
+```Python
+from libemg.event_log import EventLog
+
+log = EventLog(path='reactive.log')
+odh.install_event_log(log)
+```
+
+Building the graph yourself instead gives control over which hooks share a process, and lets a hook's output feed another hook. That, the available criteria and the built-in hooks are covered in the Reactive Pipelines section.
+ 

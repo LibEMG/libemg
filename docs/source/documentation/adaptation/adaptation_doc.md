@@ -7,12 +7,20 @@ This tutorial builds the minimal pipeline: a **within-subject initialization** f
 # Architecture
 Adaptation runs as **four cooperating processes** that communicate over shared memory. The `libemg.adaptation._base.get_edil_adaptation_objects` helper pre-builds every shared-memory item and `OutputWriter` needed to wire them together (each modality buffer and its sample counter are paired on a shared lock so readers always see a consistent snapshot), so you never allocate them by hand.
 
-1. **`OnlineEMGRegressor`** — the live model. It windows the incoming EMG, extracts features, predicts, and publishes each feature vector (`model_input`) with a timestamp to shared memory. It also watches an `adapt_flag`; when the adaptation manager raises it, the regressor hot-swaps in the newly adapted model.
+1. **`OnlineEMGRegressor`** — the live model. It windows the incoming EMG, extracts features, predicts, and publishes each feature vector (`model_input`) with a timestamp to shared memory. It also watches an `adapt_flag`; when the adaptation manager raises it, the regressor hot-swaps in the newly adapted model. The flag is consulted through its state block, so the common answer that nothing has changed costs a handful of integers rather than three locked reads of the variable.
 2. **Environment** (`CurricularFitts`) — the task the user performs. Every frame it turns the current cursor/target geometry into a *pseudo-label* through a `feedback_handle`, and writes that label (`environment_feedback`) with the same timestamp and trial number.
-3. **`MemoryManager`** — joins each `environment_feedback` row to the `model_input` row with the matching timestamp, appends the pair to a `Memory`, and saves one memory slice (`memory_<trial>.pkl`) at the end of every trial.
-4. **`AdaptationManager`** — loads memory slices (seeded by the SGT data for stability), calls `model.adapt(memory)`, saves the updated model (`mdl<N>.pkl`), and — if `notify=True` — sets the `adapt_flag` so the live model reloads it.
+3. **`MemoryManager`** — joins each `environment_feedback` row to the `model_input` row with the matching timestamp, appends the pair to a `Memory`, and saves one memory slice (`memory_<trial>.pkl`) at the end of every trial. It is woken by the environment's write instead of asking whether one has happened.
+4. **`AdaptationManager`** — loads memory slices (seeded by the SGT data for stability), calls `model.adapt(memory)`, saves the updated model (`mdl<N>.pkl`), and — if `notify=True` — sets the `adapt_flag` so the live model reloads it. It is woken by the memory manager's write in the same way.
 
 The loop is therefore: **predict → act → pseudo-label → remember → adapt → reload → predict …**, all without pausing the user.
+
+**Neither manager spins.** Each one waits on a notifier slot and is woken by the write it used to poll for. The memory manager's old loop copied both the feedback buffer and the whole model-input buffer on every pass, just to compare one counter. Their signatures and their behaviour are otherwise unchanged.
+
+By default the adaptation manager still calls `model.adapt` on every pass of its loop, including passes where no new slice has arrived. Set its `wait_for_memory` attribute to adapt only when a slice actually arrives:
+
+```Python
+adaptation_manager.wait_for_memory = True
+```
 
 **You supply three things.** The suite is model-agnostic; it only assumes:
 - a **model** with `predict(features)`, `adapt(memory)`, `save(path)`, and `load(path)` (the reference repository uses a small MLP / Transformer),
@@ -20,6 +28,78 @@ The loop is therefore: **predict → act → pseudo-label → remember → adapt
 - a **feedback function** mapping game state to a pseudo-label — `libemg.adaptation._base.produce_tciil_feedback` is a ready-made regression example.
 
 **Note:** The snippets below use the `Myo Armband` and a 2-DOF wrist regressor (flexion/extension and radial/ulnar deviation). Any hardware works by switching the `streamer`, `window_size`, and `window_increment`.
+
+# Building the Same Loop with Hooks
+
+The four processes above pass work between them by writing to shared memory. A write now announces itself, so the memory and adaptation stages can be written as observers rather than as loops of their own. `libemg.adaptation.hooks` provides them. The layer they are built on is described in the [reactive pipelines guide](../reactive/reactive_doc.md).
+
+**The existing API is unchanged.** `MemoryManager` and `AdaptationManager` keep their signatures and their behaviour, and Step 2 below still runs exactly as written. The hooks are an alternative way to assemble the same loop, with the same behaviour, for a pipeline that is already reactive.
+
+Three hooks cover the chain:
+
+- `MemoryHook` observes `environment_feedback`, pairs each judgement with the model input that produced it, and appends the pair to a memory. A judgement carrying a new trial number closes the slice: the memory is saved as `memory_N.pkl` and `memory_flag` is advanced.
+- `AdaptationHook` observes `memory_flag`, loads whatever slices have appeared since it last looked, calls `model.adapt`, saves the new weights as `mdlN.pkl`, and advances `adapt_flag`.
+- `ModelSwapHook` observes `adapt_flag` and calls a function of your own with the new model number. It is for anything outside the streaming process that wants to know the model changed, such as a plot marking the moment or a counter of how often adaptation reached the user.
+
+**The three stages disagree about what a change is.** That disagreement is the argument the whole reactive layer is built around. An item publishes facts, and each observer pairs those facts with its own criterion.
+
+| Stage | Dirty when | Why |
+| --- | --- | --- |
+| Memory | Any feedback row arrives, `OnCommit()` | Every judgement the person produced is data worth keeping. |
+| Adaptation | A slice is finished, `OnNewSlice()` | Training on a fraction of a trial is worse than waiting for the whole one. |
+| Predictor | A new model is published | A swap is rare, and acting on one costs a model load. |
+
+`MemoryHook` reads `model_input` as well, but its arrival is not a reason to run. It is declared with a criterion that is never dirty, so the inputs are delivered on every run without ever firing one. Feedback rows are joined to inputs **by timestamp** rather than by position, because the two are written by different processes at different rates and their indices do not correspond.
+
+**Assembling the graph.** This replaces the `MemoryManager` and `AdaptationManager` block of Step 2. Everything else in Step 2 is unchanged, including the shared-memory items from `get_edil_adaptation_objects`.
+
+```Python
+from libemg.adaptation.hooks import MemoryHook, AdaptationHook
+from libemg.reactive import ReactiveGraph, default_notifier_pool
+
+# Every item the two hooks touch, with duplicate tags removed.
+adaptation_items = list({item[0]: item for item in
+                         memory_manager_smi + adaptation_manager_smi + model_smi}.values())
+
+# Sharing the output writers' pool is what lets their writes wake the hooks.
+graph = ReactiveGraph(adaptation_items, notifier_pool=default_notifier_pool())
+
+graph.add(
+    MemoryHook(
+        memory   = MyMemory(...),   # empty memory of the same type as the SGT seed
+        save_dir = ADAPT_DIR,       # writes memory_N.pkl
+    ),
+    executor='memory')
+
+graph.add(
+    AdaptationHook(
+        model              = model,
+        load_dir           = ADAPT_DIR,   # reads memory_N.pkl (== MemoryHook.save_dir)
+        save_dir           = ADAPT_DIR,   # writes mdlN.pkl    (== OnlineEMGRegressor.file_path)
+        initial_memory_loc = ADAPT_DIR + 'sgt_memory.pkl',   # SGT seed for stability
+        stop_after         = NUM_TRIALS - 1,
+        notify             = True,        # advance adapt_flag so the live model hot-swaps
+    ),
+    executor='adapt')
+
+graph.start()
+
+env.run_helper(block=False)   # spawn the game
+env.process.join()            # adapt for as long as the user is playing
+graph.stop()
+```
+
+The two path linkages are the ones Step 2 describes. The adaptation hook's `load_dir` equals the memory hook's `save_dir`, and its `save_dir` equals the online regressor's `file_path`. Each hook runs in its own executor process, so a long training call never delays memory assembly.
+
+**One behavioural difference is deliberate.** `AdaptationManager` calls `model.adapt` on every pass of its loop, including passes where no new memory arrived, so it retrains continuously on unchanged data and republishes a model each time. `AdaptationHook` trains when a slice arrives. Pass `continuous=True` to restore the old behaviour. The same choice is available on the manager through the `wait_for_memory` attribute shown above.
+
+**Diagnostics.** `MemoryHook.unmatched()` counts feedback rows that had no model input to pair with. A non-zero count means the predictor's input buffer is too small for the delay between a prediction and the environment's judgement of it, and that training data is being lost. `MemoryHook.appended()` counts the pairs that reached the memory. `MemoryHook.flush()` closes the slice in progress, which is how the final trial gets saved; a slice is otherwise closed by the arrival of the next trial number.
+
+**Acting where the model lives.** `ModelSwapHook` runs in whichever executor you give it, which is not the process holding the live model. For work that has to happen in the streaming process when a new model is loaded, such as resetting a decision history that the old model's outputs populated or re-fitting a scaler, override `OnlineStreamer.on_model_update(number)`. Override it in a subclass rather than assigning a lambda to it. The streamer is a spawned process, and a lambda cannot be pickled.
+
+**What made the flags observable.** `SharedMemoryManager.apply(tag, fn, count_fn=None)` is the write path for a value that is set rather than appended. `SharedMemoryOutputWriter` now writes through it, which is what turns an adaptation flag or a row of environment feedback into something a hook can be triggered by at all. It takes the variable's lock once, where the old pair of `modify_variable` calls took it twice, so a reader can no longer see a count running ahead of the data it counts.
+
+**A bug fixed on this path.** `OnlineStreamer.load_emg_predictor` used an exact type check, `type(loaded) == EMGPredictor`. `EMGClassifier` and `EMGRegressor` both subclass `EMGPredictor`, and they are exactly what an adaptation run saves, so a saved classifier was misrouted into `.model`. The next prediction then failed on a classifier having no `predict_proba`, after the swap had already been reported as successful. The check now uses `isinstance`.
 
 # Step 1 — Within-Subject Initialization
 First, record a short screen-guided training session and fit an initial model to it. This is the same collection flow used elsewhere in `LibEMG`; for regression we prompt the four wrist directions and record continuous labels.

@@ -8,6 +8,8 @@ Myoelectric control has been primarily limited in its use for prosthesis control
 # Modules
 As displayed in Figure 1, LibEMG consists of six main modules. Although many of these modules can stand independently from the others (e.g., the Feature Extraction module can be used on any dataset), they work sequentially to make up the core EMG pipeline. This pipeline is directly inspired from prosthetics research.
 
+Underneath the online parts of that pipeline sits a reactive layer. It carries data between live stages by notification, so a filter, a feature stage or a model runs when new samples arrive rather than checking for them. For details, see the Reactive Pipelines section.
+
 ![alt text](core_modules.png)
 <center> <p> Figure 1: Diagram of LibEMG's Core Modules. Dashed lines represent modules that are optional to implement.</p> </center>
 

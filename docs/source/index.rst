@@ -14,6 +14,7 @@ LibEMG
    :caption: Modules:
 
    documentation/data/data
+   documentation/reactive/reactive
    documentation/filtering/filtering
    documentation/features/features
    documentation/feature_selection/feature_selection
@@ -26,9 +27,12 @@ LibEMG
    :maxdepth: 1
    :caption: Tools:
 
+   documentation/gui_workflow/gui_workflow
    documentation/screen_guided_training/sgt
    documentation/supported_hardware/supported_hardware
    documentation/visualization/visualization
+   documentation/pipeline/pipeline
+   documentation/environments/environments
 
 .. toctree::
    :maxdepth: 2
@@ -51,6 +55,7 @@ LibEMG
    :maxdepth: 1
    :caption: Online Examples:
 
+   examples/reactive_example/reactive_example
    examples/snake_example/snake_example
    examples/unity_example/unity_example
    examples/mouse_example/mouse_example
