@@ -70,7 +70,18 @@ def get_windows(data, window_size, window_increment):
     >>> data = np.loadtxt('data.csv', delimiter=',')
     >>> windows = get_windows(data, 100, 50)
     """
-    num_windows = int((data.shape[0]-window_size)/window_increment) + 1
+    # Floor-divide and clamp: int() truncates toward zero, so data shorter
+    # than one window gave a negative quotient that truncated to 0 and a
+    # count of 1 -- a short window handed downstream as though it were
+    # window_size long, so features were wrong rather than absent, and the
+    # odd shape later broke np.vstack in _parse_windows_helper.
+    num_windows = max(0, (data.shape[0] - window_size) // window_increment + 1)
+    if num_windows == 0:
+        # Correctly *shaped* empty result rather than np.array([]) (shape
+        # (0,)), so callers can still read .shape[1]/.shape[2] and stack it
+        # with np.vstack/np.concatenate without special-casing.
+        num_channels = 1 if data.ndim == 1 else data.shape[1]
+        return np.zeros((0, num_channels, window_size), dtype=data.dtype)
     windows = []
     st_id=0
     ed_id=st_id+window_size
