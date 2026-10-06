@@ -16,7 +16,12 @@ EDA_SAMPLING_RATES = (4, 8, 16, 32, 50)
 IMU_SAMPLING_RATES = (25, 50, 100, 200)
 PPG_SAMPLING_RATES = (50, 100, 200, 400, 800)
 PPG_AVERAGING_FACTORS = (1, 2, 4, 8, 16, 32)
-PPG_MAX_EFFECTIVE_RATE = 400  # sps / avg must not exceed this
+# sps / avg must not exceed this. sifi_bridge_py 2.0.1 refuses anything
+# higher in configure_ppg: above 200 Hz the PPG stream does not fit over BLE
+# and the device starts reporting samples_lost. Checking it here too keeps
+# the failure at construction, where the caller can see it, rather than in
+# the streamer subprocess after connecting.
+PPG_MAX_EFFECTIVE_RATE = 200
 TEMPERATURE_SAMPLING_RATES = (0.1, 1, 2, 10)
 
 # Seconds without a single data packet before the link is presumed down. Every
@@ -64,6 +69,17 @@ IMU_RATE_KNOWN_TO_SILENCE_THE_SENSOR = 200
 # Cap on stderr lines read per drain, so a bridge flooding its stderr cannot
 # starve the recovery it was supposed to explain.
 MAX_STDERR_LINES_PER_DRAIN = 200
+
+
+def _mains_notch_setting(notch_freq):
+    """Translate a libemg notch frequency into a sifi_bridge_py mains_notch value.
+
+    libemg has always taken None to mean "no mains notch". sifi_bridge_py 2.0.1
+    reassigned None to mean "leave whatever the device already has", and spells
+    disabling it as 'off', so passing None straight through would silently
+    inherit the previous session's filter instead of turning it off.
+    """
+    return "off" if notch_freq is None else notch_freq
 
 
 def _validate_setting(name: str, value, allowed):
@@ -176,7 +192,7 @@ class SiFiBridgeStreamer(Process):
         PPG sampling rate (Hz). Can be {50, 100, 200, 400, 800}.
     ppg_avg : int
         PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective sampling rate
-        (ppg_sps / ppg_avg) must be <= 400 Hz.
+        (ppg_sps / ppg_avg) must be <= 200 Hz.
     temperature_fs : float
         Temperature sampling rate (Hz). Can be {0.1, 1, 2, 10}.
     bioarmband : bool | None
@@ -346,10 +362,17 @@ class SiFiBridgeStreamer(Process):
     ):
         self.sb.configure_sensors(ecg, emg, eda, imu, ppg)
 
+        # sifi_bridge_py 2.0.1 made every configure_* parameter optional, and
+        # None now means "leave this setting as the device has it" rather than
+        # "turn it off". Our notch_freq of None has always meant "no mains
+        # notch", so it has to be spelled out as 'off' or the filter is
+        # inherited from whoever configured the device last.
+        mains_notch = _mains_notch_setting(notch_freq)
+
         if ecg:
             self.sb.configure_ecg(fs=self.ecg_fs,
                                   dc_notch=filtering,
-                                  mains_notch=notch_freq,
+                                  mains_notch=mains_notch,
                                   bandpass=filtering,
                                   flo=0,
                                   fhi=30)
@@ -357,7 +380,7 @@ class SiFiBridgeStreamer(Process):
         if emg:
             self.sb.configure_emg(fs=self.emg_fs,
                                 dc_notch=filtering,
-                                mains_notch=notch_freq,
+                                mains_notch=mains_notch,
                                 bandpass=filtering,
                                 flo=emg_bandpass[0],
                                 fhi=emg_bandpass[1])
@@ -367,7 +390,7 @@ class SiFiBridgeStreamer(Process):
         if eda:
             self.sb.configure_eda(fs=self.eda_fs,
                                   dc_notch=filtering,
-                                  mains_notch=notch_freq,
+                                  mains_notch=mains_notch,
                                   bandpass=filtering,
                                   flo=eda_bandpass[0],
                                   fhi=eda_bandpass[1],)
@@ -437,6 +460,7 @@ class SiFiBridgeStreamer(Process):
         self.connected = True
         print("Connected to Sifi device.")
 
+        time.sleep(2)
         self.configure(
             self.ecg,
             self.emg,
