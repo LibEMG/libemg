@@ -75,6 +75,21 @@ Screen Guided Training
 .. automodule:: libemg.gui
    :members:
 
+Session Annotations
+------------------------------
+.. automodule:: libemg.session
+   :members:
+
+Collection Protocol
+------------------------------
+.. automodule:: libemg.protocol
+   :members:
+
+Signal Quality
+------------------------------
+.. automodule:: libemg.signal_quality
+   :members:
+
 Streamer Panel
 ------------------------------
 .. automodule:: libemg._gui._streamer_panel

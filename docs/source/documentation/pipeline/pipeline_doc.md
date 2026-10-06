@@ -71,7 +71,7 @@ Blocks are grouped in the palette by category.
 | --- | --- | --- | --- | --- |
 | Source | Device streamers | | samples | One block per entry in `libemg.streamers`. Live only. |
 | Source | Synthetic Source | | samples | Generated samples, no hardware. Live only. |
-| Source | Stored Data | | samples, labels | Replays recordings from disk. Stored only. |
+| Source | Stored Data | | samples, labels | Replays recordings from disk, with labels taken from the filenames or from a file packaged beside them. Stored only. |
 | Transform | Filter | samples | samples | Conditions the signal once, for every consumer downstream. |
 | Transform | Channel Mask | samples | samples | Narrows the stream to a subset of channels. |
 | Window | Window | samples | windows | Sets the window size and increment. Never a stage of its own. |
@@ -384,6 +384,60 @@ Saved to C:\work\models\lda.pkl. Point a live pipeline at that file to run it.
 Which kind of predictor it builds follows from the block. A **Classifier** block fits an `EMGClassifier` and rounds its labels to class indices. A **Regressor** block fits an `EMGRegressor` and treats the label field as one degree of freedom per column, so a field holding a single value per sample trains as one DOF.
 
 The same document then runs live. Point its source at a device instead of a folder and the model block already holds the file that was just written.
+
+## Reproducing an offline analysis from the editor
+
+The two offline examples in the documentation — a classifier over the `OneSubjectMyoDataset` and a regressor over the `OneSubjectEMaGerDataset` — are scripts. The same analyses can be built on the canvas, and the numbers `OfflineMetrics` reports come out identical, not approximately identical: both paths run the same estimator over the same windows, so any difference at all would mean one of them is reading the data differently. `tests/test_pipeline_offline_parity.py` holds that.
+
+A train/test split is expressed as two runs of the same graph with different filter values, because a pipeline reads one folder. Build the graph with the training values, press **Train**, change the split values, press **Start**. The second run scores what the first fitted.
+
+### Classification
+
+| Block | Parameter | Value |
+| --- | --- | --- |
+| Stored Data | Folder | `OneSubjectMyoDataset/` |
+| | Regex Filters | `/trial_\|/\|1,2,3\|sets`<br>`C_\|.csv\|0,1,2,3,4\|classes`<br>`R_\|_\|0,1\|reps` |
+| | Label Key | `classes` |
+| | Sampling Rate | `200` |
+| Window | Window Size / Increment | `20` / `10` |
+| Features | Feature Group | `HTD` |
+| Classifier | Model / Fitted Model | `LDA` / wherever you want it |
+| Metrics | Metrics / Null Label | `CA, AER, INS` / `2` |
+
+Train on `1,2,3`, change the sets filter to `4,5,6`, and run. The script and the editor both report:
+
+```
+CA  0.9853107344632769
+AER 0.004297994269340966
+INS 0.015819209039548022
+```
+
+### Regression, and labels that live in their own file
+
+A filename filter can only say what a whole recording was. A regression target is a value per sample, so it lives in a file beside the recording — which is what **Label Files** is for. It takes the same `left|right|values|description` lines as the regex filters, but they match *metadata* files, and **Package By** says how each one is paired with the recording it belongs to (`same folder` is the LibEMG convention, `same stem` pairs a recording with the file named after it).
+
+| Block | Parameter | Value |
+| --- | --- | --- |
+| Stored Data | Folder | `OneSubjectEMaGerDataset/` |
+| | Regex Filters | `/\|/\|open-close,pro-sup\|movements`<br>`_R_\|_emg.csv\|0,1,2,3\|reps` |
+| | Label Files | `/\|.txt\|labels\|labels` |
+| | Label Key | `labels` |
+| | Sampling Rate | `1010` |
+| Window | Window Size / Increment | `150` / `40` |
+| Features | Feature Group | `HTD` |
+| Regressor | Model | `LR` |
+| Metrics | Metrics | `R2, NRMSE, MAE` |
+
+Train on reps `0,1,2,3`, change the reps filter to `4`, and run. Both paths report one value per degree of freedom:
+
+```
+R2    [0.9394276836613275, 0.9576579094961605]
+NRMSE [0.06087835488847762, 0.050867671453071764]
+MAE   [0.09103975298336556, 0.07208576409479191]
+```
+
+The label of a window is the label at its *end*, which is the same convention as the `metadata_operations={'labels': lambda x: x[-1]}` the script passes to `parse_windows`. A label field with several columns stays several columns, so a two-DOF target trains and scores as two DOFs rather than silently becoming one.
+
 
 ## What Train refuses, and why
 
