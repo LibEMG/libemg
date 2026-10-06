@@ -18,12 +18,16 @@ def test_extract_features_valid(fe):
     assert('WAMP' in features)
 
 def test_extract_features_invalid(fe):
+    # An unrecognised feature name is now rejected rather than silently
+    # dropped. Dropping it returned a narrower feature matrix than the caller
+    # asked for, which only showed up later as a dimension mismatch against a
+    # model fit at the full width.
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
     windows = get_windows(data, 50, 25)
-    features = fe.extract_features(['MAV','RANDOM'], windows)
-    assert(len(features) == 1)
-    assert('MAV' in features)
-    assert('RANDOM' not in features)
+    with pytest.raises(ValueError) as excinfo:
+        fe.extract_features(['MAV','RANDOM'], windows)
+    # The message has to name the offending feature to be actionable.
+    assert('RANDOM' in str(excinfo.value))
 
 def test_extract_feature_group_valid(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')
@@ -124,6 +128,13 @@ def test_get_feature_list(fe):
                                     "WWL",
                                     "WENT",
                                     "MEAN"]
+
+def test_legendre_shift_poly_order_three(fe):
+    coefficients = fe._FeatureExtractor__LegendreShiftPoly(3)
+    np.testing.assert_array_equal(
+        coefficients,
+        np.array([[20.0], [-30.0], [12.0], [-1.0]]),
+    )
 
 def test_all_features_normal(fe):
     data = np.loadtxt('tests/data/emg_data_myo.csv', delimiter=',')

@@ -69,3 +69,12 @@ MLPR.py
 docs/Makefile
 sifibridge-*
 *.pyc
+research/*
+.claude/*
+heartrate_classes_speed/*
+tests/*
+# test_*.py and tests/* above are meant for the scratch scripts at the repo
+# root and for what a run leaves behind in tests/, not for the suite itself.
+# This exemption has to come last, or a new test file is silently untracked --
+# which is how several already were.
+!tests/test_*.py

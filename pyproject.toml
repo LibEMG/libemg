@@ -36,10 +36,11 @@ dependencies = [
     "pyomyo==0.0.5",
     "pyserial>=3.5",
     "pywavelets>=1.4",
+    "pyyaml>=6.0",
     "requests>=2.31",
     "scikit-learn>=1.3",
     "scipy>=1.11",
-    "sifi-bridge-py==2.0.0b19",
+    "sifi-bridge-py==2.0.1",
     "websockets>=14",
     "wfdb>=4.1",
 ]
