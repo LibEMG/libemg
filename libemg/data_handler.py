@@ -674,6 +674,22 @@ class OnlineDataHandler(DataHandler):
             self._log_process = None
         return counts
 
+    def log_counts(self):
+        """How many samples the active thread logger has written so far, per modality.
+
+        Readable while :meth:`start_log` is still running, unlike the totals
+        :meth:`stop_log` returns. A caller that needs to know what a stretch of
+        one continuous recording contains -- a single repetition, say -- reads
+        this either side of that stretch rather than starting and stopping a log
+        around it.
+
+        Returns
+        ----------
+        counts: dict
+            A snapshot keyed by modality. Empty when no thread logger is running.
+        """
+        return dict(self._log_counts)
+
     def stop_visualize(self):
         self.visualize_signal.set()
         time.sleep(0.5)
