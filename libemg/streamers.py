@@ -100,7 +100,7 @@ def sifi_biopoint_streamer(
     ppg_sps, default = 50
         The PPG sampling rate (Hz). Can be {50, 100, 200, 400, 800}.
     ppg_avg, default = 1
-        The PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective PPG sampling rate (ppg_sps / ppg_avg) must be <= 400 Hz.
+        The PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective PPG sampling rate (ppg_sps / ppg_avg) must be <= 200 Hz.
     temperature_fs, default = 1
         The temperature sampling rate (Hz). Can be {0.1, 1, 2, 10}.
 
@@ -258,7 +258,7 @@ def sifi_bioarmband_streamer(
     ppg_sps, default = 50
         The PPG sampling rate (Hz). Can be {50, 100, 200, 400, 800}.
     ppg_avg, default = 1
-        The PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective PPG sampling rate (ppg_sps / ppg_avg) must be <= 400 Hz.
+        The PPG averaging factor. Can be {1, 2, 4, 8, 16, 32}. The effective PPG sampling rate (ppg_sps / ppg_avg) must be <= 200 Hz.
     temperature_fs, default = 1
         The temperature sampling rate (Hz). Can be {0.1, 1, 2, 10}.
 
