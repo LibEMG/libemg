@@ -452,6 +452,7 @@ class OfflinePipeline:
         handler = OfflineDataHandler()
         filters = [RegexFilter(**spec) for spec in plan["regex_filters"]]
         handler.get_data(folder_location=plan["folder"], regex_filters=filters,
+                         metadata_fetchers=_metadata_fetchers(plan),
                          delimiter=plan["delimiter"])
         total = max(1, len(handler.data))
         self.progress = 0.0
@@ -614,20 +615,32 @@ class OfflinePipeline:
 
     @staticmethod
     def _labels_for(handler, key, index, window_size, increment):
-        """Window a metadata field alongside the data it belongs to."""
+        """Window a metadata field alongside the data it belongs to.
+
+        Returns one row per window: a scalar for a single-column field such as
+        a class index, and a row per degree of freedom for a field that carries
+        several. Collapsing to the first column here would silently turn a
+        two-DOF regression target into a one-DOF one, and every metric computed
+        afterwards would be a real number describing the wrong problem.
+        """
         from libemg.utils import get_windows
         values = getattr(handler, key, None)
-        if not values or index >= len(values):
+        if values is None or len(values) == 0 or index >= len(values):
             return None
-        column = np.asarray(values[index]).reshape(-1, 1)
+        column = np.asarray(values[index])
+        if column.ndim == 1:
+            column = column.reshape(-1, 1)
         enframed = get_windows(column, window_size, increment)
         if not enframed.shape[0]:
             return None
         # The label of a window is the label at its end, which is the
-        # convention the rest of LibEMG uses. The dtype is left as it was read:
-        # a class index arrives as an integer already, and a regression target
-        # read from a file is a real number that rounding would destroy.
-        return enframed[:, 0, -1]
+        # convention the rest of LibEMG uses -- the same as the
+        # ``{'labels': lambda x: x[-1]}`` a script passes to parse_windows. The
+        # dtype is left as it was read: a class index arrives as an integer
+        # already, and a regression target read from a file is a real number
+        # that rounding would destroy.
+        ending = enframed[:, :, -1]
+        return ending[:, 0] if ending.shape[1] == 1 else ending
 
 
 # ======================================================================
@@ -886,7 +899,8 @@ def _resolve_features(params):
 
 def _compile_offline(document):
     """Flatten a stored-data pipeline into one sequential pass."""
-    plan = {"folder": "", "regex_filters": [], "delimiter": ",",
+    plan = {"folder": "", "regex_filters": [], "label_files": [],
+            "package_by": "same folder", "delimiter": ",",
             "label_key": "classes", "sampling_rate": 1000,
             "filters": [], "channels": None, "window_size": 200,
             "window_increment": 50, "features": [], "model_path": "",
@@ -904,6 +918,9 @@ def _compile_offline(document):
             plan["sampling_rate"] = int(node.params.get("sampling_rate", 1000))
             plan["regex_filters"] = _parse_regex_filters(
                 node.params.get("regex_filters", ""))
+            plan["label_files"] = _parse_regex_filters(
+                node.params.get("label_files", ""))
+            plan["package_by"] = node.params.get("package_by", "same folder")
             if not plan["folder"]:
                 raise CompileError("The Stored Data block needs a folder to read from.")
             if not plan["regex_filters"]:
@@ -932,6 +949,41 @@ def _compile_offline(document):
             plan["null_label"] = None if null_label in (-1, None) else int(null_label)
 
     return OfflinePipeline(document, plan)
+
+
+def _metadata_fetchers(plan):
+    """Build the packagers that read labels out of files of their own.
+
+    A filename filter can only say what a whole recording was -- the class it
+    belongs to. A regression target is a value per sample, so it lives in a
+    file beside the recording, and reading it needs a
+    :class:`~libemg.data_handler.FilePackager` rather than another
+    :class:`~libemg.data_handler.RegexFilter`. Without this a stored-data
+    pipeline could score a classifier and not a regressor, which is exactly the
+    gap between the two offline examples in the documentation.
+
+    Returns
+    ----------
+    list or None
+        Fetchers to hand to ``OfflineDataHandler.get_data``, or None when the
+        block names no label files.
+    """
+    from pathlib import Path
+
+    from libemg.data_handler import FilePackager, RegexFilter
+
+    specs = plan.get("label_files") or []
+    if not specs:
+        return None
+    if plan.get("package_by") == "same stem":
+        def belongs(metadata_file, data_file):
+            return Path(metadata_file).stem == Path(data_file).stem
+    else:
+        # The LibEMG convention: one labels file per recording folder.
+        def belongs(metadata_file, data_file):
+            return (Path(metadata_file).parent.absolute()
+                    == Path(data_file).parent.absolute())
+    return [FilePackager(RegexFilter(**spec), belongs) for spec in specs]
 
 
 def _parse_regex_filters(text):

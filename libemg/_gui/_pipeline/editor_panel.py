@@ -44,6 +44,9 @@ WINDOW_TAG = "__pipeline_window"
 OPEN_TAG = "__pipeline_open"
 SAVEAS_TAG = "__pipeline_saveas"
 EDITOR_TAG = "__pipeline_editor"
+#: How wide a block draws. Fixed rather than -1, which inside a node editor
+#: means the width of the canvas rather than the width of the node.
+NODE_WIDTH = 230
 STATUS_TAG = "__pipeline_status"
 PROGRESS_TAG = "__pipeline_progress"
 PROBLEMS_TAG = "__pipeline_problems"
@@ -233,7 +236,10 @@ class PipelineEditorPanel:
                 self._draw_params(node_id, spec)
             with dpg.node_attribute(parent=f"__node_{node_id}",
                                     attribute_type=dpg.mvNode_Attr_Static):
-                dpg.add_button(label="Remove", width=-1, user_data=node_id,
+                # A fixed width, not -1: inside a node editor, -1 means "fill
+                # the remaining canvas", so this one button stretched its node
+                # across the whole editor and buried the links under it.
+                dpg.add_button(label="Remove", width=NODE_WIDTH, user_data=node_id,
                                callback=self._remove_node)
 
     def _draw_params(self, node_id, spec):
@@ -279,13 +285,16 @@ class PipelineEditorPanel:
                          color=(150, 190, 210))
         elif param.kind in (PATH, FOLDER):
             dpg.add_input_text(default_value=str(value or ""), **common)
-            dpg.add_button(label=f"Browse {param.label}", width=-1,
+            dpg.add_button(label=f"Browse {param.label}", width=NODE_WIDTH,
                            user_data=(node_id, param.name, param.kind),
                            callback=self._browse)
         else:
-            multiline = param.name == "regex_filters"
-            dpg.add_input_text(default_value=str(value or ""), multiline=multiline,
-                               height=70 if multiline else 0, **common)
+            # Whether a value needs room for several lines is a property of the
+            # parameter, declared in the registry, not a list of names kept here
+            # -- the second such parameter is how that list goes stale.
+            dpg.add_input_text(default_value=str(value or ""),
+                               multiline=param.multiline,
+                               height=70 if param.multiline else 0, **common)
         if param.help:
             with dpg.tooltip(tag):
                 dpg.add_text(param.help, wrap=320)

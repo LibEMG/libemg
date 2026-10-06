@@ -112,6 +112,10 @@ class ParamSpec:
     advanced: bool
         Hidden behind a disclosure in the editor. For parameters that have a
         sensible default and rarely need touching.
+    multiline: bool
+        Drawn as a text box rather than a single line. For a parameter whose
+        value is a list written one entry per line, which cannot be typed into
+        a field that swallows the newline.
     """
 
     name: str
@@ -123,6 +127,7 @@ class ParamSpec:
     maximum: Optional[float] = None
     help: str = ""
     advanced: bool = False
+    multiline: bool = False
 
     def __post_init__(self):
         if self.kind in (ENUM, MULTI_SELECT) and not self.choices:
@@ -411,12 +416,24 @@ def build_registry():
                  PortSpec("labels", PortType.LABELS, "Labels", multiple=True)],
         params=[
             ParamSpec("folder", FOLDER, default="", help="Folder to search for recordings."),
-            ParamSpec("regex_filters", STR, default="",
+            ParamSpec("regex_filters", STR, default="", multiline=True,
                       label="Regex Filters",
                       help="One filter per line, as left|right|values|description."),
             ParamSpec("delimiter", STR, default=",", advanced=True),
             ParamSpec("label_key", STR, default="classes", label="Label Key",
                       help="Which metadata field supplies the labels output."),
+            ParamSpec("label_files", STR, default="", label="Label Files",
+                      multiline=True,
+                      help="Labels kept in files of their own beside the "
+                           "recordings, as left|right|values|description, one "
+                           "per line. This is how a continuous regression "
+                           "target is read: the filename filters above cannot "
+                           "produce a value per sample, only one per file."),
+            ParamSpec("package_by", ENUM,
+                      choices=["same folder", "same stem"],
+                      default="same folder", advanced=True, label="Package By",
+                      help="How each label file is matched to the recording it "
+                           "belongs to."),
             ParamSpec("sampling_rate", INT, default=1000, minimum=1,
                       label="Sampling Rate", help="Hz. Used by downstream filters."),
             ParamSpec("replay", ENUM, choices=["as fast as possible", "real time"],
