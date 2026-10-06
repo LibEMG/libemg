@@ -351,18 +351,21 @@ class FeatureSelector:
         k = np.unique(dictionary["crossval"])
         metric_value = []
         for ki in k:
-            train_ids = [i != ki for i in dictionary["crossval"]]
+            train_ids = np.asarray(dictionary["crossval"]) != ki
             k_features = dictionary["features"][train_ids,:]
             k_classes  = dictionary["labels"][train_ids]
             norm_features = (k_features - k_features.mean())/ k_features.std()
             classes = np.unique(k_classes)
+            # msa is sized by the number of classes, so it must be indexed by the positional index (c),
+            # while the label mask must be compared against the class label (ci). Mixing the two only
+            # works when the labels happen to be 0..C-1; other label sets (e.g. 1,2,3) select no samples.
             msa = [0]*classes.shape[0]
+            pca = PCA()
             for c, ci in enumerate(classes):
-                class_features = norm_features[k_classes==c,:]
-                pca = PCA()
+                class_features = norm_features[k_classes==ci,:]
                 pca.fit(class_features)
                 for comp in pca.components_:
-                    msa[ci] += np.abs(comp).prod() ** (1.0 / len(comp))
+                    msa[c] += np.abs(comp).prod() ** (1.0 / len(comp))
             metric_value.append(sum(msa)/len(msa))
         return np.mean(metric_value)
 
