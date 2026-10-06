@@ -29,6 +29,18 @@ class GUI:
         'rep_time' is only used for images since the duration of videos is automatically calculated based on
         the number of frames (assumed to be 24 FPS). 'timestamps' (default False) prepends a timestamp column to
         every logged sample.
+        'protocol' is a libemg.protocol.CollectionProtocol (or a path to one) describing what to collect: the
+        prompt order and its seed, the rest jitter, the design factors to vary between reps, and the acquisition
+        settings. Data > Collection Protocol builds one, renders its prompts with the Animator and sets this key.
+        'signal_check' ('warn' by default, or 'block' / 'off') looks at the stream for dead channels, clipping and
+        mains pickup before the first prompt; 'line_frequency' (default 60) is the mains frequency to look at.
+        'subject_number', 'subject_name', 'session_number', 'day_number' and 'condition_number' seed the Subject
+        Details section of the configuration window, and whatever that section is left showing when Start is
+        pressed is written to 'subject_details.yaml' in the output folder.
+        'continuous_log' (default True) records the whole collection into '_session_<modality>.csv' -- rests and
+        pauses included, nothing cut out -- and writes '_session_annotations.json' beside it saying where every
+        stage of the collection sits in that recording. The per-repetition files are cut from it at those
+        indices, and can be cut again afterwards with libemg.session.SessionAnnotations.
         Visualize > Live Signal reads 'num_samples', 'refresh_rate' and 'plot_height' from this same dictionary.
     width: int, default=1920
         The width of the SGT window. 
@@ -138,6 +150,8 @@ class GUI:
                 dpg.add_menu_item(label="Streamer", callback=self._streamer_callback)
 
             with dpg.menu(label="Data"):
+                dpg.add_menu_item(label="Collection Protocol",
+                                  callback=self._protocol_callback)
                 dpg.add_menu_item(label="Collect Data", callback=self._data_collection_callback)
                 #dpg.add_menu_item(label="Import Data",  callback=self._import_data_callback )
                 #dpg.add_menu_item(label="Export Data",  callback=self._export_data_callback)
@@ -208,6 +222,24 @@ class GUI:
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
         self.dcp = DataCollectionPanel(self.online_data_handler, **passed_arguments, video_player_width=self.video_player_width, video_player_height=self.video_player_height)
         self.dcp.spawn_configuration_window()
+
+    def _protocol_callback(self):
+        from libemg._gui._protocol_panel import ProtocolPanel
+        self._open_panel("protocol_panel", lambda: ProtocolPanel(
+            protocol=self.args.get("protocol"),
+            media_folder=self.args.get("media_folder", "media/"),
+            on_ready=self._protocol_ready,
+            width=min(self.width, 860), height=min(self.height, 800)))
+
+    def _protocol_ready(self, protocol, media_folder):
+        """Point screen guided training at a protocol that was just built here.
+
+        The protocol decides the prompt order, the timings and the design
+        factors, and it names the folder its media went into -- so once it is
+        built, Collect Data needs nothing typed into it.
+        """
+        self.args["protocol"] = protocol
+        self.args["media_folder"] = media_folder
 
     def _visualize_livesignal_callback(self):
         panel_arguments = list(inspect.signature(VisualizationPanel.__init__).parameters)
