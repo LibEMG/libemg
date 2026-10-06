@@ -42,7 +42,7 @@ setup(
         "dearpygui",
         "h5py",
         "onedrivedownloader",
-        "sifi-bridge-py==2.0.0b19",
+        "sifi-bridge-py==2.0.1",
         "pygame",
     ],
     keywords=[
