@@ -78,10 +78,13 @@ Blocks are grouped in the palette by category.
 | Features | Features | windows | features | Extracts features once, so several models can share them. |
 | Model | Classifier | features or windows | prediction | Runs a fitted classifier. |
 | Model | Regressor | features or windows | continuous | Runs a fitted regressor. |
+| Model | Deep Model | features or windows | prediction | Trains a neural network (MLP, CNN, transformer, GRU, LSTM) with its loss drawn live, and runs it, streaming, live. See Deep Models. |
 | Sink | Socket Output | prediction | | Sends each output over UDP or TCP. Live only. |
 | Sink | File Output | prediction | | Appends each output to a file. |
 | Sink | Console Output | prediction | | Prints each output, while a pipeline is being built up. |
 | Sink | Offline Metrics | prediction, labels | metrics | Scores predictions against ground truth. Stored only. |
+| Sink | Feature Viewer | features, labels and a model (both optional) | | Draws the features, and a connected model's latent space, once the recording has been read. Stored only. See [Looking at the features](#looking-at-the-features). |
+| Sink | Prediction Viewer | a model's output, labels (optional) | held-out field and values | Draws what the model predicted over the signal, recording by recording or as a stream, on training and held-out data. Stored only. See [Looking at the predictions](#looking-at-the-predictions). |
 
 The device source blocks in this release of LibEMG are:
 
@@ -316,6 +319,112 @@ This pipeline cannot run yet:
   - 'Offline Metrics' (metrics_3) has nothing connected to its Labels input.
   - 'Window' (enframe_2) produces something that nothing reads and no probe watches.
 ```
+
+# Looking at the features
+
+Before fitting a model it is worth knowing whether the classes come apart in the feature space at all, and which features pull them apart. The **Feature Viewer** block answers that. Connect a Features block's output to its Features input, and the Stored Data block's Labels to its Labels input, then press **Start**. Once the recording has been read, a window opens on the feature matrix: one point per window, coloured by its label.
+
+```
+Stored Data --EMG--> Window --> Features --> Feature Viewer
+            --Labels-------------------------------^
+```
+
+The view is changed in that window, not on the block, so flipping between views does not read the recording again. The block's own settings are only where the window starts.
+
+| Method | What is drawn |
+| --- | --- |
+| Columns | Feature columns as they are. 1D: a histogram per class of the column chosen as X. 2D and 3D: the X, Y and Z columns against each other. |
+| PCA | The directions of greatest variance. Each axis says how much of the variance it holds. |
+| ICA | Statistically independent directions (FastICA). |
+| Isomap | A nonlinear unfolding that keeps neighbouring windows close. |
+
+With labels connected, **Most telling columns** ranks every column on its own by how well it separates them: the ANOVA F score for classes, the absolute correlation for a regression target (the chosen degree of freedom, for several). Clicking one plots it, and the one plotted before moves to Y, so clicking the top two shows the best pair at once. With a feature set such as WENG, 72 columns over 8 channels, this is the quick way to the few worth looking at.
+
+Every column is named for its feature and channel, as `MAV ch1`, `WL ch3`, in the order the matrix holds them. A feature with more than one column per channel, such as `AR`, is named by position: `AR [1]`, `AR [2]`. **Standardize** scales each column to unit variance before projecting. Without it a projection is mostly a measure of which feature has the largest numbers.
+
+| Colour by | Used for |
+| --- | --- |
+| Class | One colour per class, with a legend. |
+| Label value | A heat scale for a regression target, with a colour bar. A target with several degrees of freedom gets a Label column choice. In 1D, the feature is drawn against the label value instead of as histograms. |
+| Auto | Class when the labels are a handful of whole numbers, Label value otherwise. |
+| None | One colour. Also what a viewer with no Labels link draws. |
+
+DearPyGui has no 3D plot, so a 3D view draws the points turned by an azimuth and an elevation, with the three axes drawn from the centre and labelled. **Spin** turns it continuously.
+
+## A model's own spaces
+
+Connect a Classifier or Regressor block's output to the viewer's **Model** input as well, and the window offers the spaces that model works in beside the features, under **Space**. Every view above works in each of them. The features show what a model *could* separate; these show what it did.
+
+| Model | Spaces offered |
+| --- | --- |
+| LDA | Discriminant axes (`LD 1` to one fewer than the classes), class probabilities |
+| MLP | Last hidden layer (one column per unit), class probabilities |
+| SVM | Decision scores, class probabilities |
+| Any other classifier | Class probabilities |
+| Regressor | Its outputs, one column per degree of freedom |
+| A model of your own | Its latent space, from a `latent(features)` method, before any of the above |
+
+The last row is how a model built elsewhere, such as a recurrent network, shows its embedding here. Give the object the Classifier block loads a `latent` method that takes the features and returns one row per window; a torch tensor is accepted as it is.
+
+```Python
+class MyModel:
+    def predict(self, x): ...
+    def predict_proba(self, x): ...
+    def latent(self, x):
+        return self.encoder(x)      # (windows, embedding size)
+```
+
+The model has to be trained first: press **Train**, then **Start**. If it has not been, the viewer still opens on the features, and the status line says why the model's spaces are missing.
+
+Projections are fitted to at most **Points** windows, chosen at random and the same each time. Isomap's cost grows with the square of that number, so it runs off the render thread and the window says when it is computing. Each view is computed once and kept, so going back to one is immediate.
+
+# Looking at the predictions
+
+A single accuracy says how often a model is right, not *when* it is wrong: at the onset of a motion, at its end, on one class, on one repetition. The **Prediction Viewer** block shows that. Connect a model block's output to its Model input and the Stored Data block's Labels to its Labels input, train the model, then press **Start**.
+
+```
+Stored Data --EMG--> Window --> Features --> Classifier --> Prediction Viewer
+     \--Labels-----------------------------------------------/
+```
+
+Once the recording has been read, a window opens with three plots that share a time axis:
+
+- the EMG, one trace per channel, each scaled to its own spread, tinted by the class that was performed;
+- the model's probability for every class over time (for a regressor, its outputs beside their targets, per degree of freedom);
+- the class predicted, under the class performed, as two bands of colour.
+
+**Show** picks how the recordings are laid out:
+
+| View | What it shows |
+| --- | --- |
+| Recording | One file: one repetition of one motion, as a collection writes them. **Previous** and **Next** step through them. |
+| Stream | Every recording that shares a value of a filename field, such as a set or repetition number, end to end in time with a short gap between them. Pick the field under **Stream by** and the value under **Value**. |
+
+Each recording is predicted on its own, and a model with memory -- a recurrent network, a transformer -- starts each one fresh, as it was trained to, rather than carrying a state across the join between two files.
+
+## Training and held-out data
+
+**Data** narrows the recordings to the ones the model trained on or the ones it never saw, and the accuracy is reported for each. Which is which comes from one of two places:
+
+- The block's **Held Out Field** and **Held Out Values**. With `sets` and `3`, every recording whose filename says set 3 is held out and every other one is training data. Use this when the model was trained on a different selection of files, or by a script.
+- A Deep Model block trained from this pipeline. It holds whole recordings out for validation while it trains and remembers which; left empty, the block uses that.
+
+With neither, every recording is shown and **Data** offers only *All*.
+
+## Saving the session as a figure
+
+**Save figure...** writes every recording the Data filter lets through to one PNG: a row per class, a column per value of the first filename field (a set or repetition), and in each panel the recording's EMG above a strip whose background is the class performed and whose line is coloured by the class predicted, at the model's probability for it. Held-out recordings are framed. The same figure is available from code:
+
+```Python
+from libemg.pipeline import compile_pipeline
+from libemg._gui._pipeline.prediction_viewer import save_grid_figure
+
+pipeline = compile_pipeline(document)
+pipeline.run()
+save_grid_figure(pipeline.prediction_view, "predictions.png")
+```
+
+`pipeline.prediction_view["recordings"]` holds, for each file, its `signal`, its filename `meta`, the window labels as `truth`, the model's `outputs` and `predicted` class, and its `split`: everything needed for a figure of your own.
 
 # Saving and loading
 

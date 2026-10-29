@@ -1,12 +1,17 @@
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import pygame
 import numpy as np
 
-from libemg.environments.controllers import Controller
-from libemg.environments._base import Environment
+from libemg.adaptation._base import ciil_direction, produce_tciil_feedback
+from libemg.environments.controllers import ClassifierController, Controller
+from libemg.environments._base import Environment, PredictionMap
+from libemg.environments.recording import RecordingConfig
+
+#: What each of the task's commands is called, in the order a person reads them.
+ACTIONS = {'N': 'up', 'S': 'down', 'W': 'left', 'E': 'right', 'NM': 'no motion'}
 
 
 OUTSIDE_TARGET = pygame.USEREVENT + 1
@@ -80,7 +85,8 @@ class FittsConfig:
 
 
 class Fitts(Environment):
-    def __init__(self, controller: Controller, config: FittsConfig, prediction_map: dict | None = None):
+    def __init__(self, controller: Controller, config: FittsConfig, prediction_map: dict | None = None,
+                 recording: RecordingConfig | None = None):
         """Fitts style task. Targets are generated at random and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -92,9 +98,12 @@ class Fitts(Environment):
         prediction_map : dict | None, optional
             Maps received control commands to cursor movement - only used if a non-continuous controller is used (e.g., classifier). If a continuous controller is used (e.g., regressor),
             then 2 DoFs are expected when parsing predictions and this parameter is not used. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to
-            down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and 
-            values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). All of these actions must be 
-            represented by a single key in the dictionary. Defaults to None.
+            down, up, no motion, right, and left, respectively. For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and
+            values map to actions in the environment. Accepted actions are: 'S' (down), 'N' (up), 'NM' (no motion), 'E' (right), and 'W' (left). An action no key maps to
+            is simply never taken. Pass a libemg.environments._base.PredictionMap to have every signal it does not list take one action (usually 'NM'); the default map
+            is one, so a class it does not list holds the cursor still rather than ending the task. Defaults to None.
+        recording : RecordingConfig | None, optional
+            Record every frame: the model's output, the cursor and target, and the CIIL label. See libemg.environments.recording. Defaults to None.
         """
         # logging information
         log_dictionary = {
@@ -114,7 +123,8 @@ class Fitts(Environment):
             4: 'W'
         }
         self.config = config
-        super().__init__(controller, fps=self.config.fps, log_dictionary=log_dictionary, save_file=self.config.save_file)
+        super().__init__(controller, fps=self.config.fps, log_dictionary=log_dictionary, save_file=self.config.save_file,
+                         recording=recording)
 
         if self.config.mapping == 'cartesian':
             self.render_as_polar = False
@@ -124,11 +134,24 @@ class Fitts(Environment):
             raise ValueError(f"Unexpected value for mapping. Got: {self.config.mapping}.")
 
         if prediction_map is None:
-            prediction_map = default_prediction_map
-        assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
+            prediction_map = PredictionMap(default_prediction_map, default='NM')
+        commands = set(default_prediction_map.values())
+        # Every command the map produces has to be one the task knows. Not every command has to be
+        # produced: a model with no class for 'left' can still drive a task, it just never goes left.
+        produced = set(prediction_map.values()) | {getattr(prediction_map, 'default', 'NM')}
+        assert produced <= commands, f"Expected prediction map values among {sorted(commands)}. Got: {prediction_map}."
 
         self.prediction_map = prediction_map
+        # The class that triggers each command, for labelling a frame with the class it should have
+        # been. The lowest class wins where several trigger the same command.
+        self.class_of_command = {}
+        for received, command in sorted(prediction_map.items(), key=lambda item: item[0]):
+            self.class_of_command.setdefault(command, received)
         self.current_direction = [0., 0.]
+        # What the controller last said, held between messages, as the cursor's motion is.
+        self.last_predictions = None
+        self.last_pc = None
+        self.trial_distance = 0.
 
     def game_setup(self):
         self.font = pygame.font.SysFont('helvetica', 40)
@@ -224,6 +247,8 @@ class Fitts(Environment):
                 pc = data[2]
             else:
                 pc = [1. for _ in predictions]
+            self.last_predictions = list(predictions)
+            self.last_pc = list(pc)
 
             if len(predictions) == 1 and len(pc) == 1:
                 # Output is a class/action, not a set of DOFs
@@ -255,6 +280,10 @@ class Fitts(Environment):
             # No data has been received, so don't start counting
             print('Waiting for Fitts to receive data...')
             return
+
+        if self.recording_frames:
+            # Before the dwell check below can move the target: this is the frame the user was looking at.
+            self._record()
 
         ## CHECKING FOR COLLISION BETWEEN CURSOR AND RECTANGLES
         # This used to read `event`, the leftover loop variable from the pygame.event.get() loop above,
@@ -312,6 +341,7 @@ class Fitts(Environment):
         left = x - target_radius
         top = y - target_radius
         self.goal_target = pygame.Rect(left, top, target_radius * 2, target_radius * 2)
+        self.trial_distance = math.dist(self.cursor.center, self.goal_target.center)
 
         self.trial += 1
         if self.trial == self.config.num_trials:
@@ -323,8 +353,57 @@ class Fitts(Environment):
         self.log_dictionary['goal_target'].append((self.goal_target.centerx, self.goal_target.centery, self.goal_target[2]))
         self.log_dictionary['global_clock'].append(time.perf_counter())
         self.log_dictionary['cursor_position'].append((self.cursor.centerx, self.cursor.centery, self.cursor[2]))
-        self.log_dictionary['class_label'].append(label) 
-        self.log_dictionary['current_direction'].append(self.current_direction)
+        self.log_dictionary['class_label'].append(label)
+        # A copy: current_direction is updated in place every frame, so appending the list itself
+        # made every logged entry read as the last direction.
+        self.log_dictionary['current_direction'].append(list(self.current_direction))
+
+    def _record(self):
+        """Record this frame: what the model said, where things are, and what it should have said."""
+        cursor = self.cursor.center
+        target = self.goal_target.center
+        in_target = bool(self.Event_Flag)
+        # Screen y grows downwards; the model's y grows upwards (an 'N' prediction moves the cursor up).
+        to_target = [target[0] - cursor[0], cursor[1] - target[1]]
+        norm = math.hypot(*to_target)
+        optimal = [0., 0.] if in_target or norm == 0 else [to_target[0] / norm, to_target[1] / norm]
+
+        predictions = self.last_predictions or []
+        model, adaptation = {}, {'optimal_x': optimal[0], 'optimal_y': optimal[1]}
+        if len(predictions) == 1:
+            # A class (or, from the keyboard, a key). Its CIIL label is a class too, so only a classifier gets one.
+            command = self.prediction_map[predictions[0]]
+            model = {'prediction': predictions[0], 'speed': self.last_pc[0]}
+            if isinstance(self.controller, ClassifierController):
+                label = ciil_direction(to_target, in_target, command)
+                adaptation['ciil_class'] = self.class_of_command.get(label)
+        elif len(predictions) == 2:
+            model = {'output_x': predictions[0], 'output_y': predictions[1]}
+            # The tolerant CIIL label works in screen coordinates, as the cursor moves. It divides by its own
+            # length, which is zero inside the target and when no direction helps: that label is no motion.
+            with np.errstate(divide='ignore', invalid='ignore'):
+                label = produce_tciil_feedback(list(cursor), list(self.current_direction), list(target),
+                                               self.goal_target.width // 2, self.trial_distance)
+            label = [0. if not np.isfinite(value) else float(value) for value in label]
+            adaptation['ciil_x'], adaptation['ciil_y'] = label[0], -label[1]
+
+        self.record_frame(self.trial, model=model, adaptation=adaptation, game={
+            'cursor_x': cursor[0], 'cursor_y': cursor[1],
+            'target_x': target[0], 'target_y': target[1], 'target_radius': self.goal_target.width // 2,
+            'in_target': in_target,
+            'velocity_x': self.current_direction[0], 'velocity_y': self.current_direction[1],
+        })
+
+    def recording_details(self):
+        details = super().recording_details()
+        details['config'] = asdict(self.config)
+        if isinstance(self.controller, ClassifierController):
+            # The class each action was mapped to: what ciil_class and prediction mean.
+            details['actions'] = {ACTIONS[command]: cls for command, cls in self.class_of_command.items()
+                                  if command in ACTIONS}
+        details['coordinates'] = ("cursor/target/velocity in screen pixels, y down; optimal, output and "
+                                  "ciil in the model's space, y up")
+        return details
 
     def _map_to_polar_space(self, x, y):
         radius = np.interp(x, (0, self.config.width), (0, min(self.config.width // 2, self.config.height)))  # limit radius based on screen dimensions so circles stay on screen
@@ -373,7 +452,8 @@ class Fitts(Environment):
 
 
 class ISOFitts(Fitts):
-    def __init__(self, controller: Controller, config: FittsConfig, prediction_map: dict | None = None, num_targets: int = 8, target_distance_radius: int = 275):
+    def __init__(self, controller: Controller, config: FittsConfig, prediction_map: dict | None = None, num_targets: int = 8, target_distance_radius: int = 275,
+                 recording: RecordingConfig | None = None):
         """ISO Fitts style task. Targets are generated in a circle and the user is asked to acquire targets as quickly as possible.
 
         Parameters
@@ -392,6 +472,8 @@ class ISOFitts(Fitts):
             Number of targets in task. Defaults to 8.
         target_distance_radius : int, optional
             Radius (in pixels) of target of targets in Iso Fitts' environment. Defaults to 275.
+        recording : RecordingConfig | None, optional
+            Record every frame, as Fitts does. Defaults to None.
         """
         width_is_too_small = target_distance_radius > config.width // 2
         height_is_too_small = target_distance_radius > config.height // 2
@@ -425,7 +507,7 @@ class ISOFitts(Fitts):
             ))
             angle += angle_increment
 
-        super().__init__(controller, config, prediction_map=prediction_map)
+        super().__init__(controller, config, prediction_map=prediction_map, recording=recording)
 
     def _draw_targets(self):
         for target in self.targets:
@@ -448,3 +530,4 @@ class ISOFitts(Fitts):
                 self.next_target_in = self.num_of_targets // 2
                 self.target_jump = 0
         self.goal_target = self.targets[self.goal_target_idx]
+        self.trial_distance = math.dist(self.cursor.center, self.goal_target.center)

@@ -184,6 +184,44 @@ def produce_tciil_feedback(current_location: list[int, int],
     
     return pseudo_label
 
+def ciil_direction(to_target: list[float, float],
+                   in_target: bool,
+                   current_direction: str | None = None) -> str:
+    """Context-informed incremental learning (CIIL) label for a four-direction cursor controller.
+
+    What a discrete controller should have output at this moment, as described in
+    "Context-informed incremental learning improves both the performance and resilience of
+    myoelectric control", Campbell et al. 2024:
+
+    - inside the target, no motion, so the cursor dwells;
+    - otherwise the direction it is moving in, if that brings it closer to the target, so any
+      output that helps is kept as it was;
+    - otherwise the direction along whichever axis the target is further away on.
+
+    Parameters
+    ----------
+    to_target : list
+        Target position minus cursor position, with x to the right and y upwards.
+    in_target : bool
+        Whether the cursor is inside the target.
+    current_direction : str or None
+        The direction the controller is producing: 'N', 'S', 'E', 'W' or 'NM'.
+
+    Returns
+    -------
+    str
+        'N', 'S', 'E', 'W' or 'NM'.
+    """
+    if in_target:
+        return 'NM'
+    dx, dy = float(to_target[0]), float(to_target[1])
+    helps = {'E': dx > 0, 'W': dx < 0, 'N': dy > 0, 'S': dy < 0}
+    if helps.get(current_direction, False):
+        return current_direction
+    if abs(dx) >= abs(dy):
+        return 'E' if dx > 0 else 'W'
+    return 'N' if dy > 0 else 'S'
+
 def get_optimal_direction(current_location: list[int, int],
                           target_location: list[int, int]) -> list[int, int]:
     return [i - j for i, j in zip(target_location, current_location)]

@@ -163,6 +163,13 @@ class _ModelHook(Hook):
         # spawned process needs, so the hook carries a path and opens it here.
         with open(self.model_path, "rb") as handle:
             self._predictor = pickle.load(handle)
+        # A model with memory -- a recurrent network, a transformer over a
+        # horizon -- is fed one window per step live, so it has to carry its
+        # state from one step to the next instead of starting fresh each time.
+        model = getattr(self._predictor, "model", self._predictor)
+        if hasattr(model, "streaming"):
+            model.streaming = True
+            model.reset()
 
     def step(self, data, snapshots):
         model_input = np.atleast_2d(data[self.source])
@@ -364,6 +371,22 @@ class OfflinePipeline:
         self.files_read = 0
         self.files_total = 0
         self._stop = False
+        #: A name per feature column, from the last read of the recording.
+        self.feature_names = []
+        #: Windows in each file of the last read, in order.
+        self.file_windows = []
+        #: Every EpochResult of the last deep training run, as they completed.
+        self.epochs = []
+        #: The last deep training run as a TrainingOutcome, once it has finished.
+        self.outcome = None
+        #: For a Feature Viewer block: features, names, labels and its settings.
+        self.feature_view = None
+        #: For a Prediction Viewer block: every recording's signal, labels and
+        #: what the model made of it (see :mod:`.prediction_viewer`).
+        self.prediction_view = None
+        #: Per file of the last read, when a Prediction Viewer wants them: the
+        #: filtered signal, the window labels and the filename metadata.
+        self.file_details = []
 
     def request_stop(self):
         """Ask a run in progress to finish early."""
@@ -394,11 +417,21 @@ class OfflinePipeline:
             return self.results
 
         predictions = None
-        if plan["model_path"]:
+        predictor = None
+        view = plan.get("feature_view")
+        model_missing = bool(plan["model_path"]) and not os.path.exists(plan["model_path"])
+        # Scoring cannot happen without the model. A Feature Viewer can still
+        # draw the features, so when it is the only thing that wanted the model
+        # the run goes on and the viewer says why the model's spaces are absent.
+        if model_missing and (plan["metrics"] or plan.get("prediction_view") or view is None):
+            raise CompileError(
+                f"The model block's Fitted Model file {plan['model_path']} does not exist "
+                "yet. Press Train to fit and save it first.")
+        if plan["model_path"] and not model_missing:
             import pickle
             with open(plan["model_path"], "rb") as handle_:
                 predictor = pickle.load(handle_)
-            model_input = features if features is not None else windows
+            model_input = self._model_input(windows, features)
             predictions = np.asarray(predictor._predict(model_input))
             # Classification metrics compare indices, and an index that came
             # back as a float would make every comparison and every confusion
@@ -410,6 +443,30 @@ class OfflinePipeline:
                     truth = np.asarray(truth).astype(int)
             elif predictions.ndim == 1:
                 predictions = predictions.reshape(-1, 1)
+
+        # What a Feature Viewer block draws: the matrix, a name per column and
+        # the labels, kept so the window can change its view without reading
+        # the recording again.
+        self.feature_view = None
+        if view is not None and features is not None:
+            self.feature_view = {"features": features, "names": list(self.feature_names),
+                                 "labels": truth if view.get("labels") else None,
+                                 "params": view, "spaces": [], "model_note": ""}
+            if view.get("model"):
+                # A connected model adds the spaces it works in: its latent
+                # space, its decision scores, its outputs.
+                from libemg._gui._pipeline.feature_viewer import model_spaces
+                if predictor is None:
+                    self.feature_view["model_note"] = (
+                        "The connected model has not been trained yet, so only the features "
+                        "are shown. Press Train, then Start again.")
+                else:
+                    self.feature_view["spaces"] = model_spaces(
+                        predictor, features if features is not None else windows)
+
+        self.prediction_view = None
+        if plan.get("prediction_view") is not None and predictor is not None:
+            self.prediction_view = self._prediction_view(predictor, windows, features)
 
         self.results = {}
         if plan["metrics"] and predictions is not None and truth is not None:
@@ -461,6 +518,11 @@ class OfflinePipeline:
         self.files_read = 0
 
         windows, labels = [], []
+        # Windows per file, in order, so a model that reads sequences is never
+        # trained across the join between two recordings.
+        self.file_windows = []
+        self.file_details = []
+        keep_details = plan.get("prediction_view") is not None
         window_size, increment = plan["window_size"], plan["window_increment"]
         conditioner = None
         if plan["filters"]:
@@ -484,8 +546,13 @@ class OfflinePipeline:
             enframed = get_windows(block, window_size, increment)
             if enframed.shape[0]:
                 windows.append(enframed)
+                self.file_windows.append(int(enframed.shape[0]))
                 labels.append(self._labels_for(handler, plan["label_key"],
                                                index, window_size, increment))
+                if keep_details:
+                    self.file_details.append({
+                        "index": len(self.file_details), "signal": np.asarray(block),
+                        "truth": labels[-1], "meta": _file_metadata(handler, plan, index)})
             self.files_read = index + 1
             self.progress = (index + 1) / total
             if on_progress is not None:
@@ -500,11 +567,73 @@ class OfflinePipeline:
 
         features = None
         if plan["features"]:
-            features = FeatureExtractor().extract_features(
-                plan["features"], windows, array=True)
+            # Extracted by name and stacked in the order asked for, which is
+            # exactly what array=True builds, so that each column can be named.
+            by_name = FeatureExtractor().extract_features(plan["features"], windows)
+            features = np.hstack([by_name[name] for name in plan["features"]])
+            from libemg._gui._pipeline.feature_viewer import column_names
+            self.feature_names = column_names(plan["features"], by_name, windows.shape[1])
         return windows, features, truth
 
-    def train(self, on_progress=None, model_path=None):
+    def _prediction_view(self, predictor, windows, features):
+        """Predict every recording on its own, for a Prediction Viewer block.
+
+        Each recording is marked as training or held out when that is known:
+        from the block's own Held Out setting, or else from the recordings a
+        deep model put aside for validation while it trained here.
+        """
+        from libemg._gui._pipeline.prediction_viewer import predict_recordings
+        from libemg.emg_predictor import EMGClassifier
+
+        params = self.plan["prediction_view"]
+        model_input = self._model_input(windows, features)
+        edges = np.cumsum([0] + list(self.file_windows))
+        pieces = [model_input[a:b] for a, b in zip(edges[:-1], edges[1:])]
+        classification = isinstance(predictor, EMGClassifier)
+        results = predict_recordings(predictor, pieces, classification)
+        model = getattr(predictor, "model", predictor)
+        if hasattr(model, "reset"):
+            model.reset()
+        classes = getattr(model, "classes_", None)
+
+        splits = [""] * len(self.file_details)
+        field = (params.get("held_out_field") or "").strip()
+        values = {v.strip() for v in str(params.get("held_out_values") or "").split(",")
+                  if v.strip()}
+        note = ""
+        if field and values:
+            splits = ["held out" if str(d["meta"].get(field)) in values else "training"
+                      for d in self.file_details]
+            note = f"Held out: {field} {', '.join(sorted(values))}, as the block sets it."
+        else:
+            trained = getattr(model, "trained_on", None) or {}
+            held = trained.get("validation_indices") or []
+            if held and trained.get("recordings") == len(self.file_details):
+                splits = ["held out" if i in set(held) else "training"
+                          for i in range(len(self.file_details))]
+                note = "Held out: the recordings the model was validated on while it trained."
+
+        recordings = []
+        for detail, (outputs, predicted), split in zip(self.file_details, results, splits):
+            truth = detail["truth"]
+            if truth is not None and classification:
+                truth = np.asarray(truth).reshape(len(truth), -1)[:, 0].astype(int)
+            recordings.append(dict(detail, truth=truth, outputs=outputs,
+                                   predicted=predicted, split=split))
+        return {"task": "classification" if classification else "regression",
+                "classes": [] if classes is None else list(np.asarray(classes).tolist()),
+                "sampling_rate": self.plan["sampling_rate"],
+                "window_size": self.plan["window_size"],
+                "window_increment": self.plan["window_increment"],
+                "params": params, "note": note, "recordings": recordings}
+
+    def _model_input(self, windows, features):
+        """What the model block reads: features, or the raw windows it is linked to."""
+        if self.plan.get("model_input") == "windows" or features is None:
+            return windows
+        return features
+
+    def train(self, on_progress=None, model_path=None, on_epoch=None):
         """Fit the pipeline's model on this recording and save it.
 
         The last thing that still needed a script. A model block names a model
@@ -521,6 +650,10 @@ class OfflinePipeline:
             Where to save. Defaults to the model block's own Fitted Model path,
             which is what makes the trained model immediately usable by the
             pipeline that trained it.
+        on_epoch: callable or None (optional), default=None
+            For a Deep Model block: called with each
+            :class:`~libemg.deep.training.EpochResult` as an epoch completes.
+            Every result is also kept in ``self.epochs``.
 
         Returns
         ----------
@@ -549,6 +682,8 @@ class OfflinePipeline:
         name = plan.get("model_name") or ""
         if not name:
             raise CompileError("This pipeline has no model block to train.")
+        if plan.get("deep"):
+            return self._train_deep(destination, on_progress, on_epoch)
         if name not in CLASSIFIER_MODELS and name not in REGRESSOR_MODELS:
             # Checked before the recording is read, not after. A misspelled
             # model would otherwise be reported only once the whole folder had
@@ -612,6 +747,101 @@ class OfflinePipeline:
                 "classes": sorted(set(np.asarray(labels).ravel().tolist()))
                 if name in CLASSIFIER_MODELS else None,
                 "dofs": None if name in CLASSIFIER_MODELS else int(labels.shape[1])}
+
+    def _train_deep(self, destination, on_progress=None, on_epoch=None):
+        """Train a Deep Model block's network, reporting every epoch as it ends.
+
+        The recording is read exactly as for any other model, then split back
+        into its files: a sequence model is trained on each file in order and
+        never across the join between two. A stop asked for mid-training keeps
+        the best epoch so far and saves it -- unlike a statistical fit, a
+        network's best epoch is a finished model, not half of one.
+        """
+        import pickle
+        from libemg.deep import DeepModel, TrainingSet
+        from libemg.emg_predictor import EMGClassifier, EMGRegressor
+
+        params = self.plan["deep"]
+        task = str(params.get("task", "Classification")).lower()
+        timing = str(params.get("timing", "Continuous")).lower()
+        windows, features, truth = self._gather(on_progress)
+        if self.stopped:
+            raise CompileError("Training was stopped while the recording was being read, "
+                               "so nothing was trained or saved.")
+        if windows is None:
+            raise CompileError(
+                "That recording produced no windows. Check the folder, the regex filters, "
+                "and that the window is not longer than the recordings.")
+        if truth is None:
+            raise CompileError(
+                "That recording carries no labels, so there is nothing to learn from. Set "
+                "the Stored Data block's Label Key to a metadata field its regex filters "
+                "produce.")
+        inputs = self._model_input(windows, features)
+        count = min(len(inputs), len(truth))
+        lengths = list(self.file_windows)
+        if sum(lengths) != count:
+            lengths = [count]
+        try:
+            training = TrainingSet.from_arrays(inputs[:count], np.asarray(truth)[:count],
+                                               lengths=lengths, task=task, timing=timing)
+        except ValueError as error:
+            raise CompileError(str(error)) from error
+        patience = int(params.get("patience", 10))
+        model = DeepModel(
+            str(params.get("architecture", "GRU")).lower(), task=task, timing=timing,
+            pooling=params.get("pooling", "max"), hidden_size=int(params.get("hidden_size", 64)),
+            layers=int(params.get("layers", 2)),
+            embedding_size=int(params.get("embedding_size", 32)),
+            dropout=float(params.get("dropout", 0.1)), horizon=int(params.get("horizon", 10)),
+            epochs=int(params.get("epochs", 50)),
+            learning_rate=float(params.get("learning_rate", 1e-3)),
+            batch_size=int(params.get("batch_size", 32)),
+            sequence_length=int(params.get("sequence_length", 32)),
+            patience=patience or None, seed=int(params.get("seed", 0)))
+
+        self.epochs = []
+
+        def record(result):
+            self.epochs.append(result)
+            if on_epoch is not None:
+                on_epoch(result)
+
+        try:
+            model.fit(training, validation=float(params.get("validation", 0.2)),
+                      on_epoch=record, should_stop=lambda: self._stop)
+        except ValueError as error:
+            raise CompileError(str(error)) from error
+        if not model.history:
+            raise CompileError("Training was stopped before its first epoch finished, so "
+                               "there is nothing to save.")
+        self.stopped = bool(self._stop)
+        predictor = EMGClassifier(model) if task == "classification" else EMGRegressor(model)
+        folder = os.path.dirname(os.path.abspath(destination))
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+        with open(destination, "wb") as handle:
+            pickle.dump(predictor, handle)
+        # The run, kept beside the model as JSON: readable without the model or
+        # PyTorch, and what the Training History window draws in a later session.
+        from libemg.deep import OUTCOME_SUFFIX
+        self.outcome = model.outcome(model_path=destination,
+                                     data={"folder": self.plan.get("folder", ""),
+                                           "features": list(self.plan.get("features") or []),
+                                           "window_size": self.plan.get("window_size"),
+                                           "window_increment": self.plan.get("window_increment")})
+        outcome_path = os.path.splitext(destination)[0] + OUTCOME_SUFFIX
+        self.outcome.save(outcome_path)
+        best = min(model.history, key=lambda r: r.validation_loss
+                   if r.validation_loss is not None else r.train_loss)
+        return {"model_path": destination, "windows": int(training.windows),
+                "features": int(np.prod(training.input_shape)),
+                "recordings": len(training.recordings),
+                "classes": training.classes if task == "classification" else None,
+                "dofs": training.dofs if task == "regression" else None,
+                "epochs": len(model.history), "best_epoch": best.epoch,
+                "best_score": best.score, "score_name": best.score_name,
+                "stopped": self.stopped, "outcome_path": outcome_path}
 
     @staticmethod
     def _labels_for(handler, key, index, window_size, increment):
@@ -825,7 +1055,10 @@ def _compile_online(document, log, probe_rows, buffer_rows):
                 raise CompileError(
                     f"'{spec.title}' ({node_id}) needs a fitted model to run live. "
                     "Set its Fitted Model parameter to a saved predictor.")
-            width = 2 if spec.id == "model.classifier" else 8
+            classifies = spec.id == "model.classifier" or (
+                spec.id == "model.deep"
+                and str(node.params.get("task", "Classification")) == "Classification")
+            width = 2 if classifies else 8
             target = tag_for(node_id, "output")
             declare(target, (probe_rows, width))
             channels_of[target] = width
@@ -833,7 +1066,7 @@ def _compile_online(document, log, probe_rows, buffer_rows):
             # it. Features arrive one row at a time; raw windows arrive on the
             # window's increment.
             feeds_features = _feeds_category(document, node_id, FEATURES)
-            hook_type = _ClassifierHook if spec.id == "model.classifier" else _RegressorHook
+            hook_type = _ClassifierHook if classifies else _RegressorHook
             if feeds_features:
                 hook = hook_type(node_id, upstream, target, path, width,
                                  rows=probe_rows, criterion=OnSamples(1), mode=LATEST)
@@ -904,7 +1137,9 @@ def _compile_offline(document):
             "label_key": "classes", "sampling_rate": 1000,
             "filters": [], "channels": None, "window_size": 200,
             "window_increment": 50, "features": [], "model_path": "",
-            "model_name": "", "metrics": [], "null_label": None}
+            "model_name": "", "metrics": [], "null_label": None,
+            "feature_view": None, "model_input": "features", "deep": None,
+            "prediction_view": None}
 
     for node_id in document.order():
         node = document.nodes[node_id]
@@ -943,12 +1178,49 @@ def _compile_offline(document):
             # Carried so the pipeline can fit this model, not only run one that
             # was fitted elsewhere.
             plan["model_name"] = node.params.get("model", "")
+            # A model reads features or raw windows, whichever is connected. A
+            # pipeline can extract features for a Feature Viewer while a CNN
+            # reads the windows, so it is the link that decides, not whether a
+            # Features block exists.
+            plan["model_input"] = "windows" if any(
+                link.to_port == "windows" for link in document.links_into(node_id))                 else "features"
+            if spec.id == "model.deep":
+                plan["model_name"] = "deep"
+                plan["deep"] = dict(node.params)
         elif spec.id == "sink.metrics":
             plan["metrics"] = list(node.params.get("metrics") or [])
             null_label = node.params.get("null_label", -1)
             plan["null_label"] = None if null_label in (-1, None) else int(null_label)
+        elif spec.id == "sink.feature_viewer":
+            plan["feature_view"] = dict(node.params)
+            # Its labels input is optional: without a link the points are
+            # drawn in one colour even if the recording carries labels.
+            plan["feature_view"]["labels"] = any(
+                link.to_port == "labels" for link in document.links_into(node_id))
+            plan["feature_view"]["model"] = any(
+                link.to_port == "model" for link in document.links_into(node_id))
+        elif spec.id == "sink.prediction_viewer":
+            plan["prediction_view"] = dict(node.params)
 
     return OfflinePipeline(document, plan)
+
+
+def _file_metadata(handler, plan, index):
+    """What a file's name says about it: each named filename filter, and its value.
+
+    The handler keeps a filter's match as an index into the filter's values,
+    repeated on every sample; this turns it back into the value itself.
+    """
+    meta = {}
+    for spec in plan["regex_filters"]:
+        name = spec.get("description") or ""
+        column = getattr(handler, name, None) if name else None
+        if column is None or index >= len(column):
+            continue
+        position = int(np.ravel(column[index])[0])
+        values = list(spec.get("values") or [])
+        meta[name] = values[position] if 0 <= position < len(values) else position
+    return meta
 
 
 def _metadata_fetchers(plan):

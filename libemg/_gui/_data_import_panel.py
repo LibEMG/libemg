@@ -4,6 +4,7 @@ import json
 import libemg
 import numpy as np
 from libemg.data_handler import RegexFilter
+from libemg._gui import _style as style
 
 class DataImportPanel:
     def __init__(self, 
@@ -24,31 +25,28 @@ class DataImportPanel:
     def spawn_configuration_window(self):
         self.cleanup_window("configuration")
         with dpg.window(tag="__di_configuration_window",
-                        label="Data Import Configuration",
+                        label="Import Data",
                         width=720,
                         height=480):
-            
-            # dpg.add_spacer(height=50)
-            dpg.add_text(label="Import Menu")
-            
-            with dpg.group(horizontal=True):
-                dpg.add_text(default_value="Data Folder")
-                dpg.add_input_text(default_value=self.data_folder, tag="__di_data_folder", callback=self.check_data_folder)
-            
-            dpg.add_text(label="Preliminary Check Portal")
+            style.note("Load a dataset recorded with LibEMG: a folder of CSV files with a "
+                       "collection_details.json beside them.", wrap=680)
 
-            dpg.add_text(label=" ", tag="__di_folder_validation")
+            style.section("Folder")
+            with style.form(label_width=120):
+                with style.row("Data folder", help="The folder the dataset was saved to. "
+                               "End it with a slash."):
+                    dpg.add_input_text(default_value=self.data_folder, tag="__di_data_folder",
+                                       width=-1, callback=self.check_data_folder)
+            style.note("", tag="__di_folder_validation", wrap=680)
             self.check_data_folder()
 
-            with dpg.group(horizontal=True):
-                dpg.add_text(default_value="Data Alias")
-                dpg.add_input_text(default_value="Dataset" + str(np.random.randint(0,100)), tag="__di_data_alias")
-
-            dpg.add_button(label="Import", callback=self.import_button_callback)
-            
-            dpg.add_text(label="Import Portal")
-            
-            dpg.add_text(label=" ", tag="__di_import_validation")
+            style.section("Import")
+            with style.form(label_width=120):
+                with style.row("Name", help="What the dataset is called elsewhere in the window."):
+                    dpg.add_input_text(default_value="Dataset" + str(np.random.randint(0,100)),
+                                       tag="__di_data_alias", width=260)
+            style.button("Import", "primary", width=110, callback=self.import_button_callback)
+            style.note("", tag="__di_import_validation", wrap=680)
 
     def check_data_folder(self):
         folder_location   = dpg.get_value(item="__di_data_folder")
@@ -63,7 +61,8 @@ class DataImportPanel:
                     with open(folder_location + "collection_details.json") as f:
                         self.collection_details = json.load(f)
                     for key in self.collection_details.keys():
-                        validation_text += "\t" +  key + ": "+\
+                        # Spaces, not a tab: DearPyGui draws a tab as nothing.
+                        validation_text += "    " +  key + ": "+\
                               str(self.collection_details[key]) + "\n"
                     
                     validation_text += "Ready to Import!"
@@ -77,7 +76,8 @@ class DataImportPanel:
                                     "If dataset was collected outside of libemg, make sure dataset is interfaceable and has a collection_details.json file!"
         else:
             validation_text += "Folder does not exist."
-        dpg.set_value(item="__di_folder_validation", value=validation_text)
+        style.set_status("__di_folder_validation", validation_text,
+                         "ok" if self.ready_to_import else "warn")
 
     def import_button_callback(self):
         validation_text = ""
@@ -93,7 +93,7 @@ class DataImportPanel:
             self.gui.offline_data_handlers.append(offline_data_handler)
             self.gui.offline_data_aliases.append(dpg.get_value("__di_data_alias"))
             validation_text += "Import successful"
-        
 
-        dpg.set_value(item="__di_import_validation", value=validation_text)
+        style.set_status("__di_import_validation", validation_text,
+                         "ok" if self.ready_to_import else "error")
         

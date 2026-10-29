@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from libemg._gui import _protocol_panel as panel_module
+from libemg._gui import _style
 from libemg._gui._protocol_panel import ProtocolPanel, _numbers, _parse_factors
 from libemg.protocol import PROTOCOL_NAME, CollectionProtocol, Segment
 
@@ -15,6 +16,10 @@ def dpg(monkeypatch):
     fake = MagicMock()
     fake.does_item_exist.return_value = True
     monkeypatch.setattr(panel_module, "dpg", fake)
+    # The panel draws through libemg._gui._style too, which holds its own
+    # handle on DearPyGui. Left real, it would draw with no context, and that
+    # takes the interpreter down rather than raising.
+    monkeypatch.setattr(_style, "dpg", fake)
     return fake
 
 

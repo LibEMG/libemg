@@ -96,9 +96,19 @@ def get_windows(data, window_size, window_increment):
 
 def _get_mode_windows(data, window_size, window_increment):
     windows = get_windows(data, window_size, window_increment)
-    # we want to get the mode along the final dimension
-    mode_of_windows = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=2, arr=windows.astype(np.int64))
-    
+    # we want to get the mode along the final dimension. np.bincount finds it, and takes only
+    # non-negative integers, which metadata often is not: -1 for "no class", NaN for "no label", a
+    # float such as a cursor position. Casting those to int64 failed on the first two and truncated
+    # the third. So the mode is taken over each value's rank among the distinct values and mapped
+    # back. For non-negative integer labels that is the same mode, ties included (smallest wins).
+    values, ranks = np.unique(windows, return_inverse=True)
+    ranks = ranks.reshape(windows.shape)
+    mode_of_windows = values[np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=2, arr=ranks)]
+    as_float = values.astype(float)
+    if not np.isnan(as_float).any() and np.all(as_float == np.round(as_float)):
+        # Whole-number labels come back as integers, as they always have.
+        mode_of_windows = mode_of_windows.astype(np.int64)
+
     return mode_of_windows.squeeze()
 
 def _get_fn_windows(data, window_size, window_increment, fn):

@@ -60,6 +60,8 @@ def _expected_fitts_settings():
     """
     expected = {}
     for field in dataclasses.fields(FittsConfig):
+        if field.name == "save_file":
+            continue        # the Save section replaces it; see test_save_file_is_not_offered
         has_default = not (field.default is dataclasses.MISSING
                            and field.default_factory is dataclasses.MISSING)
         default = field.default
@@ -146,12 +148,21 @@ def test_iso_fitts_adds_its_ring_to_everything_fitts_offers(registry):
                                         ("mapping", ENUM),
                                         ("cursor_color", COLOR),
                                         ("background_color", COLOR),
-                                        ("save_file", STR)])
+                                        ("game_time", FLOAT)])
 def test_a_settings_kind_follows_its_declared_type(registry, name, kind):
     setting = registry["fitts"].setting(name)
 
     assert setting is not None, f"{name} is not offered at all"
     assert setting.kind == kind
+
+
+@pytest.mark.parametrize("environment", ["fitts", "iso_fitts", "emg_hero"])
+def test_save_file_is_not_offered(registry, environment):
+    # The setup screen saves through its Save section, which records the EMG
+    # too and writes files a data handler reads. The environment's own pickle
+    # beside it would be a second, different answer to where the data went.
+    assert registry[environment].setting("save_file") is None
+    assert registry[environment].setting("recording") is None
 
 
 def test_an_optional_number_is_marked_optional_and_a_required_one_is_not(registry):
@@ -242,12 +253,13 @@ def test_zero_switches_off_an_optional_timeout_but_not_a_required_count(registry
 # ======================================================================
 # 19. a field the environment declares no default for
 # ======================================================================
-def test_a_required_field_gets_a_usable_default_and_a_label_that_says_so(registry):
+def test_a_required_field_gets_a_usable_default(registry):
     num_trials = registry["fitts"].setting("num_trials")
 
     assert num_trials.required is True
-    assert num_trials.label.endswith("(required)")
-    assert "Num Trials" in num_trials.label
+    # The control always holds a usable value, so the label no longer needs to
+    # say "(required)": it reads as what the setting is.
+    assert num_trials.label == "Trials"
     assert isinstance(num_trials.default, int) and num_trials.default > 0, \
         "a control showing zero looks like a setting rather than a blank"
     # Usable means the task runs with it, not merely that it is not None.
@@ -300,8 +312,7 @@ def test_emg_hero_settings_come_from_its_constructor(registry):
 
     assert settings["test_time"].kind == INT
     assert settings["min_speed"].kind == FLOAT
-    assert settings["save_file"].kind == STR
-    assert settings["save_file"].optional is True
+    assert "save_file" not in settings and "recording" not in settings
 
 
 def test_emg_hero_settings_show_the_constructors_own_help(registry):
@@ -386,3 +397,63 @@ def test_a_keyboard_factory_supplies_the_map_and_a_socket_one_does_not(registry)
     assert set(keyboard._prediction_map().values()) == {"N", "S", "E", "W", "NM"}
     assert classifier._prediction_map() is None, \
         "a classifier sends class indices, which the environment's default map covers"
+
+
+# ======================================================================
+# 24. how settings are presented
+# ======================================================================
+def test_every_setting_has_a_readable_label_and_a_heading(registry):
+    from libemg._gui._environments.registry import GROUP_ORDER, OTHER, PRESENTATION
+
+    for key, spec in registry.items():
+        for setting in spec.settings:
+            assert setting.group in GROUP_ORDER, (key, setting.name)
+            assert "_" not in setting.label, f"{key}.{setting.name} reads like code"
+            # Everything the built-in tasks offer has been described; Other is
+            # where a setting added later lands until somebody describes it.
+            assert setting.group != OTHER, f"{key}.{setting.name} has no heading yet"
+
+    assert registry["fitts"].setting("timeout").unit == "s"
+    assert registry["fitts"].setting("cursor_color").group == "Appearance"
+    assert registry["curricular_fitts"].setting("color_bg").label == "Background"
+    assert "num_trials" in PRESENTATION
+
+
+# ======================================================================
+# 25. which class does what
+# ======================================================================
+def test_the_default_class_map_reproduces_each_environments_own_map(registry):
+    # Leaving the mapping alone on the setup screen must change nothing.
+    for environment, own in (("fitts", {0: "S", 1: "N", 2: "NM", 3: "E", 4: "W"}),
+                             ("iso_fitts", {0: "S", 1: "N", 2: "NM", 3: "E", 4: "W"}),
+                             ("emg_hero", {0: 0, 1: 1, 2: -1, 3: 2, 4: 3})):
+        spec = registry[environment]
+        factory = build_factory(spec, ControllerSpec(kind="classifier",
+                                                     class_map=spec.default_class_map()),
+                                spec.defaults())
+        assert dict(factory._prediction_map()) == own, environment
+
+    assert registry["curricular_fitts"].actions == [], "a regressor-only task has no classes to map"
+
+
+def test_a_class_map_sends_unmapped_classes_to_the_idle_action(registry):
+    spec = registry["fitts"]
+    # A 16-class model: hand open up, power grasp down, extension right, flexion
+    # left, rest still; its other eleven classes have no action.
+    class_map = {"up": 8, "down": 7, "right": 1, "left": 2, "no_motion": 0}
+    factory = build_factory(spec, ControllerSpec(kind="classifier", class_map=class_map),
+                            spec.defaults())
+    mapping = factory._prediction_map()
+
+    assert [mapping[c] for c in (8, 7, 1, 2, 0)] == ["N", "S", "E", "W", "NM"]
+    assert mapping[11] == "NM" and mapping[15.0] == "NM", \
+        "a class with no action holds the cursor still instead of ending the task"
+    restored = pickle.loads(pickle.dumps(factory))
+    assert restored.controller.class_map == class_map
+
+    # -1 leaves an action without a class, and the task still accepts the map.
+    class_map["left"] = -1
+    mapping = build_factory(spec, ControllerSpec(kind="classifier", class_map=class_map),
+                            spec.defaults())._prediction_map()
+    assert "W" not in mapping.values()
+    Fitts(KeyboardController(), FittsConfig(num_trials=1), prediction_map=mapping)

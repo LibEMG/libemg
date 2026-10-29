@@ -41,6 +41,9 @@ class GUI:
         pauses included, nothing cut out -- and writes '_session_annotations.json' beside it saying where every
         stage of the collection sits in that recording. The per-repetition files are cut from it at those
         indices, and can be cut again afterwards with libemg.session.SessionAnnotations.
+        Data > Annotate Contractions opens on 'annotation_folder' and labels its time axis with 'sampling_rate'
+        (default 2000 Hz). Which files in that folder are recordings comes from the 'annotation' block of its
+        dataset_description.yaml (see libemg.annotations.DatasetIndex); 'annotation_spec' overrides that block.
         Visualize > Live Signal reads 'num_samples', 'refresh_rate' and 'plot_height' from this same dictionary.
     width: int, default=1920
         The width of the SGT window. 
@@ -98,13 +101,19 @@ class GUI:
 
     def _window_init(self, width, height, debug=False):
         dpg.create_context()
+        # One font, spacing and palette for every panel: DearPyGui's own is a
+        # 13 px bitmap font with tight padding.
+        from libemg._gui import _style
+        _style.apply()
         dpg.create_viewport(title="LibEMG",
                             width=width,
-                            height=height)
+                            height=height,
+                            clear_color=(22, 24, 27, 255))
         dpg.setup_dearpygui()
-        
+
 
         self._file_menu_init()
+        self._welcome_init()
 
         dpg.show_viewport()
         dpg.set_exit_callback(self._on_window_close)
@@ -144,7 +153,9 @@ class GUI:
 
         with dpg.viewport_menu_bar():
             with dpg.menu(label="File"):
-                dpg.add_menu_item(label="Exit")
+                dpg.add_menu_item(label="Start here", callback=self._welcome_init)
+                # Exit had no callback, so choosing it did nothing at all.
+                dpg.add_menu_item(label="Exit", callback=lambda: dpg.stop_dearpygui())
                 
             with dpg.menu(label="Device"):
                 dpg.add_menu_item(label="Streamer", callback=self._streamer_callback)
@@ -153,6 +164,8 @@ class GUI:
                 dpg.add_menu_item(label="Collection Protocol",
                                   callback=self._protocol_callback)
                 dpg.add_menu_item(label="Collect Data", callback=self._data_collection_callback)
+                dpg.add_menu_item(label="Annotate Contractions",
+                                  callback=self._annotation_callback)
                 #dpg.add_menu_item(label="Import Data",  callback=self._import_data_callback )
                 #dpg.add_menu_item(label="Export Data",  callback=self._export_data_callback)
                 #dpg.add_menu_item(label="Inspect Data", callback=self._inspect_data_callback)
@@ -162,6 +175,7 @@ class GUI:
 
             with dpg.menu(label="Pipeline"):
                 dpg.add_menu_item(label="Pipeline Editor", callback=self._pipeline_editor_callback)
+                dpg.add_menu_item(label="Training History", callback=self._training_history_callback)
 
             with dpg.menu(label="Environments"):
                 dpg.add_menu_item(label="Launch Environment",
@@ -172,6 +186,83 @@ class GUI:
 
             # with dpg.menu(label="HCI"):
                 # dpg.add_menu_item(label="Fitts Law", callback=self._fitts_law_callback)
+
+    #: The steps of a typical session, in order: what each is for, and the menu
+    #: entry that opens it. The welcome window is drawn from this.
+    _WELCOME_STEPS = (
+        ("Connect a device", "Stream from a device, or from a synthetic one with no hardware.",
+         "Streamer", "_streamer_callback"),
+        ("Plan a collection", "Which gestures, in what order, for how long, with what prompts.",
+         "Collection Protocol", "_protocol_callback"),
+        ("Collect training data", "Prompt each gesture on screen and record every repetition.",
+         "Collect Data", "_data_collection_callback"),
+        ("Watch the signal", "See the live data from the device that is streaming.",
+         "Live Signal", "_visualize_livesignal_callback"),
+        ("Build a model", "Filters, windows, features and a classifier or regressor, as blocks.",
+         "Pipeline Editor", "_pipeline_editor_callback"),
+        ("Run a task", "Fitts' Law and EMG Hero, driven by a model, saved for retraining.",
+         "Environments", "_environments_callback"),
+    )
+
+    def _welcome_init(self):
+        """A first window that says where to start.
+
+        The menu bar alone gives no hint of the order a session goes in, or that
+        nothing can be recorded or watched until a device is streaming. This
+        lays the steps out in that order, each with the button that opens it,
+        and says whether a device is streaming yet. Closing it loses nothing:
+        every step is also in the menu, and File > Start here brings it back.
+        """
+        from libemg._gui import _style as style
+        if dpg.does_item_exist("__welcome"):
+            dpg.show_item("__welcome")
+            dpg.focus_item("__welcome")
+            return
+        with dpg.window(label="Start here", tag="__welcome", width=660, height=590,
+                        pos=(24, 44), no_collapse=True):
+            style.note("A session usually goes in this order. Every step is also in the "
+                       "menu bar.", wrap=620)
+            dpg.add_text("", tag="__welcome_device")
+            style.note("", tag="__welcome_message", color=style.WARNING, wrap=620, show=False)
+            dpg.add_spacer(height=2)
+            with dpg.table(header_row=False, policy=dpg.mvTable_SizingFixedFit,
+                           borders_innerH=True):
+                dpg.add_table_column(width_fixed=True, init_width_or_weight=190)
+                dpg.add_table_column(width_stretch=True, init_width_or_weight=1.0)
+                for number, (title, description, button, method) in enumerate(self._WELCOME_STEPS, 1):
+                    with dpg.table_row():
+                        style.button(button, "primary" if number == 1 else "default", width=180,
+                                     callback=lambda s, a, u: self._welcome_open(u),
+                                     user_data=method)
+                        with dpg.group():
+                            heading = dpg.add_text(f"{number}. {title}")
+                            if style.font("bold") is not None:
+                                dpg.bind_item_font(heading, style.font("bold"))
+                            style.note(description, wrap=420)
+        self._welcome_device_status()
+
+    def _welcome_open(self, method):
+        """Open a step's panel, or say why it can't be opened yet."""
+        if method == "_visualize_livesignal_callback" and self.online_data_handler is None:
+            if dpg.does_item_exist("__welcome_message"):
+                dpg.set_value("__welcome_message", "Nothing to watch yet: connect a device first.")
+                dpg.show_item("__welcome_message")
+            return
+        if dpg.does_item_exist("__welcome_message"):
+            dpg.hide_item("__welcome_message")
+        getattr(self, method)()
+
+    def _welcome_device_status(self):
+        from libemg._gui import _style as style
+        try:
+            if not dpg.does_item_exist("__welcome_device"):
+                return
+        except Exception:
+            return      # no window at all, as when a panel is driven from a test
+        if self.online_data_handler is None:
+            style.set_status("__welcome_device", "No device is streaming yet.", "warn")
+        else:
+            style.set_status("__welcome_device", "A device is streaming.", "ok")
 
     def _open_panel(self, attribute, build):
         """Show a panel, reusing the one already open.
@@ -241,16 +332,56 @@ class GUI:
         self.args["protocol"] = protocol
         self.args["media_folder"] = media_folder
 
+    def _annotation_callback(self):
+        from libemg._gui._annotation_panel import AnnotationPanel
+        self._open_panel("annotation_panel", lambda: AnnotationPanel(
+            dataset_folder=self.args.get("annotation_folder", ""),
+            sampling_rate=self.args.get("sampling_rate", 2000.0),
+            spec=self.args.get("annotation_spec"),
+            width=self.width, height=self.height))
+
     def _visualize_livesignal_callback(self):
+        # Without a stream there is nothing to draw, and the panel says so by
+        # raising -- which from a menu click went to the console and left the
+        # window looking as if the click had been ignored.
+        if self.online_data_handler is None:
+            self._notice("Nothing to watch yet",
+                         "No device is streaming. Start one from Device > Streamer, "
+                         "then open Visualize > Live Signal again.")
+            return
         panel_arguments = list(inspect.signature(VisualizationPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
         self.vp = VisualizationPanel(self.online_data_handler, **passed_arguments)
-        self.vp.spawn_window()
+        try:
+            self.vp.spawn_window()
+        except ConnectionError:
+            self._notice("Nothing to watch yet",
+                         "The device is connected but no data has arrived yet. Wait a "
+                         "moment, then open Visualize > Live Signal again.")
+
+    def _notice(self, title, text):
+        """A small window saying why something the user asked for did not happen."""
+        from libemg._gui import _style as style
+        if dpg.does_item_exist("__notice"):
+            dpg.delete_item("__notice")
+        with dpg.window(label=title, tag="__notice", modal=True, no_collapse=True,
+                        width=440, pos=(max(20, self.width // 2 - 220), 160)):
+            style.note(text, color=style.TEXT, wrap=400)
+            dpg.add_spacer(height=4)
+            style.button("OK", "primary", width=90,
+                         callback=lambda: dpg.delete_item("__notice"))
 
     def _pipeline_editor_callback(self):
         from libemg._gui._pipeline.editor_panel import PipelineEditorPanel
         self._open_panel("pep", lambda: PipelineEditorPanel(
             width=self.width, height=self.height))
+
+    def _training_history_callback(self):
+        """Deep model training runs from any session, loaded from their records."""
+        from libemg._gui._pipeline.training_view import TrainingView
+        if getattr(self, "training_history", None) is not None:
+            self.training_history.cleanup()
+        self.training_history = TrainingView("Training History", pos=(60, 60)).spawn_window()
 
     def _streamer_callback(self):
         from libemg._gui._streamer_panel import StreamerPanel
@@ -267,9 +398,11 @@ class GUI:
         """
         self.online_data_handler = online_data_handler
         self.args["shared_memory_items"] = shared_memory_items
+        self._welcome_device_status()
 
     def _streamer_stopped(self):
         self.online_data_handler = None
+        self._welcome_device_status()
 
     def _environments_callback(self):
         from libemg._gui._environments.panel import EnvironmentsPanel

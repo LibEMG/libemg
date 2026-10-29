@@ -4,6 +4,12 @@ import time
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from libemg._gui import _style as style
+
+START_TAG = "__vls_start_button"
+STOP_TAG = "__vls_stop_button"
+STATUS_TAG = "__vls_status"
+
 
 class VisualizationPanel:
     """Live signal viewer drawn with dearpygui's native plots.
@@ -110,31 +116,32 @@ class VisualizationPanel:
                 "Please ensure the OnlineDataHandler is receiving data."
             )
 
-        with dpg.window(label="Visualize Live Signals",
+        with dpg.window(label="Live Signal",
                         tag="__vls_visualize_window",
                         width=900,
-                        height=200 + self.plot_height * len(self.modalities),
+                        height=250 + (self.plot_height + 40) * len(self.modalities),
                         on_close=lambda: self.stop_callback()):
 
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Start", tag="__vls_start_button",
-                               callback=self.start_callback)
-                dpg.add_button(label="Stop", tag="__vls_stop_button",
-                               callback=self.stop_callback)
-                dpg.add_text("Stopped", tag="__vls_status")
+                style.button("Start", "primary", tag=START_TAG, width=90,
+                             callback=self.start_callback)
+                style.button("Stop", "danger", tag=STOP_TAG, width=90,
+                             callback=self.stop_callback)
+                dpg.add_spacer(width=4)
+                style.note("Stopped", tag=STATUS_TAG)
+            style.note("Untick a modality to hide its plot and skip its updates. Stop leaves "
+                       "the last frame on screen.", wrap=860)
 
-            dpg.add_separator()
-            dpg.add_text("Modalities")
-
+            style.section("Modalities")
             # One row per modality: show/hide, and its own sample count. Both are
             # read on every frame, so changes take effect without a callback.
-            with dpg.table(header_row=True, policy=dpg.mvTable_SizingStretchProp,
-                           borders_outerH=True, borders_innerV=True,
-                           borders_innerH=True, borders_outerV=True):
+            with dpg.table(header_row=True, policy=dpg.mvTable_SizingFixedFit,
+                           no_host_extendX=True, borders_outerH=True,
+                           borders_innerH=True):
                 dpg.add_table_column(label="Show")
                 dpg.add_table_column(label="Modality")
                 dpg.add_table_column(label="Channels")
-                dpg.add_table_column(label="Samples plotted")
+                dpg.add_table_column(label="Samples shown")
                 for mod in self.modalities:
                     with dpg.table_row():
                         dpg.add_checkbox(tag=self._enable_tag(mod), default_value=True,
@@ -142,32 +149,38 @@ class VisualizationPanel:
                                          user_data=mod)
                         dpg.add_text(mod)
                         dpg.add_text(str(self.channels[mod]))
-                        dpg.add_input_int(
-                            tag=self._samples_tag(mod),
-                            default_value=min(self.num_samples, self.buffer_samples[mod]),
-                            min_value=2,
-                            max_value=self.buffer_samples[mod],
-                            min_clamped=True,
-                            max_clamped=True,
-                            step=100,
-                            width=160,
-                        )
+                        with dpg.group(horizontal=True):
+                            dpg.add_input_int(
+                                tag=self._samples_tag(mod),
+                                default_value=min(self.num_samples, self.buffer_samples[mod]),
+                                min_value=2,
+                                max_value=self.buffer_samples[mod],
+                                min_clamped=True,
+                                max_clamped=True,
+                                step=0,
+                                width=100,
+                            )
+                            style.unit(f"of {self.buffer_samples[mod]}")
 
-            dpg.add_separator()
-
+            style.section("Signals")
             for mod in self.modalities:
                 with dpg.plot(label=mod, tag=self._plot_tag(mod),
                               height=self.plot_height, width=-1, no_menus=True):
-                    dpg.add_plot_legend()
-                    dpg.add_plot_axis(dpg.mvXAxis, label="Sample (oldest to newest)",
+                    # Outside the plotting area, so the legend never sits on
+                    # top of the newest samples, and in one line, so a plot
+                    # this short still has room to name every channel.
+                    dpg.add_plot_legend(outside=True, horizontal=True,
+                                        location=dpg.mvPlot_Location_South)
+                    dpg.add_plot_axis(dpg.mvXAxis, label="Samples (newest on the right)",
                                       tag=self._xaxis_tag(mod))
                     dpg.add_plot_axis(dpg.mvYAxis, label="Amplitude",
                                       tag=self._yaxis_tag(mod))
                     for channel in range(self.channels[mod]):
                         dpg.add_line_series([], [],
-                                            label=f"{mod}_CH{channel + 1}",
+                                            label=f"Ch {channel + 1}",
                                             parent=self._yaxis_tag(mod),
                                             tag=self._series_tag(mod, channel))
+        self._sync_buttons()
 
     # ------------------------------------------------------------------
     # callbacks
@@ -190,8 +203,8 @@ class VisualizationPanel:
             self._frame_times = []
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
-        if dpg.does_item_exist("__vls_status"):
-            dpg.set_value("__vls_status", "Running")
+        style.set_status(STATUS_TAG, "Running", "ok")
+        self._sync_buttons()
 
     def stop_callback(self):
         """Stop updating the plots, leaving the last frame on screen."""
@@ -200,8 +213,14 @@ class VisualizationPanel:
         if thread is not None and thread.is_alive():
             thread.join(timeout=2)
         self._thread = None
-        if dpg.does_item_exist("__vls_status"):
-            dpg.set_value("__vls_status", "Stopped")
+        style.set_status(STATUS_TAG, "Stopped", "info")
+        self._sync_buttons()
+
+    def _sync_buttons(self):
+        """Start while stopped, Stop while running; never both."""
+        running = self._thread is not None and self._thread.is_alive()
+        style.set_enabled(START_TAG, not running)
+        style.set_enabled(STOP_TAG, running)
 
     # ------------------------------------------------------------------
     # updating

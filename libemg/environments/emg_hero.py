@@ -4,8 +4,12 @@ from typing import Sequence
 import pygame
 import numpy as np
 
-from libemg.environments.controllers import Controller
-from libemg.environments._base import Environment
+from libemg.environments.controllers import ClassifierController, Controller
+from libemg.environments._base import Environment, PredictionMap
+from libemg.environments.recording import RecordingConfig
+
+#: Where a note has to be for its gesture to play it: the same test the game draws a hit with.
+HIT_LINE = 500
 
 
 class _Note:
@@ -29,7 +33,7 @@ class _Note:
 
 class EMGHero(Environment):
     def __init__(self, controller: Controller, prediction_map: dict | None = None, test_time: int = 120, min_speed: float = 2.5, max_speed: float = 7.5, min_time: float = 0.6, max_time: float = 2.2,
-                 img_files: Sequence | None = None, save_file: str | None = None, fps: int = 60):
+                 img_files: Sequence | None = None, save_file: str | None = None, fps: int = 60, recording: RecordingConfig | None = None):
         """Guitar Hero style game that tests user's ability to elicit contractions at specific times. Game speed progressively gets quicker over the course of the task.
         Simultaneous contractions, such as with regression, are not currently supported.
 
@@ -40,8 +44,9 @@ class EMGHero(Environment):
         prediction_map : dict | None, optional
             Maps received control commands to notes being played. If None, a standard map for classifiers is created where 0, 1, 2, 3, 4 are mapped to 0, 1, -1, 2, and 3, respectively.
             For custom mappings, pass in a dictionary where keys represent received control signals (from the Controller) and values map to actions in the environment.
-            Accepted actions are: -1 (play nothing), 0 (first note), 1 (second note), 2 (third note), 3 (fourth note). All of these actions must be represented by a single key in the dictionary.
-            Defaults to None.
+            Accepted actions are: -1 (play nothing), 0 (first note), 1 (second note), 2 (third note), 3 (fourth note). An action no key maps to is never played.
+            Pass a libemg.environments._base.PredictionMap to have every signal it does not list take one action (usually -1); the default map is one, so a class it
+            does not list plays nothing rather than ending the game. Defaults to None.
         test_time : int, optional
             Amount of time test will take (in seconds). Defaults to 120.
         min_speed : float, optional
@@ -58,17 +63,21 @@ class EMGHero(Environment):
             Path to save file for logging metrics. If None, no results are logged. Defaults to None.
         fps : int, optional
             Frames per second (in Hz). Defaults to 60.
+        recording : RecordingConfig | None, optional
+            Record every frame: the model's output, the lane being played, which lanes have a note on the hit line, and the
+            CIIL label (the lane that should be played). See libemg.environments.recording. Defaults to None.
         """
         if prediction_map is None:
-            prediction_map = {
+            prediction_map = PredictionMap({
                 0: 0,
                 1: 1,
                 2: -1,
                 3: 2,
                 4: 3
-            }
+            }, default=-1)
 
-        assert set(np.unique(list(prediction_map.values()))) == set([0, 1, -1, 2, 3]), f"Did not find all commands (0, 1, 2, 3, -1) represented as values in prediction_map. Got: {prediction_map}."
+        produced = set(prediction_map.values()) | {getattr(prediction_map, 'default', -1)}
+        assert produced <= {0, 1, 2, 3, -1}, f"Expected prediction map values among (0, 1, 2, 3, -1). Got: {prediction_map}."
 
         if img_files is None:
             img_files = []
@@ -78,8 +87,13 @@ class EMGHero(Environment):
             "notes": [],
             "button_pressed": []
         }
-        super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file)
+        super().__init__(controller, fps=fps, log_dictionary=log_dictionary, save_file=save_file, recording=recording)
         self.prediction_map = prediction_map
+        # The class that plays each lane, for labelling a frame with the class it should have been.
+        self.class_of_lane = {}
+        for received, lane in sorted(prediction_map.items(), key=lambda item: item[0]):
+            self.class_of_lane.setdefault(lane, received)
+        self.last_prediction = None
         self.test_time = test_time
         self.min_speed = min_speed
         self.max_speed = max_speed
@@ -140,6 +154,7 @@ class EMGHero(Environment):
             # Received data
             assert len(predictions) == 1, f"Expected a single prediction, but got {len(predictions)}. Controllers that produce multiple predictions, like RegressionController, are not currently supported."
             self.key_pressed = self.prediction_map[predictions[0]]
+            self.last_prediction = predictions[0]
 
         # Draw notes on bottom of screen 
         pygame.draw.circle(self.screen, (255, 0, 0), (75, 500), 35, width=8 - (self.key_pressed==0) * 8)
@@ -178,8 +193,37 @@ class EMGHero(Environment):
             self.screen.blit(self.imgs[2], (275,550))
             self.screen.blit(self.imgs[3], (400,550))
 
-        # Log everything 
+        # Log everything
         self.log_dictionary['times'].append(time.time())
         self.log_dictionary['notes'].append([[n.type, n.y_pos, n.length] for n in self.notes])
         self.log_dictionary['button_pressed'].append(self.key_pressed)
+        if self.recording_frames:
+            self._record()
+
+    def _record(self):
+        """Record this frame: what the model said, which lanes have a note to play, and which should be played."""
+        due = [0, 0, 0, 0]
+        for n in self.notes:
+            if n.y_pos >= HIT_LINE and n.y_pos - 60 - n.length <= HIT_LINE:
+                due[n.type] = 1
+        # The lane to play is the one with a note on the line; with none, play nothing. Two at once is a
+        # chord the game cannot ask a single classifier for, so the lowest lane stands in.
+        lane = due.index(1) if any(due) else -1
+        adaptation = {'ciil_lane': lane}
+        if isinstance(self.controller, ClassifierController):
+            adaptation['ciil_class'] = self.class_of_lane.get(lane)
+        self.record_frame(0, model={'prediction': self.last_prediction},
+                          game={'lane': self.key_pressed, 'note_0': due[0], 'note_1': due[1],
+                                'note_2': due[2], 'note_3': due[3]},
+                          adaptation=adaptation)
+
+    def recording_details(self):
+        details = super().recording_details()
+        if isinstance(self.controller, ClassifierController):
+            details['actions'] = {('none' if lane == -1 else f'lane {lane + 1}'): cls
+                                  for lane, cls in self.class_of_lane.items()}
+        details['settings'] = {'test_time': self.test_time, 'min_speed': self.min_speed,
+                               'max_speed': self.max_speed, 'min_time': self.min_time,
+                               'max_time': self.max_time, 'fps': self.fps}
+        return details
         

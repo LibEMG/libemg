@@ -20,6 +20,7 @@ LibEMG
    documentation/feature_selection/feature_selection
    documentation/prediction/prediction
    documentation/adaptation/adaptation
+   documentation/deep/deep
    documentation/evaluation/evaluation
    documentation/animation/animation
 

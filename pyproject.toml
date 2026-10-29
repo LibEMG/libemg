@@ -49,6 +49,9 @@ dependencies = [
 # _delsys_API_streamer imports pythonnet lazily, inside a try, so only users of
 # the Delsys API streamer need the .NET runtime bindings.
 delsys = ["pythonnet>=3.0"]
+# libemg.deep: training, running, streaming and adapting neural networks.
+# Imported only when a deep model is trained or run.
+deep = ["torch>=2.1"]
 
 [dependency-groups]
 dev = [

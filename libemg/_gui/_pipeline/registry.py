@@ -560,6 +560,63 @@ def build_registry():
         help="Predicts continuous outputs from features.",
     ))
 
+    # The deep tooling's own vocabulary, so the block cannot offer a choice
+    # libemg.deep does not understand. Importing it does not import PyTorch.
+    from libemg.deep import ARCHITECTURES, POOLINGS
+    add(NodeSpec(
+        id="model.deep",
+        category=MODEL,
+        title="Deep Model",
+        inputs=[PortSpec("input", PortType.FEATURES, "Features", optional=True),
+                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True)],
+        outputs=[PortSpec("output", PortType.PREDICTION, multiple=True)],
+        params=[
+            ParamSpec("architecture", ENUM, choices=[a.upper() if len(a) <= 4 else a.title()
+                                                     for a in ARCHITECTURES], default="GRU",
+                      help="MLP: layers on each window's features. CNN: convolutions on the "
+                           "raw signal (connect Windows). Transformer: attention over the last "
+                           "Horizon windows. GRU, LSTM: a memory of every window before."),
+            ParamSpec("task", ENUM, choices=["Classification", "Regression"],
+                      default="Classification"),
+            ParamSpec("timing", ENUM, choices=["Continuous", "Discrete"], default="Continuous",
+                      help="Continuous: an answer at every window. Discrete: each recording is "
+                           "one gesture with one label, recognised once it is over."),
+            ParamSpec("model_path", PATH, default="", label="Fitted Model",
+                      help="Where Train saves the model, and what runs it afterwards."),
+            ParamSpec("epochs", INT, default=50, minimum=1, maximum=10000),
+            ParamSpec("learning_rate", FLOAT, default=0.001, minimum=1e-6, maximum=1.0,
+                      label="Learning Rate"),
+            ParamSpec("sequence_length", INT, default=32, minimum=1, maximum=4096,
+                      label="Sequence Length",
+                      help="Windows per training sequence. A model with memory learns its "
+                           "timing from these: give it several times its horizon."),
+            ParamSpec("horizon", INT, default=10, minimum=1, maximum=512,
+                      help="Windows a transformer attends over, the newest included."),
+            ParamSpec("hidden_size", INT, default=64, minimum=2, maximum=4096,
+                      label="Hidden Size"),
+            ParamSpec("layers", INT, default=2, minimum=1, maximum=32),
+            ParamSpec("batch_size", INT, default=32, minimum=1, maximum=4096,
+                      label="Batch Size", advanced=True),
+            ParamSpec("embedding_size", INT, default=32, minimum=2, maximum=4096,
+                      label="Embedding Size", advanced=True,
+                      help="The latent space the output reads, and the Feature Viewer draws."),
+            ParamSpec("dropout", FLOAT, default=0.1, minimum=0.0, maximum=0.9, advanced=True),
+            ParamSpec("pooling", ENUM, choices=list(POOLINGS), default="max", advanced=True,
+                      help="Discrete only: max finds the gesture anywhere in the recording; "
+                           "last answers at its end; mean averages."),
+            ParamSpec("patience", INT, default=10, minimum=0, advanced=True,
+                      help="Stop after this many epochs without a better validation loss. "
+                           "0 runs every epoch."),
+            ParamSpec("validation", FLOAT, default=0.2, minimum=0.0, maximum=0.9,
+                      advanced=True, label="Validation Share",
+                      help="Recordings held out to judge each epoch: whole recordings, "
+                           "never windows."),
+            ParamSpec("seed", INT, default=0, minimum=0, advanced=True),
+        ],
+        help="A neural network trained here, with its loss drawn live as it trains. Runs "
+             "live too, carrying its memory from one window to the next.",
+    ))
+
     # ---------------- sinks ----------------
     add(NodeSpec(
         id="sink.socket",
@@ -607,6 +664,60 @@ def build_registry():
                       label="Null Label", help="Class treated as no motion."),
         ],
         help="Scores predictions against ground truth once a run finishes.",
+        offline_only=True,
+    ))
+
+    from libemg._gui._pipeline.feature_viewer import COLOURINGS, DEFAULT_POINTS, DIMENSIONS, METHODS
+    add(NodeSpec(
+        id="sink.feature_viewer",
+        category=SINK,
+        title="Feature Viewer",
+        inputs=[PortSpec("features", PortType.FEATURES),
+                PortSpec("labels", PortType.LABELS, optional=True),
+                # Either model block's output: what is drawn is not its
+                # predictions but the spaces the fitted model works in.
+                PortSpec("model", PortType.PREDICTION, optional=True)],
+        params=[
+            ParamSpec("method", ENUM, choices=list(METHODS), default="PCA",
+                      help="Columns plots feature columns as they are; PCA, ICA and Isomap "
+                           "project every column down to the dimensions below."),
+            ParamSpec("dimensions", ENUM, choices=list(DIMENSIONS), default="2D"),
+            ParamSpec("colour_by", ENUM, choices=list(COLOURINGS), default="Auto",
+                      label="Colour By",
+                      help="Class colours, or a heat scale for a regression target. Auto "
+                           "picks from the labels."),
+            ParamSpec("max_points", INT, default=DEFAULT_POINTS, minimum=100, maximum=200000,
+                      advanced=True, label="Points",
+                      help="Windows drawn, chosen at random. Isomap slows with the square "
+                           "of this."),
+            ParamSpec("standardize", BOOL, default=True, advanced=True,
+                      help="Scale every column to unit variance before projecting."),
+        ],
+        help="Draws the features once the recording has been read: any column, or a "
+             "PCA, ICA or Isomap projection in 1, 2 or 3D, coloured by label. Connect a "
+             "model to see its latent space and outputs the same way.",
+        offline_only=True,
+    ))
+
+    add(NodeSpec(
+        id="sink.prediction_viewer",
+        category=SINK,
+        title="Prediction Viewer",
+        inputs=[PortSpec("model", PortType.PREDICTION),
+                PortSpec("labels", PortType.LABELS, optional=True)],
+        params=[
+            ParamSpec("held_out_field", STR, default="", label="Held Out Field",
+                      help="A filename field, such as reps or sets, that says which recordings "
+                           "the model never trained on. Leave empty to use what a deep model "
+                           "set aside for validation while it trained."),
+            ParamSpec("held_out_values", STR, default="", label="Held Out Values",
+                      help="The field's values that were held out, separated by commas: "
+                           "for example 4, 5."),
+        ],
+        help="Draws what the model predicted over the signal it predicted from, once the "
+             "recording has been read: one recording at a time, or every recording that "
+             "shares a repetition or set, end to end. Compare training and held-out data, "
+             "and save the whole session as one figure.",
         offline_only=True,
     ))
 

@@ -455,11 +455,15 @@ def _editor(monkeypatch):
     """The editor panel with a stand-in DearPyGui, so its callbacks can be driven."""
     from unittest.mock import MagicMock
 
+    from libemg._gui import _style
     from libemg._gui._pipeline import editor_panel as editor_module
     fake = MagicMock()
     fake.does_item_exist.return_value = False
     fake.does_alias_exist.return_value = False
     monkeypatch.setattr(editor_module, "dpg", fake)
+    # The editor draws through libemg._gui._style too, which holds its own
+    # handle on DearPyGui; with no context the real one would crash the process.
+    monkeypatch.setattr(_style, "dpg", fake)
     return editor_module.PipelineEditorPanel(), fake
 
 

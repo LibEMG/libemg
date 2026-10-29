@@ -1,4 +1,5 @@
 import shutil
+from contextlib import contextmanager
 from pathlib import Path
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -9,6 +10,7 @@ import time
 import json
 import yaml
 from datetime import datetime
+from . import _style as style
 from ._utils import Media, set_texture
 from ._visualization_panel import VisualizationPanel
 from ..session import (PAUSE, PROMPT, REST, SESSION_PREFIX, SessionAnnotations,
@@ -22,13 +24,27 @@ import threading
 # configuration window, the settings read off it and the file written from them
 # all have to agree on the same set of fields.
 SUBJECT_FIELDS = (
-    ("subject_number", "Subject Number", int),
-    ("subject_name", "Subject Name", str),
-    ("session_number", "Session Number", int),
-    ("day_number", "Day Number", int),
-    ("condition_number", "Condition Number", int),
+    ("subject_number", "Subject number", int),
+    ("subject_name", "Subject name", str),
+    ("session_number", "Session", int),
+    ("day_number", "Day", int),
+    ("condition_number", "Condition", int),
 )
 SUBJECT_DETAILS_NAME = "subject_details.yaml"
+
+# What counts as a prompt in the media folder. Shared by the collection and the
+# count the configuration window shows, so the window cannot promise a number of
+# motions the collection then disagrees with.
+MEDIA_SUFFIXES = (".gif", ".png", ".mp4", "jpg")
+
+# The configuration window. The folders run the full width of it, so a path can
+# be read without scrolling along it; the rest sits in two columns.
+_CONFIG_SIZE = (980, 780)
+_NUMBER_WIDTH = 120
+_FULL_WRAP = _CONFIG_SIZE[0] - 70
+_COLUMN_WRAP = _CONFIG_SIZE[0] // 2 - 60
+#: The prompt during collection is read from across a desk, so it is drawn larger.
+PROMPT_FONT_SIZE = 30
 
 # How long a modality may go without delivering a single sample before the
 # stream is called interrupted, in seconds. One repetition is too short a window
@@ -128,9 +144,13 @@ class DataCollectionPanel:
         self.video_player_width = video_player_width
         self.video_player_height = video_player_height
 
+        # The folder dialogs are listed because they are windows of their own
+        # rather than part of the configuration window, so deleting that window
+        # does not take them with it.
         self.widget_tags = {"configuration":['__dc_configuration_window','__dc_num_reps','__dc_rep_time','__dc_rest_time', '__dc_media_folder',\
-                                             '__dc_auto_advance', *(f"__dc_{name}" for name, _, _ in SUBJECT_FIELDS)],
-                            "collection":   ['__dc_collection_window', '__dc_prompt_spacer', '__dc_prompt', '__dc_progress', '__dc_redo_button'],
+                                             '__dc_auto_advance', *(f"__dc_{name}" for name, _, _ in SUBJECT_FIELDS),
+                                             '__dc_media_dialog', '__dc_output_dialog'],
+                            "collection":   ['__dc_collection_window', '__dc_prompt', '__dc_progress', '__dc_redo_button'],
                             "visualization": ['__vls_visualize_window']}
         # The texture registry set_texture parents its textures to
         # (_utils.TEXTURE_REGISTRY_TAG) is deliberately absent from these lists.
@@ -162,86 +182,186 @@ class DataCollectionPanel:
         self.cleanup_window("configuration")
         self.cleanup_window("collection")
         self.cleanup_window("visualization")
-        with dpg.window(tag="__dc_configuration_window", label="Data Collection Configuration"):
-            
-            dpg.add_text(label="Training Menu")
-            with dpg.table(header_row=False, resizable=True, policy=dpg.mvTable_SizingStretchProp,
-                   borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True):
-
-                dpg.add_table_column(label="")
-                dpg.add_table_column(label="")
-                dpg.add_table_column(label="")
-                # REP ROW
-                with dpg.table_row(): 
-                    with dpg.group(horizontal=True):
-                        dpg.add_text("Num Reps: ")
-                        dpg.add_input_text(default_value=self.num_reps,
-                                        tag="__dc_num_reps",
-                                        width=100)
-                    with dpg.group(horizontal=True):
-                        dpg.add_text("Time Per Rep")
-                        dpg.add_input_text(default_value=self.rep_time,
-                                        tag="__dc_rep_time",
-                                        width=100)
-                    with dpg.group(horizontal=True):
-                        dpg.add_text("Time Between Reps")
-                        dpg.add_input_text(default_value=self.rest_time,
-                                        tag="__dc_rest_time", 
-                                        width=100)
-                # FOLDER ROW
-                with dpg.table_row():
-                    with dpg.group(horizontal=True):
-                        dpg.add_text("Media Folder:")
-                        dpg.add_input_text(default_value=self.media_folder, 
-                                        tag="__dc_media_folder", width=250)
-                    with dpg.group(horizontal=True):
-                        dpg.add_text("Output Folder:")
-                        dpg.add_input_text(default_value=self.data_folder, 
-                                        tag="__dc_output_folder",
-                                        width=250)
-                # CHECKBOX ROW
-                with dpg.table_row():
-                    with dpg.group(horizontal=True):
-                        dpg.add_text("Auto-Advance")
-                        dpg.add_checkbox(default_value=self.auto_advance,
-                                        tag="__dc_auto_advance")
-                # SUBJECT ROWS
-                with dpg.table_row():
-                    dpg.add_text("Subject Details")
-                for row in (SUBJECT_FIELDS[:3], SUBJECT_FIELDS[3:]):
+        width, height = _CONFIG_SIZE
+        with dpg.window(tag="__dc_configuration_window", label="Collect Data",
+                        width=width, height=height):
+            # The settings scroll and Start does not: a long signal report
+            # would otherwise push the one button that matters out of the window.
+            with dpg.child_window(border=False, autosize_x=True, height=-46):
+                style.note("Each image or video in the media folder is shown in turn, once per "
+                        "repetition, while the device records. Hover over a setting's name "
+                        "to see what it does.", wrap=_FULL_WRAP)
+                dpg.add_spacer(height=2)
+                self._build_files()
+                with dpg.table(header_row=False, resizable=False, borders_innerV=True,
+                               policy=dpg.mvTable_SizingStretchSame):
+                    dpg.add_table_column()
+                    dpg.add_table_column()
                     with dpg.table_row():
-                        for name, label, kind in row:
-                            with dpg.group(horizontal=True):
-                                dpg.add_text(f"{label}:")
-                                dpg.add_input_text(default_value=getattr(self, name),
-                                                   tag=f"__dc_{name}",
-                                                   width=250 if kind is str else 100)
-                # BUTTON ROW
-                with dpg.table_row():
-                    with dpg.group(horizontal=True):
-                        dpg.add_button(label="Start", callback=self.start_callback)
-                        dpg.add_button(label="Visualize", callback=self.visualize_callback)
-                        # Offered separately from Start because the point of the
-                        # check is to be run while the electrodes are still being
-                        # adjusted, not once at the moment it is too late.
-                        dpg.add_button(label="Check Signal", tag="__dc_check_signal",
-                                       callback=self.signal_check_callback)
-                with dpg.table_row():
-                    dpg.add_text("", tag="__dc_signal_report", wrap=700)
-        
+                        with dpg.group():
+                            self._build_repetitions()
+                        with dpg.group():
+                            self._build_subject()
+                self._build_signal()
+            dpg.add_separator()
+            with dpg.group(horizontal=True):
+                style.button("Start", "primary", tag="__dc_start", width=120,
+                          callback=self.start_callback)
+                style.note("", tag="__dc_status")
+        for dialog, field_tag, folder in (("__dc_media_dialog", "__dc_media_folder", self.media_folder),
+                                          ("__dc_output_dialog", "__dc_output_folder", self.data_folder)):
+            dpg.add_file_dialog(directory_selector=True, show=False, modal=True, tag=dialog,
+                                width=760, height=460, user_data=field_tag,
+                                default_path=os.path.abspath(folder) if os.path.isdir(folder)
+                                else os.getcwd(),
+                                callback=self._folder_chosen)
+        self._describe_advance(self.auto_advance)
+        self._describe(self.media_folder, int(self.num_reps))
+
         # dpg.set_primary_window("__dc_configuration_window", True)
 
+    def _build_repetitions(self):
+        style.section("Repetitions")
+        with style.form():
+            with style.row("Repetitions", help="How many times each motion is collected."):
+                dpg.add_input_int(default_value=int(self.num_reps), tag="__dc_num_reps",
+                                  width=_NUMBER_WIDTH, step=0, min_value=1, min_clamped=True,
+                                  callback=self._settings_changed)
+            with style.row("Time per repetition", help="How long each image stays up. A video "
+                        "or GIF plays for its own length instead."):
+                dpg.add_input_float(default_value=float(self.rep_time), tag="__dc_rep_time",
+                                    width=_NUMBER_WIDTH, step=0, format="%g", min_value=0.0,
+                                    min_clamped=True)
+                style.unit("s")
+            with style.row("Rest between prompts", help="The rest before each prompt, with the "
+                        "next one shown greyed out so the subject can get ready for it. "
+                        "0 for none."):
+                dpg.add_input_float(default_value=float(self.rest_time), tag="__dc_rest_time",
+                                    width=_NUMBER_WIDTH, step=0, format="%g", min_value=0.0,
+                                    min_clamped=True)
+                style.unit("s")
+            with style.row("Auto-advance", help="On: the prompts follow one another, and the "
+                        "collection waits for Redo or Continue after each repetition of the "
+                        "whole set. Off: it waits after every prompt."):
+                dpg.add_checkbox(default_value=bool(self.auto_advance), tag="__dc_auto_advance",
+                                 callback=lambda sender, on: self._describe_advance(on))
+                style.note("", tag="__dc_advance_note")
+        if self.protocol is not None:
+            # The window opens on the protocol's timings, but the prompt length
+            # and the rests are taken from the protocol itself, prompt by
+            # prompt, so it is worth saying where they come from.
+            timing = self.protocol.timing
+            style.note(f"Following the protocol {self.protocol.name}: {self.protocol.order} order, "
+                    f"prompts of {timing.rep_time:g} s, rests of {timing.rest_time:g}-"
+                    f"{timing.rest_time + timing.rest_jitter:g} s.", wrap=_COLUMN_WRAP)
+
+    def _build_files(self):
+        style.section("Files", first=True)
+        with style.form():
+            with style.row("Media folder", help="One image or video per motion, named for it: "
+                        "the file name is the class name. They are prompted in alphabetical "
+                        "order unless a protocol sets the order. A .txt or .csv with the same "
+                        "name as a video is copied to the output folder as its labels."):
+                dpg.add_input_text(default_value=self.media_folder, tag="__dc_media_folder",
+                                   width=-100, callback=self._settings_changed)
+                style.button("Browse...", width=90,
+                          callback=lambda: dpg.show_item("__dc_media_dialog"))
+            with style.row(""):
+                style.note("", tag="__dc_media_found")
+            with style.row("Output folder", help="Where the recordings are written: a file per "
+                        "motion, repetition and modality, with the details of the collection "
+                        "beside them. Made if it doesn't exist. Files left there by an earlier "
+                        "collection under the same names are replaced."):
+                dpg.add_input_text(default_value=self.data_folder, tag="__dc_output_folder",
+                                   width=-100)
+                style.button("Browse...", width=90,
+                          callback=lambda: dpg.show_item("__dc_output_dialog"))
+
+    def _build_subject(self):
+        style.section("Subject")
+        with style.form():
+            for name, label, kind in SUBJECT_FIELDS:
+                with style.row(label):
+                    dpg.add_input_text(default_value=getattr(self, name), tag=f"__dc_{name}",
+                                       width=-1 if kind is str else _NUMBER_WIDTH)
+        style.note(f"Saved beside the data as {SUBJECT_DETAILS_NAME}. A label such as P01 works "
+                "as well as a number.", wrap=_COLUMN_WRAP)
+
+    def _build_signal(self):
+        style.section("Signal")
+        before = {"warn": " Start checks again, and warns but collects anyway.",
+                  "block": " Start checks again, and won't begin if it finds a problem."}
+        style.note("Check the signal while the electrodes can still be adjusted: it looks for "
+                "dead channels, clipping and mains noise, and saves what it finds in the "
+                "output folder." + before.get(self.signal_check, ""), wrap=_FULL_WRAP)
+        with dpg.group(horizontal=True):
+            # Offered separately from Start because the point of the check is to
+            # be run while the electrodes are still being adjusted, not once at
+            # the moment it is too late.
+            style.button("Check signal", tag="__dc_check_signal",
+                      callback=self.signal_check_callback)
+            style.button("Show live signal", tag="__dc_visualize",
+                      callback=self.visualize_callback)
+        style.note("", tag="__dc_signal_report", wrap=_FULL_WRAP)
+        if self.online_data_handler is None:
+            style.set_enabled("__dc_check_signal", False)
+            style.set_enabled("__dc_visualize", False)
+
+    def _describe(self, media_folder, num_reps):
+        """Say what Start will collect, and let it be pressed only when it can start."""
+        media = _media_in(media_folder)
+        if media is None:
+            style.set_status("__dc_media_found", "This folder doesn't exist.", "warn")
+        elif not media:
+            style.set_status("__dc_media_found", "No images or videos (.png, .jpg, .gif, .mp4) "
+                          "in this folder.", "warn")
+        else:
+            style.set_status("__dc_media_found",
+                          f"{len(media)} motion{'s' if len(media) != 1 else ''} found.")
+        if self.online_data_handler is None:
+            self._say("No device is streaming. Start one from Device > Streamer, then open "
+                      "Data > Collect Data again.", "warn")
+        elif not media:
+            self._say("Choose a media folder with at least one image or video in it.", "warn")
+        else:
+            self._say(f"{len(media)} motions × {num_reps} repetitions: "
+                      f"{len(media) * num_reps} prompts.")
+        style.set_enabled("__dc_start", bool(media) and self.online_data_handler is not None)
+
+    def _describe_advance(self, on):
+        style.set_status("__dc_advance_note", "waits after each repetition" if on
+                         else "waits after every prompt")
+
+    def _settings_changed(self, *_args):
+        self._describe(dpg.get_value("__dc_media_folder"), dpg.get_value("__dc_num_reps"))
+
+    def _folder_chosen(self, sender, app_data, user_data):
+        folder = (app_data or {}).get("file_path_name", "")
+        if folder:
+            dpg.set_value(user_data, folder)
+            self._settings_changed()
+
+    def _say(self, message, kind="info"):
+        style.set_status("__dc_status", message, kind)
 
 
     def start_callback(self):
+        # Every refusal below is said in the window as well as raised: raised
+        # from a button, it only ever reaches the terminal, and the person at
+        # the window is left pressing Start again.
         if not (self.online_data_handler and sum(list(self.online_data_handler.get_data()[1].values()))):
+            self._say("No data is arriving from the device. Check that it is streaming, "
+                      "then press Start again.", "error")
             raise ConnectionError('Attempted to start data collection, but data are not being received. Please ensure the OnlineDataHandler is receiving data.')
 
         self.get_settings()
         if self.signal_check != 'off':
+            self._say("Checking the signal before starting...", "busy")
             reports = self.check_signal_quality()
             problems = [problem for report in reports for problem in report.problems]
             if problems and self.signal_check == 'block':
+                self._say("Not started: the signal check found a problem.", "error")
+                style.set_status("__dc_signal_report", "\n".join(problems), "error")
                 raise ConnectionError(
                     'Refusing to start: the signal does not look collectable.\n  '
                     + '\n  '.join(problems)
@@ -289,7 +409,7 @@ class DataCollectionPanel:
         files = os.listdir(self.media_folder)
         files = sorted(files)
         labels_files = [file for file in files if file.endswith(('.txt', '.csv'))]
-        files = [file for file in files if file.endswith((".gif",".png",".mp4","jpg"))]
+        files = [file for file in files if file.endswith(MEDIA_SUFFIXES)]
         self.num_motions = len(files)
         collection_conf = []
         # make the collection_details.json file
@@ -372,16 +492,19 @@ class DataCollectionPanel:
             # So the report lands in the folder the window is pointing at, the
             # same one Start would use.
             self.get_settings()
+        # The rate is measured over half a second before anything can be said,
+        # long enough for a click with no answer to look like one that missed.
+        style.set_status("__dc_signal_report", "Checking the signal...", "busy")
         try:
             reports = self.check_signal_quality()
         except Exception as error:
-            self._report_signal(f"Could not check the signal: {error}")
+            self._report_signal(f"Could not check the signal: {error}", "error")
             return
-        self._report_signal("\n".join(report.summary() for report in reports))
+        self._report_signal("\n".join(report.summary() for report in reports),
+                            "ok" if all(report.ok for report in reports) else "warn")
 
-    def _report_signal(self, message):
-        if dpg.does_item_exist("__dc_signal_report"):
-            dpg.set_value("__dc_signal_report", message)
+    def _report_signal(self, message, kind="info"):
+        style.set_status("__dc_signal_report", message, kind)
         print(f'LibEMG -> DataCollectionPanel (signal check)\n{message}')
 
     def measure_sampling_rates(self, seconds=1.0):
@@ -506,38 +629,42 @@ class DataCollectionPanel:
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
         
-        collection_window_width  = self.video_player_width + 100
-        collection_window_height = self.video_player_height + 300
-        with dpg.window(label="Collection Window",
+        # The subject reads this window, from arm's length and mid-gesture, so it
+        # holds the prompt, the picture and how long is left, and nothing to
+        # press until there is something to decide.
+        with dpg.window(label="Collecting",
                         tag="__dc_collection_window",
-                        width=collection_window_width,
-                        height=collection_window_height):
-            
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(height=20,width=self.video_player_width/2+30-(7*len("Collection Menu"))/2)
-                dpg.add_text(default_value="Collection Menu")
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_rep_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
-                dpg.add_text(f"Rep 1 of {self.num_reps}", tag="__dc_rep")
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_prompt_spacer",height=20,width=self.video_player_width/2+30 - (7*len(media_list[0][1]))/2)
-                dpg.add_text(media_list[0][1], tag="__dc_prompt")
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(height=20,width=30)
+                        width=self.video_player_width + 60,
+                        height=self.video_player_height + 260):
+            with _centred():
+                dpg.add_text(f"Repetition 1 of {self.num_reps}", tag="__dc_rep", color=style.MUTED)
+            with _centred():
+                prompt = dpg.add_text(media_list[0][1], tag="__dc_prompt")
+            font = style.font("bold", PROMPT_FONT_SIZE)
+            if font is not None:
+                dpg.bind_item_font(prompt, font)
+            with _centred():
                 dpg.add_image("__dc_collection_visual")
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(height=20,width=30)
-                dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,width=self.video_player_width)
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_redo_spacer", height=20, width=self.video_player_width/2+30 - (7*len("Redo"))/2)
-                dpg.add_button(tag="__dc_redo_button", label="Redo", callback=self.redo_collection_callback)
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(tag="__dc_continue_spacer", height=20, width=self.video_player_width/2+30 - (7*len("Continue"))/2)
-                dpg.add_button(tag="__dc_continue_button", label="Continue", callback=self.continue_collection_callback)
+            with _centred():
+                dpg.add_progress_bar(tag="__dc_progress", default_value=0.0,
+                                     width=self.video_player_width)
+            dpg.add_spacer(height=4)
+            with _centred():
+                with dpg.group(horizontal=True):
+                    # Not wrapped: in a column that is as wide as its contents,
+                    # text that wraps to the column has no width to wrap to.
+                    style.note("That repetition is done." if self.auto_advance
+                            else "That prompt is done.", tag="__dc_pause_note", wrap=-1,
+                            show=False)
+                    # One height for both, since the primary button pads more.
+                    style.button("Redo", tag="__dc_redo_button", width=110, height=30,
+                              callback=self.redo_collection_callback)
+                    style.button("Continue", "primary", tag="__dc_continue_button", width=110,
+                              height=30, callback=self.continue_collection_callback)
             dpg.hide_item(item="__dc_redo_button")
             dpg.hide_item(item="__dc_continue_button")
-                
-        
+
+
         # dpg.set_primary_window("__dc_collection_window", True)
 
         self.run_sgt(media_list)
@@ -604,7 +731,7 @@ class DataCollectionPanel:
             if rep_is_finished  or (not self.auto_advance):
                 self._await_advance(session, media)
                 if not is_final_media:
-                    dpg.set_value('__dc_rep', value=f"Rep {media_list[self.i][3] + 1} of {self.num_reps}")
+                    dpg.set_value('__dc_rep', value=f"Repetition {media_list[self.i][3] + 1} of {self.num_reps}")
 
     def _await_advance(self, session, media):
         """Hold on the redo/continue buttons, recording how long the hold lasted.
@@ -617,6 +744,7 @@ class DataCollectionPanel:
         """
         def hold():
             self.advance = False
+            dpg.show_item(item="__dc_pause_note")
             dpg.show_item(item="__dc_redo_button")
             dpg.show_item(item="__dc_continue_button")
             while not self.advance:
@@ -901,12 +1029,14 @@ class DataCollectionPanel:
         if self.auto_advance:
             self.i      = self.i - self.num_motions
         else:
-            self.i      = self.i - 1 
+            self.i      = self.i - 1
+        dpg.hide_item(item="__dc_pause_note")
         dpg.hide_item(item="__dc_redo_button")
         dpg.hide_item(item="__dc_continue_button")
         self.advance = True
-    
+
     def continue_collection_callback(self):
+        dpg.hide_item(item="__dc_pause_note")
         dpg.hide_item(item="__dc_redo_button")
         dpg.hide_item(item="__dc_continue_button")
         self.advance = True
@@ -916,16 +1046,18 @@ class DataCollectionPanel:
         # under -- "Wrist Flexion (elevated)" -- because a factor the subject is
         # not told about is one they will not hold.
         label = self.current_plan.label if self.current_plan else media[1]
+        # Dimmed during the rest, with the picture greyed out, so what is coming
+        # can be read without being mistaken for the cue to start.
         if active:
             timer_duration = media[-1]
             dpg.set_value("__dc_prompt", value=label)
-            dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len(label))/2)
+            dpg.configure_item("__dc_prompt", color=style.TEXT)
         else:
             timer_duration = self.current_rest_time
             dpg.set_value("__dc_prompt", value="Up next: "+label)
-            dpg.set_item_width("__dc_prompt_spacer",width=self.video_player_width/2+30 - (7*len("Up next: "+label))/2)
-        
-        
+            dpg.configure_item("__dc_prompt", color=style.MUTED)
+
+
         texture = media[0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height, grayscale=not(active))
         set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
         # initialize motion and frame timers
@@ -974,3 +1106,33 @@ class DataCollectionPanel:
         self.visualization_panel = VisualizationPanel(self.online_data_handler,
                                                       num_samples=self.visualize_num_samples)
         self.visualization_panel.spawn_window()
+
+
+def _media_in(folder):
+    """The prompts the collection would find in ``folder``, or None if it can't be read."""
+    try:
+        return [file for file in os.listdir(folder) if file.endswith(MEDIA_SUFFIXES)]
+    except OSError:
+        return None
+
+
+@contextmanager
+def _centred():
+    """A line whose contents sit in the middle of the window, however wide they are.
+
+    A table with a column either side that takes up the slack and one in the
+    middle that fits what it holds. The middle one is measured again every
+    frame, so a prompt that changes length stays centred without anything here
+    having to know how wide the font draws it.
+    """
+    with dpg.table(header_row=False, resizable=False, policy=dpg.mvTable_SizingFixedFit,
+                   borders_innerH=False, borders_outerH=False, borders_innerV=False,
+                   borders_outerV=False):
+        dpg.add_table_column(width_stretch=True, init_width_or_weight=1.0)
+        dpg.add_table_column(width_fixed=True)
+        dpg.add_table_column(width_stretch=True, init_width_or_weight=1.0)
+        with dpg.table_row():
+            dpg.add_spacer()
+            with dpg.group() as cell:
+                yield cell
+            dpg.add_spacer()

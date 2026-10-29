@@ -56,6 +56,7 @@ class EnvironmentRunner(Process):
         import pygame
 
         bridge = self.bridge
+        environment = None
         try:
             pygame.init()
             pygame.font.init()
@@ -91,10 +92,6 @@ class EnvironmentRunner(Process):
 
             if environment.done:
                 bridge.mark_finished()
-            try:
-                environment.save_results()
-            except Exception:
-                pass
         except Exception as error:
             # The reason goes back through the bridge as well as to the
             # console. An environment validates its own settings and raises
@@ -105,6 +102,14 @@ class EnvironmentRunner(Process):
             print("LibEMG -> embedded environment failed:\n"
                   + traceback.format_exc())
         finally:
+            # Saved on every way out, not only a clean finish: a task that fails partway has still
+            # recorded every frame up to the failure, and those are worth keeping.
+            if environment is not None:
+                try:
+                    environment.save_results()
+                except Exception:
+                    print("LibEMG -> could not save the environment's results:\n"
+                          + traceback.format_exc())
             bridge.mark_running(False)
             try:
                 import pygame as _pygame

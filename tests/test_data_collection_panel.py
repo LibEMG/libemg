@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from libemg._gui import _data_collection_panel as panel_module
+from libemg._gui import _style
 from libemg._gui._data_collection_panel import DataCollectionPanel
 from libemg.session import PAUSE, PROMPT, REST, SessionAnnotations
 
@@ -132,6 +133,10 @@ def dpg(monkeypatch):
     # dpg's context managers.
     fake = MagicMock()
     monkeypatch.setattr(panel_module, "dpg", fake)
+    # The panel draws through libemg._gui._style too, which holds its own
+    # handle on DearPyGui. Left real, it would draw with no context, and that
+    # takes the interpreter down rather than raising.
+    monkeypatch.setattr(_style, "dpg", fake)
     monkeypatch.setattr(panel_module, "set_texture", Mock())
     return fake
 

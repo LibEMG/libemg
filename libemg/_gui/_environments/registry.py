@@ -26,6 +26,68 @@ ENUM = "enum"
 COLOR = "color"
 PATH = "path"
 
+# The headings settings are grouped under, in the order the setup screen shows them.
+TRIALS = "Trials"
+GAME = "Game"
+CURSOR = "Cursor"
+TARGETS = "Targets"
+DISPLAY = "Window"
+OTHER = "Other"
+APPEARANCE = "Appearance"
+GROUP_ORDER = (TRIALS, GAME, CURSOR, TARGETS, DISPLAY, OTHER, APPEARANCE)
+
+#: How a setting is presented: the words a person would use for it, its unit, and
+#: its heading. Field names are written for code ("num_trials", "default_timeout")
+#: and say nothing of units. Anything not listed keeps a label made from its name
+#: and goes under Other, so a new setting still appears; it just reads less well
+#: until it is described here.
+PRESENTATION = {
+    # Fitts and ISO Fitts
+    "num_trials": ("Trials", "", TRIALS),
+    "dwell_time": ("Dwell time", "s", TRIALS),
+    "timeout": ("Trial timeout", "s", TRIALS),
+    "game_time": ("Time limit", "s", TRIALS),
+    "velocity": ("Cursor speed", "px / frame", CURSOR),
+    "proportional_control": ("Proportional control", "", CURSOR),
+    "cursor_radius": ("Cursor radius", "px", CURSOR),
+    "mapping": ("Cursor space", "", CURSOR),
+    "target_radius": ("Target radius", "px", TARGETS),
+    "num_targets": ("Targets in the ring", "", TARGETS),
+    "target_distance_radius": ("Ring radius", "px", TARGETS),
+    "width": ("Width", "px", DISPLAY),
+    "height": ("Height", "px", DISPLAY),
+    "fps": ("Frame rate", "fps", DISPLAY),
+    # Curricular Fitts
+    "target_countdown": ("Dwell time", "s", TRIALS),
+    "default_timeout": ("Trial timeout", "s", TRIALS),
+    "default_target_radius": ("Target radius", "px", TARGETS),
+    "default_speed": ("Target speed", "px / frame", TARGETS),
+    "brownian_motion": ("Moving targets", "", TARGETS),
+    "cursor_speed_multiplier": ("Cursor speed", "px per unit output", CURSOR),
+    "block_width": ("Info bar width", "px", DISPLAY),
+    "block_height": ("Info bar height", "px", DISPLAY),
+    # EMG Hero
+    "test_time": ("Duration", "s", GAME),
+    "min_speed": ("Starting note speed", "px / frame", GAME),
+    "max_speed": ("Final note speed", "px / frame", GAME),
+    "min_time": ("Shortest gap between notes", "s", GAME),
+    "max_time": ("Longest gap between notes", "s", GAME),
+}
+
+
+def _present(settings):
+    """Give each setting its readable label, unit and heading."""
+    for setting in settings:
+        if setting.kind == COLOR:
+            # cursor_color -> Cursor, color_bg -> Background
+            words = setting.name.replace("color", "").replace("_", " ").split()
+            words = ["background" if word == "bg" else word for word in words]
+            setting.label, setting.unit, setting.group = " ".join(words).capitalize() or "Colour", "", APPEARANCE
+            continue
+        label, unit, group = PRESENTATION.get(setting.name, (setting.label, "", OTHER))
+        setting.label, setting.unit, setting.group = label, unit, group
+    return settings
+
 
 class Setting:
     """One configurable value on an environment.
@@ -53,23 +115,24 @@ class Setting:
 
     def __init__(self, name, kind, default=None, label=None, choices=None,
                  minimum=None, maximum=None, help="", optional=False,
-                 required=False):
+                 required=False, unit="", group=OTHER):
         self.name = name
         self.kind = kind
         self.default = default
-        self.label = label or name.replace("_", " ").strip().title()
+        self.label = label or name.replace("_", " ").strip().capitalize()
         self.choices = choices
         self.minimum = minimum
         self.maximum = maximum
         self.help = help
         self.optional = optional
         #: The environment declares no default for this, so it is the user's
-        #: to choose. A usable starting value is offered anyway, and the label
-        #: says so, because a control showing zero looks like a setting rather
-        #: than a blank.
+        #: to choose. A usable starting value is offered anyway, because a
+        #: control showing zero looks like a setting rather than a blank.
         self.required = required
-        if required:
-            self.label += "  (required)"
+        #: Shown after the control: 's', 'px'.
+        self.unit = unit
+        #: Which heading the setup screen puts it under.
+        self.group = group
 
     def coerce(self, value):
         """Bring a value from a control into this setting's type.
@@ -115,6 +178,36 @@ class Setting:
         return f"Setting({self.name!r}, {self.kind!r}, default={self.default!r})"
 
 
+class Action:
+    """Something a task can be told to do, and the class that tells it by default.
+
+    A classifier sends class indices and a task wants commands -- a direction,
+    a lane. Which class means which command is a property of the model, not of
+    the task, so it is set on the setup screen, one class per action.
+
+    Attributes
+    ----------
+    name: str
+        Stable identifier, used as the key of the class map.
+    label: str
+        What the setup screen shows.
+    command: Any
+        What the environment's prediction map holds for this action ('N', 2, ...).
+    default_class: int
+        The class that triggers it unless told otherwise. These match the
+        environment's own default map, so leaving them alone changes nothing.
+    """
+
+    def __init__(self, name, label, command, default_class):
+        self.name = name
+        self.label = label
+        self.command = command
+        self.default_class = default_class
+
+    def __repr__(self):
+        return f"Action({self.name!r}, command={self.command!r}, default_class={self.default_class})"
+
+
 class EnvironmentSpec:
     """An environment that can be launched from the menu.
 
@@ -130,11 +223,18 @@ class EnvironmentSpec:
         What can be configured.
     controllers: list of str
         Which controller kinds make sense for it.
+    actions: list of Action
+        What a classifier's classes can be mapped to. Empty for a task a
+        classifier cannot drive.
+    idle_action: str or None
+        The action every class without one of its own takes: holding still,
+        playing nothing.
     """
 
     def __init__(self, id, title, factory_name, settings, help="",
                  controllers=("Keyboard", "Classifier", "Regressor"),
-                 size_from=("width", "height"), default_size=(1000, 700)):
+                 size_from=("width", "height"), default_size=(1000, 700),
+                 actions=(), idle_action=None):
         self.id = id
         self.title = title
         self.factory_name = factory_name
@@ -143,9 +243,21 @@ class EnvironmentSpec:
         self.controllers = list(controllers)
         self.size_from = size_from
         self.default_size = default_size
+        self.actions = list(actions)
+        self.idle_action = idle_action
 
     def defaults(self):
         return {s.name: s.default for s in self.settings}
+
+    def default_class_map(self):
+        """Action name to class, as the environment maps them by default."""
+        return {action.name: action.default_class for action in self.actions}
+
+    def action(self, name):
+        for action in self.actions:
+            if action.name == name:
+                return action
+        return None
 
     def setting(self, name):
         for s in self.settings:
@@ -301,7 +413,22 @@ def build_registry():
 
     specs = {}
 
-    fitts_settings = _settings_from_dataclass(FittsConfig)
+    # Fitts' own default map, action by action: 0 down, 1 up, 2 no motion, 3
+    # right, 4 left -- the five classes of libemg's Fitts example (hand close,
+    # hand open, no motion, wrist extension, wrist flexion).
+    cursor_actions = [
+        Action("up", "Up", "N", 1),
+        Action("down", "Down", "S", 0),
+        Action("left", "Left", "W", 4),
+        Action("right", "Right", "E", 3),
+        Action("no_motion", "No motion", "NM", 2),
+    ]
+
+    # save_file is the environment's own pickle of its log. The setup screen
+    # saves through its Save section instead, which records the EMG alongside
+    # and writes files a data handler can read; offering both would be two
+    # different answers to "where did my data go".
+    fitts_settings = _settings_from_dataclass(FittsConfig, skip=("save_file",))
     mapping = next((s for s in fitts_settings if s.name == "mapping"), None)
     if mapping is not None:
         # A free text box would let somebody type a mapping that is rejected
@@ -316,14 +443,12 @@ def build_registry():
         settings=fitts_settings,
         help="A cursor and a single target. The classic test of how quickly and "
              "accurately a control scheme can acquire a target.",
-        default_size=(1250, 750))
+        default_size=(1250, 750), actions=cursor_actions, idle_action="no_motion")
 
     iso_settings = list(fitts_settings) + [
         Setting("num_targets", INT, default=8, minimum=2, maximum=24,
-                label="Number Of Targets",
                 help="Targets arranged around the ring."),
         Setting("target_distance_radius", INT, default=275, minimum=10,
-                label="Ring Radius",
                 help="Distance in pixels from the centre to each target."),
     ]
     specs["iso_fitts"] = EnvironmentSpec(
@@ -331,7 +456,7 @@ def build_registry():
         settings=iso_settings,
         help="Targets arranged in a ring, acquired in the standard ISO 9241-9 "
              "order. The usual way to report a throughput figure.",
-        default_size=(1250, 750))
+        default_size=(1250, 750), actions=cursor_actions, idle_action="no_motion")
 
     specs["curricular_fitts"] = EnvironmentSpec(
         id="curricular_fitts", title="Curricular Fitts",
@@ -351,13 +476,22 @@ def build_registry():
     specs["emg_hero"] = EnvironmentSpec(
         id="emg_hero", title="EMG Hero", factory_name="emg_hero",
         settings=_settings_from_signature(
-            EMGHero, skip=("controller", "prediction_map", "img_files")),
+            EMGHero, skip=("controller", "prediction_map", "img_files",
+                           "save_file", "recording")),
         help="Notes fall down the screen and are hit with the matching gesture. "
              "A rhythm game for practising discrete control.",
         # EMG Hero sets its own display size and offers no width or height
         # setting, so the frame size is fixed rather than read from settings.
-        size_from=(), default_size=(525, 700))
+        size_from=(), default_size=(525, 700),
+        # EMG Hero's own default map: classes 0, 1, 3, 4 play lanes 1-4 and 2
+        # plays nothing.
+        actions=[Action("lane_1", "Lane 1", 0, 0), Action("lane_2", "Lane 2", 1, 1),
+                 Action("lane_3", "Lane 3", 2, 3), Action("lane_4", "Lane 4", 3, 4),
+                 Action("none", "Nothing", -1, 2)],
+        idle_action="none")
 
+    for spec in specs.values():
+        _present(spec.settings)
     return specs
 
 
