@@ -34,6 +34,7 @@ import dearpygui.dearpygui as dpg
 
 from libemg._gui import _style as style
 from libemg._gui._pipeline.feature_viewer import CLASS_COLOURS
+from libemg._gui._pipeline.offline_data import predict_recordings  # noqa: F401 (re-exported)
 
 WINDOW_TAG = "__prediction_viewer"
 PLOTS = "__pv_plots"
@@ -47,40 +48,6 @@ ALL, TRAINING, HELD_OUT = "All", "Training", "Held out"
 # ======================================================================
 # the maths
 # ======================================================================
-def predict_recordings(predictor, inputs, classification=True):
-    """A model's outputs for each recording on its own.
-
-    Parameters
-    ----------
-    predictor: EMGClassifier, EMGRegressor or a model
-    inputs: list of arrays
-        One per recording, one row per window.
-
-    Returns
-    ----------
-    list of (outputs, predicted)
-        ``outputs`` is class probabilities (windows, classes) for a
-        classifier, or values (windows, dofs) for a regressor; ``predicted``
-        is the class per window, or the values again.
-    """
-    model = getattr(predictor, "model", predictor)
-    results = []
-    for x in inputs:
-        if hasattr(model, "reset"):
-            model.reset()           # a fresh stream: no memory of the last recording
-        if classification and hasattr(predictor, "_predict_proba"):
-            probabilities = np.atleast_2d(np.asarray(predictor._predict_proba(x), dtype=float))
-            classes = getattr(model, "classes_", None)
-            index = probabilities.argmax(axis=1)
-            predicted = np.asarray(classes)[index] if classes is not None else index
-            results.append((probabilities, predicted))
-        else:
-            values = np.asarray(predictor._predict(x), dtype=float)
-            values = values.reshape(len(x), -1)
-            results.append((values, values))
-    return results
-
-
 def class_runs(values):
     """Contiguous runs of one value: [(start, end, value)], end exclusive."""
     values = np.asarray(values).ravel()

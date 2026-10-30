@@ -397,12 +397,16 @@ class FeatureViewer:
         Further spaces over the same windows, as :func:`model_spaces` returns
         them: ``(title, matrix, column names, note)``. The features are always
         the first space; these are offered beside them.
+    fields: dict or None
+        Every windowed metadata field, one value per window: what the points
+        can be coloured by instead of ``labels``. ``field`` names the one
+        ``labels`` is.
     """
 
     window_tag = WINDOW_TAG
 
     def __init__(self, features, names, labels=None, params=None, width=1000, height=700,
-                 pos=(60, 60), spaces=None):
+                 pos=(60, 60), spaces=None, fields=None, field=None, field_names=None):
         params = dict(params or {})
         features = np.asarray(features, dtype=float)
         names = list(names) if names else [f"Column {i + 1}" for i in range(features.shape[1])]
@@ -412,6 +416,11 @@ class FeatureViewer:
         self.space = 0
         self.features, self.names = features, names
         self.labels = None if labels is None else np.asarray(labels)
+        self.fields = {k: np.asarray(v) for k, v in (fields or {}).items()
+                       if len(v) == len(features)}
+        self.field = field if field in self.fields else None
+        #: Per field, what each stored value means: {0: 'sets 1', ...}.
+        self.field_names = dict(field_names or {})
         self.width, self.height, self.pos = width, height, pos
         self.method = params.get("method", PCA) if params.get("method") in METHODS else PCA
         self.dims = int(str(params.get("dimensions", "2D"))[0]) \
@@ -563,6 +572,12 @@ class FeatureViewer:
                                  callback=lambda s, a: self._set(standardize=bool(a)))
         style.section("Colour")
         with style.form(label_width=95):
+            if len(self.fields) > 1 or (self.fields and self.field is None):
+                with style.row("Field", help="Which metadata field colours the points: the "
+                               "class, the repetition, the set... every field the Window block "
+                               "windowed alongside the signal."):
+                    dpg.add_combo(list(self.fields), default_value=self.field or "",
+                                  width=-1, callback=self._field_chosen)
             with style.row("Colour by", help="Class: one colour per class. Label value: a heat "
                            "scale for a regression target. Auto picks from the labels."):
                 dpg.add_combo(list(COLOURINGS), default_value=self.colouring, width=-1,
@@ -613,6 +628,12 @@ class FeatureViewer:
         for tag, show in shown.items():
             if dpg.does_item_exist(tag):
                 dpg.configure_item(tag, show=show)
+
+    def _field_chosen(self, sender, name):
+        """Colour by another metadata field. The projections stay as they were."""
+        self.field, self.labels, self.dof = name, self.fields[name], 0
+        self.colouring = AUTO
+        self.spawn_window()
 
     def _space_chosen(self, sender, title):
         """Look at another space over the same windows."""
@@ -696,7 +717,8 @@ class FeatureViewer:
             axes = [self.names[c] for c in self.columns[:self.dims]]
         rows = self._rows()
         labels = None if self.labels is None else self.labels[rows]
-        groups, scale = colour_groups(labels, self.colouring, self.dof)
+        groups, scale = colour_groups(labels, self.colouring, self.dof,
+                                      self.field_names.get(self.field))
         dpg.delete_item(PLOT_AREA, children_only=True)
         self._series, self._axis_lines = [], []
         with dpg.group(horizontal=True, parent=PLOT_AREA):

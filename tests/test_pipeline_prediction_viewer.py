@@ -31,13 +31,13 @@ def _recording_folder(root, seed=0):
     return root
 
 
-def _document(folder, model_path, model="LDA", **viewer_params):
+def _document(folder, model_path, model="LDA", validation=0.0, **viewer_params):
     document = PipelineDocument()
     source = document.add_node("source.offline", params={
         "folder": str(folder),
         "regex_filters": (f"/trial_|/|{','.join(str(s) for s in range(1, SETS + 1))}|sets\n"
                           f"C_|_R|{','.join(str(c) for c in range(CLASSES))}|classes"),
-        "label_key": "classes", "sampling_rate": RATE, "delimiter": ","})
+        "sampling_rate": RATE, "delimiter": ","})
     window = document.add_node("window.enframe", params={"window_size": WINDOW,
                                                          "window_increment": INCREMENT})
     features = document.add_node("features.extract", params={"feature_group": "HTD"})
@@ -47,13 +47,16 @@ def _document(folder, model_path, model="LDA", **viewer_params):
             "sequence_length": 8, "hidden_size": 16, "patience": 0, "validation": 0.34})
     else:
         block = document.add_node("model.classifier", params={"model": model,
-                                                              "model_path": str(model_path)})
+                                                              "model_path": str(model_path),
+                                                              "validation": validation})
     shown = document.add_node("sink.prediction_viewer", params=viewer_params)
     document.connect(source, "emg", window, "input")
     document.connect(window, "output", features, "input")
     document.connect(features, "output", block, "input")
+    document.connect(features, "output", block, "train_input")
+    document.connect(window, "metadata", block, "train_labels")
     document.connect(block, "output", shown, "model")
-    document.connect(source, "labels", shown, "labels")
+    document.connect(window, "metadata", shown, "labels")
     return document
 
 
@@ -152,7 +155,7 @@ def test_a_run_hands_the_viewer_every_recording_with_its_predictions(tmp_path):
         assert len(r["predicted"]) == len(r["truth"]) == windows
         assert len(set(r["truth"])) == 1, "a file is one class"
         assert str(r["truth"][0]) == r["meta"]["classes"]
-        assert r["split"] == "", "nothing says which recordings were held out"
+        assert r["split"] == "training", "fitted on every recording: none was held out"
         metas.add((r["meta"]["sets"], r["meta"]["classes"]))
     assert len(metas) == SETS * CLASSES
     # These classes are easy: the viewer should see the model get them right.

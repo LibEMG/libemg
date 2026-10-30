@@ -42,7 +42,7 @@ class PortType:
     FEATURES = "features"        # an N-by-F feature matrix
     PREDICTION = "prediction"    # class index, probabilities, velocity
     CONTINUOUS = "continuous"    # a regression output vector
-    LABELS = "labels"            # ground truth, offline only
+    LABELS = "labels"            # windowed metadata: a value per window per field, offline only
     METRICS = "metrics"          # a summary result table
 
     ALL = (SAMPLES, WINDOWS, FEATURES, PREDICTION, CONTINUOUS, LABELS, METRICS)
@@ -359,6 +359,14 @@ def _model_choices():
 FILTER_NAMES = ("bandpass", "lowpass", "highpass", "bandstop", "notch", "standardize")
 
 
+_MODEL_PATH_HELP = ("Where the block's Save writes the trained model, and where Load and a "
+                    "live pipeline read it from. A model trained here is used without saving.")
+_LABEL_FIELD_HELP = ("The metadata field that is the label: the description of a regex filter "
+                     "or a label file, such as classes.")
+_VALIDATION_HELP = ("Recordings held out while training, to report validation accuracy: "
+                    "whole recordings, never windows, a share of each class. 0 trains on all.")
+
+
 def build_registry():
     """Describe every block that can be placed, generated where possible.
 
@@ -367,6 +375,7 @@ def build_registry():
     dict
         Mapping from spec id to :class:`NodeSpec`.
     """
+    from libemg._gui._pipeline.offline_data import METADATA_RULES
     features, groups = _feature_choices()
     metrics = _metric_choices()
     classifiers, regressors = _model_choices()
@@ -412,16 +421,16 @@ def build_registry():
         id="source.offline",
         category=SOURCE,
         title="Stored Data",
-        outputs=[PortSpec("emg", PortType.SAMPLES, "EMG", multiple=True),
-                 PortSpec("labels", PortType.LABELS, "Labels", multiple=True)],
+        # One output: the recordings, each still carrying what its filename and
+        # its label files said. Labels are taken from a Window block's Metadata
+        # output, windowed with the signal, so each is the label of a window.
+        outputs=[PortSpec("emg", PortType.SAMPLES, "Data", multiple=True)],
         params=[
             ParamSpec("folder", FOLDER, default="", help="Folder to search for recordings."),
             ParamSpec("regex_filters", STR, default="", multiline=True,
                       label="Regex Filters",
                       help="One filter per line, as left|right|values|description."),
             ParamSpec("delimiter", STR, default=",", advanced=True),
-            ParamSpec("label_key", STR, default="classes", label="Label Key",
-                      help="Which metadata field supplies the labels output."),
             ParamSpec("label_files", STR, default="", label="Label Files",
                       multiline=True,
                       help="Labels kept in files of their own beside the "
@@ -440,7 +449,9 @@ def build_registry():
                       default="as fast as possible", advanced=True,
                       help="Pace the replay to simulate a live session, or run flat out."),
         ],
-        help="Reads recordings from disk and replays them through the pipeline.",
+        help="Reads recordings from disk. Every field a regex filter or label file names "
+             "(classes, reps...) travels with the data, to be split on or windowed into "
+             "labels.",
         offline_only=True,
     ))
 
@@ -476,26 +487,55 @@ def build_registry():
         help="Narrows the stream to a subset of channels.",
     ))
 
+    add(NodeSpec(
+        id="transform.split",
+        category=TRANSFORM,
+        title="Split",
+        inputs=[PortSpec("input", PortType.SAMPLES, "Data")],
+        outputs=[PortSpec("matching", PortType.SAMPLES, "Matching", multiple=True),
+                 PortSpec("rest", PortType.SAMPLES, "The Rest", multiple=True)],
+        params=[
+            ParamSpec("field", STR, default="reps",
+                      help="A metadata field: the description of one of the Stored Data "
+                           "block's regex filters or label files."),
+            ParamSpec("values", STR, default="0,1,2",
+                      help="The field's values that go to Matching, as the filenames write "
+                           "them: 0,1,2 or a range, 0-5. Every other recording goes to The "
+                           "Rest."),
+        ],
+        help="Divides stored recordings in two by a metadata field, whole recordings at a "
+             "time: for example training repetitions and test repetitions.",
+        offline_only=True,
+    ))
+
     # ---------------- window ----------------
     add(NodeSpec(
         id="window.enframe",
         category=WINDOW,
         title="Window",
         inputs=[PortSpec("input", PortType.SAMPLES)],
-        outputs=[PortSpec("output", PortType.WINDOWS, multiple=True)],
+        outputs=[PortSpec("output", PortType.WINDOWS, multiple=True),
+                 # Stored data only: every metadata field, one value per window,
+                 # in the order of the windows. This is where labels come from.
+                 PortSpec("metadata", PortType.LABELS, "Metadata", multiple=True)],
         params=[
             ParamSpec("window_size", INT, default=200, minimum=2, label="Window Size",
                       help="Samples per window."),
             ParamSpec("window_increment", INT, default=50, minimum=1,
                       label="Window Increment",
                       help="New samples that constitute a window boundary."),
+            ParamSpec("metadata_rule", ENUM, choices=list(METADATA_RULES),
+                      default="last sample", label="Metadata Value",
+                      help="Stored data: how each window's value of a metadata field is "
+                           "taken from the samples it spans. Last sample matches what a live "
+                           "model sees: the label at the moment it answers."),
         ],
         # Deliberately no mode parameter. Whether this triggers downstream work
         # on a live stream or enframes a recording in batches follows from what
         # it is connected to, and a user who set it wrongly would get a
         # pipeline that silently did nothing.
-        help="Cuts the stream into windows. Triggers downstream work online, "
-             "and enframes in batches offline.",
+        help="Cuts the signal into windows. On stored data, Metadata carries every field "
+             "(classes, reps...) windowed alongside: one value per window, for labels.",
     ))
 
     # ---------------- features ----------------
@@ -526,12 +566,18 @@ def build_registry():
         # generic "nothing connected" rule does not demand both, and a
         # model-specific rule in the document requires exactly one.
         inputs=[PortSpec("input", PortType.FEATURES, "Features", optional=True),
-                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True)],
+                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True),
+                PortSpec("train_input", PortType.FEATURES, "Train Features", optional=True),
+                PortSpec("train_labels", PortType.LABELS, "Train Labels", optional=True)],
         outputs=[PortSpec("output", PortType.PREDICTION, multiple=True)],
         params=[
             ParamSpec("model", ENUM, choices=classifiers, default="LDA"),
             ParamSpec("model_path", PATH, default="", label="Fitted Model",
-                      help="A saved predictor to run. Required online."),
+                      help=_MODEL_PATH_HELP),
+            ParamSpec("label_field", STR, default="classes", label="Label Field",
+                      help=_LABEL_FIELD_HELP),
+            ParamSpec("validation", FLOAT, default=0.2, minimum=0.0, maximum=0.9,
+                      label="Validation Share", help=_VALIDATION_HELP),
             ParamSpec("rejection_threshold", FLOAT, default=0.0, minimum=0.0, maximum=1.0,
                       label="Rejection Threshold",
                       help="Confidence below which a prediction is rejected. 0 disables."),
@@ -540,7 +586,8 @@ def build_registry():
             ParamSpec("velocity", BOOL, default=False,
                       help="Also output a proportional velocity."),
         ],
-        help="Predicts a class from features.",
+        help="Predicts a class from features. Train it here from Train Features and Train "
+             "Labels, or Load one fitted before.",
     ))
 
     add(NodeSpec(
@@ -548,16 +595,24 @@ def build_registry():
         category=MODEL,
         title="Regressor",
         inputs=[PortSpec("input", PortType.FEATURES, "Features", optional=True),
-                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True)],
+                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True),
+                PortSpec("train_input", PortType.FEATURES, "Train Features", optional=True),
+                PortSpec("train_labels", PortType.LABELS, "Train Labels", optional=True)],
         outputs=[PortSpec("output", PortType.CONTINUOUS, multiple=True)],
         params=[
             ParamSpec("model", ENUM, choices=regressors, default="LR"),
             ParamSpec("model_path", PATH, default="", label="Fitted Model",
-                      help="A saved predictor to run. Required online."),
+                      help=_MODEL_PATH_HELP),
+            ParamSpec("label_field", STR, default="classes", label="Label Field",
+                      help="The metadata field holding the target: usually a label file's "
+                           "description, one column per degree of freedom."),
+            ParamSpec("validation", FLOAT, default=0.2, minimum=0.0, maximum=0.9,
+                      label="Validation Share", help=_VALIDATION_HELP),
             ParamSpec("deadband_threshold", FLOAT, default=0.0, minimum=0.0,
                       label="Deadband", help="Outputs below this are zeroed."),
         ],
-        help="Predicts continuous outputs from features.",
+        help="Predicts continuous outputs from features. Train it here from Train Features "
+             "and Train Labels, or Load one fitted before.",
     ))
 
     # The deep tooling's own vocabulary, so the block cannot offer a choice
@@ -568,7 +623,10 @@ def build_registry():
         category=MODEL,
         title="Deep Model",
         inputs=[PortSpec("input", PortType.FEATURES, "Features", optional=True),
-                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True)],
+                PortSpec("windows", PortType.WINDOWS, "Windows", optional=True),
+                PortSpec("train_input", PortType.FEATURES, "Train Features", optional=True),
+                PortSpec("train_windows", PortType.WINDOWS, "Train Windows", optional=True),
+                PortSpec("train_labels", PortType.LABELS, "Train Labels", optional=True)],
         outputs=[PortSpec("output", PortType.PREDICTION, multiple=True)],
         params=[
             ParamSpec("architecture", ENUM, choices=[a.upper() if len(a) <= 4 else a.title()
@@ -582,7 +640,9 @@ def build_registry():
                       help="Continuous: an answer at every window. Discrete: each recording is "
                            "one gesture with one label, recognised once it is over."),
             ParamSpec("model_path", PATH, default="", label="Fitted Model",
-                      help="Where Train saves the model, and what runs it afterwards."),
+                      help=_MODEL_PATH_HELP),
+            ParamSpec("label_field", STR, default="classes", label="Label Field",
+                      help=_LABEL_FIELD_HELP),
             ParamSpec("epochs", INT, default=50, minimum=1, maximum=10000),
             ParamSpec("learning_rate", FLOAT, default=0.001, minimum=1e-6, maximum=1.0,
                       label="Learning Rate"),
@@ -609,8 +669,8 @@ def build_registry():
                            "0 runs every epoch."),
             ParamSpec("validation", FLOAT, default=0.2, minimum=0.0, maximum=0.9,
                       advanced=True, label="Validation Share",
-                      help="Recordings held out to judge each epoch: whole recordings, "
-                           "never windows."),
+                      help="Recordings held out to judge each epoch, and to report "
+                           "validation accuracy: whole recordings, never windows."),
             ParamSpec("seed", INT, default=0, minimum=0, advanced=True),
         ],
         help="A neural network trained here, with its loss drawn live as it trains. Runs "
@@ -660,6 +720,8 @@ def build_registry():
         params=[
             ParamSpec("metrics", MULTI_SELECT, choices=metrics,
                       default=["CA", "CONF_MAT"]),
+            ParamSpec("label_field", STR, default="classes", label="Label Field",
+                      help="The metadata field the predictions are scored against."),
             ParamSpec("null_label", INT, default=-1, advanced=True,
                       label="Null Label", help="Class treated as no motion."),
         ],
@@ -678,6 +740,9 @@ def build_registry():
                 # predictions but the spaces the fitted model works in.
                 PortSpec("model", PortType.PREDICTION, optional=True)],
         params=[
+            ParamSpec("label_field", STR, default="classes", label="Colour Field",
+                      help="The metadata field the points are coloured by. Any other field "
+                           "the labels carry can be picked in the window."),
             ParamSpec("method", ENUM, choices=list(METHODS), default="PCA",
                       help="Columns plots feature columns as they are; PCA, ICA and Isomap "
                            "project every column down to the dimensions below."),
@@ -706,10 +771,12 @@ def build_registry():
         inputs=[PortSpec("model", PortType.PREDICTION),
                 PortSpec("labels", PortType.LABELS, optional=True)],
         params=[
+            ParamSpec("label_field", STR, default="classes", label="Label Field",
+                      help="The metadata field holding what was performed."),
             ParamSpec("held_out_field", STR, default="", label="Held Out Field",
                       help="A filename field, such as reps or sets, that says which recordings "
-                           "the model never trained on. Leave empty to use what a deep model "
-                           "set aside for validation while it trained."),
+                           "the model never trained on. Leave empty to use the recordings the "
+                           "model remembers being trained on."),
             ParamSpec("held_out_values", STR, default="", label="Held Out Values",
                       help="The field's values that were held out, separated by commas: "
                            "for example 4, 5."),

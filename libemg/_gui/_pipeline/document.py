@@ -23,7 +23,13 @@ from libemg._gui._pipeline.registry import (MODEL, SINK, SOURCE, WINDOW, NodeSpe
                                             PortType, default_registry)
 
 #: Bumped when the saved shape changes. Migrations are keyed off it.
-SCHEMA_VERSION = 1
+#: 2: labels come from a Window block's Metadata output, not from Stored Data,
+#: and a model is trained from Train Features and Train Labels inputs.
+SCHEMA_VERSION = 2
+
+#: A model block's inputs: what it runs on, and what it is trained on.
+PREDICT_PORTS = ("input", "windows")
+TRAIN_PORTS = ("train_input", "train_windows")
 
 
 @dataclass
@@ -399,21 +405,13 @@ class PipelineDocument:
                     problems.append(f"'{spec.title}' ({node_id}) has nothing connected "
                                     f"to its {port.label} input.")
             if spec.category == MODEL:
-                # A model reads features or raw windows, never both and never
-                # neither. Its ports are optional individually so the generic
-                # rule above does not demand both, so the real requirement is
-                # stated here.
-                connected = [p.label for p in spec.inputs
-                             if self.links_into(node_id, p.name)]
-                if not connected:
-                    problems.append(
-                        f"'{spec.title}' ({node_id}) has no input. Connect features "
-                        "to it, or connect a window directly for a model that takes "
-                        "raw windows.")
-                elif len(connected) > 1:
-                    problems.append(
-                        f"'{spec.title}' ({node_id}) has both {' and '.join(connected)} "
-                        "connected. A model reads one or the other, not both.")
+                problems += self._model_problems(node_id, spec, mode)
+            if mode == "online":
+                for port in spec.outputs:
+                    if port.type == PortType.LABELS and self.links_out_of(node_id, port.name):
+                        problems.append(
+                            f"'{spec.title}' ({node_id}) passes on its {port.label}, which "
+                            "only stored data has: a live stream carries no labels.")
             if mode == "offline" and spec.online_only:
                 problems.append(f"'{spec.title}' ({node_id}) only works on a live stream.")
             if mode == "online" and spec.offline_only:
@@ -426,6 +424,11 @@ class PipelineDocument:
         for node_id, node in self.nodes.items():
             spec = self.registry.get(node.spec_id)
             if spec is None or not spec.outputs or spec.category == SINK:
+                continue
+            if spec.category == MODEL and not any(self.links_into(node_id, p)
+                                                  for p in PREDICT_PORTS):
+                # A model that is only trained -- to be saved, or used by another
+                # pipeline -- has nothing to run on, so nothing to pass on.
                 continue
             if not self.links_out_of(node_id) and not any(
                     p.node == node_id for p in self.probes):
@@ -442,6 +445,41 @@ class PipelineDocument:
         if mode in ("online", "offline") and not visible:
             problems.append("There is no model, output or probe, so the pipeline "
                             "would compute nothing anybody could see.")
+        return problems
+
+    def _model_problems(self, node_id, spec, mode):
+        """What is wrong with how a model block is connected.
+
+        Its inputs come in two pairs. Features or Windows are what it runs on;
+        Train Features (or Train Windows) and Train Labels are what it learns
+        from. Either pair can be left out -- a model loaded from a file needs no
+        training data, and one that is only trained runs on nothing -- but
+        each pair is all or none, and a model reads features or windows, never
+        both.
+        """
+        title = f"'{spec.title}' ({node_id})"
+        linked = lambda ports: [spec.port(p).label for p in ports
+                                if spec.port(p) is not None and self.links_into(node_id, p)]
+        predict, train = linked(PREDICT_PORTS), linked(TRAIN_PORTS)
+        labels = bool(self.links_into(node_id, "train_labels"))
+        problems = []
+        if not predict and not train and not labels:
+            problems.append(f"{title} has no input. Connect features to run it on, or Train "
+                            "Features and Train Labels to train it.")
+        for pair in (predict, train):
+            if len(pair) > 1:
+                problems.append(f"{title} has both {' and '.join(pair)} connected. A model "
+                                "reads one or the other, not both.")
+        if labels and not train:
+            problems.append(f"{title} has Train Labels but nothing to learn them from. Connect "
+                            "Train Features from the same Window block's features.")
+        if train and not labels:
+            problems.append(f"{title} has {train[0]} but no Train Labels. Connect the Metadata "
+                            "of the Window block they came from.")
+        if mode == "online" and (train or labels):
+            problems.append(f"{title} is trained from stored data, but this pipeline is live. "
+                            "Train it in a stored-data pipeline, save it, and set its Fitted "
+                            "Model here.")
         return problems
 
     def check(self):
@@ -529,7 +567,7 @@ def migrate(raw):
     carried forward rather than rejected.
     """
     version = int(raw.get("schema_version", 1))
-    steps = {}
+    steps = {1: _labels_from_windows}
     while version in steps:
         raw = steps[version](raw)
         version += 1
@@ -539,4 +577,84 @@ def migrate(raw):
     # was returned untouched and reading the key afterwards raised.
     raw = dict(raw)
     raw["schema_version"] = min(version, SCHEMA_VERSION)
+    return raw
+
+
+def _labels_from_windows(raw):
+    """Version 1 to 2: labels come from a Window block, and a model has training inputs.
+
+    In version 1 a Stored Data block had a Labels output, windowed implicitly
+    by whichever Window its signal went through, and the Train button fitted a
+    model on the same data it ran on. Each Labels link becomes a link from the
+    Metadata of that Window block, and each model gains the training links
+    that make Train do what it did before.
+    """
+    import copy
+    raw = copy.deepcopy(dict(raw))
+    nodes = {n.get("id"): n for n in raw.get("nodes", [])}
+    links = [dict(l) for l in raw.get("links", [])]
+    spec_of = lambda node_id: nodes.get(node_id, {}).get("spec_id", "")
+
+    def window_after(node_id):
+        """The first Window reached downstream of a block, through its links."""
+        seen, queue = set(), [node_id]
+        while queue:
+            current = queue.pop(0)
+            for link in sorted((l for l in links if l["from_node"] == current),
+                               key=lambda l: l["to_node"]):
+                target = link["to_node"]
+                if spec_of(target) == "window.enframe":
+                    return target
+                if target not in seen and spec_of(target).startswith("transform."):
+                    seen.add(target)
+                    queue.append(target)
+        return None
+
+    def window_before(node_id):
+        """The Window a block's input comes from, through any features block."""
+        seen, queue = set(), [node_id]
+        while queue:
+            current = queue.pop(0)
+            for link in links:
+                if link["to_node"] != current or link["to_port"] not in ("input", "windows"):
+                    continue
+                if spec_of(link["from_node"]) == "window.enframe":
+                    return link["from_node"]
+                if link["from_node"] not in seen:
+                    seen.add(link["from_node"])
+                    queue.append(link["from_node"])
+        return None
+
+    kept, label_key = [], {}
+    for link in links:
+        if spec_of(link["from_node"]) == "source.offline" and link["from_port"] == "labels":
+            source = nodes[link["from_node"]]
+            window = window_after(link["from_node"])
+            if window is None:
+                continue
+            key = source.get("params", {}).get("label_key", "classes")
+            label_key[window] = key
+            target = nodes.get(link["to_node"])
+            if target is not None:
+                target.setdefault("params", {}).setdefault("label_field", key)
+            link = dict(link, from_node=window, from_port="metadata")
+        kept.append(link)
+
+    for node_id, node in nodes.items():
+        if not node.get("spec_id", "").startswith("model."):
+            continue
+        feeding = [l for l in kept if l["to_node"] == node_id and l["to_port"] in ("input",
+                                                                                  "windows")]
+        window = window_before(node_id)
+        if not feeding or window is None or window not in label_key:
+            continue
+        port = "train_input" if feeding[0]["to_port"] == "input" else "train_windows"
+        if port == "train_windows" and node.get("spec_id") != "model.deep":
+            continue
+        kept.append(dict(feeding[0], to_port=port))
+        kept.append({"from_node": window, "from_port": "metadata", "to_node": node_id,
+                     "to_port": "train_labels"})
+        node.setdefault("params", {}).setdefault("label_field", label_key[window])
+
+    raw["links"] = kept
     return raw

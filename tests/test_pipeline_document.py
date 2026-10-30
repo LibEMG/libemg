@@ -60,7 +60,7 @@ def _offline_document():
     document.connect(window, "output", features, "input")
     document.connect(features, "output", model, "input")
     document.connect(model, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document, (source, filtered, window, features, model, metrics)
 
 
@@ -287,7 +287,8 @@ def test_a_new_node_starts_with_its_spec_s_defaults():
     document = PipelineDocument()
     node_id = document.add_node("window.enframe")
 
-    assert document.nodes[node_id].params == {"window_size": 200, "window_increment": 50}
+    assert document.nodes[node_id].params == {"window_size": 200, "window_increment": 50,
+                                              "metadata_rule": "last sample"}
 
 
 def test_parameters_handed_to_add_node_are_coerced_to_their_declared_kinds():

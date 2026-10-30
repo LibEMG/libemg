@@ -117,20 +117,23 @@ def _classification_document(folder, sets, model_path, model="LDA", null_label=2
         "folder": str(folder),
         "regex_filters": (f"/trial_|/|{','.join(sets)}|sets\n"
                           f"C_|_R|{','.join(str(i) for i in range(CLASSES))}|classes"),
-        "label_key": "classes", "sampling_rate": 200, "delimiter": ","})
+        "sampling_rate": 200, "delimiter": ","})
     window = document.add_node("window.enframe", params={
         "window_size": WINDOW_SIZE, "window_increment": WINDOW_INCREMENT})
     features = document.add_node("features.extract",
                                  params={"feature_group": FEATURE_SET})
+    # Validation 0: fitted on every recording, as the script fits it.
     predictor = document.add_node("model.classifier", params={
-        "model": model, "model_path": str(model_path)})
+        "model": model, "model_path": str(model_path), "validation": 0.0})
     metrics = document.add_node("sink.metrics", params={
         "metrics": ["CA", "AER", "INS"], "null_label": null_label})
     document.connect(source, "emg", window, "input")
     document.connect(window, "output", features, "input")
     document.connect(features, "output", predictor, "input")
+    document.connect(features, "output", predictor, "train_input")
+    document.connect(window, "metadata", predictor, "train_labels")
     document.connect(predictor, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document
 
 
@@ -180,9 +183,10 @@ def test_a_pipeline_saved_and_reopened_still_scores_the_same(tmp_path):
     assert reopened == direct
     # Every parameter survived the round trip, including the ones added for
     # stored-data work.
-    stored = [node for node in json.loads(saved.read_text())["nodes"]
-              if node["spec_id"] == "source.offline"][0]
-    assert stored["params"]["label_key"] == "classes"
+    nodes = json.loads(saved.read_text())["nodes"]
+    stored = [node for node in nodes if node["spec_id"] == "source.offline"][0]
+    model = [node for node in nodes if node["spec_id"] == "model.classifier"][0]
+    assert model["params"]["label_field"] == "classes"
     assert "sets" in stored["params"]["regex_filters"]
 
 
@@ -229,20 +233,24 @@ def _regression_document(folder, reps, model_path, model="LR"):
         "regex_filters": f"_R_|_emg.csv|{','.join(reps)}|reps",
         "label_files": "/|.txt|labels|labels",
         "package_by": "same folder",
-        "label_key": "labels", "sampling_rate": 200, "delimiter": ","})
+        "sampling_rate": 200, "delimiter": ","})
     window = document.add_node("window.enframe", params={
         "window_size": WINDOW_SIZE, "window_increment": WINDOW_INCREMENT})
     features = document.add_node("features.extract",
                                  params={"feature_group": FEATURE_SET})
     predictor = document.add_node("model.regressor", params={
-        "model": model, "model_path": str(model_path)})
+        "model": model, "model_path": str(model_path), "label_field": "labels",
+        "validation": 0.0})
     metrics = document.add_node("sink.metrics",
-                                params={"metrics": ["R2", "NRMSE", "MAE"]})
+                                params={"metrics": ["R2", "NRMSE", "MAE"],
+                                        "label_field": "labels"})
     document.connect(source, "emg", window, "input")
     document.connect(window, "output", features, "input")
     document.connect(features, "output", predictor, "input")
+    document.connect(features, "output", predictor, "train_input")
+    document.connect(window, "metadata", predictor, "train_labels")
     document.connect(predictor, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document
 
 
@@ -276,7 +284,10 @@ def test_labels_in_a_file_of_their_own_keep_every_degree_of_freedom(tmp_path):
     pipeline = compile_pipeline(_regression_document(
         folder, ["0", "1"], tmp_path / "m.pkl"))
 
-    windows, features, truth = pipeline._gather()
+    window = next(n for n, node in pipeline.document.nodes.items()
+                  if node.spec_id == "window.enframe")
+    windows = pipeline.value(window, "output")
+    truth = pipeline.value(window, "metadata").field("labels")
 
     assert truth.ndim == 2 and truth.shape[1] == 3
     assert len(truth) == len(windows)
@@ -291,7 +302,9 @@ def test_a_single_column_label_still_arrives_as_a_flat_vector(tmp_path):
     pipeline = compile_pipeline(_classification_document(
         folder, ["1"], tmp_path / "m.pkl"))
 
-    _, _, truth = pipeline._gather()
+    window = next(n for n, node in pipeline.document.nodes.items()
+                  if node.spec_id == "window.enframe")
+    truth = pipeline.value(window, "metadata").field("classes")
 
     assert truth.ndim == 1
     assert set(np.unique(truth)) <= set(range(CLASSES))
@@ -380,19 +393,21 @@ def _myo_document(folder, sets, model_path):
         "folder": folder,
         "regex_filters": (f"/trial_|/|{','.join(sets)}|sets\n"
                           "C_|.csv|0,1,2,3,4|classes\nR_|_|0,1|reps"),
-        "label_key": "classes", "sampling_rate": 200, "delimiter": ","})
+        "sampling_rate": 200, "delimiter": ","})
     window = document.add_node("window.enframe",
                                params={"window_size": 20, "window_increment": 10})
     features = document.add_node("features.extract", params={"feature_group": "HTD"})
     predictor = document.add_node("model.classifier", params={
-        "model": "LDA", "model_path": str(model_path)})
+        "model": "LDA", "model_path": str(model_path), "validation": 0.0})
     metrics = document.add_node("sink.metrics", params={
         "metrics": ["CA", "AER", "INS"], "null_label": 2})
     document.connect(source, "emg", window, "input")
     document.connect(window, "output", features, "input")
     document.connect(features, "output", predictor, "input")
+    document.connect(features, "output", predictor, "train_input")
+    document.connect(window, "metadata", predictor, "train_labels")
     document.connect(predictor, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document
 
 
@@ -431,19 +446,23 @@ def _emager_document(folder, reps, model_path):
         "regex_filters": ("/|/|open-close,pro-sup|movements\n"
                           f"_R_|_emg.csv|{','.join(reps)}|reps"),
         "label_files": "/|.txt|labels|labels", "package_by": "same folder",
-        "label_key": "labels", "sampling_rate": 1010, "delimiter": ","})
+        "sampling_rate": 1010, "delimiter": ","})
     window = document.add_node("window.enframe",
                                params={"window_size": 150, "window_increment": 40})
     features = document.add_node("features.extract", params={"feature_group": "HTD"})
     predictor = document.add_node("model.regressor", params={
-        "model": "LR", "model_path": str(model_path)})
+        "model": "LR", "model_path": str(model_path), "label_field": "labels",
+        "validation": 0.0})
     metrics = document.add_node("sink.metrics",
-                                params={"metrics": ["R2", "NRMSE", "MAE"]})
+                                params={"metrics": ["R2", "NRMSE", "MAE"],
+                                        "label_field": "labels"})
     document.connect(source, "emg", window, "input")
     document.connect(window, "output", features, "input")
     document.connect(features, "output", predictor, "input")
+    document.connect(features, "output", predictor, "train_input")
+    document.connect(window, "metadata", predictor, "train_labels")
     document.connect(predictor, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document
 
 
@@ -502,21 +521,24 @@ def test_a_pipeline_built_through_the_editor_scores_what_the_script_scores(
                 ("regex_filters",
                  f"/trial_|/|{','.join(sets)}|sets\n"
                  f"C_|_R|{','.join(str(i) for i in range(CLASSES))}|classes"),
-                ("label_key", "classes"), ("sampling_rate", 200)):
+                ("sampling_rate", 200)):
             panel._param_changed(None, value, (source, name))
         panel._param_changed(None, WINDOW_SIZE, (window, "window_size"))
         panel._param_changed(None, WINDOW_INCREMENT, (window, "window_increment"))
         panel._param_changed(None, FEATURE_SET, (features, "feature_group"))
         panel._param_changed(None, "LDA", (model, "model"))
         panel._param_changed(None, str(model_path), (model, "model_path"))
+        panel._param_changed(None, 0.0, (model, "validation"))
         panel._param_changed(None, ["CA", "AER", "INS"], (metrics, "metrics"))
         panel._param_changed(None, 2, (metrics, "null_label"))
 
         _drag(panel, source, "emg", window, "input")
         _drag(panel, window, "output", features, "input")
         _drag(panel, features, "output", model, "input")
+        _drag(panel, features, "output", model, "train_input")
+        _drag(panel, window, "metadata", model, "train_labels")
         _drag(panel, model, "output", metrics, "input")
-        _drag(panel, source, "labels", metrics, "labels")
+        _drag(panel, window, "metadata", metrics, "labels")
         return panel
 
     trainer, _ = _editor(monkeypatch)

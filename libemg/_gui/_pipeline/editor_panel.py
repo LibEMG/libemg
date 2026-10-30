@@ -34,9 +34,11 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from libemg._gui import _style as style
-from libemg._gui._pipeline.compile import CompileError, compile_pipeline
+from libemg._gui._pipeline.compile import (CompileError, OfflinePipeline,
+                                           compile_for_training, compile_pipeline,
+                                           load_model, save_model)
 from libemg._gui._pipeline.document import PipelineDocument
-from libemg._gui._pipeline.registry import (BOOL, ENUM, FLOAT, FOLDER, INT,
+from libemg._gui._pipeline.registry import (BOOL, ENUM, FLOAT, FOLDER, INT, MODEL,
                                             PortType,
                                             MULTI_SELECT, PATH, STR, SOURCE,
                                             default_registry)
@@ -57,6 +59,7 @@ START_TAG = "__pipeline_start"
 STOP_TAG = "__pipeline_stop"
 TRAIN_TAG = "__pipeline_train"
 FILE_TAG = "__pipeline_file"
+MODEL_FILE_TAG = "__pipeline_model_file"
 #: Height of the readiness report under the canvas: five lines before it scrolls.
 REPORT_HEIGHT = 100
 
@@ -127,6 +130,16 @@ class PipelineEditorPanel:
         self._last_error = ""
         self._training = False
         self._trained = None
+        #: Fitted predictors by model block: trained here or loaded. Used by
+        #: Start before any Fitted Model file, so a model need not be saved to
+        #: be tried.
+        self.models = {}
+        #: By model block: its statistics, epochs, training record, where it
+        #: came from and where it was last saved.
+        self.model_info = {}
+        #: Open statistics windows by model block.
+        self.reports = {}
+        self._training_nodes = []
 
     # ==================================================================
     # window
@@ -169,7 +182,10 @@ class PipelineEditorPanel:
             if getattr(self, attribute, None) is not None:
                 getattr(self, attribute).cleanup()
                 setattr(self, attribute, None)
-        for tag in (SCOPE_TAG, RESULTS_TAG, OPEN_TAG, SAVEAS_TAG, WINDOW_TAG):
+        for report in getattr(self, "reports", {}).values():
+            report.cleanup()
+        self.reports = {}
+        for tag in (SCOPE_TAG, RESULTS_TAG, OPEN_TAG, SAVEAS_TAG, MODEL_FILE_TAG, WINDOW_TAG):
             if dpg.does_alias_exist(tag):
                 dpg.delete_item(tag)
 
@@ -188,10 +204,10 @@ class PipelineEditorPanel:
             _tooltip(START_TAG, "Build the pipeline and run it: live, from its device, or "
                                 "once over the stored data it reads.")
             style.button("Stop", "danger", tag=STOP_TAG, width=80, callback=self.stop)
-            style.button("Train", tag=TRAIN_TAG, callback=self._train)
-            _tooltip(TRAIN_TAG, "Fit this pipeline's model on the stored data it "
-                                "reads, and save it where the model block points. "
-                                "Only for a stored-data pipeline.")
+            style.button("Train all", tag=TRAIN_TAG, callback=self._train)
+            _tooltip(TRAIN_TAG, "Train every model block whose Train Features and Train "
+                                "Labels are connected, one after another. Each block also "
+                                "has a Train button of its own.")
             style.button("History...", tag=f"{TRAIN_TAG}_history",
                          callback=self.open_training_history)
             _tooltip(f"{TRAIN_TAG}_history", "Look at deep model training runs from any "
@@ -286,6 +302,10 @@ class PipelineEditorPanel:
                 self._draw_ports(node_id, spec)
                 with dpg.node_attribute(parent=tag, attribute_type=dpg.mvNode_Attr_Static):
                     self._draw_params(node_id, spec)
+                if spec.category == MODEL:
+                    with dpg.node_attribute(parent=tag,
+                                            attribute_type=dpg.mvNode_Attr_Static):
+                        self._draw_model_controls(node_id)
             with dpg.node_attribute(parent=tag, attribute_type=dpg.mvNode_Attr_Static):
                 # A fixed width, not -1: inside a node editor, -1 means "fill
                 # the remaining canvas", so this one button stretched its node
@@ -426,6 +446,12 @@ class PipelineEditorPanel:
     def _param_changed(self, sender, app_data, user_data):
         node_id, name = user_data
         self.document.set_param(node_id, name, app_data)
+        if name != "model_path" and node_id in self.models:
+            # A model trained under other settings is not the model these
+            # settings describe. Running it anyway would report a result for a
+            # model nobody configured.
+            self._forget_model(node_id, "Its settings changed since it was trained: train "
+                                        "it again.")
         self._refresh_status()
 
     def _multi_toggled(self, sender, app_data, user_data):
@@ -467,6 +493,7 @@ class PipelineEditorPanel:
 
     def _remove_node(self, sender, app_data, user_data):
         node_id = user_data
+        self._forget_model(node_id)
         for link_id, key in list(self._link_ids.items()):
             if key[0] == node_id or key[2] == node_id:
                 self._link_ids.pop(link_id, None)
@@ -524,6 +551,7 @@ class PipelineEditorPanel:
     # ==================================================================
     def _new(self):
         self.stop()
+        self._forget_all_models()
         self.document = PipelineDocument(self.registry)
         self.path = None
         self._rebuild_canvas()
@@ -557,6 +585,7 @@ class PipelineEditorPanel:
             self._say(f"Could not open that file: {error}", "error")
             return
         self.path = path
+        self._forget_all_models()
         self._rebuild_canvas()
         self._show_file()
 
@@ -597,7 +626,7 @@ class PipelineEditorPanel:
             return
         self._capture_positions()
         try:
-            self.pipeline = compile_pipeline(self.document)
+            self.pipeline = compile_pipeline(self.document, models=self.models)
         except CompileError as error:
             self._say(str(error), "error")
             return
@@ -685,24 +714,31 @@ class PipelineEditorPanel:
         return self.history_view
 
     def _train(self):
-        """Fit the model this pipeline names, on the data it reads.
+        """Train every model block whose training inputs are connected."""
+        nodes = [n for n in self.document.order()
+                 if (self.registry.get(self.document.nodes[n].spec_id) is not None
+                     and self.registry[self.document.nodes[n].spec_id].category == MODEL
+                     and self.document.links_into(n, "train_labels"))]
+        if not nodes:
+            self._say("No model block has training inputs. Connect a Window's Metadata to a "
+                      "model's Train Labels, and the features it should learn from to its "
+                      "Train Features.", "warn")
+            return
+        self._train_models(nodes)
 
-        The step that used to need a script. A pipeline built for stored data
-        already describes everything a fit needs: where the recordings are, how
-        they are filtered and windowed, which features to take and which labels
-        to learn. Training reuses that description rather than asking for it
-        again, so the model is fitted on exactly what it will be scored on.
+    def _train_models(self, nodes):
+        """Fit model blocks on their training inputs, keeping each model in memory.
+
+        Nothing is written to disk: the block's Save does that. A model trained
+        here is used by Start straight away, so it can be tried before it is
+        kept.
         """
         if self.pipeline is not None:
             self._say("Stop the running pipeline before training.", "warn")
             return
-        if self.document.mode() != "offline":
-            self._say("Training reads stored data. Add a Stored Data source, or "
-                      "open the pipeline you collected your training data with.", "warn")
-            return
         self._capture_positions()
         try:
-            pipeline = compile_pipeline(self.document)
+            pipeline = compile_for_training(self.document, self.models)
         except CompileError as error:
             self._say(str(error), "error")
             return
@@ -713,24 +749,29 @@ class PipelineEditorPanel:
         self._offline_progress = 0.0
         self._trained = None
         self.pipeline = pipeline
+        self._training_nodes = list(nodes)
+        for node_id in nodes:
+            self._set_model_status(node_id, "Training...", "busy")
 
-        deep = pipeline.plan.get("deep")
+        deep = [n for n in nodes if self.document.nodes[n].spec_id == "model.deep"]
         if deep:
             # The loss curves are drawn from pipeline.epochs, which the worker
             # appends to as each epoch ends; poll() redraws when it grows.
             from libemg._gui._pipeline.training_view import TrainingView
             if getattr(self, "training_view", None) is not None:
                 self.training_view.cleanup()
-            title = (f"Training: {deep.get('architecture', 'GRU')}, "
-                     f"{str(deep.get('timing', 'Continuous')).lower()} "
-                     f"{str(deep.get('task', 'Classification')).lower()}")
+            params = self.document.nodes[deep[0]].params
+            title = (f"Training {deep[0]}: {params.get('architecture', 'GRU')}, "
+                     f"{str(params.get('timing', 'Continuous')).lower()} "
+                     f"{str(params.get('task', 'Classification')).lower()}")
             self.training_view = TrainingView(
-                title, int(deep.get("epochs", 50)), on_stop=self.stop,
+                title, int(params.get("epochs", 50)), on_stop=self.stop,
                 pos=(max(40, self.width - 720), 70)).spawn_window()
 
         def work():
             try:
-                self._trained = pipeline.train(on_progress=self._record_progress)
+                self._trained = pipeline.train(on_progress=self._record_progress,
+                                               node_id=list(nodes), save=False)
             except Exception as error:
                 self._last_error = f"{type(error).__name__}: {error}"
 
@@ -739,7 +780,204 @@ class PipelineEditorPanel:
         self._offline_thread.start()
         self._training = True
         self._sync_run_buttons()
-        self._say("Training on the stored data.", "busy")
+        self._say("Training " + ", ".join(nodes) + " on the stored data.", "busy")
+
+    # ------------------------------------------------------------------
+    # a model block's own controls
+    # ------------------------------------------------------------------
+    def _draw_model_controls(self, node_id):
+        """Train, Save, Load and Statistics, on the block itself, under its status."""
+        half = int((NODE_WIDTH - _GAP) / 2)
+        dpg.add_text(self._model_status(node_id)[0], tag=f"__model_status_{node_id}",
+                     wrap=NODE_WIDTH, color=style.MUTED)
+        with dpg.group(horizontal=True):
+            train = dpg.add_button(label="Train", width=half, tag=f"__model_train_{node_id}",
+                                   user_data=node_id, callback=self._train_clicked)
+            _bind_theme(train, "block_model")
+            _tooltip(train, "Fit this model on its Train Features and Train Labels. It is "
+                            "kept in memory and used by Start; Save writes it to a file.")
+            dpg.add_button(label="Statistics", width=half, tag=f"__model_stats_{node_id}",
+                           user_data=node_id, callback=self._toggle_report)
+            _tooltip(f"__model_stats_{node_id}", "Show or hide how the trained model did: "
+                                                 "training and validation accuracy, per class, "
+                                                 "and for a deep model its loss.")
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Save", width=half, tag=f"__model_save_{node_id}",
+                           user_data=node_id, callback=self._save_model_clicked)
+            _tooltip(f"__model_save_{node_id}", "Write the trained model to Fitted Model, or "
+                                                "choose where if that is empty.")
+            dpg.add_button(label="Load...", width=half, tag=f"__model_load_{node_id}",
+                           user_data=node_id, callback=self._load_model_clicked)
+            _tooltip(f"__model_load_{node_id}", "Use a model fitted before -- here or by a "
+                                                "script -- instead of training one.")
+
+    def _model_status(self, node_id):
+        """What a model block says under its settings, and in what colour."""
+        from libemg._gui._pipeline.fitting import statistics_text
+        info = self.model_info.get(node_id)
+        if info is not None and node_id in self.models:
+            scores = statistics_text(info.get("statistics"))
+            scores = f" {scores[0].upper()}{scores[1:]}." if scores else ""
+            if info.get("how") == "loaded":
+                return (f"Loaded {os.path.basename(info.get('path', ''))}.{scores}", "ok")
+            saved = info.get("saved")
+            return ((f"Trained.{scores} Saved to {os.path.basename(saved)}." if saved else
+                     f"Trained.{scores} Not saved yet."), "ok")
+        if info is not None and info.get("note"):
+            return info["note"], "warn"
+        path = self.document.nodes[node_id].params.get("model_path", "") \
+            if node_id in self.document.nodes else ""
+        trainable = bool(self.document.links_into(node_id, "train_labels")) \
+            if node_id in self.document.nodes else False
+        if path and os.path.exists(path):
+            return (f"Runs {os.path.basename(path)}." + (" Train to replace it."
+                                                          if trainable else ""), "info")
+        if trainable:
+            return "Not trained yet. Press Train.", "info"
+        return ("Connect Train Features and Train Labels to train it here, or Load a "
+                "fitted model.", "info")
+
+    def _set_model_status(self, node_id, text=None, kind=None):
+        tag = f"__model_status_{node_id}"
+        if not dpg.does_item_exist(tag):
+            return
+        if text is None:
+            text, kind = self._model_status(node_id)
+        style.set_status(tag, text, kind or "info")
+        has_statistics = bool((self.model_info.get(node_id) or {}).get("statistics"))
+        style.set_enabled(f"__model_stats_{node_id}", has_statistics)
+        style.set_enabled(f"__model_save_{node_id}", node_id in self.models)
+
+    def _forget_model(self, node_id, note=""):
+        self.models.pop(node_id, None)
+        self.model_info.pop(node_id, None)
+        if note:
+            self.model_info[node_id] = {"note": note}
+        report = self.reports.pop(node_id, None)
+        if report is not None:
+            report.cleanup()
+        self._set_model_status(node_id)
+
+    def _forget_all_models(self):
+        for node_id in list(self.models) + list(self.model_info):
+            self._forget_model(node_id)
+        self.models, self.model_info = {}, {}
+
+    def _train_clicked(self, sender, app_data, node_id):
+        if not self.document.links_into(node_id, "train_labels"):
+            self._say(f"{node_id} has no Train Labels. Connect a Window block's Metadata to "
+                      "it, and that Window's features to Train Features.", "warn")
+            return
+        self._train_models([node_id])
+
+    def _toggle_report(self, sender, app_data, node_id):
+        """Show a model's statistics, or hide them if they are showing."""
+        from libemg._gui._pipeline.model_report import ModelReport, source_text
+        report = self.reports.get(node_id)
+        if report is not None and report.shown:
+            report.cleanup()
+            self.reports.pop(node_id, None)
+            return
+        info = self.model_info.get(node_id) or {}
+        if not info.get("statistics"):
+            self._say(f"{node_id} has no statistics yet: train it, or load a model trained in "
+                      "the editor.", "warn")
+            return
+        spec = self.registry[self.document.nodes[node_id].spec_id]
+        offset = 30 * (len(self.reports) % 5)
+        report = ModelReport(
+            node_id, f"{spec.title} ({node_id})", info["statistics"], info.get("epochs"),
+            source_text(info.get("how", "trained"), info.get("saved") or info.get("path", "")),
+            pos=(max(40, self.width - 820) - offset, 60 + offset))
+        # Taller than the screen, it scrolls rather than running off the bottom.
+        report.height = min(report.height, self.height - 90 - offset)
+        self.reports[node_id] = report.spawn_window()
+
+    def _save_model_clicked(self, sender, app_data, node_id):
+        if node_id not in self.models:
+            self._say(f"{node_id} has nothing to save yet: train it first.", "warn")
+            return
+        path = self.document.nodes[node_id].params.get("model_path", "")
+        if path:
+            self._save_model(node_id, path)
+        else:
+            self._model_file_dialog(node_id, "save")
+
+    def _load_model_clicked(self, sender, app_data, node_id):
+        self._model_file_dialog(node_id, "load")
+
+    def _model_file_dialog(self, node_id, purpose):
+        if dpg.does_alias_exist(MODEL_FILE_TAG):
+            dpg.delete_item(MODEL_FILE_TAG)
+        with dpg.file_dialog(tag=MODEL_FILE_TAG, directory_selector=False, width=620,
+                             height=420, modal=True, user_data=(node_id, purpose),
+                             default_filename=f"{node_id}" if purpose == "save" else "",
+                             callback=self._model_file_chosen):
+            dpg.add_file_extension(".pkl")
+            dpg.add_file_extension(".*")
+
+    def _model_file_chosen(self, sender, app_data, user_data):
+        node_id, purpose = user_data
+        path = (app_data or {}).get("file_path_name") or ""
+        if not path or node_id not in self.document.nodes:
+            return
+        if purpose == "save":
+            if not os.path.splitext(path)[1]:
+                path += ".pkl"
+            self._set_param_widget(node_id, "model_path", path)
+            self._save_model(node_id, path)
+        else:
+            self.load_model(node_id, path)
+
+    def _set_param_widget(self, node_id, name, value):
+        self.document.set_param(node_id, name, value)
+        widget = f"__param_{node_id}_{name}"
+        if dpg.does_item_exist(widget):
+            dpg.set_value(widget, value)
+
+    def _save_model(self, node_id, path):
+        info = self.model_info.setdefault(node_id, {})
+        try:
+            record = save_model(self.models[node_id], path, info.get("outcome"))
+        except Exception as error:
+            self._say(f"Could not save {node_id}: {type(error).__name__}: {error}", "error")
+            return
+        info["saved"] = path
+        self._set_model_status(node_id)
+        self._say(f"Saved {node_id} to {path}" + (f", with its training record in {record}"
+                                                  if record else "") + ".", "ok")
+
+    def load_model(self, node_id, path):
+        """Use the model saved at ``path`` for a block, with whatever statistics it carries."""
+        from libemg._gui._pipeline.fitting import STATISTICS
+        try:
+            predictor = load_model(path)
+        except Exception as error:
+            self._say(f"Could not load {path}: {type(error).__name__}: {error}", "error")
+            return None
+        self._set_param_widget(node_id, "model_path", path)
+        epochs = []
+        try:
+            from libemg.deep import TrainingOutcome
+            from libemg.deep.training import OUTCOME_SUFFIX
+            record = os.path.splitext(path)[0] + OUTCOME_SUFFIX
+            if os.path.exists(record):
+                epochs = TrainingOutcome.load(record).epochs
+        except Exception:
+            epochs = []
+        self.forget_report(node_id)
+        self.models[node_id] = predictor
+        self.model_info[node_id] = {"how": "loaded", "path": path, "saved": path,
+                                    "statistics": getattr(predictor, STATISTICS, None),
+                                    "epochs": epochs}
+        self._set_model_status(node_id)
+        self._say(f"{node_id} now runs {path}.", "ok")
+        return predictor
+
+    def forget_report(self, node_id):
+        report = self.reports.pop(node_id, None)
+        if report is not None:
+            report.cleanup()
 
     # ==================================================================
     # per-frame work, called from the render thread
@@ -758,7 +996,7 @@ class PipelineEditorPanel:
                 viewer.poll()
         if self.pipeline is None:
             return
-        if hasattr(self.pipeline, "plan"):
+        if isinstance(self.pipeline, OfflinePipeline):
             self._poll_offline()
         else:
             self._poll_online()
@@ -779,40 +1017,13 @@ class PipelineEditorPanel:
                           + self._last_error, "error")
                 if training and view is not None:
                     view.finish("Training failed: " + self._last_error, "error")
+                if training:
+                    self._keep_trained()
+                    for node_id in self._training_nodes:
+                        self._set_model_status(node_id)
                 self._last_error = ""
-            elif training and (getattr(self, "_trained", None) or {}).get("epochs"):
-                trained = self._trained
-                if view is not None:
-                    view.update(getattr(self.pipeline, "epochs", []))    # the last epoch
-                score = trained.get("best_score")
-                if score is None:
-                    scored = ""
-                elif trained.get("score_name") == "accuracy":
-                    scored = f", accuracy {score:.1%}"
-                else:
-                    scored = f", {trained.get('score_name')} {score:.3f}"
-                message = (f"Trained for {trained['epochs']} epochs on {trained['windows']} "
-                           f"windows from {trained['recordings']} recordings; the best was "
-                           f"epoch {trained['best_epoch']}{scored}. "
-                           + ("Stopped early: that epoch was saved. " if trained.get("stopped")
-                              else "")
-                           + f"Saved to {trained['model_path']}.")
-                self._say(message, "ok")
-                if view is not None:
-                    view.finish(message + (f" The training record is in "
-                                           f"{trained['outcome_path']}."
-                                           if trained.get("outcome_path") else ""),
-                                "ok", outcome=getattr(self.pipeline, "outcome", None))
             elif training:
-                trained = getattr(self, "_trained", None) or {}
-                classes = trained.get("classes")
-                self._say(
-                    "Trained on {windows} windows of {features} features"
-                    .format(**{"windows": trained.get("windows", 0),
-                               "features": trained.get("features", 0)})
-                    + (f" over classes {classes}" if classes else "")
-                    + f". Saved to {trained.get('model_path', '?')}. "
-                    "Point a live pipeline at that file to run it.", "ok")
+                self._finish_training(view)
             else:
                 view = getattr(self.pipeline, "feature_view", None)
                 predictions = getattr(self.pipeline, "prediction_view", None)
@@ -830,6 +1041,42 @@ class PipelineEditorPanel:
                     self._say("Finished.", "ok")
             self.pipeline = None
             self._sync_run_buttons()
+
+    def _keep_trained(self):
+        """Hold on to every model the last training fitted, even if a later one failed."""
+        from libemg._gui._pipeline.model_report import ModelReport
+        for node_id, fitted in getattr(self.pipeline, "fits", {}).items():
+            self.models[node_id] = fitted.predictor
+            self.model_info[node_id] = {"how": "trained", "statistics": fitted.statistics,
+                                        "epochs": list(fitted.epochs),
+                                        "outcome": fitted.outcome, "saved": None}
+            self._set_model_status(node_id)
+            report = self.reports.get(node_id)
+            if report is not None and report.shown:
+                # An open statistics window shows the model just trained.
+                self.reports[node_id] = ModelReport(
+                    report.node_id, report.title, fitted.statistics, fitted.epochs,
+                    "Trained in this session; not saved yet.", pos=report.pos).spawn_window()
+
+    def _finish_training(self, view):
+        from libemg._gui._pipeline.fitting import statistics_text
+        self._keep_trained()
+        fits = getattr(self.pipeline, "fits", {})
+        parts = []
+        for node_id in self._training_nodes:
+            fitted = fits.get(node_id)
+            if fitted is None:
+                continue
+            scores = statistics_text(fitted.statistics)
+            parts.append(f"{node_id}: {scores}" if scores else node_id)
+        stopped = any(f.stopped for f in fits.values())
+        message = ("Trained " + "; ".join(parts) + "."
+                   + (" Stopped early: the best epoch so far was kept." if stopped else "")
+                   + " Start uses it now; Save on the block keeps it.")
+        self._say(message, "ok")
+        if view is not None:
+            outcome = getattr(self.pipeline, "outcome", None)
+            view.finish(message, "ok", outcome=outcome)
 
     def _poll_online(self):
         try:
@@ -931,7 +1178,8 @@ class PipelineEditorPanel:
         self.feature_viewer = FeatureViewer(
             view["features"], view["names"], view["labels"], view["params"],
             width=min(1100, self.width - 80), height=min(720, self.height - 100),
-            pos=(40, 60), spaces=view.get("spaces")).spawn_window()
+            pos=(40, 60), spaces=view.get("spaces"), fields=view.get("fields"),
+            field=view.get("label_field"), field_names=view.get("field_names")).spawn_window()
 
     def _show_predictions(self, view):
         """Open the Prediction Viewer on what the run predicted, replacing one already open."""
@@ -985,6 +1233,12 @@ class PipelineEditorPanel:
     # status
     # ==================================================================
     def _refresh_status(self):
+        for node_id, node in self.document.nodes.items():
+            spec = self.registry.get(node.spec_id)
+            # A block being trained keeps saying so until it is done.
+            if spec is not None and spec.category == MODEL and not (
+                    self._training and node_id in self._training_nodes):
+                self._set_model_status(node_id)
         if not dpg.does_item_exist(PROBLEMS_TAG):
             return
         mode = _MODE_NAMES.get(self.document.mode(), self.document.mode())

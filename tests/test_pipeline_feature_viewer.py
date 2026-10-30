@@ -134,7 +134,7 @@ def _viewer_document(folder, with_labels=True):
         "folder": str(folder),
         "regex_filters": (f"/trial_|/|{','.join(str(s) for s in range(1, SETS + 1))}|sets\n"
                           f"C_|_R|{','.join(str(i) for i in range(CLASSES))}|classes"),
-        "label_key": "classes", "sampling_rate": 200, "delimiter": ","})
+        "sampling_rate": 200, "delimiter": ","})
     window = document.add_node("window.enframe", params={"window_size": 20,
                                                          "window_increment": 10})
     features = document.add_node("features.extract", params={"feature_group": "HTD"})
@@ -144,7 +144,7 @@ def _viewer_document(folder, with_labels=True):
     document.connect(window, "output", features, "input")
     document.connect(features, "output", view, "features")
     if with_labels:
-        document.connect(source, "labels", view, "labels")
+        document.connect(window, "metadata", view, "labels")
     return document
 
 
@@ -162,10 +162,15 @@ def test_a_stored_data_run_hands_the_viewer_named_features_and_labels(tmp_path):
     assert len(labels) == len(features)
     assert set(np.unique(labels)) == set(range(CLASSES))
     assert view["params"]["dimensions"] == "3D"
+    # Every other metadata field comes along, to colour by instead.
+    assert set(view["fields"]) == {"sets", "classes"} and view["label_field"] == "classes"
+    assert all(len(v) == len(features) for v in view["fields"].values())
     # What the block draws is the matrix a model would be fitted on.
-    windows, model_features, _ = pipeline._gather()
+    window = next(n for n, node in pipeline.document.nodes.items()
+                  if node.spec_id == "window.enframe")
+    windows = pipeline.value(window, "output").windows
     np.testing.assert_array_equal(
-        model_features, FeatureExtractor().extract_feature_group("HTD", windows, array=True))
+        features, FeatureExtractor().extract_feature_group("HTD", windows, array=True))
 
 
 def test_without_a_labels_link_the_viewer_draws_one_colour(tmp_path):
@@ -287,9 +292,12 @@ def test_a_run_hands_the_viewer_the_trained_models_spaces(tmp_path):
     view = next(n for n in document.nodes.values() if n.spec_id == "sink.feature_viewer").id
     source = next(n for n in document.nodes.values() if n.spec_id == "source.offline").id
     features = next(n for n in document.nodes.values() if n.spec_id == "features.extract").id
+    window = next(n for n in document.nodes.values() if n.spec_id == "window.enframe").id
     model = document.add_node("model.classifier", params={
         "model": "LDA", "model_path": str(tmp_path / "lda.pkl")})
     document.connect(features, "output", model, "input")
+    document.connect(features, "output", model, "train_input")
+    document.connect(window, "metadata", model, "train_labels")
     document.connect(model, "output", view, "model")
 
     untrained = compile_pipeline(document)

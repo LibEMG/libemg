@@ -310,7 +310,7 @@ def _deep_document(folder, model_path, architecture="GRU", windows=False, **para
     document = PipelineDocument()
     source = document.add_node("source.offline", params={
         "folder": str(folder), "regex_filters": "/trial_|/|1,2,3|sets\nC_|_R|0,1,2|classes",
-        "label_key": "classes", "sampling_rate": 200, "delimiter": ","})
+        "sampling_rate": 200, "delimiter": ","})
     window = document.add_node("window.enframe", params={"window_size": 20,
                                                          "window_increment": 10})
     settings = {"architecture": architecture, "model_path": str(model_path), "epochs": 6,
@@ -320,13 +320,16 @@ def _deep_document(folder, model_path, architecture="GRU", windows=False, **para
     document.connect(source, "emg", window, "input")
     if windows:
         document.connect(window, "output", model, "windows")
+        document.connect(window, "output", model, "train_windows")
     else:
         features = document.add_node("features.extract", params={"feature_group": "HTD"})
         document.connect(window, "output", features, "input")
         document.connect(features, "output", model, "input")
+        document.connect(features, "output", model, "train_input")
+    document.connect(window, "metadata", model, "train_labels")
     metrics = document.add_node("sink.metrics", params={"metrics": ["CA"]})
     document.connect(model, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document
 
 

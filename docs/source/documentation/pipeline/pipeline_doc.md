@@ -71,18 +71,19 @@ Blocks are grouped in the palette by category.
 | --- | --- | --- | --- | --- |
 | Source | Device streamers | | samples | One block per entry in `libemg.streamers`. Live only. |
 | Source | Synthetic Source | | samples | Generated samples, no hardware. Live only. |
-| Source | Stored Data | | samples, labels | Replays recordings from disk, with labels taken from the filenames or from a file packaged beside them. Stored only. |
+| Source | Stored Data | | samples | Reads recordings from disk. Every field its regex filters and label files name (classes, reps...) travels with the data. Stored only. |
 | Transform | Filter | samples | samples | Conditions the signal once, for every consumer downstream. |
 | Transform | Channel Mask | samples | samples | Narrows the stream to a subset of channels. |
-| Window | Window | samples | windows | Sets the window size and increment. Never a stage of its own. |
+| Transform | Split | samples | samples, samples | Divides stored recordings by a metadata field: those whose value is listed go to **Matching**, the rest to **The Rest**. Stored only. See [Splitting stored data](#splitting-stored-data). |
+| Window | Window | samples | windows, labels | Sets the window size and increment. On stored data, **Metadata** carries every field windowed alongside the signal: the labels. See [Windowing the metadata](#windowing-the-metadata). |
 | Features | Features | windows | features | Extracts features once, so several models can share them. |
-| Model | Classifier | features or windows | prediction | Runs a fitted classifier. |
-| Model | Regressor | features or windows | continuous | Runs a fitted regressor. |
-| Model | Deep Model | features or windows | prediction | Trains a neural network (MLP, CNN, transformer, GRU, LSTM) with its loss drawn live, and runs it, streaming, live. See Deep Models. |
+| Model | Classifier | features or windows; train features and train labels | prediction | Runs a classifier: trained on the block, or loaded from a file. See [Training a model in the editor](#training-a-model-in-the-editor). |
+| Model | Regressor | features or windows; train features and train labels | continuous | Runs a regressor, trained or loaded the same way. |
+| Model | Deep Model | features or windows; train features or windows, and train labels | prediction | Trains a neural network (MLP, CNN, transformer, GRU, LSTM) with its loss drawn live, and runs it, streaming, live. See Deep Models. |
 | Sink | Socket Output | prediction | | Sends each output over UDP or TCP. Live only. |
 | Sink | File Output | prediction | | Appends each output to a file. |
 | Sink | Console Output | prediction | | Prints each output, while a pipeline is being built up. |
-| Sink | Offline Metrics | prediction, labels | metrics | Scores predictions against ground truth. Stored only. |
+| Sink | Offline Metrics | prediction, labels | metrics | Scores predictions against the **Label Field** of a Window's Metadata. Stored only. |
 | Sink | Feature Viewer | features, labels and a model (both optional) | | Draws the features, and a connected model's latent space, once the recording has been read. Stored only. See [Looking at the features](#looking-at-the-features). |
 | Sink | Prediction Viewer | a model's output, labels (optional) | held-out field and values | Draws what the model predicted over the signal, recording by recording or as a stream, on training and held-out data. Stored only. See [Looking at the predictions](#looking-at-the-predictions). |
 
@@ -112,7 +113,7 @@ Every port carries one of seven types.
 | `features` | An N by F feature matrix. |
 | `prediction` | A class index with its confidence. |
 | `continuous` | A regression output vector. |
-| `labels` | Ground truth, stored data only. |
+| `labels` | Windowed metadata: every field, one value per window. Stored data only. |
 | `metrics` | A summary result table. |
 
 The port type becomes the `category` on the underlying DearPyGui node attribute, and DearPyGui refuses to link two attributes whose categories differ. A features input simply will not accept a samples output as the link is dragged. Typing is enforced by the toolkit while the user drags, not by validation that runs afterwards and has to explain itself.
@@ -300,7 +301,7 @@ A cancelled run says so rather than claiming to have finished. Stopping part way
 
 The metrics from a cancelled run are kept, because throwing away work already done is worse than reporting less. They are computed over part of the recording, which is exactly why the run has to be distinguishable from a complete one.
 
-The fraction is reported once per recording read, and once more when the run completes.
+The fraction is reported as each block finishes, and once more when the run completes.
 
 When it finishes, the Results window opens with a metrics table and a heat map of any confusion matrix. **Copy as CSV** puts the whole table on the clipboard. The same run, scored on the data it was fitted on:
 
@@ -322,12 +323,14 @@ This pipeline cannot run yet:
 
 # Looking at the features
 
-Before fitting a model it is worth knowing whether the classes come apart in the feature space at all, and which features pull them apart. The **Feature Viewer** block answers that. Connect a Features block's output to its Features input, and the Stored Data block's Labels to its Labels input, then press **Start**. Once the recording has been read, a window opens on the feature matrix: one point per window, coloured by its label.
+Before fitting a model it is worth knowing whether the classes come apart in the feature space at all, and which features pull them apart. The **Feature Viewer** block answers that. Connect a Features block's output to its Features input, and the Metadata of the Window block those features came from to its Labels input, then press **Start**. Once the recording has been read, a window opens on the feature matrix: one point per window, coloured by its label.
 
 ```
-Stored Data --EMG--> Window --> Features --> Feature Viewer
-            --Labels-------------------------------^
+Stored Data --Data--> Window --Output--> Features --> Feature Viewer
+                         \--Metadata---------------------^ (Labels)
 ```
+
+The points are coloured by the block's **Colour Field**, `classes` by default. Every other field the Metadata carries -- the repetition, the set -- can be picked under **Field** in the window, to see whether the points group by something other than the class.
 
 The view is changed in that window, not on the block, so flipping between views does not read the recording again. The block's own settings are only where the window starts.
 
@@ -374,17 +377,17 @@ class MyModel:
         return self.encoder(x)      # (windows, embedding size)
 ```
 
-The model has to be trained first: press **Train**, then **Start**. If it has not been, the viewer still opens on the features, and the status line says why the model's spaces are missing.
+The model has to be trained first: press **Train** on its block (or load one), then **Start**. If it has not been, the viewer still opens on the features, and the status line says why the model's spaces are missing.
 
 Projections are fitted to at most **Points** windows, chosen at random and the same each time. Isomap's cost grows with the square of that number, so it runs off the render thread and the window says when it is computing. Each view is computed once and kept, so going back to one is immediate.
 
 # Looking at the predictions
 
-A single accuracy says how often a model is right, not *when* it is wrong: at the onset of a motion, at its end, on one class, on one repetition. The **Prediction Viewer** block shows that. Connect a model block's output to its Model input and the Stored Data block's Labels to its Labels input, train the model, then press **Start**.
+A single accuracy says how often a model is right, not *when* it is wrong: at the onset of a motion, at its end, on one class, on one repetition. The **Prediction Viewer** block shows that. Connect a model block's output to its Model input and the Metadata of the Window the model's input came from to its Labels input, train the model, then press **Start**.
 
 ```
-Stored Data --EMG--> Window --> Features --> Classifier --> Prediction Viewer
-     \--Labels-----------------------------------------------/
+Stored Data --Data--> Window --Output--> Features --> Classifier --> Prediction Viewer
+                         \--Metadata----------------------------------------^ (Labels)
 ```
 
 Once the recording has been read, a window opens with three plots that share a time axis:
@@ -406,8 +409,8 @@ Each recording is predicted on its own, and a model with memory -- a recurrent n
 
 **Data** narrows the recordings to the ones the model trained on or the ones it never saw, and the accuracy is reported for each. Which is which comes from one of two places:
 
-- The block's **Held Out Field** and **Held Out Values**. With `sets` and `3`, every recording whose filename says set 3 is held out and every other one is training data. Use this when the model was trained on a different selection of files, or by a script.
-- A Deep Model block trained from this pipeline. It holds whole recordings out for validation while it trains and remembers which; left empty, the block uses that.
+- The block's **Held Out Field** and **Held Out Values**. With `sets` and `3`, every recording whose filename says set 3 is held out and every other one is training data. Use this for a model trained by a script.
+- The model itself. A model trained in the editor remembers the files it was fitted on (see [Training a model in the editor](#training-a-model-in-the-editor)): those are training data, and every other recording -- the ones it was validated on, and a Split block's other branch -- is held out. Left empty, the block uses that.
 
 With neither, every recording is shown and **Data** offers only *All*.
 
@@ -477,43 +480,103 @@ streamer, shared_memory = synthetic_streamer(pattern='bursts', num_channels=8)
 odh = OnlineDataHandler(shared_memory)
 ```
 
-# Training a model from the pipeline that describes it
+# Splitting stored data
 
-**Train** fits the model the pipeline names, on the recording the pipeline reads. It is only for a stored-data pipeline, because a fit needs labelled data that has already been collected.
-
-Everything a fit needs is already on the canvas. The Stored Data block says where the recordings are, which regex filters parse their names and which metadata field carries the labels. The filter and window blocks say how the signal is conditioned and enframed. The features block says what to extract. The model block says which model to fit and where to put it. Training walks the recording exactly as a scoring run does, so the model is fitted on precisely the data it will then be scored on.
-
-Build the pipeline, press **Train**, then press **Start**. The second run scores what the first one fitted.
+A **Split** block divides recordings in two by a metadata field, whole recordings at a time. Give it a **Field** -- the description of one of the Stored Data block's regex filters or label files, such as `reps` or `sets` -- and the **Values** that go to **Matching**, as the filenames write them: a list, `0,1,2`, a range, `0-5`, or both, `0-2,7`. Every other recording goes to **The Rest**.
 
 ```
-Trained on 71972 windows of 27 features over classes [0, 1, 2].
-Saved to C:\work\models\lda.pkl. Point a live pipeline at that file to run it.
+Stored Data --Data--> Split --Matching--> Window --> Features    (training repetitions)
+                            \--The Rest--> Window --> Features    (test repetitions)
 ```
 
-Which kind of predictor it builds follows from the block. A **Classifier** block fits an `EMGClassifier` and rounds its labels to class indices. A **Regressor** block fits an `EMGRegressor` and treats the label field as one degree of freedom per column, so a field holding a single value per sample trains as one DOF.
+What flows along a Data link is an `OfflineDataHandler` -- `data`, a list per metadata field, `parse_windows` and all -- that also knows each recording's file and what its filename said. Filters and Channel Masks pass it on unchanged in shape, so a Split can come before or after them.
 
-The same document then runs live. Point its source at a device instead of a folder and the model block already holds the file that was just written.
+# Windowing the metadata
+
+A Window block on stored data has a second output, **Metadata**: every metadata field, windowed alongside the signal, one value per window in the order of the windows. This is where every label comes from. A model's Train Labels, an Offline Metrics block's Labels and a viewer's Labels all take a Window's Metadata, and each picks the field it wants by its **Label Field** -- `classes` by default.
+
+Because the labels come out of the same block as the windows, there is no question of which label belongs to which window. Labels from a different Window block than the windows they are paired with are refused, unless the two cut the same recordings into the same windows:
+
+```
+The predictions and the labels are not the same windows: 385 windows against 770.
+Take both from one Window block -- its Output for the signal, its Metadata for the
+labels -- so each label is the label of its window.
+```
+
+**Metadata Value** says how a window's value is taken from the samples it spans: its **last sample** (the default, and what a live model sees -- the label at the moment it answers), its **first sample**, the **most common** value, or the **mean**. A field read from a filename is the same for every sample of a recording, so the rule only matters for one read from a label file.
+
+# Training a model in the editor
+
+A Classifier, Regressor or Deep Model block has two pairs of inputs. **Features** (or **Windows**) is what it runs on. **Train Features** (or, for a Deep Model, **Train Windows**) and **Train Labels** are what it learns from. Either pair can be left out: a model loaded from a file needs no training data, and a model that is only trained runs on nothing.
+
+```
+Stored Data --> Split --Matching--> Window --Output--> Features --> Classifier (Train Features)
+                    |                  \--Metadata--------------> Classifier (Train Labels)
+                    \--The Rest--> Window --Output--> Features --> Classifier (Features) --> Offline Metrics
+                                      \--Metadata-----------------------------------------> Offline Metrics (Labels)
+```
+
+Under its settings each model block has four buttons and a line saying what it holds:
+
+| Button | What it does |
+| --- | --- |
+| **Train** | Reads what its Train inputs carry and fits the model. A Deep Model opens a window drawing the loss as each epoch ends; **Stop** there keeps the best epoch so far. The fitted model is held in memory, and **Start** runs it straight away. |
+| **Statistics** | Shows how the trained model did, or hides it again. |
+| **Save** | Writes the model to **Fitted Model**, or asks where if that is empty. A Deep Model's training record goes beside it. |
+| **Load...** | Uses a model fitted before -- here, in an earlier session, or by a script -- instead of training one. |
+
+**Train all** on the toolbar trains every block with training inputs, one after another.
+
+Every supervised model is judged the same way. **Validation Share** of the recordings, a share of each class, is held out -- whole recordings, never windows, since neighbouring windows overlap and a window-level split would score a model on data it has effectively seen. The model is fitted on the rest, and both sides are scored. The statistics window shows:
+
+- how many recordings and windows it was trained on, and how many were held out;
+- accuracy on the training and validation recordings (RMSE, MAE and R² per degree of freedom for a regressor);
+- for a classifier, accuracy per class, and a confusion matrix of the validation recordings;
+- for a Deep Model, the training and validation loss of every epoch.
+
+Set Validation Share to 0 to fit on every recording, as a script does; there is then no validation score. The saved model is the one validated, not one refitted afterwards, so its validation score describes it.
+
+The statistics travel inside the saved model, as `predictor.training_statistics`, so loading a model in a later session brings its statistics back with it. So does the list of files it was trained on, which is how a [Prediction Viewer](#looking-at-the-predictions) knows which recordings it has seen.
+
+Changing a trained block's settings -- its model, its label field -- drops the model trained under the old ones, and the block asks for it to be trained again. Changing only **Fitted Model** keeps it.
+
+## From a script
+
+The same document trains and runs without the editor:
+
+```Python
+from libemg.pipeline import PipelineDocument, compile_pipeline
+
+pipeline = compile_pipeline(PipelineDocument.load('split.json'))
+trained = pipeline.train()          # every block with training inputs, saved to its Fitted Model
+print(trained['statistics']['validation']['accuracy'])
+print(pipeline.run())               # runs what was just trained
+```
+
+`train(save=False)` keeps the models in `pipeline.models` without writing them, which is what the editor does. `compile_pipeline(document, models=...)` runs models held in memory rather than their files. From a terminal, `python -m libemg.pipeline train split.json` trains and saves every block.
+
+The same document then runs live. Point its source at a device instead of a folder, and each model block already holds the file that was saved. A live pipeline has no labels, so its model blocks must load a fitted model: training inputs on a live pipeline are refused.
 
 ## Reproducing an offline analysis from the editor
 
-The two offline examples in the documentation — a classifier over the `OneSubjectMyoDataset` and a regressor over the `OneSubjectEMaGerDataset` — are scripts. The same analyses can be built on the canvas, and the numbers `OfflineMetrics` reports come out identical, not approximately identical: both paths run the same estimator over the same windows, so any difference at all would mean one of them is reading the data differently. `tests/test_pipeline_offline_parity.py` holds that.
+The two offline examples in the documentation — a classifier over the `OneSubjectMyoDataset` and a regressor over the `OneSubjectEMaGerDataset` — are scripts. The same analyses can be built on the canvas, and the numbers `OfflineMetrics` reports come out identical, not approximately identical: both paths run the same estimator over the same windows, so any difference at all would mean one of them is reading the data differently. `tests/test_pipeline_offline_parity.py` and `tests/test_pipeline_split_and_train.py` hold that.
 
-A train/test split is expressed as two runs of the same graph with different filter values, because a pipeline reads one folder. Build the graph with the training values, press **Train**, change the split values, press **Start**. The second run scores what the first fitted.
+A script fits on every training recording, so set the model's **Validation Share** to 0 to match it. A train/test split is a Split block on the field the script isolates on.
 
 ### Classification
 
 | Block | Parameter | Value |
 | --- | --- | --- |
 | Stored Data | Folder | `OneSubjectMyoDataset/` |
-| | Regex Filters | `/trial_\|/\|1,2,3\|sets`<br>`C_\|.csv\|0,1,2,3,4\|classes`<br>`R_\|_\|0,1\|reps` |
-| | Label Key | `classes` |
+| | Regex Filters | `/trial_\|/\|1,2,3,4,5,6\|sets`<br>`C_\|.csv\|0,1,2,3,4\|classes`<br>`R_\|_\|0,1\|reps` |
 | | Sampling Rate | `200` |
-| Window | Window Size / Increment | `20` / `10` |
-| Features | Feature Group | `HTD` |
-| Classifier | Model / Fitted Model | `LDA` / wherever you want it |
-| Metrics | Metrics / Null Label | `CA, AER, INS` / `2` |
+| Split | Field / Values | `sets` / `1-3` |
+| Window (one per branch) | Window Size / Increment | `20` / `10` |
+| Features (one per branch) | Feature Group | `HTD` |
+| Classifier | Model / Label Field / Validation Share | `LDA` / `classes` / `0` |
+| Offline Metrics | Metrics / Null Label | `CA, AER, INS` / `2` |
 
-Train on `1,2,3`, change the sets filter to `4,5,6`, and run. The script and the editor both report:
+Train the Classifier on Matching, run it on The Rest, and score against The Rest's Metadata. The script and the editor both report:
 
 ```
 CA  0.9853107344632769
@@ -523,21 +586,21 @@ INS 0.015819209039548022
 
 ### Regression, and labels that live in their own file
 
-A filename filter can only say what a whole recording was. A regression target is a value per sample, so it lives in a file beside the recording — which is what **Label Files** is for. It takes the same `left|right|values|description` lines as the regex filters, but they match *metadata* files, and **Package By** says how each one is paired with the recording it belongs to (`same folder` is the LibEMG convention, `same stem` pairs a recording with the file named after it).
+A filename filter can only say what a whole recording was. A regression target is a value per sample, so it lives in a file beside the recording — which is what **Label Files** is for. It takes the same `left|right|values|description` lines as the regex filters, but they match *metadata* files, and **Package By** says how each one is paired with the recording it belongs to (`same folder` is the LibEMG convention, `same stem` pairs a recording with the file named after it). The file's description becomes a metadata field like any other.
 
 | Block | Parameter | Value |
 | --- | --- | --- |
 | Stored Data | Folder | `OneSubjectEMaGerDataset/` |
-| | Regex Filters | `/\|/\|open-close,pro-sup\|movements`<br>`_R_\|_emg.csv\|0,1,2,3\|reps` |
+| | Regex Filters | `/\|/\|open-close,pro-sup\|movements`<br>`_R_\|_emg.csv\|0,1,2,3,4\|reps` |
 | | Label Files | `/\|.txt\|labels\|labels` |
-| | Label Key | `labels` |
 | | Sampling Rate | `1010` |
-| Window | Window Size / Increment | `150` / `40` |
-| Features | Feature Group | `HTD` |
-| Regressor | Model | `LR` |
-| Metrics | Metrics | `R2, NRMSE, MAE` |
+| Split | Field / Values | `reps` / `0-3` |
+| Window (one per branch) | Window Size / Increment | `150` / `40` |
+| Features (one per branch) | Feature Group | `HTD` |
+| Regressor | Model / Label Field / Validation Share | `LR` / `labels` / `0` |
+| Offline Metrics | Metrics / Label Field | `R2, NRMSE, MAE` / `labels` |
 
-Train on reps `0,1,2,3`, change the reps filter to `4`, and run. Both paths report one value per degree of freedom:
+Both paths report one value per degree of freedom:
 
 ```
 R2    [0.9394276836613275, 0.9576579094961605]
@@ -545,17 +608,22 @@ NRMSE [0.06087835488847762, 0.050867671453071764]
 MAE   [0.09103975298336556, 0.07208576409479191]
 ```
 
-The label of a window is the label at its *end*, which is the same convention as the `metadata_operations={'labels': lambda x: x[-1]}` the script passes to `parse_windows`. A label field with several columns stays several columns, so a two-DOF target trains and scores as two DOFs rather than silently becoming one.
+The Window's default Metadata Value, the last sample, is the same convention as the `metadata_operations={'labels': lambda x: x[-1]}` the script passes to `parse_windows`. A label field with several columns stays several columns, so a two-DOF target trains and scores as two DOFs rather than silently becoming one.
 
+## Documents from before
+
+A document saved before Split and Metadata existed took its labels from a Labels output on Stored Data, windowed by whichever Window its signal went through, and its Train button fitted the model on the data it then ran on. Such a file is rewired as it opens: each Labels link becomes a link from that Window's Metadata, with the old Label Key as the receiving block's Label Field, and each model gains the Train Features and Train Labels links that make Train do what it did before.
 
 ## What Train refuses, and why
 
 | Message | What to do |
 | --- | --- |
-| The model block has no Fitted Model path | Set that parameter. It is both where training saves and where a live run loads. |
-| That recording produced no windows | Check the folder, the regex filters, and that the window is not longer than the recordings. |
-| That recording carries no labels | Set the Stored Data block's **Label Key** to a metadata field its regex filters produce. |
-| Training was stopped part way | Nothing was saved. A model fitted on half a recording would be indistinguishable from one fitted on all of it, so the existing file is left alone. |
+| needs both Train Labels and Train Features | Connect both, from the same Window block: its features to Train Features, its Metadata to Train Labels. |
+| has no Fitted Model path (Save, or `train()` from a script) | Set that parameter. It is both where saving writes and where a live run loads. |
+| That recording produced no windows | Check the folder, the regex filters, the Split values, and that the window is not longer than the recordings. |
+| There is no metadata field called ... | Set the block's **Label Field** to one of the fields listed: a regex filter's or label file's description. |
+| holds values that are not whole numbers, so it cannot be a class | That field is a quantity. Train a Regressor on it. |
+| Training was stopped part way | Nothing was trained. A model fitted on part of the data would be indistinguishable from one fitted on all of it, so the existing file is left alone. A Deep Model stopped mid-training keeps its best epoch instead. |
 
 A live model still will not compile without a file, and says so:
 
@@ -564,4 +632,4 @@ A live model still will not compile without a file, and says so:
 Set its Fitted Model parameter to a saved predictor.
 ```
 
-An **offline** pipeline compiles without one, which is what makes the Train button reachable: the only way to get the file is to run the training that demanding it would refuse.
+A stored-data pipeline compiles without one, which is what makes Train reachable: the only way to get the file is to run the training that demanding it would refuse.

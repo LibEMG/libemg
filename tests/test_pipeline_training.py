@@ -1,10 +1,11 @@
 """Fitting a model from the pipeline that describes it.
 
 A pipeline document already says where the recordings are, how they are
-filtered and windowed, which features to take and which field carries the
-labels. Training reuses that description instead of asking for it again, which
-is the whole point: the model is fitted on exactly the data it is then scored
-on, and the document that trained it can be pointed at a device and run.
+filtered and windowed and which features to take. A model block is trained
+from its Train Features and Train Labels inputs -- here the same features it
+runs on, and the Window block's Metadata -- so the model is fitted on exactly
+the data it is then scored on, and the document that trained it can be pointed
+at a device and run.
 
 The recordings here are synthesised into ``tmp_path`` so the tests carry their
 own data and stay honest about what the labels are: two classes whose
@@ -52,7 +53,7 @@ def _document(folder, model_path, model="LDA", block="model.classifier",
     source = document.add_node("source.offline", params={
         "folder": folder,
         "regex_filters": "C_|_R|0,1|classes\n_R_|_emg.csv|0,1|reps",
-        "label_key": "classes", "sampling_rate": RATE})
+        "sampling_rate": RATE})
     window = document.add_node("window.enframe",
                                params={"window_size": 200, "window_increment": 100})
     extract = document.add_node("features.extract", params={"features": list(features)})
@@ -62,8 +63,10 @@ def _document(folder, model_path, model="LDA", block="model.classifier",
     document.connect(source, "emg", window, "input")
     document.connect(window, "output", extract, "input")
     document.connect(extract, "output", model_node, "input")
+    document.connect(extract, "output", model_node, "train_input")
+    document.connect(window, "metadata", model_node, "train_labels")
     document.connect(model_node, "output", metrics, "input")
-    document.connect(source, "labels", metrics, "labels")
+    document.connect(window, "metadata", metrics, "labels")
     return document
 
 
@@ -81,7 +84,8 @@ def test_untrained_pipeline_still_compiles(recording, tmp_path):
     assert document.mode() == "offline"
     assert document.validate() == []
     assert not os.path.exists(target)
-    assert compile_pipeline(document).plan["model_name"] == "LDA"
+    pipeline = compile_pipeline(document)
+    assert [document.nodes[n].params["model"] for n in pipeline.trainable()] == ["LDA"]
 
 
 def test_train_writes_a_usable_classifier(recording, tmp_path):
@@ -146,9 +150,9 @@ def test_no_save_path_is_refused_before_the_work(recording, tmp_path):
 def test_a_recording_without_labels_says_which_field_to_set(recording, tmp_path):
     document = _document(recording, tmp_path / "m.pkl")
     for node in document.nodes.values():
-        if node.spec_id == "source.offline":
-            node.params["label_key"] = "not_a_field"
-    with pytest.raises(CompileError, match="Label Key"):
+        if node.spec_id == "model.classifier":
+            node.params["label_field"] = "not_a_field"
+    with pytest.raises(CompileError, match="no metadata field called 'not_a_field'.*classes"):
         compile_pipeline(document).train()
 
 

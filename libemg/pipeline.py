@@ -33,9 +33,11 @@ Or run a saved one from a terminal::
     python -m libemg.pipeline check pipeline.json
     python -m libemg.pipeline blocks
 
-``train`` fits the model a stored-data pipeline names, on the recording that
-pipeline reads, and writes it where the model block already points. So the same
-file describes the fit and the run, and continuous integration can do both.
+``train`` fits every model block whose Train Features and Train Labels are
+connected, on the stored data they carry, and writes each where the block's
+Fitted Model points. So the same file describes the fit and the run -- with a
+Split block, training on some repetitions and scoring on the others -- and
+continuous integration can do both.
 """
 
 import argparse
@@ -44,7 +46,8 @@ import sys
 import time
 
 from libemg._gui._pipeline.compile import (CompileError, OfflinePipeline,
-                                           OnlinePipeline, compile_pipeline,
+                                           OnlinePipeline, compile_for_training,
+                                           compile_pipeline, load_model, save_model,
                                            tag_for)
 from libemg._gui._pipeline.document import (Link, Node, PipelineDocument, Probe,
                                             SCHEMA_VERSION, ValidationError)
@@ -54,7 +57,8 @@ from libemg._gui._pipeline.registry import (NodeSpec, ParamSpec, PortSpec,
 from libemg._gui._pipeline.synthetic import SyntheticStreamer, synthetic_streamer
 
 __all__ = ["PipelineDocument", "Node", "Link", "Probe", "SCHEMA_VERSION",
-           "ValidationError", "compile_pipeline", "CompileError",
+           "ValidationError", "compile_pipeline", "compile_for_training", "CompileError",
+           "save_model", "load_model",
            "OnlinePipeline", "OfflinePipeline", "tag_for",
            "NodeSpec", "ParamSpec", "PortSpec", "PortType",
            "build_registry", "default_registry",
