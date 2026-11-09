@@ -78,3 +78,7 @@ tests/*
 # This exemption has to come last, or a new test file is silently untracked --
 # which is how several already were.
 !tests/test_*.py
+
+# The packaged runtime assets (3D hand model, manifest, class map) must ship with
+# the source, whatever the broader resources/ rule above excludes.
+!libemg/resources/

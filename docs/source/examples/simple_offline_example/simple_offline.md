@@ -26,12 +26,12 @@ FEATURE_SET = "HTD"
 ```
 
 # Step 3: Loading in Dataset
-In this example, we load in the OneSubjectMyoDataset, which is automatically downloaded and stored in an OfflineDataHandler. After preparing the data set, we isolate it into sets 0-2 and 3-5. Since this dataset consists of six trials, trials 1-3 will be used for training and 4-6 for testing. Finally, we can extract windows from both the training and testing data.
+In this example, we load in the OneSubjectMyoDataset, which is automatically downloaded (the first time `prepare_data()` is called) and stored in an OfflineDataHandler. By default, `prepare_data()` returns a dictionary of pre-split handlers (`'All'`, `'Train'`, `'Test'`), so we pass `split=False` to get a single OfflineDataHandler and choose our own split. After preparing the data set, we isolate it into sets 0-2 and 3-5. Since this dataset consists of six trials, trials 1-3 will be used for training and 4-6 for testing. Finally, we can extract windows from both the training and testing data.
 
 ```Python
 # Load in dataset
 dataset = OneSubjectMyoDataset()
-data = dataset.prepare_data()
+data = dataset.prepare_data(split=False)
 
 # Split data into training and testing
 train_data = data.isolate_data("sets", [0,1,2]) 
@@ -43,9 +43,12 @@ test_windows, test_meta = test_data.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
 # Step 4: Feature Extraction
-We first create a data_set dictionary, since it is required to be passed to each classifier. We also extract features from the test windows. 
+We first create a FeatureExtractor (and the OfflineMetrics object used in the next step). We then create a data_set dictionary, since it is required to be passed to each classifier. We also extract features from the test windows. 
 
 ```Python
+fe = FeatureExtractor()
+om = OfflineMetrics()
+
 # Create data set dictionary using training data
 data_set = {}
 data_set['training_features'] = fe.extract_feature_group(FEATURE_SET, train_windows)

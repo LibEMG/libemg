@@ -130,7 +130,25 @@ class GUI:
                 dpg.run_callbacks(dpg.get_callback_queue())
             self._poll_panels()
             dpg.render_dearpygui_frame()
+        self._shutdown_panels()
         dpg.destroy_context()
+
+    def _shutdown_panels(self):
+        """The window is closing: let each panel end and save what it is running.
+
+        A choreography recording that is still going is stopped here, its open
+        intervals closed with reason ``application_shutdown`` and its files
+        written -- before the DearPyGui context, and the textures it draws into,
+        are destroyed.
+        """
+        for panel in list(self.panels):
+            shutdown = getattr(panel, "shutdown", None)
+            if shutdown is None:
+                continue
+            try:
+                shutdown()
+            except Exception as error:
+                print(f"LibEMG -> GUI (a panel failed to shut down cleanly: {error})")
 
     def _poll_panels(self):
         """Give every open panel its per-frame slice, on the render thread.
@@ -176,6 +194,8 @@ class GUI:
             with dpg.menu(label="Pipeline"):
                 dpg.add_menu_item(label="Pipeline Editor", callback=self._pipeline_editor_callback)
                 dpg.add_menu_item(label="Training History", callback=self._training_history_callback)
+                dpg.add_menu_item(label="Feature Selection Results",
+                                  callback=self._selection_results_callback)
 
             with dpg.menu(label="Environments"):
                 dpg.add_menu_item(label="Launch Environment",
@@ -309,10 +329,25 @@ class GUI:
         return panel
 
     def _data_collection_callback(self):
+        previous = getattr(self, "dcp", None)
+        if previous is not None and previous.collection_active:
+            # A run (or a recording being saved) belongs to the panel that
+            # started it. Replacing the panel would leave that run with nothing
+            # ticking it, so the open one is brought forward instead.
+            for tag in ("__ch_run_window", "__dc_configuration_window", "__dc_collection_window"):
+                if dpg.does_item_exist(tag):
+                    dpg.focus_item(tag)
+            return
+        if previous is not None:
+            previous.shutdown()
+            if previous in self.panels:
+                self.panels.remove(previous)
         panel_arguments = list(inspect.signature(DataCollectionPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
         self.dcp = DataCollectionPanel(self.online_data_handler, **passed_arguments, video_player_width=self.video_player_width, video_player_height=self.video_player_height)
         self.dcp.spawn_configuration_window()
+        # Polled every frame: the choreography run is driven from the GUI thread.
+        self.panels.append(self.dcp)
 
     def _protocol_callback(self):
         from libemg._gui._protocol_panel import ProtocolPanel
@@ -382,6 +417,12 @@ class GUI:
         if getattr(self, "training_history", None) is not None:
             self.training_history.cleanup()
         self.training_history = TrainingView("Training History", pos=(60, 60)).spawn_window()
+
+    def _selection_results_callback(self):
+        """Feature selection results saved by a Feature Selection block or by run_study."""
+        from libemg._gui._pipeline.selection_viewer import SelectionViewer
+        self._open_panel("selection_results", lambda: SelectionViewer(
+            width=min(self.width - 60, 1240), height=min(self.height - 80, 840)))
 
     def _streamer_callback(self):
         from libemg._gui._streamer_panel import StreamerPanel

@@ -22,10 +22,14 @@ setup(
     author="Ethan Eddy, Evan Campbell, Angkoon Phinyomark, Scott Bateman, and Erik Scheme",
     description=DESCRIPTION,
     packages=find_packages(exclude=["*tests*"]),
+    # The 3D hand choreography asset ships inside the package (see libemg.resources).
+    package_data={"libemg.resources": ["choreography/*.glb", "choreography/*.json",
+                                       "choreography/*.md"]},
     long_description_content_type="text/markdown",
     long_description=long_description,
     install_requires=[
         "numpy",
+        "numba",
         "scipy",
         "scikit-learn",
         "pillow",

@@ -45,6 +45,10 @@ myst_enable_extensions = [
     "html_image"
 ]
 
+# Give headings anchors, so a page can link to one of its own sections (and
+# another page's) as #section-title.
+myst_heading_anchors = 3
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

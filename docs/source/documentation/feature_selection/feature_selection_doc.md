@@ -51,6 +51,63 @@ uncomputed rows are NaN. Ties preserve dictionary order. `early_stop` limits the
 number of selected groups for either strategy. `verbose=True` and
 `selector.print(...)` support either result shape.
 
+### Traces: why each group was chosen
+
+`select` takes the same arguments as `run_selection` and returns a
+`SelectionTrace` that keeps every score it computed: `trace.scores[k, j]` is
+candidate `j` scored at iteration `k` (alone for a filter, with the groups
+already chosen for sequential selection). `trace.ranking(k)` lists the
+alternatives at an iteration best first, and `trace.selected_scores` is the
+criterion after each addition. With `skip_undefined=True`, a candidate whose
+metric is undefined is scored NaN and explained in `trace.notes` instead of
+stopping the selection.
+
+### Studies over subjects
+
+`run_study` selects for one of four schemes, holds repetitions out for testing,
+and reports held-out accuracy as each selected group is added:
+
+| `scheme` | Feature sets | Criterion computed on | Tested on |
+| --- | --- | --- | --- |
+| `within_subject` | one per subject | that subject's training repetitions | that subject's test repetitions |
+| `within_subject_shared` | one for the cohort | each subject's training repetitions separately, then aggregated (`aggregate="mean"` or `"median"`) | each subject's test repetitions, with a model of their own |
+| `subject_independent` | one for the cohort | every subject's training repetitions pooled | every subject's test repetitions, one pooled model |
+| `cross_subject` | one per left-out subject | the other subjects' data | the left-out subject, who provides no training data |
+
+```python
+study = selector.run_study(
+    features, "CA", labels, scheme="cross_subject",
+    subject_var=subjects, repetition_var=reps, test_repetitions=[4, 5],
+    early_stop=6,
+)
+print(study.summary())
+study.save("selection.json")          # strict JSON; reload with SelectionStudy.load
+```
+
+Test repetitions are never seen by the selection. In `cross_subject` they also
+restrict the left-out subject's test windows and the other subjects' training
+windows, so all four schemes can be tested on the same data; without them the
+left-out subject's every window is tested. A classification criterion (CA,
+ACA, AE) is cross-validated inside the training data as the test is run: leave
+one repetition out within a subject or for a pooled model, leave one subject
+out across subjects (`cv_by="auto"`), falling back to a stratified 5-fold split
+when there are too few groups; `cv_by` can also be `"repetition"`,
+`"subject"` or an integer number of folds. Per-window metadata (`raw_emg`,
+`trial_var`, `recording_var`) is subset with the windows, and `trial_var`
+defaults to `repetition_var`.
+
+Each `study.units[i]` holds one selection's `trace`, its `test_accuracy` curve
+and `test_accuracy_by_subject`. `study.rank_matrix()` and `study.consensus()`
+summarise which groups each subject or fold chose, and when.
+
+In the GUI, the pipeline editor's **Feature Selection** block runs a study over
+stored data (Stored Data, then Window, with the Window's Output and Metadata
+connected to the block), extracting every feature in its bank as one group. Its
+results window shows the criterion and held-out accuracy curves, which groups
+each selection chose, and each iteration's alternatives with their scores (and,
+for a shared feature set, each subject's own score). Results saved from it or
+from `study.save` open again from **Pipeline > Feature Selection Results**.
+
 ## Metadata and validation
 
 | Argument | Meaning |

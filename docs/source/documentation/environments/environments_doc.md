@@ -17,7 +17,7 @@ Four tasks are offered in this release.
 | Fitts' Law | A cursor and a single target. The classic test of how quickly a control scheme acquires a target. | 1250 by 750 |
 | ISO Fitts' Law | Targets in a ring, acquired in the standard ISO 9241-9 order. The usual way to report throughput. | 1250 by 750 |
 | Curricular Fitts | A Fitts task whose difficulty adapts as the user improves. The task used for user-in-the-loop adaptation. | 1000 by 1080 |
-| EMG Hero | Notes fall down the screen and are hit with the matching gesture. A rhythm game for discrete control. | 1500 by 750 |
+| EMG Hero | Notes fall down the screen and are hit with the matching gesture. A rhythm game for discrete control. | 525 by 700 |
 
 The frame size is whatever the task's own width and height settings say. The numbers above are the defaults the setup screen starts with.
 
@@ -169,19 +169,19 @@ A task needs something to drive it. The controller is chosen under **Control**, 
 | Controller | What drives the task | Fields shown |
 | --- | --- | --- |
 | Keyboard | The arrow keys, read every frame. | None |
-| Classifier | A running classifier's output, over a socket. | Listens on (address and port), message format, classes in the model for the probabilities format, and which class does what |
-| Regressor | A running regressor's output, over a socket. | Listens on (address and port) |
+| Classifier | A running classifier's output, over a UDP socket: a live pipeline's Socket Output block, an `OnlineEMGClassifier`, or a script of your own. | Listens on (address and port), message format, classes in the model for the probabilities format, and which class does what |
+| Regressor | A running regressor's output, over a UDP socket: a live pipeline's Socket Output block or an `OnlineEMGRegressor`. | Listens on (address and port) |
 
-Keyboard is for trying a task out and seeing that it behaves. Classifier and Regressor listen on the address given for a model that is already running elsewhere. A task that takes only one controller, as Curricular Fitts takes only a regressor, says so instead of offering a choice.
+Keyboard is for trying a task out and seeing that it behaves. EMG Hero's keyboard uses the number keys 1 to 4, one per lane, rather than the arrows. Classifier and Regressor listen on the address given for a model that is already running elsewhere. A task that takes only one controller, as Curricular Fitts takes only a regressor, says so instead of offering a choice.
 
 A classifier can send one of two formats, chosen under **Message format**.
 
 | Format | Each message | Sent by |
 | --- | --- | --- |
-| `predictions` | `<class> [speed]` | A script that sends the class itself. The time the message was read stands in for its timestamp. |
+| `predictions` | `<class> [speed]` | The pipeline editor's Socket Output block after a Classifier, or a script that sends the class itself. The time the message was read stands in for its timestamp. |
 | `probabilities` | One probability per class, then the speed if velocity is on, then a timestamp | libemg's `OnlineEMGClassifier`. **Classes in the model** has to match the model. |
 
-A Fitts task has proportional control on by default and then reads a speed from every message. A classifier sending no speed needs it switched off.
+A Fitts task has proportional control on by default and then reads a speed from every message. A classifier sending no speed, which includes the pipeline editor's Socket Output, needs **Proportional control** switched off under **Cursor**, or the task stops on the first message asking for velocity control.
 
 Choosing Keyboard also supplies a prediction map, without being asked. A Fitts task turns a prediction into a direction through that map, and the default map covers class indices 0 to 4. The keyboard controller does not produce class indices. It produces pygame key codes, and -1 when nothing is held. Launching with the default map would fail on the first frame with a key error. The map supplied instead is this one.
 
@@ -356,6 +356,10 @@ if __name__ == "__main__":
     factory = build_factory(spec, ControllerSpec(kind='keyboard'), values)
     env = EmbeddedEnvironment('demo', factory, *spec.frame_size(values)).start()
 
+    # The child process imports pygame and builds the task before its first
+    # frame, which takes a few seconds, so wait for it to report running.
+    while not env.status()['running']:
+        time.sleep(0.1)
     time.sleep(3.0)
     print(env.status())
     # {'running': True, 'finished': False, 'frames': 187, 'fps': 60.8,
@@ -379,5 +383,5 @@ Embedding is an addition, not a replacement. Every environment still runs standa
 | Mouse control of a task | The pointer position and button are forwarded every frame. No environment in this release reads them. |
 | Mapping a regressor's outputs | A regressor's first output is x and its second y. Which output drives which axis, or flipping one, is not set on the setup screen. |
 | Saving frames as they happen | An environment writes its frames when it stops. A run lost to the whole GUI being killed keeps its EMG but not its frames. |
-| Saving a set of settings | Settings last as long as the window. **Reset settings** returns them to the environment's own defaults. |
+| Saving a set of settings | Settings last as long as the window. **Reset to defaults** returns them to the environment's own defaults. |
 | Two tasks at once | One environment runs at a time. Launching while one is running says so rather than starting a second. |

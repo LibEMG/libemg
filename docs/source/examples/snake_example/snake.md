@@ -74,14 +74,14 @@ def handle_movement(self):
             self.move_snake()
 ```
 
-Converting the keyboard version to leverage EMG-based control required a simple modification. As LibEMG streams all classification decisions over UDP, we set up a socket listening on the specified port and IP. By default, the OnlineEMGClassifier streams at `port:12346` and `ip:'127.0.0.1'`. 
+Converting the keyboard version to leverage EMG-based control required a simple modification. The OnlineEMGClassifier (set up below) streams its classification decisions over UDP using a `SocketOutputWriter`, so we set up a socket listening on the same port and IP. By default, a `SocketOutputWriter` sends to `port:12346` and `ip:'127.0.0.1'`.  
 ```Python
 # Socket for reading EMG
 self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
 self.sock.bind(('127.0.0.1', 12346))
 ```
 
-After setting up the socket, moving the snake is almost identical to using key presses. Instead of looking for a specific key press, the predicted class label is mapped to a direction. For example, the mappings from predictions to controls are 0 (Hand Close)-down, 1 (Hand Open)-up, 3 (Wrist Extension)-right, and 4 (Wrist Flexion)-left. Note that the snake only moves when a prediction is made by the EMG Classifier.
+After setting up the socket, moving the snake is almost identical to using key presses. Each message has the form `"<predicted class> <timestamp>"`, so the predicted class is the first value. Instead of looking for a specific key press, the predicted class label is mapped to a direction. For example, the mappings from predictions to controls are 0 (Hand Close)-down, 1 (Hand Open)-up, 3 (Wrist Extension)-right, and 4 (Wrist Flexion)-left. Note that the snake only moves when a prediction is made by the EMG Classifier.
 ```Python
 def handle_emg(self):
     data, _ = self.sock.recvfrom(1024)
@@ -119,18 +119,19 @@ First, the required imports from libemg:
 ```Python
 from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
-from libemg.streamers import oymotion_streamer
+from libemg.streamers import myo_streamer
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier
+from libemg.output_writer import SocketOutputWriter
 ```
 
-To listen for decisions streamed over a port, an OnlineDataHandler is required. This data handler maintains a real-time EMG data buffer and is required for training and classification.
+To access the data coming from the device, a streamer and an OnlineDataHandler are required. The streamer writes the device's data into shared memory, and the OnlineDataHandler reads it from there, maintaining a real-time EMG data buffer that is required for training and classification. Any of LibEMG's streamers can be used here (e.g., `delsys_streamer` for the Delsys).
 ```Python
-streamer, sm = oymotion_streamer()
+streamer, sm = myo_streamer()
 self.odh = OnlineDataHandler(sm)
 ```
 
-When the data accumulation button is pressed the training UI menu is presented to the user. Note that using the [LibEMGGesture library](https://github.com/libemg/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
+When the data accumulation button is pressed the training UI is presented to the user (choose *Data > Collect Data* from its menu bar to start screen guided training). Each repetition of each class is saved to the data folder (`data/` by default) as `C_<class>_R_<rep>_emg.csv`, where classes are numbered in the alphabetical order of the gesture images. Note that using the [LibEMGGesture library](https://github.com/libemg/LibEMGGestures), automatically downloads the images for each class if they do not already exist. After finishing the data accumulation, the simple game menu is re-initialized. 
 ```Python
 def launch_training(self):
     self.window.destroy()
@@ -191,10 +192,11 @@ o_classifier = EMGClassifier("LDA")
 o_classifier.fit(feature_dictionary=data_set)
 ```
 
-Finally, in step 5 an online EMG classifier is trained and begins streaming predictions. By default these predictions are streamed at `port:12346` and `ip:'127.0.0.1'`. 
+Finally, in step 5 an online EMG classifier is created and begins streaming predictions. The online classifier only sends its outputs where its output writers tell it to, so we pass a `SocketOutputWriter` that sends the predicted class (the `model_output` field) and a timestamp over UDP. By default, these predictions are streamed at `port:12346` and `ip:'127.0.0.1'`.
 ```Python
 # Step 5: Create online EMG classifier and start classifying.
-self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
+output_writers = [SocketOutputWriter('model_output', ip='127.0.0.1', port=12346)]
+self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list, output_writers=output_writers)
 self.classifier.run(block=False) # block set to false so it will run in a seperate process.
 ```
 

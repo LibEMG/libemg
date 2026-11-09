@@ -67,8 +67,9 @@ Once the initial game worked with simple keyboard controls, we implemented the E
 from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter
 from libemg.feature_extractor import FeatureExtractor
-from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier 
+from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier
 from libemg.streamers import myo_streamer
+from libemg.output_writer import SocketOutputWriter
 ```
 
 <div>
@@ -77,7 +78,7 @@ from libemg.streamers import myo_streamer
     <img src="https://github.com/libemg/LibEMG_Snake_Showcase/blob/main/docs/training_screen2.PNG?raw=True" width="31%" float="left"/>
 </div>
 
-When the `Get Training Data` button is clicked, we leverage the library's Training UI module to automatically download the desired gestures and start the training procedure.
+When the `Get Training Data` button is clicked, we leverage the library's Training UI module to automatically download the desired gestures and start the training procedure (choose *Data > Collect Data* from its menu bar). Each repetition of each class is saved to the data folder (`data/` by default) as `C_<class>_R_<rep>_emg.csv`, where classes are numbered in the alphabetical order of the gesture images.
 
 ```Python
 def launch_training(self):
@@ -90,15 +91,15 @@ def launch_training(self):
 
 After accumulating the training data, predictions can be streamed over a UDP socket for Unity to leverage. To do this an `OnlineEMGClassifier` object is created.
 
-The first step involves processing the accumulated training data into an `OfflineDataHandler`. Note that there are four classes [0,1,2,3] and three reps [0,1,2], aligning with the recorded training data.
+The first step involves processing the accumulated training data into an `OfflineDataHandler`. Note that there are four classes [0,1,2,3] and three reps [0,1,2], aligning with the recorded training data. The class is found between `C_` and `_R`, and the rep between `R_` and `_emg.csv`.
 ```Python
 # Step 1: Parse offline training data
 dataset_folder = 'data/'
 classes_values = ["0","1","2","3"]
 reps_values = ["0", "1", "2"]
 regex_filters = [
-    RegexFilter(left_bound = "_C_", right_bound=".csv", values = classes_values, description='classes'),
-    RegexFilter(left_bound = "R_", right_bound="_C_", values = reps_values, description='reps')
+    RegexFilter(left_bound = "C_", right_bound="_R", values = classes_values, description='classes'),
+    RegexFilter(left_bound = "R_", right_bound="_emg.csv", values = reps_values, description='reps')
 ]
 
 odh = OfflineDataHandler()
@@ -106,7 +107,7 @@ odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimi
 train_windows, train_metadata = odh.parse_windows(WINDOW_SIZE, WINDOW_INCREMENT)
 ```
 
-The next step involves extracting features from the offline data. Let's experiment with the LS9 feature group - a robust set of features for devices with low-sampling rates.
+The next step involves extracting features from the offline data. Here we use Hudgins' Time Domain (HTD) feature group, a common grouping used for prosthesis control. Other groups (e.g., LS9, a robust set of features for devices with low sampling rates) can be tried by changing this line.
 ```Python
 # Step 2: Extract features from offline data
 fe = FeatureExtractor()
@@ -127,26 +128,36 @@ Next, we have to create an offline EMG classifier. We have opted for an SVM mode
 # Step 4: Create the EMG classifier
 o_classifier = EMGClassifier("SVM")
 o_classifier.fit(feature_dictionary=data_set)
+o_classifier.add_rejection(threshold=0.75)
+o_classifier.add_majority_vote(10)
 o_classifier.add_velocity(train_windows, train_metadata['classes'])
 ```
 
-Finally, lets create the `OnlineEMGClassifier` and begin streaming predictions. Note that we set block to false so that we don't block the UI thread. 
+There is a lot to unpack in this classifier, so let's go through it:
+- **"SVM":** In this example, we are using a Support Vector Machine for classification.
+- **add_rejection:** Since rejection is known to improve usability, we have decided to include it. Rejected decisions are output as -1.
+- **threshold=0.75:** Since SVM is known to have a greater range of probability outputs (compared to LDA, for example), we have a lower rejection threshold than the default of 0.9. If we set this too high, the majority of decisions will inevitably be rejected.
+- **add_majority_vote:** To reduce spurious false activations (especially of the hand-closed class), we have decided to introduce a majority vote over the last 10 decisions.
+- **add_velocity:** Finally, we decided to leverage velocity-based control to augment the experience. This means that when users contract harder, their character will move faster. Note, that since we are leveraging velocity, ramp contractions should be acquired during the training phase.
+
+Finally, lets create the `OnlineEMGClassifier` and begin streaming predictions. The online classifier sends its outputs wherever its output writers tell it to. The Unity game expects each UDP message to be `"<predicted class> <velocity>"`, so we write a small `SocketOutputWriter` subclass that sends exactly that (the built-in `SocketOutputWriter('model_output')` would send the predicted class followed by a timestamp instead). Note that we set block to false so that we don't block the UI thread.
 
 ```Python
+# Sends "<predicted class> <velocity>" over UDP (velocity is formatted with a leading space by the classifier).
+# Define this at module level so it can be pickled into the classifier's process.
+class PredictionVelocityWriter(SocketOutputWriter):
+    def write(self, info):
+        message = f"{info['model_output']}{info['velocity']}"
+        self.sock.sendto(message.encode('utf-8'), (self.ip, self.port))
+
 # Step 5: Create online EMG classifier and start classifying.
-self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
+output_writers = [PredictionVelocityWriter('model_output', ip='127.0.0.1', port=12346)]
+self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list, output_writers=output_writers)
 self.classifier.run(block=False) # block set to false so it will run in a seperate process.
 ```
 
-There is a lot to unpack in this online classifier, so let's go through it:
-- **model="SVM":** In this example, we are using a Support Vector Machine for classification. 
-- **rejection_type:** Since rejection is known to improve usability, we have decided to include it. 
-- **rejection_threshold:** Since SVM is known to have a greater range of probability outputs (compared to LDA, for example), we have a much lower rejection threshold. If we set this too high, the majority of decisions will inevitably be rejected.
-- **majority_vote:** To reduce spurious false activations (especially of the hand-closed class), we have decided to introduce a majority vote.
-- **velocity:** Finally, we decided to leverage velocity-based control to augment the experience. This means that when users contract harder, their character will move faster. Note, that since we are leveraging velocity, ramp contractions should be acquired during the training phase.
-
 # Python-Unity Connection
-Now that we have the Python side set up, we had to create a way to listen for these UDP events in C#. To do this, the `MyoEMGRawReader.cs` was created to listen on a specific port (e.g., 12346). Note that the IP and port are the default values of the OnlineEMGClassifier. Every time it receives a value, the global control and speed variable used by the `MovementControllerEMG.cs` class are updated. This receive data function runs in a separate thread to constantly listen for EMG predictions. Note that this architecture relies on `using System.Net.Sockets` (the C# socket implementation). 
+Now that we have the Python side set up, we had to create a way to listen for these UDP events in C#. To do this, the `MyoEMGRawReader.cs` was created to listen on a specific port (e.g., 12346). Note that the IP and port match the ones given to the output writer above (which are the `SocketOutputWriter` defaults). Every time it receives a value, the global control and speed variable used by the `MovementControllerEMG.cs` class are updated. This receive data function runs in a separate thread to constantly listen for EMG predictions. Note that this architecture relies on `using System.Net.Sockets` (the C# socket implementation). 
 
 ```C#
 String control = "";

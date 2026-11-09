@@ -65,7 +65,7 @@ model = DeepModel("cnn", timing="discrete", pooling="max").fit(training)
 
 # Training, and watching it
 
-`fit` reports each epoch as an `EpochResult`: the training loss, the validation loss, the validation score (accuracy, or RMSE for regression), the time it took, and whether it is the best so far. `should_stop` is checked between batches. Whether training ends by stopping, patience or the last epoch, the best epoch's weights are the ones kept.
+`fit` reports each epoch as an `EpochResult`: the training loss, the validation loss, the validation score (accuracy, or RMSE for regression; scored on the training set when nothing is held out), the time it took, and whether it is the best so far. `should_stop` is checked between batches. Whether training ends by stopping, patience or the last epoch, the best epoch's weights are the ones kept.
 
 | `DeepModel` option | Default | What it does |
 | --- | --- | --- |
@@ -73,12 +73,12 @@ model = DeepModel("cnn", timing="discrete", pooling="max").fit(training)
 | `learning_rate`, `weight_decay` | 1e-3, 1e-4 | For Adam |
 | `batch_size` | 32 | Sequences per batch |
 | `sequence_length` | 32 | Windows per training sequence. A model with memory learns its timing from these: give it several times its horizon |
-| `patience` | 10 | Epochs without a better validation loss before stopping. None runs every epoch |
+| `patience` | 10 | Epochs without a better validation loss (the training loss when nothing is held out) before stopping. None runs every epoch |
 | `warmup` | 0 | Steps at the start of each sequence left out of the loss |
 | `hidden_size`, `layers`, `embedding_size`, `dropout` | 64, 2, 32, 0.1 | Network size |
 | `horizon`, `heads` | 10, 2 | A transformer's context and attention heads |
 
-`evaluate(training_set)` scores a trained model on data it has not seen: per window for a continuous task, per gesture for a discrete one.
+`evaluate(training_set)` scores a trained model on data it has not seen, returning `(loss, score, score_name)`: accuracy per window for a continuous task and per gesture for a discrete one, or RMSE for regression.
 
 When `fit` splits off the validation recordings itself (`validation=0.2`, say), it records which ones in `model.trained_on["validation_indices"]`: their positions among the recordings it was given. That is what lets a Prediction Viewer block show the model's predictions on its training data and on the data it was validated on, separately.
 
@@ -106,10 +106,16 @@ from libemg.adaptation.managers import AdaptationManager, MemoryManager
 from libemg.deep import DeepModel, SequenceMemory
 
 model = DeepModel.load("gru.pkl")      # trained offline first
+
+# memory_smi, memory_ow, adapt_smi and adapt_ow come from
+# libemg.adaptation._base.get_edil_adaptation_objects (see the adaptation guide).
 memory_manager = MemoryManager(SequenceMemory(), memory_smi, memory_ow, "memory/")
-adaptation_manager = AdaptationManager(model, adapt_smi, adapt_ow, None,
+adaptation_manager = AdaptationManager(model, adapt_smi, adapt_ow,
+                                       "memory/sgt_memory.pkl",   # a saved SequenceMemory to start from
                                        "memory/", "models/")
 ```
+
+`AdaptationManager` needs an initial memory: it loads `initial_memory_loc` when it is constructed and adds each new slice to it, so passing `None` fails. Save a `SequenceMemory` of the calibration data (for example, by calling its `append(feedback, input, trial)` for each training window and then `save(path)`) and pass its path. `AdaptationHook` does accept `initial_memory_loc=None`.
 
 For classification the feedback's first value is the class. For regression the feedback is the target, which is where a CIIL pseudo-label goes. Feedback for a class the model has no output for is left out: adapting cannot add a class.
 

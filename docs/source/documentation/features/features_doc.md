@@ -27,7 +27,20 @@ features_2 = fe.extract_feature_group('HTD', windows)
 </details>
 <br/>
 
-**Note that some features have parameters that must be tuned for a particular problem and hardware implementation.**
+`windows` has the shape (N windows x N channels x N samples). Both calls return a dictionary mapping each feature's abbreviation to an array with one row per window (most features give one column per channel; some, such as AR, CC, DFTR, the phasor features and the wavelet features, give several columns per channel). Pass `array=True` to get a single (N windows x N features) array instead. `fe.get_feature_list()` and `fe.get_feature_groups()` return the available features and feature groups. Requesting a name that is not in the feature list raises a `ValueError`.
+
+**Note that some features have parameters that must be tuned for a particular problem and hardware implementation.** These are passed through the `feature_dic` argument, keyed by the feature's abbreviation followed by the parameter name:
+
+```Python
+feature_dic = {
+    'WAMP_threshold': 0.01,  # amplitude difference that counts towards WAMP
+    'MDF_fs': 2000,          # sampling frequency used by the median frequency
+    'AR_order': 9,           # order of the autoregressive model
+}
+features = fe.extract_features(['WAMP', 'MDF', 'AR'], windows, feature_dic=feature_dic)
+```
+
+`extract_features` can also standardize the features: with `normalize=True` it returns `(features, scaler)`, and the returned scaler should be passed as `normalizer` when extracting the test features. `fix_feature_errors=True` replaces NaN and infinite values with 0.
 
 # Feature Performance
 Each of the ~50 features that were implemented were tested individually with a linear discriminant analysis (LDA) classifier on the 3DCdataset. Note: some of these features are designed to improve robustness to factors (i.e., power line interference, limb position effect, contraction intensity variability), and as such, don't achieve high accuracy on their own for this gesture recognition task. Their value shouldn't be discounted when used in a rounded feature set for real-world use. The code associated with Figure 1 can be found in the example code tab below.
@@ -55,10 +68,9 @@ from libemg.filtering import Filter
 
 if __name__ == "__main__":
     # get the 3DC Dataset using library handle - this downloads the dataset
-    dataset = _3DCDataset(save_dir='example_data',
-                          redownload=False)
-    # take the downloaded dataset and load it as an offlinedatahandler
-    odh = dataset.prepare_data(format=OfflineDataHandler)
+    dataset = _3DCDataset(dataset_folder='example_data/_3DCDataset/')
+    # take the downloaded dataset and load it as an offlinedatahandler (split=False returns a single handler)
+    odh = dataset.prepare_data(split=False)
 
     # Perform an analysis where we test all the features available of the library individually for within-subject
     # classification accuracy.
@@ -111,8 +123,8 @@ if __name__ == "__main__":
             classifier = EMGClassifier(model)
             classifier.fit(feature_dictionary=data_set.copy())
 
-            # running the classifier analyzes the test data we already passed it
-            preds,probs = classifier.run(test_features, test_metadata['classes'])
+            # run the classifier on the test features
+            preds,probs = classifier.run(test_features)
             # get the CA: classification accuracy offline metric and add it to the results
             results[i,s] = om.extract_offline_metrics(metrics, test_metadata['classes'], preds)[metrics[0]] * 100
             print(f"S{s} {f}: {results[i,s]}%")
@@ -147,22 +159,30 @@ $
 \text{MAV} = \frac{1}{N}\sum_{i=1}^{N} |x_{i}|
 $
 
+## **Mean (MEAN)**
+
+The average of the signal (without taking its absolute value). For a zero-mean EMG signal this is close to 0; it is mainly useful for signals with a meaningful offset.
+
+$
+\text{MEAN} = \frac{1}{N}\sum_{i=1}^{N} x_{i}
+$
+
 ## **Zero Crossings (ZC)** <sup>[1]</sup>
-The number of times that the amplitude of the EMG signal crosses a zero amplitude threshold. 
+The number of times that the amplitude of the EMG signal crosses zero (i.e., consecutive samples go from strictly positive to strictly negative, or the reverse). No amplitude threshold is applied.
 
 $
-\text{ZC} = \sum_{i=1}^{N-1}[\text{sgn}(x_{i} \times x_{i+1}) \cap |x_{i} - x_{i+1}| \ge \text{threshold}] 
+\text{ZC} = \sum_{i=1}^{N-1}f(x_{i} \times x_{i+1})
 $
 
 $
-\text{sgn(}x\text{)} = \left\{\begin{array}{lr}
-    1, & \text{if } x \ge \text{threshold} \\
+f(x) = \left\{\begin{array}{lr}
+    1, & \text{if } x < 0 \\
     0, & \text{otherwise }
     \end{array}\right\}
 $
 
 ## **Slope Sign Change (SSC)** <sup>[1]</sup>
-The number of times that the slope of the EMG signal changes (i.e., the number of times that it changes between positive and negative). 
+The number of times that the slope of the EMG signal changes (i.e., the number of times that it changes between positive and negative). The threshold is set with `SSC_threshold` (a float, default 0.0).
 
 $
 \text{SSC} = \sum_{i=2}^{N-1}[f[(x_{i} - x_{i-1}) \times (x_{i} - x_{i+1})]] \\
@@ -183,7 +203,7 @@ $
 $
 
 ## **L-score (LS)** <sup>[2]</sup>
-A feature that uses the Legendre Shift Polynomial.
+The second L-moment (L-scale) of the samples in the window, computed by applying the shifted Legendre polynomial ($\text{LSP}$) to the probability-weighted moments ($B$) of the sorted samples.
 
 $
 \text{LS} = \sum_{i=1}^{N} \text{LSP} * B
@@ -200,19 +220,21 @@ $
 Determines the total amount of activity in a window.
 
 $
-\text{MSR} = \frac{1}{N}\sum_{i=1}^{N}(x_{i})^{\frac{1}{2}}
+\text{MSR} = \left|\frac{1}{N}\sum_{i=1}^{N}(x_{i})^{\frac{1}{2}}\right|
 $
+
+The square root is taken over the complex numbers (negative samples contribute imaginary parts), and the magnitude of the complex mean is returned.
 
 ## **Willison Amplitude (WAMP)** <sup>[1]</sup>
-The number of times that there is a difference between amplitudes of two seperate samples exceeding a pre-defined threshold. This feature is related to the firing of motor unit action potentials and muscle contraction force.
+The number of times that the difference between the amplitudes of two consecutive samples exceeds a pre-defined threshold. This feature is related to the firing of motor unit action potentials and muscle contraction force. The threshold is set with `WAMP_threshold` (a float, default 2e-3) and should suit the scale of the signal.
 
 $
-\text{WAMP} = \sum_{i=1}^{N-1}[f(|x_{n}-x_{n+1})] \\
+\text{WAMP} = \sum_{i=1}^{N-1}f(|x_{i}-x_{i+1}|) \\
 $
 
 $    
 f(x) = \left\{\begin{array}{lr}
-    1, & \text{if } x \ge \text{threshold} \\
+    1, & \text{if } x > \text{threshold} \\
     0, & \text{otherwise }
     \end{array}\right\}
 $
@@ -228,7 +250,7 @@ $
 The integral of the absolute value. Also known as IEMG.
 
 $
-\text{IAV} = \sum_{i=i}^{N} |x_{i}|
+\text{IAV} = \sum_{i=1}^{N} |x_{i}|
 $
 
 ## **Difference Absolute Standard Deviation Value (DASDV)** <sup>[1]</sup>
@@ -242,28 +264,43 @@ $
 Calculates the variance of the data.
 
 $
-\text{VAR} = \frac{1}{N-1}\sum_{i=1}^{N} (x_{i}^{2} - \mu _x)
+\text{VAR} = \frac{1}{N}\sum_{i=1}^{N} (x_{i} - \mu _x)^{2}
+$
+
+## **Time Domain Power Spectral Descriptors (M0, M2, M4, SPARSI, IRF, WLF)** <sup>[6]</sup>
+The six TDPSD features share the same construction. For a signal $x$ with first and second differences $\Delta x$ and $\Delta^{2} x$, three normalized moments are computed:
+
+$
+\bar{m}_{0}(x) = \frac{1}{0.1}\left(\frac{\sqrt{\sum_{i=1}^{N}x_{i}^2}}{N-1}\right)^{0.1}, \quad
+\bar{m}_{2}(x) = \frac{1}{0.1}\left(\sqrt{\frac{\sum_{i=1}^{N-1}(\Delta x_{i})^2}{N-1}}\right)^{0.1}, \quad
+\bar{m}_{4}(x) = \frac{1}{0.1}\left(\sqrt{\frac{\sum_{i=1}^{N-2}(\Delta^{2} x_{i})^2}{N-1}}\right)^{0.1}
+$
+
+Each feature evaluates its own statistic $g$ (given below) twice: on the window $x$ and on its log energy $y = \log(x^{2} + \epsilon)$. The two are then combined into the returned value:
+
+$
+\text{feature} = \frac{-2\,g(x)\,g(y)}{g(x)^{2} + g(y)^{2}}
 $
 
 ## **First Temporal Moment (M0)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{M0} = log(\frac{\sqrt{\sum_{i=1}^{N}x_{i}^2}^{0.1}}{0.1})
+g_{\text{M0}}(x) = log(|\bar{m}_{0}(x)|)
 $
 
 ## **Second Temporal Moment (M2)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{M2} = log(\frac{\sqrt{\sum_{i=1}^{N-1}(x_{i+1} - x_{i})^2)}^{0.1}}{0.1})
+g_{\text{M2}}(x) = log(|\bar{m}_{0}(x) - \bar{m}_{2}(x)|)
 $
 
 ## **Fourth Temporal Moment (M4)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{M4} = log(\frac{\sqrt{\sum_{i=1}^{N-2}(x_{i+2} + x_{i})^2)}^{0.1}}{0.1})
+g_{\text{M4}}(x) = log(|\bar{m}_{0}(x) - \bar{m}_{4}(x)|)
 $
 
 
@@ -271,69 +308,75 @@ $
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{SPARSI} = log( |\frac{\text{M0}}{\sqrt{ | \text{M0}-\text{M2} | }\sqrt{ | \text{M0}-\text{M4} | }} |)
+g_{\text{SPARSI}}(x) = log( |\frac{\sqrt{ | (\bar{m}_{0}-\bar{m}_{2})(\bar{m}_{0}-\bar{m}_{4}) | }}{\bar{m}_{0}} |)
 $
 
 ## **Irregularity Factor (IRF)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{IRF} = log ( | \frac{\text{M2}}{\sqrt{ | \text{M0}*\text{M4} | }} | )
+g_{\text{IRF}}(x) = log ( | \frac{\bar{m}_{2}}{\sqrt{\bar{m}_{0}\bar{m}_{4}}} | )
 $
 
-## **Waveform Length Factor (WLR)** <sup>[6]</sup>
+## **Waveform Length Factor (WLF)** <sup>[6]</sup>
 A commonly-used feature part of the TDPSD feature set.
 
 $
-\text{WLR} = log (\sum_{i=1}^{N-1} | x_{i+1} - x_{i} | / \sum_{i=1}^{N-2} | x_{i+2} + x_{i} |)
+g_{\text{WLF}}(x) = log \left(\sqrt{\sum_{i=1}^{N-1} | \Delta x_{i} | / \sum_{i=1}^{N-2} | \Delta^{2} x_{i} |}\right)
 $
 
-## **Autoregressive Coefficients (AR4 and AR9)** <sup>[1]</sup>
-For order r, the autoregressive coefficient can be calculated by: **
+## **Autoregressive Coefficients (AR)** <sup>[1]</sup>
+The coefficients $a_{1}, \ldots, a_{r}$ of an order-$r$ linear predictor fit to each channel of the window with Burg's method (`librosa.lpc`), such that:
 
 $
-\text{AR}_{r} = \sum_{i=1}^{N-r} x_{i+r}*x_{i}
+x_{i} \approx -\sum_{k=1}^{r} a_{k}\,x_{i-k}
 $
+
+The order is set with `AR_order` (an int, default 4), and the feature returns $r$ values per channel. AR4 and AR9 in the literature are `AR` with `AR_order` set to 4 and 9.
 
 ## **Cepstral Coefficient (CC)**
-For order r, the cepstral coefficient can be calculated by:
+Computed recursively from the AR coefficients $a_{r}$ of the same order, set with `CC_order` (an int, default 4):
 
 $
-\text{CC}_{1}= -\text{AR}_{1} \\
+\text{CC}_{1}= -a_{1} \\
 $
 
 $
-\text{CC}_{r}= \sum_{i=1}^{r} \frac{r-i}{r} \text{AR}_{r} *\text{CC}_{r-2} 
+\text{CC}_{r}= -a_{r} - \sum_{l=1}^{r-2} \left(1 - \frac{l}{r-1}\right) a_{r}\,\text{CC}_{r-l}, \quad r = 2, \ldots, \text{CC\_order}
 $
+
+The recursion for $r \ge 2$ is only applied when `CC_order` is greater than 2.
 
 
 ## **Log Detector (LD)** <sup>[1]</sup>
 Provides an estimate of the muscle contraction force.
 
 $
-\text{LD} = e^{\frac{1}{N}\sum_{i=1}^{N} log(|x_{i}|)}
+\text{LD} = e^{\frac{1}{N}\sum_{i=1}^{N} log(|x_{i}| + 1)}
 $
 
 ## **Mean Absolute Value First Difference (MAVFD)**
 Gets the mean absolute value of the slope of the signal.
 
 $
-\text{MAVFD} = \sum_{i=1}^{N-1} \frac{x_{i+1}-x_{i}}{N-1}
+\text{MAVFD} = \frac{1}{N-1}\sum_{i=1}^{N-1} |x_{i+1}-x_{i}|
 $
 
 ## **Mean Absolute Value Slope (MAVSLP)** <sup>[1]</sup>
-Get the slope between p sections within a window. Here demonstrated for p=2.
+Get the slope between p sections within a window. The number of sections is set with `MAVSLP_segment` (an int, default 2), and $p-1$ values are returned per channel, each the MAV of a section minus the MAV of the section before it. Here demonstrated for p=2.
 
 $
 \text{MAVSLP}_{p} = \sum_{i=\frac{N}{p} + 1}^{N} \frac{|x_{i}|}{(\frac{N}{P})} - \sum_{j=1}^{\frac{N}{p}}\frac{|x_{j}|}{(\frac{N}{P})}
 $
 
 ## **Median Frequency (MDF)** <sup>[1]</sup>
-Frequency at which the EMG spectrum is divided into 2 portions with equal amplitude.
+Frequency at which the EMG power spectrum is divided into 2 portions with equal power. It is the frequency of the first bin $m$ at which the cumulative power passes half of the total power:
 
 $
-\text{MDF} = \frac{1}{2}\sum_{j=1}^{M}{P_{j}}
+\text{MDF} = f_{m}, \quad m = \min\{k : \sum_{j=1}^{k}{P_{j}} > \frac{1}{2}\sum_{j=1}^{M}{P_{j}}\}
 $
+
+The power spectrum used by MDF, MNF, MNP, SM and DFTR is the FFT of the window, zero-padded to the next power of two. The sampling frequency is set with `MDF_fs` (default 1000); MNF, SM and DFTR take `MNF_fs`, `SM_fs` and `DFTR_fs` in the same way.
 
 ## **Mean Frequency (MNF)** <sup>[1]</sup>
 Computes the average frequency of the EMG spectrum.
@@ -360,14 +403,14 @@ $
 Characterizes the degree of asymmetry in the distribution of a variable.
 
 $
-\text{SKEW} = (\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^3) / (\sqrt{(\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^2)})
+\text{SKEW} = (\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^3) / (\frac{1}{N}\sum_{i=1}^{N}(x_i-\mu)^2)^{\frac{3}{2}}
 $
 
 ## **Kurtosis (KURT)** <sup>[7]</sup>
-Indicates non-gaussianity and used to identify the peakedness of a distribution.
+Indicates non-gaussianity and used to identify the peakedness of a distribution. The Pearson definition is used, so a Gaussian signal gives a value of 3 (no 3 is subtracted).
 
 $
-\text{KURT} = [(\frac{1}{N}\sum_{i=1}^{N}{x_{i}^4})/(\frac{1}{N}\sum_{i=1}^{N}{x_{i}^2})^2] - 3
+\text{KURT} = (\frac{1}{N}\sum_{i=1}^{N}{(x_{i}-\mu)^4})/(\frac{1}{N}\sum_{i=1}^{N}{(x_{i}-\mu)^2})^2
 $
 
 ## **Root Mean Squared Phasor (RMSPHASOR)** <sup>[12]</sup>
@@ -378,7 +421,7 @@ $
 $
 
 $
-\text{dRMSPHASOR}_{i,j} = \text{log}(\text{norm}(dRMSi_{c} - dRMSj_{c}))
+\text{dRMSPHASOR}_{i,j} = \text{log}\left(\frac{\text{norm}(RMSi_{c} - RMSj_{c})}{\text{norm}(dRMSi_{c} - dRMSj_{c})}\right)
 $
 
 ## **Waveform Length Phasor (WLPHASOR)** <sup>[12]</sup>
@@ -386,44 +429,44 @@ A feature that computes all channel-wise differences in WL values and incorporat
 This feature set returns (N)(N-1)/2 WLPHASOR features and (N)(N-1)/2 dWLPHASOR features for a total of (N)(N-1) features for N channels.
 
 $
-\text{WLPHASOR}_{i,j} = \text{norm}(WLi_{c} - WLj_{c})
+\text{WLPHASOR}_{i,j} = \text{log}(\text{norm}(WLi_{c} - WLj_{c}))
 $
 
 $
-\text{dWLPHASOR}_{i,j} = \text{norm}(dWLi_{c} - dWLj_{c})
+\text{dWLPHASOR}_{i,j} = \text{log}\left(\frac{\text{norm}(WLi_{c} - WLj_{c})}{\text{norm}(dWLi_{c} - dWLj_{c})}\right)
 $
 
 ## **Peak Average Power (PAP)** <sup>[13]</sup>
-A peak average power computation using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 0th, 2nd, and 4th order moments are used to compute PAP using the following equation:
+A peak average power computation using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 0th, 2nd, and 4th order moments (here without the TDPSD normalization: $m_{0} = \sqrt{\sum x_{i}^{2}}$, $m_{2} = \sqrt{\sum (\Delta x_{i})^{2}}$, $m_{4} = \sqrt{\sum (\Delta^{2} x_{i})^{2}}$) are used to compute PAP using the following equation:
 
 $
-\text{PAP} = \frac{M0}{M4/M2}
+\text{PAP} = \frac{m_{0}}{m_{4}/m_{2}}
 $
 
 ## **Multiplication of Peaks (MZP)** <sup>[13]</sup>
-A spectral peak product using the time domain spectral moment computation method commonly used across the TDPSD feature set. The 2nd, and 4th order moments are used to compute PAP using the following equation:
+A spectral peak product using the time domain spectral moment computation method commonly used across the TDPSD feature set. It is computed from the first difference of the signal (the square root of the normalized 2nd order moment) using the following equation:
 
 $
-\text{MZP} = \sqrt(\frac{M4}{M2})
+\text{MZP} = \sqrt{\frac{1}{N}\sum_{i=1}^{N-1}(x_{i+1} - x_{i})^{2}}
 $
 
 
 ## **Temporal Moment (TM)** <sup>[1]</sup>
-A temporal moment feature computed directly from the time domain. An order parameter is passed in that scales the signal prior to computing the moments. The zeroth order moment is the windowsize, the first order moment is like the MAV, and the second order moment is like the variance;therefore the feature should be used with order > 3 (this is set as the default).
+A temporal moment feature computed directly from the time domain. An order parameter is passed in that scales the signal prior to computing the moments. The zeroth order moment is constant, the first order moment is the MAV, and the second order moment is like the variance; therefore the feature should be used with order $\ge$ 3 (`TM_order`, default 3).
 
 $
-\text{TM} =  \sum_{i=1}^{N} |x_{i}^{order}|
+\text{TM} = \frac{1}{N}\sum_{i=1}^{N} |x_{i}^{order}|
 $
 
 ## **Spectral Moment (SM)** <sup>[1]</sup>
-A spectral moment feature computed from the frequency domain. An order parameter is passed in that scales the signal prior to computing the moments. POW is the power spectrum of the signal and f is the frequencies associated with every sample of the power spectrum.
+A spectral moment feature computed from the frequency domain. An order parameter (`SM_order`, default 2) sets the power the frequencies are raised to, and the sampling frequency is set with `SM_fs` (default 1000). POW is the power spectrum of the signal and f is the frequencies associated with every sample of the power spectrum.
 
 $
 \text{SM} =  \sum_{i=1}^{F} pow_{i}*f_{i}^{order}
 $
 
 ## **Sample Entropy (SAMPEN)**
-Sample entropy is a measure of the self-similarity within the signal. It captures nonlinear complexity information and is particularly useful for assessing contraction intensity, fatigue, or muscle tone. SAMPEN is computed using the log ratio of two "count" variables determined within the window, A and B. A represents the sum of all occurrances of each N-1 sample pattern that have distance less than r from all N-1 sample patterns. B is similar, however, it is the sum of all occurrences of each N sample patterns having a distances less than r. r is typically 0.2 * std, however, it can be changed as an argument of the library.
+Sample entropy is a measure of the self-similarity within the signal. It captures nonlinear complexity information and is particularly useful for assessing contraction intensity, fatigue, or muscle tone. SAMPEN is computed using the log ratio of two "count" variables determined within the window, A and B. B represents the (average) number of times each pattern of $m$ consecutive samples lies within a distance r of the other patterns of $m$ samples (the largest absolute sample difference is used as the distance, and self-matches are excluded). A is the same count for patterns of $m+1$ samples. The window is first standardized to zero mean and unit variance, so r is in units of the window's standard deviation. $m$ is set with `SAMPEN_dim` (an int greater than 1, default 2) and r with `SAMPEN_tolerance` (a float, default 0.3).
 
 $ 
 \text{SAMPEN} = -log \frac{A}{B}
@@ -433,17 +476,17 @@ $
 Fuzzy entropy similarly is a measure of self-similarity within the signal; however, it uses a similarity measure (continuous A from SAMPEN) between the N samples patterns instead of counting the occurences that strictly are less than the threshold (discrete A and B from SAMPEN). The similarity is computed by:
 
 $
-\text{FUZZYEN}=e^{\frac{-A^{d}}{r}}
+\text{similarity}=e^{\frac{-A^{d}}{r}}
 $
 
-where d and r are arguments to the function that correspond to the distance order and similarity threshold, respectively.
+where A is the distance between two zero-mean patterns, d is the exponent set with `FUZZYEN_win` (an int, default 2), and r is `FUZZYEN_tolerance` (a float, default 0.3) multiplied by the window's standard deviation. As with SAMPEN, the feature is the log ratio of the average similarity of patterns of $m$ samples to that of patterns of $m+1$ samples, with $m$ set by `FUZZYEN_dim` (default 2).
 
 ## **Discrete Time Fourier Transform Representation (DFTR)**
 
-DFTR is a feature that computes the energy within 6 frequency bins of the EMG power spectrum (20-92, 92-163, 163-235, 235-307, 307-378, 378-450) Hz. If the frequency of the signal is less than these bins, then the bin is omitted (determined via a function argument).
+DFTR is a feature that computes the energy within 6 frequency bins of the EMG magnitude spectrum (20-92, 92-163, 163-235, 235-305, 305-378, 378-450) Hz. A bin is only included if its upper edge is below the Nyquist frequency of `DFTR_fs` (default 1000), so lower sampling rates return fewer bins. Each bin's value is the mean magnitude $M_i$ over the frequencies in the bin, raised to the power 2/3:
 
 $
-\text{DFTR}_{bin} = \sum_{i \in bin} M_i
+\text{DFTR}_{bin} = \left(\frac{1}{|bin|}\sum_{i \in bin} M_i\right)^{\frac{2}{3}}
 $
 
 
@@ -502,10 +545,10 @@ $
 $
 
 ## **Wavelet Energy (WENG)** 
-This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the average energy of a window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ :
+This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the log energy of a window per decomposition level. The four wavelet features (WENG, WV, WWL and WENT) decompose each channel with a `sym8` discrete wavelet transform to $\lfloor \log_2(f_s/2) - 1 \rfloor$ levels, where $f_s$ is set with `WENG_fs`, `WV_fs`, `WWL_fs` or `WENT_fs` (default 1000), and return one value per coefficient set (the levels plus the approximation) per channel. Given $\phi_o$ is the decomposition for level $o$ :
 
 $
-\text{WENG}_o = \sum \phi_o ^2
+\text{WENG}_o = \log\left(\sum \phi_o ^2 + 10^{-10}\right)
 $
 
 
@@ -513,21 +556,21 @@ $
 This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts variance of the window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ :
 
 $
-\text{WV}_o = \text{var}({\phi_o^2})
+\text{WV}_o = \log\left(\text{var}({\phi_o^2}) + 10^{-10}\right)
 $
 
 ## **Wavelet Waveform Length (WWL)**
 This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts waveform length of the window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ :
 
 $
-\text{WWL}_o = \sum{|\nabla{\phi_o ^2}|}
+\text{WWL}_o = \log\left(\sum{|\nabla{\phi_o ^2}|} + 10^{-10}\right)
 $
 
 ## **Wavelet Entropy (WENT)**
 This feature is a time frequency feature that extracts the number of wavelets possible (given a sampling frequency argument), then extracts the entropy of the window per decomposition level. Given $\phi_o$ is the decomposition for level $o$ and $i$ indicates the sample:
 
 $
-\text{WENT}_o = \sum{x \text{log}(x)}
+\text{WENT}_o = -\sum{x \text{log}(x)}
 $
 
 $
@@ -548,7 +591,7 @@ Feature sets are validated groups of features that have been shown empirically t
 2. Zero Crossings (ZC)
 3. Slope Sign Change (SSC)
 4. Waveform Length (WL)
-5. Autoregressive Coefficient 4 (AR4)
+5. Autoregressive Coefficients (AR, order 4 by default)
 
 ## **Low Sampling Frequency 4 (LS4)** <sup>[2]</sup>
 1. L-Score (LS)
@@ -557,11 +600,11 @@ Feature sets are validated groups of features that have been shown empirically t
 4. Willison Amplitude (WAMP)
 
 ## **Low Sampling Frequency 9 (LS9)** <sup>[2]</sup>
-1. TD4 Features 
+1. LS4 Features 
 2. Zero Crossings (ZC)
 3. Root Mean Square (RMS)
 4. Integral of the Absolute Value (IAV) 
-5. Absolute Square Average Difference Value (DASDV)
+5. Difference Absolute Standard Deviation Value (DASDV)
 6. Variance (VAR)
 
 ## **Topologically Selected Time Domain (TSTD)** <sup>[14]</sup>
@@ -581,11 +624,13 @@ Feature sets are validated groups of features that have been shown empirically t
 5. Irregularity Factor (IRF)
 6. Waveform Length Factor (WLF)
 
-## **Combined** <sup>[11]</sup>
+## **Combined (COMB)** <sup>[11]</sup>
 1. Waveform Length (WL)
 2. Slope Sign Change (SSC)
 3. Log Detector (LD)
-4. Autoregressive Coefficient 9 (AR9)
+4. Autoregressive Coefficients of order 9 (AR9)
+
+**Note:** in the current version, `extract_feature_group('COMB', windows)` raises a `ValueError`, because the group lists `'AR9'`, which is not a feature name. Extract the same set with `extract_features(['WL', 'SSC', 'LD', 'AR'], windows, feature_dic={'AR_order': 9})`.
 
 ## **Discrete Fourier Transform Representation (DFTR)**  <sup>[15]</sup>
 1. Discrete Fourier Transform Representation (DFTR)
@@ -593,8 +638,8 @@ Feature sets are validated groups of features that have been shown empirically t
 ## **Inverse Time Domain (ITD)** <sup>[16]</sup>
 1. Integral Square Descriptor (ISD)
 2. Coefficient of Regularization (COR)
-4. Mean Difference Derivative (MDIFF)
-5. Mean Logarithm Kernel (MLK)
+3. Mean Difference Derivative (MDIFF)
+4. Mean Logarithm Kernel (MLK)
 
 ## **Hjorth Parameters (HJORTH)** <sup>[17]</sup>
 1. Activation (ACT)

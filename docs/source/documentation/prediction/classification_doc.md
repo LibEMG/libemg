@@ -1,6 +1,6 @@
 # Classifiers
 
-Below is a list of the classifiers that can be instatiated by passing in a string to the `EMGClassifier`. For other classifiers, pass in a custom model that has the `fit`, `predict`, and `predict_proba` methods.
+Below is a list of the classifiers that can be instatiated by passing in a string to the `EMGClassifier`. For other classifiers, pass in a custom model that has the `fit`, `predict`, and `predict_proba` methods. In every example, `data_set` is a dictionary with `training_features` and `training_labels` keys, and sklearn parameters can be changed with the `model_parameters` argument of `EMGClassifier`.
 
 ## Linear Discriminant Analysis (LDA)
 
@@ -17,14 +17,14 @@ Discriminates between inputs using the K closest samples in feature space. The i
 
 ```Python
 params = {'n_neighbors': 5} # Optional
-classifier = EMGClassifier('KNN')
-classifier.fit(data_set, parameters=params)
+classifier = EMGClassifier('KNN', model_parameters=params)
+classifier.fit(data_set)
 ```
 Check out the KNN docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html)
 
 ## Support Vector Machines (SVM)
 
-A hyperplane that maximizes the distance between classes is used as the boundary for recognition. A commonly used classifier for EMG-based recognition.
+A hyperplane that maximizes the distance between classes is used as the boundary for recognition. A commonly used classifier for EMG-based recognition. The implemented version uses a linear kernel with probability estimates enabled (`kernel='linear'`, `probability=True`).
 ```Python
 classifier = EMGClassifier('SVM')
 classifier.fit(data_set)
@@ -67,9 +67,11 @@ classifier.fit(data_set)
 ```
 Check out the NB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.GaussianNB.html)
 
-<!-- ### Gradient Boosting (GB)
+## Gradient Boosting (GB)
+
+An additive ensemble of decision trees, each fit to the errors of the ones before it.
 ```Python
-classifier = EMGClassifier('GB', data_set)
-classifier.fit('GB', data_set)
+classifier = EMGClassifier('GB')
+classifier.fit(data_set)
 ```
-Check out the GB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingClassifier.html) -->
+Check out the GB docs [here.](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingClassifier.html)

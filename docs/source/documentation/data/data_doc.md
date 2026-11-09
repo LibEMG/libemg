@@ -23,6 +23,20 @@ This module has three data-related functions: **(1) Datasets**, **(2) Offline Da
 # Datasets
 Several validated datasets consisting of different gestures and recording technology are included in this library. These datasets can be used for exploring the library's capabilities and for future research. When using the packaged datasets for research purposes, we ask that you reference the original dataset contribution and not just this toolkit (the original dataset contributions might not be obvious since they are included for download with this toolkit).
 
+`get_dataset_list(type='CLASSIFICATION', cross_user=False)` returns a dictionary mapping each dataset's name to its class. `type` can be `'CLASSIFICATION'`, `'REGRESSION'`, `'WEAKLYSUPERVISED'` or `'ALL'`, and `cross_user=True` returns the cross-user variants (currently `EMGEPN612` for classification and `EMG2POSE` for regression). The names used below are the keys of that dictionary. Each dataset class can also be imported directly from `libemg.datasets` (e.g., `libemg.datasets.OneSubjectMyoDataset`), and `get_info()` prints a dataset's description, sampling rate, channels, gestures and citation.
+
+`prepare_data(split=True, subjects=None)` downloads the dataset if it supports automatic download and is not already present, then loads it. By default (`split=True`) it returns a dictionary of `OfflineDataHandler`s with the keys `'All'`, `'Train'` and `'Test'` (the weakly supervised dataset also has `'Pretrain'`). Pass `split=False` to get a single `OfflineDataHandler` instead. `subjects` is a list of subject **indices** (starting at 0) used to load only part of a dataset.
+
+```Python
+from libemg.datasets import get_dataset_list
+
+dataset = get_dataset_list()['3DC']()
+data = dataset.prepare_data(subjects=[0])  # only the first subject
+train_odh, test_odh = data['Train'], data['Test']
+```
+
+`libemg.datasets.evaluate` (and `evaluate_crossuser` / `evaluate_weaklysupervised`) run a model against a list of these datasets and pickle the per-subject results to `output_file`.
+
 ## Classification 
 
 <!-- ------------- One Subject Myo -------------------- -->
@@ -39,7 +53,7 @@ Simple one subject dataset.
 | ------------------ | ----------- |
 | **Num Subjects:**      | 1       |
 | **Num Reps:**      | 12 Reps (i.e., 6 Trials x 2 Reps)|
-| **Classes:**       | <ul><li>0 - Hand Open</li><li>1 - Hand Close</li><li>2 - No Movement</li><li>3 - Wrist Extension</li><li>4 - Wrist Flexion</li></ul>       |
+| **Classes:**       | <ul><li>0 - Hand Close</li><li>1 - Hand Open</li><li>2 - No Movement</li><li>3 - Wrist Flexion</li><li>4 - Wrist Extension</li></ul>       |
 | **Device:**        | Myo        |
 | **Sampling Rates:** | 200 Hz        |
 | **Auto Download:** | True       |
@@ -49,11 +63,11 @@ Simple one subject dataset.
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['OneSubjectMyo']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
-https://github.com/LibEMG/OneSubjectEMaGerDataset
+https://github.com/LibEMG/OneSubjectMyoDataset
 
 **References:**
 ```
@@ -76,7 +90,7 @@ https://github.com/LibEMG/OneSubjectEMaGerDataset
 <!-- ------------- 3DC -------------------- -->
 
 <details>
-<summary><b>3DCDatset</b></summary>
+<summary><b>3DCDataset</b></summary>
 
 <br>
 
@@ -88,7 +102,7 @@ A relatively simple within session baseline.
 | **Num Subjects:**      | 22       |
 | **Num Reps:**      | 4 Training, 4 Testing       |
 | **Classes:**       | <ul><li>0 - No Motion</li><li>1 - Radial Deviaton</li><li>2 - Wrist Flexion</li><li>3 - Ulnar Deviaton</li><li>4 - Wrist Extension</li><li>5 - Supination</li><li>6 - Pronation</li><li>7 - Power Grip</li><li>8- Open Hand</li><li>9 - Chuck Grip</li><li>10 - Pinch Grip</li></ul>       |
-| **Device:**        | Delsys        |
+| **Device:**        | 3DC Armband (Prototype)        |
 | **Sampling Rates:** | 1000 Hz        |
 | **Auto Download:** | True       |
 
@@ -96,7 +110,7 @@ A relatively simple within session baseline.
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['3DC']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -142,8 +156,8 @@ The goal of this Myo dataset is to explore how well models perform when they hav
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['CIIL_MinimalData']()
-odh = dataset.prepare_data()
+dataset = get_dataset_list()['MinimalTrainingData']()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -186,8 +200,8 @@ An electrode shift confounding factors dataset.
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['CIIL_ElectrodeShift']()
-odh = dataset.prepare_data()
+dataset = get_dataset_list()['ElectrodeShift']()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -232,12 +246,12 @@ A weakly supervised environment with sparse supervised calibration.
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list('WEAKLYSUPERVISED')['CIIL_WeaklySupervised']()
-odh = dataset.prepare_data()
+dataset = get_dataset_list('WEAKLYSUPERVISED')['WeaklySupervised']()
+data = dataset.prepare_data()  # {'All': ..., 'Pretrain': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
-https://github.com/LibEMG/WS_CIIL
+https://unbcloud-my.sharepoint.com/:u:/g/personal/ecampbe2_unb_ca/EaABHYybhfJNslTVcvwPPwgB9WwqlTLCStui30maqY53kw?e=MbboMd (downloaded automatically by `prepare_data`)
 
 **References:**
 ```
@@ -269,7 +283,7 @@ The testing set in this dataset has continuous transitions between classes, prov
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['ContinuousTransitions']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -313,7 +327,7 @@ A contraction intensity dataset.
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['ContractionIntensity']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -359,7 +373,7 @@ A large 612 user dataset for developing cross-user models.
 from libemg.datasets import *
 dataset = get_dataset_list()['EMGEPN612']() # User Dependent 
 dataset = get_dataset_list(cross_user=True)['EMGEPN612']() # User Independent 
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -400,8 +414,8 @@ Twelve gestures elicited in three forearm orientations (neutral, pronation, and 
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['FORSEMG']()
-odh = dataset.prepare_data()
+dataset = get_dataset_list()['FORS-EMG']()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -445,7 +459,7 @@ A limb position dataset (with 5 static limb positions).
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['FougnerLP']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -480,7 +494,7 @@ A large cross-session dataset including 17 gestures elicited across 3 separate s
 | Attribute         | Description                                                                                          |
 |-------------------|------------------------------------------------------------------------------------------------------|
 | **Num Subjects:** | 43                                                                                                   |
-| **Num Reps:**     | 7 Train, 14 Test (2 Separate Days x 7 Reps) --> Cross Day Split                                      |
+| **Num Reps:**     | `GRABMyoCrossDay`: 7 Train, 14 Test (2 Separate Days x 7 Reps) --> Cross Day Split<br>`GRABMyoBaseline`: 5 Train, 2 Test --> Baseline Split |
 | **Classes:**      | <ul><li>0 - Lateral Prehension</li><li>1 - Thumb Adduction</li><li>2 - Thumb and Little Finger Opposition</li><li>3 - Thumb and Index Finger Opposition</li><li>4 - Thumb and Index Finger Extension</li><li>5 - Thumb and Little Finger Extension</li><li>6 - Index and Middle Finger Extension</li><li>7 - Little Finger Extension</li><li>8 - Index Finger Extension</li><li>9 - Thumb Finger Extension</li><li>10 - Wrist Extension</li><li>11 - Wrist Flexion</li><li>12 - Forearm Supination</li><li>13 - Forearm Pronation</li><li>14 - Hand Open</li><li>15 - Hand Close</li><li>16 - Rest</li></ul> |
 | **Device:**       | EMGUSB2+ device (OT Bioelletronica, Italy)                                                           |
 | **Sampling Rates:** | 2048 Hz                                                                                      |
@@ -491,7 +505,7 @@ A large cross-session dataset including 17 gestures elicited across 3 separate s
 from libemg.datasets import *
 dataset = get_dataset_list()['GRABMyoBaseline']() # Baseline 
 dataset = get_dataset_list()['GRABMyoCrossDay']() # CrossDay
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -537,8 +551,10 @@ High Density Hyser pattern recognition (PR) dataset. Includes dynamic and mainte
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['HyserPR']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
+
+Note that the `classes` metadata is stored 0-indexed (i.e., class 1 above is label 0). The data must already be downloaded into `dataset_folder` (default `'HyserPR'`), otherwise `prepare_data` raises a `FileNotFoundError`.
 
 **Dataset Location**
 https://www.physionet.org/content/hd-semg/2.0.0/
@@ -580,7 +596,7 @@ A single subject, multi-day (120 days) collection.
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['KaufmannMD']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -625,7 +641,7 @@ The Ninapro DB2 is a dataset that can be used to test how algorithms perform for
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['NinaProDB2']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -671,7 +687,7 @@ A large limb position dataset (with 16 static limb positions).
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list()['RadmandLP']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -706,7 +722,7 @@ https://github.com/LibEMG/LimbPosition
 | Attribute         | Description                                                                                          |
 |-------------------|------------------------------------------------------------------------------------------------------|
 | **Num Subjects:** | 6                                                                                                   |
-| **Num Reps:**     | 8 reps per motion (pre/post intervention)                                                           |
+| **Num Reps:**     | 8 reps per motion (pre/post intervention). 6 Train, 2 Test                                          |
 | **Classes:**      | <ul><li>0 - Hand Open</li><li>1 - Key Grip</li><li>2 - Power Grip</li><li>3 - Fine Pinch Opened</li><li>4 - Fine Pinch Closed</li><li>5 - Tripod Opened</li><li>6 - Tripod Closed</li><li>7 - Tool</li><li>8 - Hook</li><li>9 - Index Point</li><li>10 - Thumb Flexion</li><li>11 - Thumb Extension</li><li>12 - Thumb Abduction</li><li>13 - Thumb Adduction</li><li>14 - Index Flexion</li><li>15 - Ring Flexion</li><li>16 - Pinky Flexion</li><li>17 - Wrist Supination</li><li>18 - Wrist Pronation</li><li>19 - Wrist Flexion</li><li>20 - Wrist Extension</li><li>21 - Radial Deviation</li><li>22 - Ulnar Deviation</li><li>23 - No Motion</li></ul> |
 | **Device:**       | Ag/AgCl                                                                                             |
 | **Sampling Rates:** | 1000 Hz                                                                                     |
@@ -715,8 +731,9 @@ https://github.com/LibEMG/LimbPosition
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list()['TMRShirleyRyanAbilityLab']()
-odh = dataset.prepare_data()
+dataset = get_dataset_list()['TMR_Pre']() # Pre intervention (before TMR surgery)
+dataset = get_dataset_list()['TMR_Post']() # Post intervention (after TMR surgery)
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -756,8 +773,8 @@ Simple one subject regression dataset.
 | ------------------ | ----------- |
 | **Num Subjects:**      | 1       |
 | **Num Reps:**      | 5 Reps |
-| **Classes:**       | <ul><li>0: Hand Close (-) / Hand Open (+) </li><li>Pronation (-) / Supination (+)</li></li></ul>       |
-| **Device:**        | EmaGEr        |
+| **Classes:**       | <ul><li>0 - Hand Close (-) / Hand Open (+)</li><li>1 - Pronation (-) / Supination (+)</li></ul>       |
+| **Device:**        | EMaGer (64 channels)        |
 | **Sampling Rates:** | 1010 Hz        |
 | **Auto Download:** | True       |
 
@@ -765,12 +782,12 @@ Simple one subject regression dataset.
 **Using the Dataset:**
 ```Python
 from libemg.datasets import *
-dataset = get_dataset_list('REGRESSION')['OneSubjectMyo']()
-odh = dataset.prepare_data()
+dataset = get_dataset_list('REGRESSION')['OneSubjectEMaGer']()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
-https://github.com/LibEMG/OneSubjectMyoDataset
+https://github.com/LibEMG/OneSubjectEMaGerDataset
 
 **References:**
 ```
@@ -812,7 +829,7 @@ A large dataset from ctrl-labs (Meta) for joint angle estimation. Note that not 
 from libemg.datasets import *
 dataset = get_dataset_list('REGRESSION')['EMG2POSE']() # Within USer 
 dataset = get_dataset_list('REGRESSION', cross_user=True)['EMG2POSE']() # Cross User 
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -848,7 +865,7 @@ https://fb-ctrl-oss.s3.amazonaws.com/emg2pose/emg2pose_dataset.tar
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list('REGRESSION')['NinaProDB8']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -892,7 +909,7 @@ Hyser 1 DOF dataset. Includes within-DOF finger movements. Ground truth finger f
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list('REGRESSION')['Hyser1DOF']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -937,7 +954,7 @@ Hyser N DOF dataset. Includes combined finger movements. Ground truth finger for
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list('REGRESSION')['HyserNDOF']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -982,7 +999,7 @@ Hyser random dataset. Includes random motions performed by users. Ground truth f
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list('REGRESSION')['HyserRandom']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -1028,7 +1045,7 @@ Regression dataset used for investigation into user compliance during mimic trai
 ```Python
 from libemg.datasets import *
 dataset = get_dataset_list('REGRESSION')['UserCompliance']()
-odh = dataset.prepare_data()
+data = dataset.prepare_data()  # {'All': ..., 'Train': ..., 'Test': ...}
 ```
 
 **Dataset Location**
@@ -1049,14 +1066,19 @@ https://github.com/LibEMG/UserComplianceDataset
 
 
 # Offline Data Handler 
-One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are either .csv or .txt files, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset's file and folder structure. These expressions can be used to create a dictionary that is passed to the OfflineDataHandler. Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: `dataset/train/R_1_C_1_EMG.csv` where R is the rep and C is the class.
+One overhead for most EMG projects is interfacing with a particular dataset since they often have different folder and file structures. LibEMG provides a means to quickly interface datasets so you can focus on using them with minimal setup time. Assuming the files in the dataset are well formatted (i.e., they include all metadata such as rep, class, and subject) and are .csv, .txt or WFDB (.hea) files, the OfflineDataHandler does all accumulation and processing. To do this, LibEMG relies on regular expressions to define a dataset's file and folder structure. Each `RegexFilter` describes one piece of metadata found in the file path: the text to the left and right of the value, the list of accepted values, and a description that becomes the name of the metadata attribute. A list of these filters is passed to `get_data`, which only keeps the files that match every filter. The metadata is stored as the **index** of the matched value in `values` (e.g., `'train'` becomes 0 below). Once the data handler has collected all the files that satisfy the regexes, the dataset can be sliced using the metadata tags (e.g., by rep, subjects, classes, etc.). After extracting the data it is ready to be passed through the rest of the pipeline. The following code snippet exemplifies how to process a dataset with testing/training, rep, and class metadata. In this case the file format is: `dataset/train/R_1_C_1_EMG.csv` where R is the rep and C is the class.
 
 <details>
 <summary><b>Example Code</b></summary>
 
 ```Python
 from libemg.data_handler import OfflineDataHandler, RegexFilter
+from libemg.feature_extractor import FeatureExtractor
+
 dataset_folder = 'dataset'
+sets_values = ["train", "test"]
+classes_values = ["0", "1", "2"]
+reps_values = ["0", "1"]
 regex_filters = [
     RegexFilter(left_bound = "dataset/", right_bound="/", values = sets_values, description='sets'),
     RegexFilter(left_bound = "_C_", right_bound="_EMG.csv", values = classes_values, description='classes'),
@@ -1067,6 +1089,7 @@ odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, delimi
 
 # Extract training data:
 train_odh = odh.isolate_data(key="sets", values=[0])
+# windows: (num_windows x num_channels x window_size), metadata: dict of arrays with one value per window
 train_windows, train_metadata = train_odh.parse_windows(50,25)
 
 # Extract features
@@ -1078,6 +1101,25 @@ training_features = fe.extract_features(feature_list, train_windows)
 </details>
 </br>
 
+Metadata that is not in the file name can be attached with `MetadataFetcher`s, passed to `get_data` through `metadata_fetchers`. `FilePackager` pairs each data file with another file (e.g., a labels file for regression) and aligns it to the EMG samples (by default with spline interpolation, `align_method='zoom'`). `ColumnFetcher` pulls metadata out of columns of the data file itself. You can also inherit from `MetadataFetcher` to write your own. The example below packages each `R_1_C_1_EMG.csv` file with a comma-separated `R_1_C_1_labels.txt` file in the same folder (one column per degree of freedom), and stores it as `odh.labels`:
+
+```Python
+from libemg.data_handler import FilePackager
+
+labels_filter = RegexFilter(left_bound="/", right_bound="_labels.txt",
+                            values=[f"R_{r}_C_{c}" for r in reps_values for c in classes_values], description='labels')
+packager = FilePackager(labels_filter,
+                        package_function=lambda metadata_file, data_file: metadata_file.replace('_labels.txt', '') == data_file.replace('_EMG.csv', ''))
+odh = OfflineDataHandler()
+odh.get_data(folder_location=dataset_folder, regex_filters=regex_filters, metadata_fetchers=[packager])
+```
+
+Other useful options and methods:
+- `get_data` also takes `skiprows` (header rows to skip), `data_column` (the columns that hold EMG), `downsampling_factor` (filter and decimate on load) and `mrdf_key` (the signal key for .hea files, default `'p_signal'`).
+- `parse_windows(window_size, window_increment, metadata_operations=None)` stores the mode of each metadata attribute in a window by default. `metadata_operations` maps an attribute to `'mean'`, `'median'`, `'last_sample'` or a function instead (e.g., `{'labels': 'last_sample'}` for regression labels).
+- `isolate_channels(channels)` returns a new handler with only the listed channels, and two handlers with the same attributes can be concatenated with `+`.
+- `active_threshold(nm_windows, active_windows, active_labels, num_std=3, nm_label=0)` relabels active windows whose mean MAV is within `num_std` standard deviations of the no motion class as no motion.
+
 # Online Data Handler 
 
 One complication when using EMG devices is the lack of standardization, meaning that interfacing with hardware is a new undertaking for each device. A goal of LibEMG is to abstract these differences and enable a hardware-agnostic framework. Therefore, this module acts as a middle layer for processing real-time data streaming from any device. In this architecture - exemplified in Figure 1 – live data streaming is performed by using a shared memory buffer as the core. This shared memory buffer is created by the device streamer, where a process is spawned that continuously populates the buffer with samples. Other modules can gain access to the shared memory buffer using the shared memory items that the streamer returned, allowing for cross-process, low-latency, non-blocking access to the data of interest. We provide an OnlineDataHandler object that is a generic object for attaching to the shared memory buffer with added some utilities.
@@ -1087,20 +1129,40 @@ Each write to the buffer announces itself. The streamer commits its samples, whi
 An example of the online data streaming workflow is provided below:
  
 ```Python
-# start the hardware streamer, receive a process handle and shared memory descriptors
-streamer_process, shared_memory_items = libemg.streamers.myo_streamer()
-# start an online data handler to attach to the shared memory buffer
-odh = libemg.data_handler.OnlineDataHandler(shared_memory_items=shared_memory_items)
-# start logging the data to a file
-odh.log_to_file()
-# start visualizing the data
-odh.visualization()
+import libemg
+
+if __name__ == "__main__":
+    # start the hardware streamer, receive a process handle and shared memory descriptors
+    streamer_process, shared_memory_items = libemg.streamers.myo_streamer()
+    # start an online data handler to attach to the shared memory buffer
+    odh = libemg.data_handler.OnlineDataHandler(shared_memory_items=shared_memory_items)
+    # start logging the data to a file (writes emg.csv in the current folder)
+    odh.log_to_file()
+    # start visualizing the data
+    odh.visualize()
 ```
 
 ![alt text](online_dh.png)
 <center> <p> Figure 1: OnlineDataHandler Architecture</p> </center>
 
 **For more information on the default streamers and creating your own, please reference the Supported Hardware section.**
+
+## Reading, Filtering and Logging Data
+
+- `get_data(N=0, filter=True)` returns two dictionaries keyed by modality (e.g., `'emg'`, `'imu'`): the buffered samples (**newest sample first**; `N=0` returns the whole buffer, otherwise the newest `N` samples) and the number of samples received since the streamer started or the last `reset`.
+- `install_filter(fi)` installs a `libemg.filtering.Filter` that `get_data` applies to the EMG modality, and `install_channel_mask(mask)` (or the `channel_mask` constructor argument) keeps only the listed channels.
+- `log_to_file(block=False, file_path='', timestamps=True, delimiter=',')` writes every new sample of each modality to `<file_path><modality>.csv` from a spawned process. `start_log(file_path='', ...)` does the same from a background thread and starts recording immediately; `stop_log()` ends either logger and returns the number of samples the thread logger wrote per modality (`odh.log_dropped` holds any samples that were overwritten before they could be written). Logged files contain the raw (unfiltered) data, with a leading timestamp column when `timestamps=True`, and are appended to if they already exist.
+- `reset(modality=None)` clears the buffer, `analyze_hardware()` reports the sampling rate, channel count, value range and resolution of the stream (see the Supported Hardware section), and `visualize()`, `visualize_channels()` and `visualize_heatmap()` plot the live data (see the Visualization section).
+- `stop_all()` stops any logging and visualization started by the handler.
+
+```Python
+data, counts = odh.get_data(N=200)   # newest 200 samples of every modality
+emg = data['emg']                    # (200 x num_channels) array, newest first
+
+odh.start_log(file_path='session1_')  # writes session1_emg.csv
+...
+samples_written = odh.stop_log()
+```
 
 ## Reading the State of a Modality
 

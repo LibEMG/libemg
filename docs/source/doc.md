@@ -20,6 +20,8 @@ The goal of this library is to provide an easy to use and feature-rich API for d
 $ pip install libemg
 ```
 
+LibEMG requires Python 3.13 or newer. Two optional extras are available: `pip install "libemg[deep]"` installs PyTorch for the deep learning module (`libemg.deep`), and `pip install "libemg[delsys]"` installs the .NET bindings needed by the Delsys API streamer (`delsys_api_streamer`).
+
 # Interactive API Walkthrough
 
 Interactive offline and online walkthroughs were created as part of a `LibEMG` workshop we presented at [MEC24](https://www.unb.ca/ibme/mec/index.html), hosted by the Institute of Biomedical Engineering. These walkthroughs step through much of the core functionality of `LibEMG`, and offer visuals to explain pieces of the API. The offline example is formatted as a jupyter notebook, allowing you to see visuals for each code snippet without running the code yourself. Please check out out the workshop GitHub repository to see these interactive API walkthroughs: <https://github.com/LibEMG/LibEMG_MEC24_Workshop>.

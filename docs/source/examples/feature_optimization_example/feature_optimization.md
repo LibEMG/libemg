@@ -16,8 +16,9 @@ In this example, we will be determining the best Willison's amplitude threshold 
 ```Python
 # Let's load in a single subject's worth of data to illustrate the process
 # of finding the best feature parameter
-dataset = libemg.datasets._3DCDataset(redownload=False)
-odh = dataset.prepare_data(subjects_values = ["1"])
+dataset = libemg.datasets._3DCDataset()
+# split=False returns a single OfflineDataHandler; subjects takes subject indices (0 = participant 1)
+odh = dataset.prepare_data(split=False, subjects=[0])
 # For this process, lets split the dataset into training and testing sets using the 
 # "sets" metadata tag.
 training_odh = odh.isolate_data("sets", [0])
@@ -27,8 +28,8 @@ test_odh = odh.isolate_data("sets", [1])
 # for validation. 
 valid_odh  = training_odh.isolate_data("reps", [3])
 train_odh  = training_odh.isolate_data("reps", [0,1,2])
-# Given that these are stored data from as Thalmic labs myoarmband, lets use a window size of
-# 50 samples and an increment of 10 samples.
+# Given that these data were recorded with the 3DC Armband (sampled at 1000 Hz), lets use a
+# window size of 50 samples (50 ms) and an increment of 10 samples (10 ms).
 valid_windows, valid_metadata = valid_odh.parse_windows(50, 10)
 train_windows, train_metadata = train_odh.parse_windows(50, 10)
 ```
@@ -59,6 +60,7 @@ Now we can finally begin iterating through assessing the accuracy of these test 
 # Begin computing the feature accuracies
 fe = libemg.feature_extractor.FeatureExtractor()
 om = libemg.offline_metrics.OfflineMetrics()
+threshold_results = np.zeros(test_points)
 for tp in range(test_points):
     # using a dictionary with "WAMP_threshold" keyword to specify the test point
     dic = {
@@ -75,7 +77,7 @@ for tp in range(test_points):
         model.fit(feature_dictionary = feature_dictionary)
         predictions, probabilties = model.run(valid_features)
         threshold_results[tp] = om.get_CA(valid_metadata["classes"], predictions) * 100
-    finally:
+    except Exception:
         continue
 ```
 
@@ -102,7 +104,7 @@ From this figure, we have found that the best threshold value is 92. We can now 
 dic = {
         "WAMP_threshold": float(threshold_values[best_threshold])
     }
-# Quick reminder: train_odh refers to the combined "train" and validation set
+# Quick reminder: training_odh refers to the combined "train" and validation set
 train_windows, train_metadata = training_odh.parse_windows(200,50)
 test_windows, test_metadata   = test_odh.parse_windows(200,50)
 train_features = fe.extract_features(["WAMP"], train_windows, dic)
@@ -110,7 +112,7 @@ test_features  = fe.extract_features(["WAMP"], test_windows, dic)
 feature_dictionary = {"training_features": train_features,
                         "training_labels":   train_metadata["classes"]}
 model = libemg.emg_predictor.EMGClassifier("LDA")
-model.fit(, feature_dictionary = feature_dictionary)
+model.fit(feature_dictionary = feature_dictionary)
 predictions, probabilties = model.run(test_features)
 test_accuracy = om.get_CA(test_metadata["classes"], predictions) * 100 
 

@@ -11,6 +11,84 @@ Although not directly part of the EMG pipeline, the `Screen Guided Training` mod
 | ![](menu.PNG) | ![](training.PNG) |
 <center> <p> Table 1: Screen Guided Training UI</p> </center>
 
+# Collection Modes
+**Data > Collect Data** offers two modes, chosen at the top of its window. The mode cannot be changed while a collection is running, and every session records which mode it was collected in (`metadata.collection_mode` in `_session_annotations.json`, and `collection_mode` in `collection_details.json`).
+
+| Mode | What the participant sees | Labels |
+| --- | --- | --- |
+| **3D Hand Choreography** (default) | An animated 3D right hand that ramps into each gesture, holds it, ramps out and rests. | Every phase: warm-up, ramp-in, hold, ramp-out, rest, cycle pause, paused. |
+| **Image Folder / Optional Protocol** (backup) | One image or video per class from a media folder, optionally ordered by a collection protocol. | `prompt` / `rest` / `pause` stages, as before. |
+
+The image-folder mode is unchanged and is described in the rest of this page. A protocol built under **Data > Collection Protocol** opens Collect Data in that mode.
+
+## 3D Hand Choreography
+Tick the gestures to collect (16 are available; *rest* is the relaxed hand and is never a selectable class), put them in order, and set the timing: warm-up, ramp-in, hold, ramp-out, rest between gestures, repetitions per gesture, and an optional pause between cycles. Each gesture can override its own repetition count and any of its ramp-in, hold, ramp-out and following rest. Order is either fixed or a seeded shuffle; the seed is always shown and saved. Settings can be saved and loaded as JSON presets. The window shows the estimated duration and the number of repetitions before anything starts.
+
+**Preview** animates the run without recording or writing anything, and needs no device. **Start** (with a device streaming) checks the signal as the image-folder mode does, then opens the hand window in recording mode; the recording begins only when **Start** is pressed in that window. The window has **Start**, **Pause**, **Resume**, **Stop** and **Reset**, and shows the current motion, phase, a countdown, the cycle, and that gesture's repetition count.
+
+How a run is laid out:
+
+* One repetition is rest → ramp-in → hold → ramp-out → rest, with each rest shared with the neighbouring repetitions.
+* A cycle holds one repetition of every selected gesture that still has repetitions left. Three gestures with three repetitions each make three cycles; a gesture with fewer repetitions drops out of the later cycles.
+* The run opens with the warm-up (relaxed hand). Gestures within a cycle are separated by the rest (the rest after a gesture uses that gesture's rest override, if any). Between cycles the cycle pause is used *instead of* the rest when it is enabled. The run ends on the last ramp-out, with no trailing rest. Zero-length phases are left out. Ramp-in and ramp-out must be longer than zero.
+* **Rest between gestures** can be unticked to collect direct *transitions*: each ramp-out then runs straight into the next gesture's ramp-in, so the hand returns through rest without stopping there (between cycles too, unless the cycle pause is on). Rest is still collected deliberately in the warm-up and the cycle pauses, and one of them has to be kept. The rest length and the per-gesture rest overrides are not used. Each such ramp-in records the gesture it came from in `transition_from`, and the window warns of the next gesture during the hold and ramp-out ("Then straight into: Wrist Flexion").
+* The phases are mapped onto the model's clips, not played at a different speed: ramp-in plays clip time 0.3 → 1.0 s, hold 1.0 → 1.5 s, ramp-out 1.5 → 2.2 s, and every resting phase shows the rest frame (0.0 s). Lengthening the hold never changes how the ramps look.
+* The hand moves **linearly in time** over each ramp. The clips as authored are eased (slow at both ends), so each clip's ramps are re-timed when the hand is loaded: the skinned hand's travel from rest toward the gesture is measured and inverted, so at any instant the fraction of the way it has moved equals the `position` label (to within 0.3 %).
+* **Pause** freezes the hand and the schedule; **Resume** continues from the same point. **Stop** cancels the run and returns the hand to rest. A run ends **completed**, **cancelled** or **failed**.
+
+**Intensity (optional).** Tick *Intensity targets* and give levels as percents of maximum effort (for example `30, 60, 90`). Each gesture's repetitions are dealt these levels, in turn or in a seeded shuffle, as evenly as its repetition count allows. A bar beside the hand shows the target: it fills with the hand over the ramp-in, holds at the level (and turns green) through the hold, and empties over the ramp-out. During a rest it previews the next repetition's level. The window also names the target ("Target effort: 60% of maximum").
+
+The run pauses itself, and records why, when the window stops updating (a dragged window, say), when the renderer falls behind the schedule, or (when recording) when the device stops delivering data. Resume is refused until data arrives again. Stretches the participant could not see, or that have no data, are marked and left out of training. Closing the application mid-run cancels it with reason `application_shutdown` and saves what was recorded.
+
+### What a choreography recording writes
+| File | Contents |
+| --- | --- |
+| `_session_<modality>.csv`, `_session_annotations.json` | The continuous recording and its stages, written by the same code as the image-folder mode. Holds are `prompt` stages, so `C_<class>_R_<rep>_<modality>.csv` are steady holds. Ramps are `ramp_in`/`ramp_out` stages; warm-up, rests and cycle pauses are `rest` stages with a `phase` field. |
+| `_session_choreography.json` | The run record: configuration snapshot, asset SHA-256, versioned class map, the full schedule (cycles, seed, per-phase timing), the clock mapping, every event and every annotation interval. |
+| `_session_choreography_events.jsonl` | An append-only journal written while the run goes. `python -m libemg.choreography recover <folder>` rebuilds the run record from it after a crash. |
+| `_choreography_targets_<modality>.csv` | One row per row of `_session_<modality>.csv`: per-sample regression targets (below). |
+| `collection_details.json`, `subject_details.yaml` | As in the image-folder mode, with `collection_mode: "choreography"`, the intensity settings and the target-file description. |
+
+Class IDs come from a versioned map (`right_hand_choreography.v1`: 0 rest, 1 hand_closed, 2 hand_open, … 16 thumb_extend), never from which gestures were ticked or their order.
+
+Every interval in `_session_choreography.json` carries `run_id`, `collection_session_id`, `interval_id`, `parent_repetition_id`, `motion_class` (the stable ID), `phase`, `derived_label` (`hand_closed/ramp_in`, `hand_closed/hold`, `rest/warmup`, `rest/cycle_pause`, or plain `rest`), `cycle_index`, `gesture_repetition_index`, `start_collection_time`/`end_collection_time`, `start_sample_index`/`end_sample_index`, `completion_status` and `training_eligible`. Intervals are **half-open, [start, end)**: a sample produced exactly on a boundary belongs to the later interval, and adjacent phases share a boundary without sharing a sample. Phase intervals are on the `phase` track and never overlap; each repetition also has a parent interval (ramp-in start to ramp-out end) on the `repetition` track. Collection times are in the logger's `time.time()` clock, mapped from the scheduler's monotonic clock; sample indices come from the session's fitted sample clock. Labels describe the instruction that was shown, not verified participant movement.
+
+```Python
+import json
+record = json.load(open("data/_session_choreography.json"))
+holds = [iv for iv in record["intervals"]
+         if iv["phase"] == "hold" and iv["training_eligible"]]
+```
+
+### Regression targets: position and intensity
+Besides the class, every instant of a choreography recording has a **position**: where the displayed hand is between rest (0) and the gesture (1). It rises linearly from 0 to 1 over the ramp-in, is 1 through the hold, falls linearly from 1 to 0 over the ramp-out, and is 0 while resting; while paused it holds the frozen value. With intensity on, each repetition has an `intensity_level`, and the **intensity** target is `position × intensity_level` (0 while resting). Through a direct transition the position falls to 0 at the end of one gesture's ramp-out and rises from 0 at the start of the next ramp-in, and the class changes at that instant. Each interval records both at its ends (`position_start`/`position_end`, `intensity_start`/`intensity_end`, and `intensity_level`; rests carry `next_intensity_level`). Within an interval the values are a straight line between the two ends. Hold stages in `_session_annotations.json` carry the level as a factor, `{"intensity": 0.6}`.
+
+`_choreography_targets_<modality>.csv` writes these out per sample. Its columns are named in a `#` header line:
+
+| Column | Meaning |
+| --- | --- |
+| `sample_index` | The row of `_session_<modality>.csv`. |
+| `collection_time` | When the sample was produced (the session's fitted clock). |
+| `motion_class_id` | The versioned class ID; 0 (rest) while resting. |
+| `phase_code` | 0 warm-up, 1 ramp-in, 2 hold, 3 ramp-out, 4 rest, 5 cycle pause, 6 paused, -1 outside the run. |
+| `position` | 0 rest … 1 gesture, as above. |
+| `intensity_level`, `intensity` | Only when intensity was on. |
+| `repetition_index` | The repetition's place in the run (0-based); -1 while resting. |
+| `training_eligible` | 1 where the interval was shown cleanly (not paused, interrupted, or overlapping a display or data gap). |
+
+```Python
+from libemg.choreography import load_targets
+
+t = load_targets("data/", "emg")          # samples and targets, row for row
+t = t.select(t.training_eligible == 1)    # drop paused or interrupted stretches
+X, y_class, y_position = t.samples, t.motion_class_id, t.position
+y_intensity = t.intensity                 # None if the run did not ask for intensity
+```
+
+For loaders that read one file per repetition, `python -m libemg.choreography cut-repetitions data/ --out data_repetitions/` writes each completed repetition (ramp-in start to ramp-out end) as `C_<class>_R_<rep>_<modality>.csv` with a matching `C_<class>_R_<rep>_<modality>_targets.csv` of the same length. `--lead-in` and `--lead-out` add rest either side. The output folder has to be outside the recording folder: the offline loaders search folders recursively and would otherwise read these repetitions a second time alongside the hold files.
+
+Like every label here, position and intensity describe the instruction shown, not measured movement or force.
+
 
 # Gesture Library
 One of the tedious aspects (and annoyances) of performing data collection is the need to accumulate photos (or videos) of each contraction. This process is not only time-consuming but also leads to inconsistencies among studies. To streamline this process, LibEMG includes a database of [~35 gestures](https://github.com/libemg/LibEMGGestures) (both static and dynamic) that can be interfaced and downloaded through the API.
@@ -29,7 +107,7 @@ from libemg.streamers import myo_streamer
 _, sm = myo_streamer()
 odh = OnlineDataHandler(sm)
 
-training_ui = GUI(self.odh, width=700, height=700, gesture_height=300, gesture_width=300)
+training_ui = GUI(odh, width=700, height=700, gesture_height=300, gesture_width=300)
 training_ui.download_gestures([1,2,3,4,5], "images/")
 training_ui.start_gui()
 ```

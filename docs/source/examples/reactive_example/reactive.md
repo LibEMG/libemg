@@ -7,6 +7,7 @@ The point of the example is the middle two stages, because they observe the same
 # Setting up
 
 ```Python
+import time
 import numpy as np
 from multiprocessing import Lock
 
@@ -23,6 +24,8 @@ FEATURES = ['MAV', 'RMS', 'WL', 'ZC']
 ```
 
 Everything is assembled in one process so that the streamer and the graph share a notifier pool. That is what lets a write in the streamer's process wake a hook in another.
+
+Executors are separate processes. On platforms that start processes by spawning (Windows and macOS), run the code from here on under an `if __name__ == "__main__":` guard, and keep hook classes such as `ModelHook` below at module level so they can be pickled into their executor.
 
 ```Python
 pool = default_notifier_pool()
@@ -120,6 +123,7 @@ for _ in range(2000):
     writer.commit('emg', rng.standard_normal((1, CHANNELS)))
     time.sleep(1.0 / FS)
 
+time.sleep(0.5)  # give the last commits time to cascade through the graph
 graph.stop()
 ```
 

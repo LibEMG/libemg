@@ -14,9 +14,9 @@ Adaptation runs as **four cooperating processes** that communicate over shared m
 
 The loop is therefore: **predict → act → pseudo-label → remember → adapt → reload → predict …**, all without pausing the user.
 
-**Neither manager spins.** Each one waits on a notifier slot and is woken by the write it used to poll for. The memory manager's old loop copied both the feedback buffer and the whole model-input buffer on every pass, just to compare one counter. Their signatures and their behaviour are otherwise unchanged.
+**The memory manager does not spin.** It waits on a notifier slot and is woken by the environment's write instead of polling for it. Its old loop copied both the feedback buffer and the whole model-input buffer on every pass, just to compare one counter. The managers' signatures and behaviour are otherwise unchanged.
 
-By default the adaptation manager still calls `model.adapt` on every pass of its loop, including passes where no new slice has arrived. Set its `wait_for_memory` attribute to adapt only when a slice actually arrives:
+By default the adaptation manager does not wait at all: it calls `model.adapt` on every pass of its loop, back to back, including passes where no new slice has arrived. Set its `wait_for_memory` attribute (before starting it) to have it wait on its notifier slot and adapt only when a slice actually arrives:
 
 ```Python
 adaptation_manager.wait_for_memory = True
@@ -24,7 +24,7 @@ adaptation_manager.wait_for_memory = True
 
 **You supply three things.** The suite is model-agnostic; it only assumes:
 - a **model** with `predict(features)`, `adapt(memory)`, `save(path)`, and `load(path)` (the reference repository uses a small MLP / Transformer),
-- a **memory** subclassing `libemg.adaptation.memory.Memory` (implementing `append`, `reset`, `save`, `load`, and `__add__`),
+- a **memory** subclassing `libemg.adaptation.memory.Memory` (implementing `append(feedback, input, trial)`, `reset`, `save`, `load`, and `__add__`; the `AdaptationManager` also reads a `processed_data` attribute, whose first element is an array of the stored inputs, to log the size of each slice it loads). For a `libemg.deep.DeepModel`, `libemg.deep.SequenceMemory` provides all of these,
 - a **feedback function** mapping game state to a pseudo-label — `libemg.adaptation._base.produce_tciil_feedback` is a ready-made regression example.
 
 **Note:** The snippets below use the `Myo Armband` and a 2-DOF wrist regressor (flexion/extension and radial/ulnar deviation). Any hardware works by switching the `streamer`, `window_size`, and `window_increment`.
@@ -132,11 +132,11 @@ offdh.get_data('data/sgt/', regex_filters, metadata_fetchers, delimiter=',')
 
 # Fit the initial within-subject model (implements predict/adapt/save/load).
 model = MyModel(...)
-model.calibrate(offdh)
+model.calibrate(offdh)                  # your own fitting method
 
 # Seed the adaptation with the SGT data as the first memory slice.
 initial_memory = MyMemory(...)          # subclass of libemg.adaptation.memory.Memory
-initial_memory.load_from_odh(offdh)
+initial_memory.load_from_odh(offdh)     # your own method for filling the memory
 initial_memory.save('data/adapt/sgt_memory.pkl')
 ```
 
@@ -176,7 +176,7 @@ online_regressor = libemg.emg_predictor.OnlineEMGRegressor(
     window_size = 100, window_increment = 40,
     features = ['WENG'],
     output_writers = model_ow,          # publishes model_input (features + timestamp)
-    smm = True, smm_items = model_smi,  # exposes active_flag / adapt_flag / model_input
+    smm = True, smm_items = model_smi,  # exposes active_flag / adapt_flag
     file_path = ADAPT_DIR,              # reloads mdl<N>.pkl from here when adapt_flag is set
 )
 online_regressor.run(block=False)

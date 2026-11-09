@@ -1,6 +1,6 @@
 # Regressors
 
-Below is a list of the regressors that can be instatiated by passing in a string to the `EMGRegressor`. For other regressors, pass in a custom model that has the `fit` and `predict` methods.
+Below is a list of the regressors that can be instatiated by passing in a string to the `EMGRegressor`. For other regressors, pass in a custom model that has the `fit` and `predict` methods. In every example, `data_set` is a dictionary with `training_features` and `training_labels` keys, where the labels are an (N windows x N DOFs) array. A regressor given as a string is wrapped in sklearn's `MultiOutputRegressor`, so one model is fit per degree of freedom, and `regressor.run(test_features)` returns an (N windows x N DOFs) array of predictions.
 
 ## Linear Regression (LR)
 
@@ -15,7 +15,7 @@ Check out the LR docs [here.](https://scikit-learn.org/stable/modules/generated/
 
 ## Support Vector Machines (SVM)
 
-A regressor that uses a kernel trick to find the hyperplane that best fits the data.
+A regressor that uses a kernel trick to find the hyperplane that best fits the data. The implemented version uses a linear kernel (`kernel='linear'`).
 
 ```Python
 regressor = EMGRegressor('SVM')

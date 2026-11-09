@@ -11,22 +11,24 @@
 
 Although there are many options for prebuilt classifiers incorporated into LibEMG, we also provide the ability to use custom classifiers for offline or online evaluation of EMG signals. As a demonstration of how to get custom classifiers working, in this example we will be training a convolutional neural network with PyTorch and using it as the classifier of the EMGClassifier object. This approach lets the designer provide any sort of classification strategy they want to implement, while still providing the helpful utilities packaged in the EMGClassifier, like majority vote, rejection, and velocity control.
 
-Fortunately, we can leverage nearly the entire pipeline code that we have used before for setting up pipeline. We can leverage existing datasets by loading them into an OfflineDataHandler object. After loading the dataset in, we can divide the dataset into a training (first 4 reps), validation (5th rep), and testing set (6th rep). Then, by applying filters and standardization (learned from the training set), we can ensure the inputs are reasonable for the neural network. Just like was done in the examples requiring handcrafted features, we can window our training, validation, and testing sets.
+Fortunately, we can leverage nearly the entire pipeline code that we have used before for setting up pipeline. We can leverage existing datasets by loading them into an OfflineDataHandler object. After loading the dataset in, we can divide the dataset into a training (first 4 sets), validation (5th set), and testing set (6th set). Then, by applying filters and standardization (learned from the training set), we can ensure the inputs are reasonable for the neural network. Just like was done in the examples requiring handcrafted features, we can window our training, validation, and testing sets.
 
 ```Python
 # make our results repeatable
-fix_random_seed(seed_value=0, use_cuda=True)
-# download the dataset from the internet
-dataset = OneSubjectMyoDataset(save_dir='dataset/',
-                        redownload=False)
-odh = dataset.prepare_data(format=OfflineDataHandler)
+random.seed(0)
+np.random.seed(0)
+torch.manual_seed(0)
+# download the dataset from the internet (only if it isn't already in dataset_folder)
+dataset = OneSubjectMyoDataset(dataset_folder='dataset/')
+# split=False returns a single OfflineDataHandler rather than a dictionary of pre-split handlers
+odh = dataset.prepare_data(split=False)
 
 # split the dataset into a train, validation, and test set
 # this dataset has a "sets" metadata flag, so lets split 
 # train/test using that.
 not_test_data = odh.isolate_data("sets",[0,1,2,3,4])
 test_data = odh.isolate_data("sets",[5])
-# lets further split up training and validation based on reps
+# lets further split up training and validation (again using sets)
 train_data = not_test_data.isolate_data("sets",[0,1,2,3])
 valid_data = not_test_data.isolate_data("sets",[4])
 
@@ -81,7 +83,7 @@ def make_data_loader(windows, classes, batch_size=64):
     return dl
 
 def collate_fn(batch):
-    # this function is used internally by the dataloader (see line 46)
+    # this function is used internally by the dataloader (see make_data_loader above)
     # it describes how we stitch together the examples into a batch
     signals, labels = [], []
     for signal, label in batch:
@@ -254,13 +256,13 @@ dl_dictionary = {"learning_rate": 1e-4,
                     "verbose": True}
 ```
 
-With these things defined, we can finally interface the CNN model with LibEMG. We can pass our PyTorch classifier to the EMGClassifier.fit() method as the chosen classifier. We can also pass our deep learning dictionary as the positional dataloader_dictionary argument to tell the library we are training a deep learning model. Finally, the deep learning hyperparameter dictionary is passed in with the parameters keyword (note: the keys of this dictionary are positional arguments in the .fit() function).
+With these things defined, we can finally interface the CNN model with LibEMG. We can pass our PyTorch classifier to the EMGClassifier constructor as the chosen model. We can then pass our dictionary of dataloaders to EMGClassifier.fit() as the dataloader_dictionary keyword argument to tell the library we are training a deep learning model. Finally, the deep learning hyperparameter dictionary is passed in with the training_parameters keyword (note: the keys of this dictionary are unpacked as keyword arguments of the model's .fit() method).
 
 ```Python
 # Now that we've made the custom classifier object, libEMG knows how to 
 # interpret it when passed in the dataloader_dictionary. Everything happens behind the scenes.
 classifier = EMGClassifier(model)
-classifier.fit(dataloader_dictionary=dataloader_dictionary, parameters=dl_dictionary)
+classifier.fit(dataloader_dictionary=dataloader_dictionary, training_parameters=dl_dictionary)
 ```
 
 After the classifier has been trained, we can use this EMGClassifier object the same way we always have done, despite now using a neural network.

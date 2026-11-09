@@ -72,19 +72,20 @@ Writing your own takes one method:
 ```Python
 from libemg.reactive import Criterion
 
-class OnEnergy(Criterion):
-    """Dirty once the accumulated signal energy passes a threshold."""
-    def __init__(self, threshold):
-        self.threshold = threshold
+class OnBatchOrClose(Criterion):
+    """Dirty once `size` new samples have accrued, or when the writer closes with a partial batch left."""
+    def __init__(self, size):
+        self.size = size
 
     def is_dirty(self, snapshot, memory):
-        return snapshot.total_samples - memory.samples >= self.threshold
+        new = snapshot.total_samples - memory.samples
+        return new >= self.size or (snapshot.closed and new > 0)
 
     def describe(self):
-        return f'OnEnergy({self.threshold})'
+        return f'OnBatchOrClose({self.size})'
 ```
 
-`is_dirty` reads the item's published facts and the observer's memory and returns a judgement without mutating either. `describe` names the criterion in the event log so a recorded decision can be read back and understood.
+`is_dirty` reads the item's published facts and the observer's memory and returns a judgement without mutating either. `describe` names the criterion in the event log so a recorded decision can be read back and understood. A criterion may also override `consume`, which records that the observer acted; the default moves the memory up to the snapshot's current generation and sample total, which is why the example above starts each batch from the newest sample.
 
 # Hooks
 
@@ -124,15 +125,18 @@ Adapting a model while a person is using it is built on these same primitives. `
 A hook's output is itself a stateful item, so committing to it notifies that item's observers in turn. That is the whole mechanism: `emg` to `filtered_emg` to `features` to `predictions` needs no coordinating loop, because each stage wakes the next.
 
 ```Python
-from libemg.reactive import ReactiveGraph, FilterHook
+from libemg.reactive import ReactiveGraph, FilterHook, default_notifier_pool
 
-graph = ReactiveGraph(shared_memory_items)
+# Sharing the process-wide pool is what lets a streamer's writes to 'emg' wake the graph.
+graph = ReactiveGraph(shared_memory_items, notifier_pool=default_notifier_pool())
 graph.add(FilterHook('filter', 'emg', 'filtered_emg', fi=fi, shape=(2000, 8)))
 graph.add(RmsHook(), executor='features')   # the hook defined in the section above
 graph.start()
 ...
 graph.stop()
 ```
+
+`fi` is a `libemg.filtering.Filter` with its filters installed (or `None` to pass the samples through). Without `notifier_pool`, a graph creates a pool of its own: its hooks still wake one another, but writes from outside the graph, such as a streamer's, are only noticed when its executors re-read the state block at their fallback interval (see below).
 
 Two consequences are worth being explicit about, because they are what the old design could not express.
 
@@ -220,7 +224,7 @@ Each executor owns one wake-up slot and one blocking wait. A writer signals the 
 
 Slots come from a `NotifierPool` created up front, because a synchronisation primitive cannot be looked up by name after the fact on every platform LibEMG supports. Everything built in one process shares one pool via `default_notifier_pool()`, which is how a streamer started early in a script can wake a classifier constructed later in the same script.
 
-A writer that never obtains the pool still works correctly. Its commits update the state block, and observers fall back to re-reading that block at their fallback interval, which defaults to 2 ms. That fallback reads a few integers instead of copying and filtering a buffer, so it is still orders of magnitude cheaper than the loop it replaces; holding the pool turns a cheap check into no check at all. The fallback is also the safety net that keeps a lost notification from becoming a hang.
+A writer that never obtains the pool still works correctly. Its commits update the state block, and observers fall back to re-reading that block at their fallback interval, which defaults to 2 ms for an online streamer and 50 ms for a `ReactiveGraph`'s executors (its `poll_fallback` argument) and for the adaptation managers. That fallback reads a few integers instead of copying and filtering a buffer, so it is still orders of magnitude cheaper than the loop it replaces; holding the pool turns a cheap check into no check at all. The fallback is also the safety net that keeps a lost notification from becoming a hang.
 
 # Hooking a live stream directly
 

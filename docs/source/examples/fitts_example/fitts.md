@@ -38,16 +38,21 @@ The steps of this 'mini experiment' are as follows:
 
 # Menu
 ```Python
+from pathlib import Path
+import numpy as np
+from PIL import Image as PILImage
 from libemg.streamers import myo_streamer
 from libemg.gui import GUI
 from libemg.data_handler import OnlineDataHandler, OfflineDataHandler, RegexFilter, FilePackager
 from libemg.feature_extractor import FeatureExtractor
 from libemg.emg_predictor import OnlineEMGClassifier, EMGClassifier, EMGRegressor, OnlineEMGRegressor
-from libemg.environments.isofitts import IsoFitts
+from libemg.offline_metrics import OfflineMetrics
+from libemg.output_writer import SocketOutputWriter
+from libemg.environments.fitts import ISOFitts, FittsConfig
 from libemg.environments.controllers import ClassifierController, RegressorController
 from libemg.animator import ScatterPlotAnimator
 ```
-Similarly to previous examples, we decided to create a simple menu to (1) leverage the training module and (2) enable the use of different models. To do this, we have included two buttons in `menu.py`. When the "accumulate training data button" is clicked, we leverage the training UI module. For this example, we want 3 reps (2 training - 1 testing), and we point it to the "images" folder as it contains images for each class. To instead evaluate a regressor, simply select the 'Regression' radio button and collect the required data. Note that launching training for regression will create a `collection.mp4` file using the `Animator` class.
+Similarly to previous examples, we decided to create a simple menu to (1) leverage the training module and (2) enable the use of different models. To do this, we have included two buttons in `menu.py`. When the "accumulate training data button" is clicked, we leverage the training UI module (choose *Data > Collect Data* from its menu bar). For this example, we want 3 reps (2 training - 1 testing, which is the GUI's default number of reps), and we point it to the "images" folder as it contains images for each class. Each repetition of each class is saved as `C_<class>_R_<rep>_emg.csv` in the data folder, where classes are numbered in the alphabetical order of the media files. To instead evaluate a regressor, simply select the 'Regression' radio button and collect the required data. Note that launching training for regression will create a `collection.mp4` file (and, because `save_coordinates=True`, a matching `collection.txt` file of the target coordinates) using the `Animator` class.
 
 ```Python
 def launch_training(self):
@@ -95,7 +100,7 @@ def create_animation(self):
     animator.save_plot_video(coordinates, title='Regression Training', save_coordinates=True, verbose=True)
 ```
 
-The next button option involves starting the Iso Fitts task. This occurs after the training data has been recorded. We opted for 8 circles in this task, but this can be varied easily with the constructor. Note that in this step we create the online model and start the Fitts law test, so please ensure that you have changed the text box to select the desired model type. If you are performing classification, recommended options are 'LDA', 'SVM', 'KNN', and 'RF'. If you are performing regression, recommended options are 'LR' and 'RF'. To see a full list of available options for classifiers and regressors in `LibEMG`, check out the `EMGClassifier` and `EMGRegressor` in the [source code](https://github.com/LibEMG/libemg).
+The next button option involves starting the Iso Fitts task. This occurs after the training data has been recorded. We opted for 8 targets (circles) in this task, but this can be varied easily with the `num_targets` argument of the `ISOFitts` constructor. Task settings such as the number of trials and the file the results are saved to are passed in through a `FittsConfig`. Note that in this step we create the online model and start the Fitts law test, so please ensure that you have changed the text box to select the desired model type. If you are performing classification, recommended options are 'LDA', 'SVM', 'KNN', and 'RF'. If you are performing regression, recommended options are 'LR' and 'RF'. To see a full list of available options for classifiers and regressors in `LibEMG`, check out the `EMGClassifier` and `EMGRegressor` in the [source code](https://github.com/LibEMG/libemg).
 
 ```Python
 def start_test(self):
@@ -105,16 +110,18 @@ def start_test(self):
         controller = RegressorController()
         save_file = Path('results', self.model_str.get() + '_reg' + ".pkl").absolute().as_posix()
     else:
-        controller = ClassifierController(output_format=self.model.output_format, num_classes=5)
+        # The classifier streams "<predicted class> <velocity>" (see set_up_model below)
+        controller = ClassifierController(output_format='predictions', num_classes=5)
         save_file = Path('results', self.model_str.get() + '_clf' + ".pkl").absolute().as_posix()
-    IsoFitts(controller, num_trials=8, num_circles=8, save_file=save_file).run()
+    config = FittsConfig(num_trials=8, save_file=save_file)
+    ISOFitts(controller, config, num_targets=8).run()
     # Its important to stop the model after the game has ended
     # Otherwise it will continuously run in a seperate process
     self.model.stop_running()
     self.initialize_ui()
 ```
 
-Now, let's break this piece of code up. First, let's explore the `self.set_up_model()` function call. This step involves parsing the offline training data using the `OfflineDataHandler`. The file format for this example is R_<#>_C_<#>.csv. So to extract the reps the left bound is `R_` and the right bound is `_C_`. Similarly, to extract the classes, the left bound is `C_` and the right bound is `.csv`. Additionally, there are three training reps and five classes. For regression, the labels are extracted from a separate text file instead of from the filename. The `collection.txt` file is used to create the labels for each data file via a `FilePackager`. Once we extract all this information, we create the `OfflineDataHandler` and extract the `train_windows` and `train_metadata` variables.
+Now, let's break this piece of code up. First, let's explore the `self.set_up_model()` function call. This step involves parsing the offline training data using the `OfflineDataHandler`. The file format for this example is C_<#>_R_<#>_emg.csv. So to extract the classes the left bound is `C_` (prefixed with the `classification/` folder) and the right bound is `_R`. Similarly, to extract the reps, the left bound is `R_` and the right bound is `_emg.csv`. Additionally, there are three training reps and five classes. For regression, there is a single "class" (the video) and the labels are extracted from a separate text file instead of from the filename. The `collection.txt` file created alongside the animation is used to create the labels for each data file via a `FilePackager`, and the label of each window is taken from its last sample. Once we extract all this information, we create the `OfflineDataHandler` and extract the `train_windows` and `train_metadata` variables.
 
 ```Python
 # Step 1: Parse offline training data
@@ -150,7 +157,7 @@ feature_list = fe.get_feature_groups()['LS4']
 training_features = fe.extract_features(feature_list, train_windows)
 ```
 
-We then split the training features and labels into a dataset dictionary for the `OnlineEMGClassifier` module. 
+We then split the training features and labels into a dataset dictionary for the `EMGClassifier` / `EMGRegressor` module. 
 
 ```Python
 # Step 3: Dataset creation
@@ -159,31 +166,40 @@ data_set['training_features'] = training_features
 data_set['training_labels'] = train_metadata[labels_key]
 ```
 
-Finally, we create the offline and online models using the default options. Notice that when creating the model, we pass in the text from the menu text field. This enables the user to pass in `LDA`, `SVM`, etc. with ease. Once the model is created, the `.run()` function is called and predictions begin.
+Finally, we create the offline and online models using the default options. Notice that when creating the model, we pass in the text from the menu text field. This enables the user to pass in `LDA`, `SVM`, etc. with ease. The online models send their outputs wherever their output writers tell them to, and the controllers listen on UDP `127.0.0.1:12346` by default. For the regressor, a `SocketOutputWriter('model_output')` sends the predictions for each DOF followed by a timestamp, which is what the `RegressorController` parses. For the classifier, the `ClassifierController` (with `output_format='predictions'`) expects `"<predicted class> <velocity>"`, which the built-in `SocketOutputWriter` does not produce (it would send a timestamp where the velocity is expected), so we use a small subclass. Once the model is created, the `.run()` function is called and predictions begin.
 
 ```Python
+# Sends "<predicted class> <velocity>" over UDP (velocity is formatted with a leading space by the classifier).
+# Define this at module level so it can be pickled into the model's process.
+class PredictionVelocityWriter(SocketOutputWriter):
+    def write(self, info):
+        message = f"{info['model_output']}{info['velocity']}"
+        self.sock.sendto(message.encode('utf-8'), (self.ip, self.port))
+
 # Step 4: Create the EMG model
 model = self.model_str.get()
 if self.regression_selected():
     # Regression
     emg_model = EMGRegressor(model=model)
     emg_model.fit(feature_dictionary=data_set)
-    self.model = OnlineEMGRegressor(emg_model, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
+    output_writers = [SocketOutputWriter('model_output')]
+    self.model = OnlineEMGRegressor(emg_model, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list, output_writers=output_writers)
 else:
     # Classification
     emg_model = EMGClassifier(model=model)
     emg_model.fit(feature_dictionary=data_set)
     emg_model.add_velocity(train_windows, train_metadata[labels_key])
-    self.model = OnlineEMGClassifier(emg_model, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list)
+    output_writers = [PredictionVelocityWriter('model_output')]
+    self.model = OnlineEMGClassifier(emg_model, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list, output_writers=output_writers)
 
 # Step 5: Create online EMG model and start predicting.
 self.model.run(block=False) # block set to false so it will run in a seperate process.
 ```
 
 # Fitts Test 
-To create the Isofitts test, we leveraged `pygame`. The code for this module can be found in `libemg.environments.isofitts.py`.
+To create the Isofitts test, we leveraged `pygame`. The code for this module (the `ISOFitts` class) can be found in `libemg/environments/fitts.py`.
 
-To increase the speed of the cursor we could do one of two things: (1) increase the velocity of the cursor (i.e., how many pixels it moves for each prediction), or (2) decrease the increment so that more predictions are made in the same amount of time. Parameters like this can be modified by passing arguments to the `IsoFitts` constructor.
+To increase the speed of the cursor we could do one of two things: (1) increase the velocity of the cursor (i.e., how many pixels it moves for each prediction), or (2) decrease the window increment so that more predictions are made in the same amount of time. The velocity, along with parameters like the target size, dwell time, timeout and whether proportional control is used, can be modified through the `FittsConfig` passed to the `ISOFitts` constructor (e.g., `FittsConfig(num_trials=8, velocity=35)`).
 
 # Data Analysis
 After accumulating data from the experiment, we need a way to analyze the data. In  `analyze_data.py`, we added the capability to evaluate each model's offline and online performance.
@@ -211,13 +227,16 @@ reg_odh.get_data('./', regex_filters, metadata_fetchers=metadata_fetchers, delim
 Using the `isolate_data` function, we can split the data into training and testing. In this specific case, we are splitting on the "reps" keyword and we want values with index 0-1 for training and 2 for testing. After isolating the data, we extract windows and associated metadata for both training and testing sets.
 
 ```Python
+odh = reg_odh if is_regression else clf_odh
+labels_key = 'labels' if is_regression else 'classes'
+metadata_operations = {'labels': 'last_sample'} if is_regression else None
 train_odh = odh.isolate_data(key="reps", values=[0,1])
 train_windows, train_metadata = train_odh.parse_windows(WINDOW_SIZE,WINDOW_INCREMENT, metadata_operations=metadata_operations)
 test_odh = odh.isolate_data(key="reps", values=[2])
 test_windows, test_metadata = test_odh.parse_windows(WINDOW_SIZE,WINDOW_INCREMENT, metadata_operations=metadata_operations)
 ```
 
-Next, we create a dataset dictionary consisting of testing and training features and labels. This dictionary is passed into an `OfflineDataHandler`.
+Next, we create a dataset dictionary consisting of testing and training features and labels. This dictionary is passed into the `fit()` method of an `EMGClassifier` or `EMGRegressor` (which uses the training keys).
 ```Python
 data_set = {}
 data_set['testing_features'] = fe.extract_feature_group('HTD', test_windows)
@@ -242,7 +261,6 @@ for model in models:
     out_metrics = om.extract_offline_metrics(metrics, data_set['testing_labels'], preds, 2)
     offline_metrics['model'].append(model)
     offline_metrics['metrics'].append(out_metrics)
-return offline_metrics
 ```
 
 # Results

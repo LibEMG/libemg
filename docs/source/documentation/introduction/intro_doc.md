@@ -36,4 +36,4 @@ The prediction module uses machine learning models (classification or regression
 <h3 style="background-color:#FFA8AD;padding-left: 10px;"> Evaluation Module</h3>
 
 System evaluation is required when analyzing the performance of any EMG control system. The two evaluation techniques are **offline** and **online** evaluation. Offline evaluation is performed using previously collected EMG data without explicit user feedback. In contrast, online evaluation occurs with the user “in-the-loop” responding to
-feedback from the control scheme under test.  **This module provides a means to extract offline evaluation metrics.** As online evaluation is application dependent (and should be tested using the implemented system), it is not directly addressed by this library. 
+feedback from the control scheme under test.  **This module provides a means to extract offline evaluation metrics.** As online evaluation is application dependent (and should be tested using the implemented system), it is not directly addressed by this module. However, LibEMG does provide some standard real-time tasks for online evaluation, such as Fitts' law tests (see the Environments section). 

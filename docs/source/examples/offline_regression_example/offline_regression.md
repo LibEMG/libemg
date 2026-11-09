@@ -19,7 +19,7 @@ from libemg.emg_predictor import EMGRegressor
 
 ## Step 2: Setting up Constants
 
-Preprocessing parameters, such as window size, window increment, and the feature set must be decided before EMG data can be prepared for estimation. LibEMG defines window and increment sizes as the number of samples. In this case, the dataset was recorded from the EMaGer cuff, which samples at 1 kHz, so a window of 150 samples corresponds to 150ms.
+Preprocessing parameters, such as window size, window increment, and the feature set must be decided before EMG data can be prepared for estimation. LibEMG defines window and increment sizes as the number of samples. In this case, the dataset was recorded from the EMaGer cuff, which samples at 1010 Hz (roughly 1 kHz), so a window of 150 samples corresponds to roughly 150ms.
 
 The window increment, window size, and feature set default to 40, 150, and 'HTD', respecively. These variables can be customized in this script using the provided CLI. Use `python main.py -h` for an explanation of the CLI. Example usage is also provided below:
 
@@ -29,11 +29,11 @@ python main.py --window_size 200 --window_increment 50 --feature_set MSWT
 
 # Step 3: Loading in Dataset
 
-This example uses the `OneSubjectEMaGerDataset`. Instantiating the `Dataset` will automatically download the data into the specified directory, and calling the `prepare_data()` method will load EMG data and metadata (e.g., reps, movements, labels) into an `OfflineDataHandler`. This dataset consists of 5 repetitions, so we use 4 for training data and 1 for testing data. After splitting our data into training and test splits, we perform windowing on the raw EMG data. By default, the metadata assigned to each window will be based on the mode of that window. Since we are analyzing regression data, we pass in a function that tells the `OfflineDataHandler` to grab the label from the last sample in the window instead of taking the mode of the window. We can specify how we want to handle windowing of each type of metadata by passing in a `metadata_operations` dictionary.
+This example uses the `OneSubjectEMaGerDataset`. Calling the `prepare_data()` method will automatically download the data into the dataset's folder (if it isn't already there) and load EMG data and metadata (e.g., reps, movements, labels) into an `OfflineDataHandler`. By default `prepare_data()` returns a dictionary of pre-split handlers (`'All'`, `'Train'`, `'Test'`), so we pass `split=False` to get a single `OfflineDataHandler` and split it ourselves. This dataset consists of 5 repetitions, so we use 4 for training data and 1 for testing data. After splitting our data into training and test splits, we perform windowing on the raw EMG data. By default, the metadata assigned to each window will be based on the mode of that window. Since we are analyzing regression data, we pass in a function that tells the `OfflineDataHandler` to grab the label from the last sample in the window instead of taking the mode of the window. We can specify how we want to handle windowing of each type of metadata by passing in a `metadata_operations` dictionary.
 
 ```Python
 # Load data
-odh = OneSubjectEMaGerDataset().prepare_data()
+odh = OneSubjectEMaGerDataset().prepare_data(split=False)
 
 # Split into train/test reps
 train_odh = odh.isolate_data('reps', [0, 1, 2, 3])
@@ -50,7 +50,8 @@ test_windows, test_metadata = test_odh.parse_windows(args.window_size, args.wind
 We then extract features using the `FeatureExtractor` for our training and test data. The `fit()` method expects a dictionary with the keys `training_features` and `training_labels`, so we create one and pass in our extracted features and training labels.
 
 ```Python
-training_features = fe.extract_feature_group(args.feature_set, train_windows, array=True),
+fe = FeatureExtractor()
+training_features = fe.extract_feature_group(args.feature_set, train_windows, array=True)
 training_labels = train_metadata['labels']
 test_features = fe.extract_feature_group(args.feature_set, test_windows, array=True)
 test_labels = test_metadata['labels']
@@ -66,6 +67,8 @@ training_set = {
 `LibEMG` allows you to pass in custom models, but you can also pass in a string that will create a model for you. In this example, we compare a linear regressor to a gradient boosting regressor. We iterate through a list of the models we want to observe, fit the model to the training data, and calculate metrics based on predictions on the test data. We then store these metrics for plotting later.
 
 ```Python
+om = OfflineMetrics()
+models = ['LR', 'GB']   # linear regression and gradient boosting
 results = {metric: [] for metric in ['R2', 'NRMSE', 'MAE']}
 for model in models:
     reg = EMGRegressor(model)
@@ -77,6 +80,7 @@ for model in models:
 
     metrics = om.extract_offline_metrics(results.keys(), test_labels, predictions)
     for metric in metrics:
+        # Regression metrics are computed per DOF, so average across DOFs
         results[metric].append(metrics[metric].mean())
 ```
 

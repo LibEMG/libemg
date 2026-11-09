@@ -19,12 +19,30 @@ The controls used for menu navigation are highlighted below:
 ## Control Scheme
 The file associated with the myoelectric control scheme in this example can be found in `emg_control.py`. The only difference compared to the previous examples is that we stream predictions from the classifier over TCP instead of UDP. We do this because the Hololens has better compatibility for TCP network communication. As shown, we are streaming over the network computer's IP and through port 8099.
 
+The online classifier sends its outputs wherever its output writers tell it to. In this example the Python side acts as the TCP server: the Hololens (or the Unity editor) connects to it as a client and reads one predicted class per line (see the Myo Client below). LibEMG's built-in `SocketOutputWriter(..., protocol='TCP')` works the other way around (it connects out to a server that is already listening, and sends `"<value> <timestamp>"` without a newline), so we write a small `OutputWriter` that hosts the server and sends `"<predicted class>\n"`.
+
 ```Python
+import socket
+from libemg.output_writer import OutputWriter, ConsoleOutputWriter
+
+class TCPServerOutputWriter(OutputWriter):
+    # Hosts a TCP server and sends each predicted class, one per line, to the client that connects
+    def __init__(self, ip, port):
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.bind((ip, port))
+        self.server.listen()
+        self.conn, _ = self.server.accept() # Wait for the Hololens / Unity editor to connect
+
+    def write(self, info):
+        self.conn.sendall(f"{info['model_output']}\n".encode('utf-8'))
+
 # Step 5: Create online EMG classifier and start classifying.
-IP = 'x.x.x.x' # Replace with computer IP 
+IP = 'x.x.x.x' # Replace with computer IP
 # IP = '127.0.0.1' # Local host if running in editor
-self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list, ip=IP, port=8099, tcp=True, std_out=True)
-self.classifier.run(block=True)
+# ConsoleOutputWriter also prints each prediction to the terminal
+output_writers = [TCPServerOutputWriter(IP, 8099), ConsoleOutputWriter('model_output')]
+self.classifier = OnlineEMGClassifier(o_classifier, WINDOW_SIZE, WINDOW_INCREMENT, self.odh, feature_list, output_writers=output_writers)
+self.classifier.run(block=True) # block=True runs the classifier in this process, so the open connection is used directly
 ```
 
 # Hololens Support 
@@ -33,7 +51,7 @@ To develop the Hololens portion of the app, we leveraged the [MRTK](https://lear
 ## Menu Controller
 The menu implemented is simply a scrollable view consisting of ten button objects (from the MRTK). To turn the continuous predictions into more discrete events, the menu controller waits for five consecutive decisions before doing anything. Since the window increment is 20 samples and the sampling rate is 200 Hz, each action is at least 0.5s. Therefore, to open the menu, the user will have to keep their hand open for 0.5s. The goal was to reduce spurious false activations and enable the system to recognize discrete actions (e.g., hand open or wrist swipes) rather than continuous contractions.
 
-```Python
+```C#
 void Update() {
     // First check for 5 consecutive actions
     if (emgReader.consecutive == 5) {
@@ -89,7 +107,7 @@ public class MyoReaderClient : MonoBehaviour {
     private Task socketListenTask;
 #endif
 
-    # Listen on port 8099
+    // Listen on port 8099
     private int port = 8099;
     private string host = "127.0.0.1";
     private string ipAddress = "x.x.x.x"; // Replace with computer IP

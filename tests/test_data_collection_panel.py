@@ -105,6 +105,9 @@ class _StreamingHandler:
 
 def _panel(handler, tmp_path, dpg, **kwargs):
     kwargs.setdefault("rest_time", 0)
+    # These tests exercise the image-folder collection, which is the backup mode;
+    # the 3D hand choreography is the default and has tests of its own.
+    kwargs.setdefault("collection_mode", "image_folder")
     dcp = DataCollectionPanel(handler, num_reps=1, **kwargs)
     dcp.output_folder = str(tmp_path)
     dcp.num_motions = 1
@@ -137,6 +140,10 @@ def dpg(monkeypatch):
     # handle on DearPyGui. Left real, it would draw with no context, and that
     # takes the interpreter down rather than raising.
     monkeypatch.setattr(_style, "dpg", fake)
+    # And so does the choreography section, which the configuration window
+    # draws whichever mode it opens in.
+    from libemg._gui import _choreography_panel
+    monkeypatch.setattr(_choreography_panel, "dpg", fake)
     monkeypatch.setattr(panel_module, "set_texture", Mock())
     return fake
 

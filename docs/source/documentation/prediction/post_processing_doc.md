@@ -4,7 +4,7 @@
 
 ### Rejection
 Classifier outputs are overridden to a default or inactive state when the output decision is uncertain. This concept stems from the notion that it is often better (less costly) to incorrectly do nothing than it is to erroneously activate an output.  
-- **Confidence <sup>[1]</sup>:** Rejects based on a predefined **confidence threshold** (between 0-1). If predicted probability is less than the confidence threshold, the decision is rejected. Figure 1 exemplifies rejection using an SVM classifier with a threshold of 0.8.
+- **Confidence <sup>[1]</sup>:** Rejects based on a predefined **confidence threshold** (between 0-1, default 0.9). If the predicted probability is not above the confidence threshold, the decision is rejected and output as `-1`. Figure 1 exemplifies rejection using an SVM classifier with a threshold of 0.8.
 
 ```Python
 # Add rejection with 90% confidence threshold
@@ -15,9 +15,11 @@ classifier.add_rejection(threshold=0.9)
 Overrides the current output with the label corresponding to the class that occurred most frequently over the past $N$ decisions. As a form of simple low-pass filter, this introduces a delay into the system but reduces the likelihood of spurious false activations. Figure 1 exemplifies applying a majority vote of 5 samples to a decision stream.
 
 ```Python
-# Add majority vote on 10 samples
+# Add majority vote on 10 samples (default is 5)
 classifier.add_majority_vote(num_samples=10)
 ```
+
+Rejection and majority voting are applied both by `classifier.run(test_features)` offline and by an `OnlineEMGClassifier` built from the classifier. Rejection is applied first, so rejected decisions (`-1`) take part in the vote.
 
 ### Velocity Control <sup>[4]</sup>
 Outputs an associated *velocity* with each prediction that estimates the level of muscular contractions (normalized by the particular class). This means that within the same contraction, users can contract harder or lighter to control the velocity of a device. Note that ramp contractions should be accumulated during the training phase.
@@ -26,6 +28,8 @@ Outputs an associated *velocity* with each prediction that estimates the level o
 # Add velocity control
 classifier.add_velocity(train_windows, train_labels)
 ```
+
+By default, the contraction level of a window is the sum across channels of each channel's mean absolute value. For each class, two thresholds are placed 10% and 70% of the way from the smallest to the largest training value, and a window's velocity is its position between them, clipped to the range 0-1. `add_velocity` also takes an optional `velocity_metric_handle` (a function computing the contraction level from windows) and `velocity_mapping_handle` (a function applied to the normalized velocity). The velocity is computed by an `OnlineEMGClassifier` and included in each prediction it outputs (it is 0 for a rejected decision); the offline `classifier.run` does not return it.
 
 Figure 1 shows the decision stream (i.e., the predictions over time) of a classifier with no post-processing, rejection, and majority voting. In this example, the shaded regions show the ground truth label, whereas the colour of each point represents the predicted label. All black points indicate predictions that have been rejected.
 ![alt text](decision_stream.png)
@@ -40,6 +44,9 @@ Modifies a regressor's output based on whether the prediction's magnitude is abo
 ```Python
 # Add deadband to regressor (i.e., values with magnitude < 0.25 will be output as 0)
 regressor.add_deadband(0.25)
+
+# Equivalently, set it when the regressor is created
+regressor = EMGRegressor('LR', deadband_threshold=0.25)
 ```
 
 Figure 2 shows the decision stream of a regressor with no post-processing and deadband thresholding. In this visualization, the shaded blue regions are the ground truth and each black dot corresponds to a single prediction. Predictions for each degree of freedom (DOF) are plotted on separate subplots for visual clarity.

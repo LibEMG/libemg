@@ -20,9 +20,9 @@ Although there are many approaches for designing EMG pattern recognition pipelin
 
 The first part of this analysis is to prepare the dataset. For this example, the 3DC dataset was chosen (see included datasets).
 
-When the dataset has been downloaded (data for each subject is zipped), it can be prepared into a LibEMG friendly format and using provided utilities. This will convert the .zip files to folders containing many .csv files that contain a single motion. 
+The dataset object knows where the data lives and how to load it. The first time `prepare_data()` is called, the dataset is cloned from GitHub (this requires the command line `git` program) into `dataset_folder`, and every file (each containing a single motion) is then loaded into a LibEMG friendly `OfflineDataHandler` using the provided utilities.
 ```Python
-dataset = libemg.datasets._3DCDataset(save_dir = ".")
+dataset = libemg.datasets._3DCDataset(dataset_folder="_3DCDataset/")
 ```
 
 At this point, we can also instantiate various objects that correspond to the modules of the library. We will need a feature extractor, and offline metric object. We can also query the features and feature groups the library provides at the same time.
@@ -33,10 +33,10 @@ feature_group_list = fe.get_feature_groups()
 om = libemg.offline_metrics.OfflineMetrics()
 ```
 
-Now, we can iterate within-subject and test the accuracy of each available feature / feature set. First we isolate the training and test sets using the prescribed validation scheme of the 3DC authors. Next we can window the motions to prepare for feature extraction.
+Now, we can iterate within-subject and test the accuracy of each available feature / feature set. For each subject, `prepare_data(split=False, subjects=[s])` loads only that subject's data (`subjects` takes subject indices starting at 0, so index 0 is participant 1) as a single `OfflineDataHandler`; without `split=False` it would instead return a dictionary of pre-split handlers. First we isolate the training and test sets using the prescribed validation scheme of the 3DC authors. Next we can window the motions to prepare for feature extraction.
 ```Python
-for s in subject_list:
-    odh = dataset.prepare_data(subjects_values=[str(s+1)], classes_values=classes_values)
+for s in subject_list: # subject indices, e.g., range(22)
+    odh = dataset.prepare_data(split=False, subjects=[s])
     train_odh = odh.isolate_data("sets",[0])
     test_odh = odh.isolate_data("sets",[1])
     train_windows, train_metadata = train_odh.parse_windows(window_size, window_increment)
