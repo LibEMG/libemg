@@ -19,7 +19,6 @@ from libemg.utils import get_windows, make_regex
 from tests.conftest import MYO_CLASSES, MYO_REPS, myo_regex_filters
 
 N_CHANNELS = 8
-SAMPLES_PER_FILE = 600  # every file in the bundled dataset except two
 N_FILES = 20
 
 
@@ -112,6 +111,33 @@ class TestGetData:
         reps = {int(r[0][0]) for r in myo_odh.reps}
         assert classes == set(range(len(MYO_CLASSES)))
         assert reps == set(range(len(MYO_REPS)))
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "get_data discovers files with os.walk + glob and never sorts them "
+            "(data_handler.py:346), so odh.data is in filesystem order. That is "
+            "arbitrary on ext4 and differs from macOS, meaning the same dataset "
+            "loads in a different order on different machines -- and so do the "
+            "windows, feature rows and anything derived from them. Wrapping the "
+            "glob result in sorted() would make loads reproducible."
+        ),
+    )
+    def test_get_data_order_is_deterministic(self, data_dir):
+        """Files should load in a defined order, not the filesystem's."""
+        odh = OfflineDataHandler()
+        odh.get_data(
+            folder_location=str(data_dir / "myo_dataset") + "/",
+            regex_filters=myo_regex_filters(),
+            delimiter=",",
+        )
+        loaded = [
+            (int(odh.classes[i][0][0]), int(odh.reps[i][0][0]))
+            for i in range(len(odh.data))
+        ]
+        assert loaded == sorted(loaded), (
+            "files loaded in filesystem order rather than a defined one"
+        )
 
     def test_missing_folder_raises_value_error(self):
         odh = OfflineDataHandler()
@@ -349,9 +375,10 @@ class TestIsolateChannels:
 
     def test_channel_last_false_selects_rows(self, fresh_myo_odh):
         """With [channels, samples] data, channels are the first axis."""
+        n_samples = fresh_myo_odh.data[0].shape[0]
         fresh_myo_odh.data = [d.T for d in fresh_myo_odh.data]
         isolated = fresh_myo_odh.isolate_channels([0, 1, 2], channel_last=False)
-        assert isolated.data[0].shape == (3, SAMPLES_PER_FILE)
+        assert isolated.data[0].shape == (3, n_samples)
 
     @pytest.mark.xfail(
         strict=True,

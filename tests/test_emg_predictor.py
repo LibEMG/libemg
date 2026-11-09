@@ -20,19 +20,23 @@ from libemg.feature_extractor import FeatureExtractor
 
 from tests.conftest import WINDOW_INCREMENT, WINDOW_SIZE
 
-CLASSIFIER_MODELS = ["LDA", "KNN", "SVM", "QDA", "RF", "NB", "GB", "MLP"]
+# Derived from the library rather than hardcoded, so a model added to
+# EMGClassifier's or EMGRegressor's model_config is picked up here with no
+# edit. See tests/test_extension_contracts.py for how the dicts are read.
+from tests.test_extension_contracts import (  # noqa: E402
+    CLASSIFIER_MODELS,
+    REGRESSOR_MODELS as _REGRESSOR_MODEL_NAMES,
+)
 
 # EMGRegressor('SVM') is SVR(kernel='linear') wrapped per output. On unscaled
 # EMG features it takes ~5 minutes to converge on even this small fixture,
 # against well under a second for every other model. It is covered, but behind
 # --slow so the default run stays fast. (The runtime itself is worth a look:
 # the default is effectively unusable without feature scaling.)
+SLOW_REGRESSOR_MODELS = {"SVM"}
 REGRESSOR_MODELS = [
-    "LR",
-    pytest.param("SVM", marks=pytest.mark.slow),
-    "RF",
-    "GB",
-    "MLP",
+    pytest.param(name, marks=pytest.mark.slow) if name in SLOW_REGRESSOR_MODELS else name
+    for name in _REGRESSOR_MODEL_NAMES
 ]
 
 

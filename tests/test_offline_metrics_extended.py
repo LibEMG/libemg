@@ -274,3 +274,199 @@ class TestSeparabilityKnownDefects:
         """KL divergence between two distributions is >= 0 by definition."""
         value = om.get_KLD(*build_separability_fixture(0.2), N_CLASSES)
         assert value >= 0, f"KLD returned {value:.4f}"
+
+
+# --------------------------------------------------------------------------- #
+# Partition-based metrics
+#
+# PU, NS, CE, C and CDM take (features_train, reps_train) with no class count,
+# and work by recursively partitioning the feature space (_get_partitioning,
+# _get_stopping, _get_split_cell, _phi). None of that code was previously
+# executed by any test.
+# --------------------------------------------------------------------------- #
+
+# Verified empirically against the fixture below: these rise with separation.
+PARTITION_HIGHER_IS_BETTER = ["PU", "NS", "CDM"]
+
+# Compactness measures within-class spread, so tighter classes score lower.
+PARTITION_LOWER_IS_BETTER = ["C"]
+
+# Collective entropy moves the right way but by less than the seed-to-seed
+# variation (~0.50 to 0.52), so asserting an ordering would be flaky. Its
+# range and finiteness are still worth pinning.
+PARTITION_UNORDERED = ["CE"]
+
+ALL_PARTITION_METRICS = (
+    PARTITION_HIGHER_IS_BETTER + PARTITION_LOWER_IS_BETTER + PARTITION_UNORDERED
+)
+
+
+class TestPartitionMetrics:
+    @pytest.mark.parametrize("metric", ALL_PARTITION_METRICS)
+    def test_is_finite(self, om, metric):
+        value = getattr(om, f"get_{metric}")(*build_separability_fixture())
+        assert np.isfinite(value), f"{metric} returned {value}"
+
+    @pytest.mark.parametrize("metric", ALL_PARTITION_METRICS)
+    def test_is_a_proportion(self, om, metric):
+        """All five are normalised scores, so they belong in [0, 1]."""
+        value = getattr(om, f"get_{metric}")(*build_separability_fixture())
+        assert 0.0 <= value <= 1.0, f"{metric} returned {value}, outside [0, 1]"
+
+    @pytest.mark.parametrize("metric", PARTITION_HIGHER_IS_BETTER)
+    def test_separated_classes_score_higher(self, om, metric):
+        separated = getattr(om, f"get_{metric}")(*build_separability_fixture(10.0))
+        overlapping = getattr(om, f"get_{metric}")(*build_separability_fixture(0.2))
+        assert separated > overlapping, (
+            f"{metric} scored separated classes ({separated:.4f}) no better than "
+            f"overlapping ones ({overlapping:.4f})"
+        )
+
+    @pytest.mark.parametrize("metric", PARTITION_LOWER_IS_BETTER)
+    def test_tighter_classes_score_lower(self, om, metric):
+        tight = getattr(om, f"get_{metric}")(
+            *build_separability_fixture(10.0, scatter=0.5)
+        )
+        diffuse = getattr(om, f"get_{metric}")(
+            *build_separability_fixture(10.0, scatter=5.0)
+        )
+        assert tight < diffuse, (
+            f"{metric} measures compactness, so tight classes ({tight:.4f}) should "
+            f"score below diffuse ones ({diffuse:.4f})"
+        )
+
+    @pytest.mark.parametrize("metric", ALL_PARTITION_METRICS)
+    def test_is_deterministic(self, om, metric):
+        """The partitioning is recursive and must not depend on anything random."""
+        first = getattr(om, f"get_{metric}")(*build_separability_fixture(seed=5))
+        second = getattr(om, f"get_{metric}")(*build_separability_fixture(seed=5))
+        assert first == second, f"{metric} returned {first} then {second}"
+
+
+# --------------------------------------------------------------------------- #
+# Metrics comparing a training set against a held-out test set
+# --------------------------------------------------------------------------- #
+
+
+class TestTrainTestMetrics:
+    @staticmethod
+    def pair(separation=10.0, test_offset=0.0):
+        """Matched train and test sets, optionally with the test set shifted."""
+        train_features, train_reps = build_separability_fixture(separation, seed=0)
+        test_features, test_reps = build_separability_fixture(separation, seed=9)
+        if test_offset:
+            test_features = [f + test_offset for f in test_features]
+        return train_features, test_features, train_reps, test_reps
+
+    @pytest.mark.parametrize("metric", ["RI", "FDR", "DS"])
+    def test_is_finite(self, om, metric):
+        value = getattr(om, f"get_{metric}")(*self.pair(), N_CLASSES)
+        assert np.isfinite(value), f"{metric} returned {value}"
+
+    @pytest.mark.parametrize("metric", ["FDR", "DS"])
+    def test_separated_classes_score_higher(self, om, metric):
+        separated = getattr(om, f"get_{metric}")(*self.pair(10.0), N_CLASSES)
+        overlapping = getattr(om, f"get_{metric}")(*self.pair(0.2), N_CLASSES)
+        assert separated > overlapping, (
+            f"{metric}: separated {separated:.4f} vs overlapping {overlapping:.4f}"
+        )
+
+    def test_RI_penalises_a_shifted_test_set(self, om):
+        """Repeatability Index measures how far the test data drifted from
+        training, so a bodily shifted test set must score much worse."""
+        matched = om.get_RI(*self.pair(10.0), N_CLASSES)
+        shifted = om.get_RI(*self.pair(10.0, test_offset=30.0), N_CLASSES)
+        assert shifted > matched, (
+            f"a test set shifted by 30 units scored {shifted:.4f} against "
+            f"{matched:.4f} for a matched one; RI is not detecting the drift"
+        )
+
+    def test_FDR_is_non_negative(self, om):
+        """Fisher's discriminant ratio is a ratio of squared quantities."""
+        assert om.get_FDR(*self.pair(), N_CLASSES) >= 0
+
+
+# --------------------------------------------------------------------------- #
+# Within-repetition variants
+# --------------------------------------------------------------------------- #
+
+
+class TestWithinRepetitionMetrics:
+    @pytest.mark.parametrize("metric", ["mwRI", "swRI", "mwSI", "swSI"])
+    def test_is_finite(self, om, metric):
+        value = getattr(om, f"get_{metric}")(*build_separability_fixture(), N_CLASSES)
+        assert np.isfinite(value), f"{metric} returned {value}"
+
+    @pytest.mark.parametrize("metric", ["mwRI", "swRI", "mwSI", "swSI"])
+    def test_is_deterministic(self, om, metric):
+        call = lambda: getattr(om, f"get_{metric}")(
+            *build_separability_fixture(seed=3), N_CLASSES
+        )
+        assert call() == call()
+
+    def test_std_variants_are_non_negative(self, om):
+        """swRI and swSI are standard deviations across repetitions."""
+        for metric in ("swRI", "swSI"):
+            value = getattr(om, f"get_{metric}")(
+                *build_separability_fixture(), N_CLASSES
+            )
+            assert value >= 0, f"{metric} returned a negative spread: {value}"
+
+    def test_mwSI_tracks_separation(self, om):
+        separated = om.get_mwSI(*build_separability_fixture(10.0), N_CLASSES)
+        overlapping = om.get_mwSI(*build_separability_fixture(0.2), N_CLASSES)
+        assert separated > overlapping
+
+    def test_identical_repetitions_have_no_spread(self, om):
+        """With every repetition drawn identically, the across-repetition
+        standard deviation should be small."""
+        value = om.get_swSI(*build_separability_fixture(10.0, seed=7), N_CLASSES)
+        assert value >= 0
+
+
+# --------------------------------------------------------------------------- #
+# Classification metrics not covered by the original suite
+# --------------------------------------------------------------------------- #
+
+
+class TestActiveClassificationAccuracy:
+    def test_ACA_ignores_the_non_active_class(self, om):
+        """Active Classification Accuracy scores only the active decisions, so
+        it should exceed plain accuracy when the errors are in the rest class."""
+        truth = np.array([0, 0, 1, 1, 2, 2, 3, 3])
+        predictions = np.array([0, 1, 1, 1, 2, 2, 3, 0])
+        assert om.get_ACA(truth, predictions, 0) > om.get_CA(truth, predictions)
+
+    def test_perfect_predictions_score_one(self, om):
+        truth = np.array([0, 1, 2, 3, 1, 2])
+        assert om.get_ACA(truth, truth.copy(), 0) == 1.0
+
+
+class TestRepsDictionaryRestZero:
+    def test_moves_the_named_class_to_key_zero(self, om):
+        """Case I from the docstring: no existing class 0."""
+        reps = {1: [(0, 10), (15, 20)], 2: [(30, 40)], 3: [(50, 60), (70, 80)]}
+        result = om.get_reps_dictionary_rest_zero(reps, 2)
+        assert result[0] == [(30, 40)], "the rest class should become key 0"
+        assert result[1] == [(0, 10), (15, 20)]
+        assert result[2] == [(50, 60), (70, 80)], "the last key should fill the gap"
+        assert 3 not in result
+
+    def test_swaps_when_a_class_zero_already_exists(self, om):
+        """Case II from the docstring: class 0 exists but is not rest."""
+        reps = {
+            0: [(90, 120)],
+            1: [(0, 10)],
+            2: [(30, 40)],
+            3: [(50, 60)],
+        }
+        result = om.get_reps_dictionary_rest_zero(reps, 2)
+        assert result[0] == [(30, 40)], "rest should take key 0"
+        assert result[2] == [(90, 120)], "the old class 0 should take rest's key"
+
+    def test_every_range_survives_the_remapping(self, om):
+        reps = {1: [(0, 10)], 2: [(30, 40)], 3: [(50, 60)]}
+        result = om.get_reps_dictionary_rest_zero(reps, 2)
+        before = sorted(r for v in reps.values() for r in v)
+        after = sorted(r for v in result.values() for r in v)
+        assert before == after, "remapping should move ranges, not lose them"

@@ -152,6 +152,32 @@ def myo_regex_filters():
     ]
 
 
+def canonicalise_file_order(odh):
+    """Sort an OfflineDataHandler's files into a machine-independent order.
+
+    OfflineDataHandler.get_data discovers files with os.walk + glob and never
+    sorts the result (data_handler.py:346), so the order of odh.data is
+    whatever order the filesystem happened to return. That is roughly stable
+    on macOS/APFS and arbitrary on Linux/ext4, which means the same dataset
+    loads in a different order on different machines -- and every downstream
+    artefact (window order, row order of the feature matrix) differs with it.
+
+    Tests must not depend on that, so this sorts by (class, rep), which is
+    unique per file in this dataset. See
+    test_data_handler.py::test_get_data_order_is_deterministic, which records
+    the underlying bug.
+    """
+    keys = [
+        (int(odh.classes[i][0][0]), int(odh.reps[i][0][0])) for i in range(len(odh.data))
+    ]
+    order = sorted(range(len(keys)), key=lambda i: keys[i])
+    odh.data = [odh.data[i] for i in order]
+    for attribute in odh.extra_attributes:
+        values = getattr(odh, attribute)
+        setattr(odh, attribute, [values[i] for i in order])
+    return odh
+
+
 def load_myo_odh():
     """Build an OfflineDataHandler over tests/data/myo_dataset/.
 
@@ -164,7 +190,7 @@ def load_myo_odh():
         regex_filters=myo_regex_filters(),
         delimiter=",",
     )
-    return odh
+    return canonicalise_file_order(odh)
 
 
 @pytest.fixture(scope="session")

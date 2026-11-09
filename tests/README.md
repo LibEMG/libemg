@@ -15,9 +15,33 @@ repository. That is deliberate: a suite that is slow or flaky gets ignored,
 and an ignored suite protects nothing. Anything slow or external lives behind
 a flag and runs in the nightly workflow instead.
 
-CI runs the default suite on every push and pull request across Python 3.9,
-3.10 and 3.11, with a coverage floor. `.github/workflows/nightly.yaml` runs
-the `--slow` and `--download` tests once a day.
+CI runs the default suite on every push and pull request, with a coverage
+floor. `.github/workflows/nightly.yaml` runs the `--slow` and `--download`
+tests once a day.
+
+**Supported: Python 3.10, 3.11 and 3.12**, all three in the CI matrix and all
+three verified to install and pass the full suite. The boundaries are real
+constraints, not arbitrary choices:
+
+- **3.9 and below** — libemg uses PEP 604 (`X | None`) in 33 function
+  signatures with no `from __future__ import annotations`. Parameter
+  annotations are evaluated at definition time, so the library raises
+  `TypeError` on import. Adding that one import to the eight affected modules
+  would fix it.
+- **3.13 and above** — blocked by the `numpy<2` ceiling in `pyproject.toml`,
+  which exists only because `libemg/animator.py` annotates with `np.float_`
+  (removed in numpy 2.0). Replacing those 10 annotations with `np.float64`
+  should unlock numpy 2 and 3.13.
+
+### Setting up a dev environment
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt     # editable install + test and docs extras
+```
+
+Runtime dependencies live in `pyproject.toml`; `requirements.txt` is just a
+convenience wrapper around `pip install -e .[test,docs,torch]`.
 
 ## Layout
 
@@ -32,8 +56,11 @@ the `--slow` and `--download` tests once a day.
 | `test_feature_extractor.py` | Feature extractor API |
 | `test_filtering.py` | Each filter type, verified in the frequency domain |
 | `test_offline_metrics.py` | Classification metrics against sklearn |
-| `test_offline_metrics_extended.py` | Regression metrics, and separability metrics as orderings |
+| `test_offline_metrics_extended.py` | Regression metrics; separability, partition and train/test metrics as orderings |
+| `test_feature_selector.py` | Feature ranking, both selection strategies, cross-validation plumbing |
 | `test_dataset_contracts.py` | Metadata contracts for all 26 dataset wrappers |
+| `test_discrete.py` | Template-based path: `discrete=True` windowing and features, MVLDA, DTW |
+| `test_extension_contracts.py` | Registry-driven checks so new models/filters/features/metrics are covered automatically |
 | `test_imports.py` | Every module in the package imports cleanly |
 | `test_online_classifier.py`, `test_stream_architecture.py` | Skipped: see "Known gaps" |
 
@@ -77,7 +104,7 @@ fixture to turn a red test green throws away the only thing it was watching.
 | `download` | `--download` | Fetches a dataset over the network. |
 | `hardware` | `--hardware` | Needs a physical EMG device connected. |
 
-Markers are strict (`--strict-markers` in `pytest.ini`): a typo in a marker
+Markers are strict (`--strict-markers` in `pyproject.toml`): a typo in a marker
 name is an error, not a silently ignored annotation.
 
 ## Known gaps
@@ -90,8 +117,9 @@ name is an error, not a silently ignored annotation.
 runners. Rewriting them needs a new mock streamer and sample-count assertions
 instead of wall-clock ones.
 
-Also uncovered: `feature_selector.py`, `animator.py`, `_gui/`, `environments/`,
-and the vendor modules in `_streamers/` beyond the import check.
+Also uncovered: `animator.py`, `_gui/`, `environments/`, the `evaluate*`
+functions in `datasets.py` (they need downloads, so they run nightly), and the
+vendor modules in `_streamers/` beyond the import check.
 
 ## Known defects recorded as xfail
 
@@ -115,8 +143,43 @@ Current entries:
 | `offline_metrics.py` (`get_IIF`) | Divides by zero on perfectly separable data |
 | `offline_metrics.py` (`_get_KL_divergence`) | Hardcodes `term3 = 24` where the feature dimensionality belongs |
 | `datasets.py` (`get_dataset_info`) | Searches only the classification registry, so every regression dataset reports "Invalid dataset name" |
+| `data_handler.py:346` | `get_data` never sorts the glob result, so files load in filesystem order and results differ between machines |
+| `feature_selector.py` (`run_selection`) | `verbose=True` calls `_print_wrapper_results` / `_print_filter_results`, neither of which exists |
+| `feature_selector.py:163` | The `crossval_amount` path shuffles with unseeded `np.random`, so k-fold selection is not reproducible |
+| `feature_selector.py:166` | The `crossval_amount` path shuffles the caller's feature dictionary in place |
+| `feature_selector.py` (`_get_activeerror`) | Compares a 0/1/2 condition count against the no-motion class label; only correct when `nm_class == 2` |
+| `filtering.py` (`install_filters`) | An unrecognised filter name falls through the if/elif chain and installs a no-op, so `filter()` silently returns unfiltered data |
+| `streamers.py` (`leap_streamer`) | Public API with no docstring, so it never reaches the generated docs |
 | `_datasets/emg_epn100.py` | `recording_device` is a list, which breaks `Dataset.get_info` string concatenation |
 | `_datasets/` | `GrabMyoCrossUser` and `HyserMVC` are concrete datasets in no registry |
+
+## Extension points
+
+`test_extension_contracts.py` exists so the suite covers code nobody has
+written yet. Every list in it is derived from the library — from a registry
+function where one exists, and by parsing the source where the options live in
+a dict literal or an if/elif chain. Add one of the following and it is checked
+on the next run, with no test edit:
+
+| You add | Derived from | What is enforced |
+| --- | --- | --- |
+| A dataset | `get_dataset_list()` | Metadata types `evaluate()` needs, `prepare_data` signature, `get_info` works, registered exactly once |
+| A feature | `get_feature_list()` | Shape, finiteness, determinism, edge inputs, docstring, list/implementation bijection, snapshot or MATLAB reference |
+| A feature group | `get_feature_groups()` | Every member resolves, and extraction returns all of them |
+| A classifier/regressor model | `model_config` (parsed from source) | Fits, predicts, respects the label set, supports `predict_proba` |
+| A filter | `install_filters` (parsed from source) | Installs real b/a coefficients and actually changes the signal |
+| An offline metric | `get_available_metrics()` | Has a getter, is callable, is documented |
+| A selector metric | `FeatureSelector.get_metrics()` | Has a callback, a type and an objective |
+| A discrete model | `libemg._discrete_models` | sklearn duck type, `classes_`, proba sums to 1, `argmax(proba) == predict` |
+
+`test_registries_were_actually_discovered` guards the whole scheme: if a
+refactor moves one of those registries out of reach, the derived lists would
+silently become empty and every test over them would vacuously pass. That test
+fails instead.
+
+Streamers are the one extension point with no registry — they are plain
+functions in `libemg/streamers.py`. The most that can be checked is that each
+module imports and each public function is documented.
 
 ## Adding tests
 
