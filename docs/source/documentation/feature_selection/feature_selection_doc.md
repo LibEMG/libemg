@@ -1,126 +1,234 @@
-Feature selection is a valuable process for optimizing pattern recognition pipelines where a large, varied representation of the input is provided (for instance a large number or features, or all principal components of the input space). Much like the motivation for feature extraction is to improve the information density from the original input signal to more meaningful features, the process of feature extraction takes many features and determines the most relevant features that provide valuable information for a particular classification task. 
+# Feature selection and feature-space metrics
 
-In this library, we provide two methods for feature selection: metric-based selection and sequential forward selection. Metric-based selection is a single value that gets computed per feature, which is used to rank the features in terms of their effectiveness on their own. Unlike metric-based selection, where only a single round is used to assess features independent contribution, sequential foward selection is an iterative process. First, the best feature is determined in isolation based on the selected metric. The next round of the selection procedure determines the second best feature to be used in combination with the best feature determined in the last round. As this process continues, the best new feature to add in the proposed feature set is always determined in combination with the features determined in the previous rounds.
+`FeatureSelector` evaluates feature spaces and ranks named feature groups using
+independent scores (`strategy="filter"`) or sequential forward selection
+(`strategy="sequential"`). A group can contain multiple columns, such as one
+MAV value per channel or several AR coefficients.
 
-# Selection Strategies
-Since EMG patterns during real-time use are often drastically different than those used to train the system, classification accuracy does not necessarily correlate to online usability. As such, there are numerous feature selection strategies for EMG-based control systems for optimizing the features selected for a particular problem. For a summary of the following feature selection techniques and suggestions, please see *A Multivariate Approach for Predicting Myoelectric Control Usability* <sup>[1]</sup>.
+There are 34 metric codes: the 32 unique abbreviations in the original comment,
+plus RI and AE. **Exact reproduction of C/rC and CDM is excluded from this
+implementation's scope.** Their optional, explicitly defined variants require
+`allow_approximations=True` and remain disabled by default. The Nawfel paper
+defers their details to Singh and Kohn; the original algorithms remain
+unverified. CE/rCE use the entropy normalization convention described below.
 
-## Feature Extraction Setup
+## API
+
 ```python
-# extract data
-dataset = OneSubjectMyoDataset(save_dir='example_data', redownload=False)
-odh = dataset.prepare_data(format=OfflineDataHandler)
+from libemg.feature_selector import FeatureSelector
 
-# get the training data from the dataset
-train_data = odh.isolate_data("sets",[0])
-train_windows, train_metadata = train_data.parse_windows(50, 25)
+selector = FeatureSelector(random_state=0)
+selector.get_metrics()                    # long names, including legacy names
+selector.get_metrics(abbreviations=True)  # paper abbreviations
+selector.get_metric_info("SI")            # objective, requirements, reference status
 
-# select the features for feature selection - in this case we select all of them
-fe = FeatureExtractor()
-feature_list = fe.get_feature_list()
-
-# extract every feature in the toolbox on the training data
-training_features = fe.extract_features(feature_list, train_windows)
-
-# set values for feature selection
-class_var = train_metadata["classes"].astype(int)
-crossvalidation_var = {"var": train_metadata["reps"].astype(int)}
+# features: {name: samples x columns}; labels/trials: one value per sample
+scores = selector.evaluate_metrics(
+    ["CA", "ACA", "AE", "SI", "BD", "FE"], features, labels,
+    crossvalidation_var={"var": trials}, nm_class=2,
+)
+si = selector.evaluate(features, "SI", labels)
+results, order = selector.run_selection(
+    features, "CA", labels, {"var": trials}, early_stop=2,
+)
+results, order = selector.run_selection(
+    features, "BD", labels, strategy="filter", objective="max",
+)
 ```
 
-## **Classification Accuracy (CA)**
-Emphasizes classification accuracy of a classifier using leave-one-trial-out cross validation.
+Abbreviations are case insensitive. Original names remain accepted: `accuracy`,
+`activeerror`, `meansemiprincipalaxis`, `featureefficiency`, `repeatability`,
+and `separability`. `evaluate` also accepts a matrix; dictionaries are
+concatenated in insertion order. `evaluate_metrics(None, ...)` requests all
+metrics, requiring all recording metadata and explicit opt-in to the variants.
 
-$
-\text{CA} = \frac{1}{T}\sum_{t=1}^{n}(\frac{1}{n}\sum_{i=1}^{n}\hat{y}_{i,t} == {y}_{i,t})
-$
+`run_selection` preserves its original positional arguments and `(results,
+feature_order)` return value. Filter scores form a sorted vector aligned with
+the names. Sequential scores have one row per input group and one column per
+selected group; columns follow selection order. Entry `[i,j]` scores the first
+`i` selected groups plus candidate `j`. Previously selected candidates and
+uncomputed rows are NaN. Ties preserve dictionary order. `early_stop` limits the
+number of selected groups for either strategy. `verbose=True` and
+`selector.print(...)` support either result shape.
 
-where $T$ is the total number of trials, $t$ is an individual trial, $n$ is the total number of data frames, $\hat{y}_{i,t}$ is the predicted class label for frame $i$, and $y_{i,t}$ is the true class label for frame i.
+## Metadata and validation
 
-```Python
-# Classification Accuracy:
-metric="accuracy"
-accuracy_results, accuracy_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
+| Argument | Meaning |
+| --- | --- |
+| `class_var` | Class labels per row, including arbitrary numeric/string labels. All supplied classes participate; subset active motions first to exclude rest. |
+| `crossvalidation_var={"var": groups}` | Leave-one-group-out validation for CA/ACA/AE. Every training fold must contain every class. |
+| `crossvalidation_var={"crossval_amount": k}` | Stratified shuffled k-fold classification validation; default 5 folds, seed 0. Every class needs at least k samples. |
+| `repetition_var` | Real chronological repetition IDs for RI/mwRI/swRI/CD/DS. Every group must contain every class. |
+| `trial_var` | Real chronological trial IDs for mwSI/swSI/UD, with at least two windows per class/trial. |
+| `nm_class` | No-motion label for ACA/AE, default 2 for the Myo example. |
+| `raw_emg` | Raw windows aligned with feature rows, normally windows x channels x samples. Required for MAV. |
+| `window_size_ms`, `window_increment_ms` | Window duration and **hop**, in milliseconds, for TT. |
+| `recording_var` | Unique ID per continuous recording for TT; omit only for a single continuous recording. |
+| `training_time_ms` | Optional measured collection duration, overriding window-based TT. |
+| `adaptive_memory` | Preceding trials retained by UD, default 4. |
+| `iif_mode` | `"classwise"` (default) or `"paper"` (literal printed indicator equation). |
+
+For compatibility, explicit `crossvalidation_var["var"]` also supplies
+repetition/trial IDs when the corresponding argument is omitted. Random folds
+never substitute for real recording groups. CD and UD sort group IDs, so encode
+chronology in the IDs. If repetition numbers reset each trial, combine trial
+and repetition into a unique ID. Corresponding repetitions across classes share
+an ID. Evaluate different subjects/sessions separately.
+
+Geometric metrics use all supplied samples. Only CA/ACA/AE use cross-validation;
+UD uses chronological adaptive retraining. Inputs are never modified. Default
+classification uses LDA with automatic covariance shrinkage (`solver="lsqr",
+shrinkage="auto"`). A custom `classifier=` must support scikit-learn cloning;
+a fresh clone is fitted per fold/trial.
+
+MAV and TT describe recordings and therefore give identical scores across
+feature subsets. Their default strategy is filter, as is FE. All other defaults
+are sequential. Objective directions describe conventional feature-space
+quality and do not guarantee online usability; override with `objective=`.
+
+## Definitions
+
+Let N be the number of classes, D the feature dimension, mu_j the class centroid
+and S_j its unbiased sample covariance. Class summaries are averaged equally.
+Distance metrics select the nearest competing class before class averaging;
+FE and VOR select the maximum competing-class value.
+
+| Code | Definition | Objective |
+| --- | --- | --- |
+| RI | Average over classes and repetitions of half-Mahalanobis distance from held-out repetition centroid to the same-class centroid from all other repetitions, using the other-repetition covariance. | min |
+| mwRI | Average half-Mahalanobis point distance to its repetition/class centroid, using whole-class covariance. Average points, classes, then repetitions. | min |
+| swRI | Sample standard deviation (`ddof=1`) of the repetition means underlying mwRI. | min |
+| swSI | Sample standard deviation of the within-trial SI scores. | min |
+| MSA | Class-average geometric mean of covariance semi-axis lengths, `det(S_j)**(1/(2*D))`. Rank-deficient ellipsoids have zero volume. | min |
+| CD | Class-average sum of Euclidean distances between successive repetition centroids. No division by number of transitions. | min |
+| MAV | Absolute raw amplitude averaged across samples/channels/windows within class, then equally across classes. | max |
+| SI | Half-Mahalanobis centroid distance using the reference class covariance. | max |
+| mSI | SI using the mean covariance of both classes. | max |
+| mwSI | Mean SI computed separately within each real trial. | max |
+| BD | Standard Gaussian Bhattacharyya distance: `delta.T inv(S) delta/8 + log(det(S)/sqrt(det(S_i)*det(S_j)))/2`, where `S=(S_i+S_j)/2`. | max |
+| KLD | Directed Gaussian KL divergence, with the reference class inverse covariance and compared class covariance in the trace term. | max |
+| HD | Squared Gaussian Hellinger distance, `1-exp(-BD)` before nearest-class reduction. | max |
+| FDR | Maximum across dimensions of squared centroid difference divided by summed class variances. | max |
+| VOR | Product across dimensions of nonnegative overlap width / union width. Identical constant dimensions contribute 1. | min |
+| FE | Maximum fraction of the two classes' points outside their inclusive overlap interval across feature dimensions; maximum competing class, then average reference classes. | max |
+| TSM | `trace(inv(S_w) @ S_b)` using within-class residual scatter and class-size-weighted centroid scatter. Common class averaging factors cancel. | max |
+| DS | `SI/(RI*MSA)`. | max |
+| CDM | Minority fraction in mixed, non-linearly-separable adaptive terminal cells; partition variant below. | min |
+| PU / rPU | PRISM cell purity / weighted-rescaled purity. | max |
+| NS / rNS | PRISM within-cell nearest-neighbor separability / weighted-rescaled version. | max |
+| CE / rCE | PRISM entropy certainty with local normalization / weighted-rescaled version. | max |
+| C / rC | Explicit occupied-cell concentration variant / weighted-rescaled version. | max |
+| CA | Mean held-out-fold classification accuracy in percent; folds weighted equally. | max |
+| ACA | Mean fold percentage where prediction equals truth **or prediction equals no motion**. | max |
+| AE | `100-ACA`, percent. | min |
+| UD | Percent windows accepted during adaptive training: seed the first complete trial; predict later trials before adding correctly classified windows; retain accepted data from the preceding four trials by default. Seed windows count as accepted. | max |
+| ICF | Fraction of samples whose nearest other sample belongs to a different class. | min |
+| IIF | Sum of nearest same-class distances / sum of nearest different-class distances; equivalent to a ratio of means. | min |
+| TT | Collection duration in ms: sum `window_size_ms+(n_recording-1)*window_increment_ms` across recordings, or explicit `training_time_ms`. | min |
+
+### PRISM conventions and reference limitations
+
+For B=0..31 by default, split each observed feature range into B+1 equal
+intervals. Maximum endpoints occupy the final interval and constants interval
+zero. Only occupied cells are stored. Cells are weighted by sample count.
+For K observed classes with cell probabilities p_i, purity is
+`sqrt(K/(K-1)*sum((p_i-1/K)**2))`; pure cells score 1.
+
+NS excludes self by row identity and orders other samples in the cell by
+Euclidean distance in the supplied feature units. It integrates same-class
+proportions for every k=1..cell_size-1 against normalized k; singleton/pure cells
+score 1. Distance ties follow original row index. NS is quadratic in cell size,
+with chunked distance computation. Scale features deliberately for this and
+other Euclidean-distance metrics.
+
+Entropy certainty is `1+sum(p_i*log(p_i))/log(K)`, with pure cells assigned 1.
+This logarithmic normalization keeps multiclass values in [0,1]; the provided
+paper does not specify it. Unprefixed PRISM scores are trapezoidal AUCs against
+normalized resolution. Rescaled scores apply weights `2**(-B)` and divide by
+the maximum possible weighted AUC. A constant perfect curve scores 1.
+
+**C/rC concentration variant:** per-resolution compactness is
+`sum((n_cell/n_total)**2)`. This is an operational spread measure; Singh's
+original compactness equation remains unverified. Enable explicitly with
+`allow_approximations=True`.
+
+**CDM partition variant:** min-max scale coordinates for numerical conditioning;
+stop at homogeneous or hard-margin one-vs-rest linearly separable cells (checked
+by linear programming). Otherwise split the widest nonconstant axis at its
+median, keeping equal coordinates together. Stop at `cdm_min_samples` (default
+`2*(D+1)`) or `cdm_max_depth` (default 20). Sum `cell_size-largest_class_count`
+over remaining mixed cells and divide by total samples. These configurable
+rules remain unverified against Kohn's original algorithm. Enable explicitly
+with `allow_approximations=True`; report this as a variant in research comparisons.
+
+### Formula ambiguities and numerical limits
+
+The paper defines ACA as **active classification accuracy**, although the old
+comment labelled it active error. ACA and the separate legacy AE are supported.
+The printed BD logarithm has a negative sign; this implementation uses the
+standard positive sign, preserving nonnegativity and `HD=1-exp(-BD)`.
+
+IIF's prose describes separate within/between-class neighbors, while the printed
+equation filters a single nearest-neighbor set by label agreement. The default
+follows the prose and Ho/Basu ratio. With `iif_mode="paper"`, it computes
+`sum(d_nearest[same_class])/sum(d_nearest[different_class])`. This alternative
+can be infinite when all nearest neighbors share their query's class; choose
+an appropriate objective explicitly for that version. Self is excluded even
+with duplicate coordinates. Equal-distance ties use original row index.
+
+Covariance eigenvalues are floored relative to their largest magnitude, using
+`regularization` (default 1e-9). A completely zero covariance uses the overall
+feature variance, with a unit lower bound, as its scale. MSA retains the
+unregularized eigenvalues so flat ellipsoids have zero volume. Covariance
+calculations require two samples per class; RI also needs two same-class
+samples outside each repetition. CD only requires centroids. Positive-over-zero
+ratios return infinity; 0/0 raises an informative error. NaNs, infinities,
+inconsistent input lengths and invalid folds are rejected.
+
+Raw MAV averages overlapping samples repeatedly when overlapping windows are
+provided; use nonoverlapping windows for unweighted recording amplitude. TT
+measures data collection time, not estimator fit runtime. Pauses and discarded
+trailing samples are only represented by an explicit measured duration.
+
+Numerical results intentionally change from the old selector: MSA uses axis
+lengths instead of PCA direction-vector products; AE compares the actual
+no-motion label; FE includes overlap endpoints and divides by N; RI averages
+by the actual repetition count. MSA now defaults to minimization. Geometric
+metrics use the full supplied data rather than overlapping training folds.
+
+## Real-data example and verification
+
+Run `python examples/feature_selection_metrics.py` from the repository root.
+It loads `OneSubjectMyoDataset` through `libemg.datasets` (downloading the public
+example dataset if absent), selects three classes/trials and two channels, and
+extracts MAV, WL and ZC from nonoverlapping 250 ms windows. It evaluates all 34
+metrics and runs two-step selection for each, explicitly enabling and labelling
+the three variants.
+
+```python
+from examples.feature_selection_metrics import load_example
+from libemg.feature_selector import FeatureSelector
+
+features, labels, crossvalidation, options = load_example()
+selector = FeatureSelector(allow_approximations=True)
+scores = selector.evaluate_metrics(None, features, labels, crossvalidation, **options)
+results, order = selector.run_selection(
+    features, "mwRI", labels, crossvalidation, **options,
+)
 ```
 
-## **Active Error (AE)**
-Similar to CA but focuses on active error (i.e., the error of the classifier without considering incorrect No Movmenet predictions). Also known as (1 - active classification accuracy). The active error metric assumes that class label 0 is associated with the no motion class. The easiest way to ensure this is to make the first element of the class_values key of the offlinedatahandler dictionary the no motion class.
+`pytest tests/test_feature_selector.py -q` covers analytic values, formula
+identities, overlap boundaries, singular covariance, arbitrary labels,
+classification/adaptive behavior, reproducibility, immutability, ordering and
+input validation. Both selection strategies run for every metric on real data.
+Integration tests stage a small subset of the repository's existing Myo
+recordings into the `OneSubjectMyoDataset` layout and use its real loader;
+they need no network access or separately downloaded dataset.
 
-$
-\text{AE} = \frac{1}{T}\sum_{t=1}^{n}(1-(\frac{1}{n}\sum_{i=1}^{n}(\hat{y}_{i,t} == {y}_{i,t}) \text{ or } (\hat{y}_{i,t} == {y}_{NM})))
-$
+## Sources
 
-where $T$ is the total number of trials, $t$ is an individual trial, $n$ is the total number of data frames, $\hat{y}_{i,t}$ is the predicted class label for frame $i$, $y_{i,t}$ is the true class label for frame $i$ and $y_{NM}$ is the no movement class.
-
-```Python
-# Active Error:
-metric="activeerror"
-aerror_results, aerror_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
-```
-
-## **Mean Semi Principle Axis (MSA)**
-Quantifies the size of a training elipsoid.
-
-$
-\text{MSA} = \frac{1}{N}\sum_{j=1}^{N}((\prod_{k=1}^{D}a_{j,k})^{\frac{1}{D}})
-$
-
-where $N$ is the number of classes, $j$ represents a specific class, $D$ is the total dimensionality of the space, and $a_{k}$ is the geometric mean of each semi-principle axis.
-
-```Python
-# Mean Semi Principal Axis
-metric="meansemiprincipalaxis"
-msa_results, msa_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
-```
-
-## **Feature Efficiency (FE)**
-A measure of the fraction of samples seperable by a particular feature.
-
-$
-\text{FE} = \frac{1}{N}\sum_{j=1}^{N}\max\limits_{i=1,...,j-1,j+1,...,N} \\ \times (\max\limits_{k=1,...,D} \frac{n(C_{i}) + n(C_{j}) - n(S_{k})}{n(C_{i}) + n(C_{j})})
-$
-
-$
-S_{k} = p | p \space \epsilon \space C_{i} \space \cup \space C_{j}, \space \min(\max(f_{k}|c_{j}), \max(f_{k}|c_{i})) \ge p \ge \max(\min(f_{k}|c_{j}), \min(f_{k}|c_{i}))
-$
-
-where $N$ is the number of active classes, $j$ and $i$ are particular class labels, $D$ is the dimensionality, $n(C_{i})$ is the cardinality of the set of data points in class $i$ and $n(C_{j})$ in class $j$, $S_{k}$ is the set of points not seperable along a feature dimension $k$, $n(S_{k})$ is the cardinality of the overlap set, $f_{k}|c_{i}$ is the value of feature $f$ in dimension $k$ for class label $i$, and $p$ is the $D$ dimensional data point in class $i$ or $j$.
-
-```Python
-# Feature Efficiency:
-metric="featureefficiency"
-fe_results, fe_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
-```
-
-## **Repeatability Index (RI)**
-Measures the repeatability of contractions/emg patterns between subsequent repetitions.
-
-$
-\text{RI} = \frac{1}{N}\sum_{j=1}^{N}\frac{1}{R}\sum_{r=1}^{R}\frac{1}{2}\sqrt{(\mu_{TR_{j}} -\mu_{r,j})'S_{TR_{j}}^-1 (\mu_{TR_{j}} - \mu_{r,j})}
-$
-
-where $N$ is the number of active classes, $R$ is the number of repetitions, $j$ is a specific class, $r$ is a specific repetition, $\mu_{TR_{j}}$ is the centroid of the class j training ellipsoid, $\mu_{r,j}$ is the centroid of a testing elipsoid of the same $j$ and rep $r$, and $S_{TR_{j}}$ is the covariance matrix of the class j training ellipsoid.
-
-```Python
-# Repeatability:
-metric="repeatability"
-ri_results, ri_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
-```
-
-## **Seperability Index (SI)**
-A measure of the distance between different classes.
-
-$
-\text{FE} = \frac{1}{N}\sum_{j=1}^{N}\max\limits_{i=1,...,j-1,j+1,...,N} \frac{1}{2} \\ \times \sqrt{(\mu_{TR_{j}} -\mu_{TR_{i}})'S_{TR_{j}}^-1 (\mu_{TR_{j}} - \mu_{TR_{i}})}
-$
-
-where $N$ is the number of active classes, $\mu_{TR_{j}}$ is the centroid of class $j$ training ellipsoid (all reps), $\mu_{TR_{i}}$ is the centroid of the nearest training ellipsoid of a different class i, and $S_{TR_{j}}$ is the covariance matrix of class j training ellipsoid.
-
-```Python
-# Seperability:
-metric="seperability"
-si_results, si_fs = fs.run_selection(training_features, metric, class_var, crossvalidation_var)
-```
-
-# References
-<a id="1">[1]</a> 
-J. L. Nawfel, K. B. Englehart and E. J. Scheme, "A Multi-Variate Approach to Predicting Myoelectric Control Usability," in IEEE Transactions on Neural Systems and Rehabilitation Engineering, vol. 29, pp. 1312-1327, 2021, doi: 10.1109/TNSRE.2021.3094324.
+- Nawfel, Englehart and Scheme (2021), [A Multi-Variate Approach to Predicting Myoelectric Control Usability](https://doi.org/10.1109/TNSRE.2021.3094324), Appendices A-E and Section II-C/Figure 1.
+- Nawfel (2020), [author's thesis](https://unbscholar.lib.unb.ca/items/679a90d2-f44a-4e9e-b0cd-bf62fe8474ba), Appendix A.2.7 (FDR) and A.6.1 (collection duration). This API explicitly distinguishes hop from overlap.
+- Singh (2003), [Multiresolution Estimates of Classification Complexity](https://sci2s.ugr.es/keel/pdf/specific/articulo/IEEEPAMI03.pdf), Section 2 (PRISM purity, neighborhoods and weighting).
+- Singh (2003), [PRISM - A Novel Framework for Pattern Recognition](https://doi.org/10.1007/s10044-002-0186-2), deferred original PRISM reference; full algorithm text was unavailable during implementation.
+- Kohn, Nakano and Silva (1996), [A Class Discriminality Measure Based on Feature Space Partitioning](https://doi.org/10.1016/0031-3203%2895%2900122-0), deferred CDM reference; original partition rules remain unverified.
