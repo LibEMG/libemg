@@ -128,7 +128,9 @@ class Fitts(Environment):
         assert set(np.unique(list(prediction_map.values()))) == set(list(default_prediction_map.values())), f"Did not find all commands {list(default_prediction_map.values())} represented as values in prediction_map. Got: {prediction_map}."
 
         self.prediction_map = prediction_map
+        self.current_direction = [0., 0.]
 
+    def game_setup(self):
         self.font = pygame.font.SysFont('helvetica', 40)
         self.screen = pygame.display.set_mode([self.config.width, self.config.height])
 
@@ -210,7 +212,7 @@ class Fitts(Environment):
             
         data = self.controller.get_data(self._info)
         
-        self.current_direction = [0., 0.]
+        #self.current_direction = [0., 0.]
         if data is not None:
             # Move cursor
             predictions = data[0]
@@ -241,8 +243,8 @@ class Fitts(Environment):
                 
                 pc = [pc, pc]
 
-            self.current_direction[0] += self.config.velocity * float(predictions[0]) * pc[0]
-            self.current_direction[1] -= self.config.velocity * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
+            self.current_direction[0] = self.config.velocity * float(predictions[0]) * pc[0]
+            self.current_direction[1] = -1* self.config.velocity * float(predictions[1]) * pc[1]    # -ve b/c pygame origin pixel is at top left of screen
 
             self._log(str(predictions), timestamp)
         
@@ -359,7 +361,7 @@ class Fitts(Environment):
             pygame.draw.circle(self.screen, color, self.polar_origin, semi_circle_radius, width=2, draw_top_right=True, draw_top_left=True)
             pygame.draw.line(self.screen, color, (self.polar_origin[0] - semi_circle_radius, self.polar_origin[1]), (self.polar_origin[0] + semi_circle_radius, self.polar_origin[1]))
 
-    def _run_helper(self):
+    def _run_loop(self):
         # updated frequently for graphics & gameplay
         self._update_game()
         pygame.display.set_caption(str(self.clock.get_fps()))

@@ -16,6 +16,19 @@ if __name__ == "__main__":
 | ![alt text](all_channels.gif)  | ![alt text](multi_channel.gif)   |
 <center> <p> Figure 1: Raw Data from the <b>OnlineDataHandler</b></p> </center>
 
+These plots redraw on a timer, and each frame copies the whole buffer out of shared memory. For a cheaper look at live data, install a probe hook instead. A `ProbeHook` carries a `Periodic(hz)` criterion and declares no outputs, so it is woken at most `hz` times a second and nothing downstream waits on it. A probe cannot stall or alter the pipeline it watches, which makes it the safe way to observe a running control system.
+
+```Python
+from libemg.reactive import ProbeHook
+
+odh.install_hook(ProbeHook('watch', 'emg', print, hz=30))
+odh.start_hooks()
+...
+odh.stop_hooks()
+```
+
+Pass your own function in place of `print` to draw, log, or forward the samples. See the Reactive Pipelines section for the other criteria and hooks.
+
 # EMG Classifier 
 The EMG classifier contains a visualization tool for viewing the decisions stream (i.e., the predictions over time) for a particular classifier using the `visualize` function. 
 

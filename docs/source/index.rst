@@ -18,6 +18,7 @@ LibEMG
    documentation/features/features
    documentation/feature_selection/feature_selection
    documentation/prediction/prediction
+   documentation/adaptation/adaptation
    documentation/evaluation/evaluation
    documentation/animation/animation
 
@@ -28,6 +29,7 @@ LibEMG
    documentation/screen_guided_training/sgt
    documentation/supported_hardware/supported_hardware
    documentation/visualization/visualization
+   documentation/environments/environments
 
 .. toctree::
    :maxdepth: 2

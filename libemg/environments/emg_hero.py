@@ -85,24 +85,30 @@ class EMGHero(Environment):
         self.max_speed = max_speed
         self.min_time = min_time
         self.max_time = max_time
-
-        pygame.display.set_caption('Testing Environment')
-        self.font = pygame.font.SysFont('Comic Sans MS', 30)
-        self.screen = pygame.display.set_mode([525, 700])
-
+        
         self.imgs = []
         if len(img_files) > 0:
             assert len(img_files) == 4, f"Expected 4 image files, but got {len(img_files)}."
             for i in img_files:
                 self.imgs.append(pygame.transform.smoothscale(pygame.image.load(i), (100,100)))
 
+
+        
+    
+    def game_setup(self):
+        pygame.display.set_caption('Testing Environment')
+        self.font = pygame.font.SysFont('Comic Sans MS', 30)
+        self.screen = pygame.display.set_mode([525, 700])
+
+        
         self.last_note = time.time()
         self.start_time = time.time() + self.test_time
 
         self.notes = []
         self.key_pressed = -1
 
-    def _run_helper(self):
+
+    def _run_loop(self):
         # Run until the user asks to quit
         gen_time = ((self.start_time - time.time())/self.test_time) * (self.max_time - self.min_time) + self.min_time
         if time.time() - self.last_note > gen_time: # Generation

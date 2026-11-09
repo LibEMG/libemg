@@ -1,829 +1,697 @@
-# OyMotionStreamer begins here ------
-import socket
-import pickle
-import time
+import asyncio
 import struct
+from asyncio import Queue
+from contextlib import suppress
+from dataclasses import dataclass
+from enum import IntEnum
+from typing import Optional, Dict, List
+
+"""
+Thanks to @zubaidah93 for providing the source code. 
+"""
+
 import numpy as np
-
-socket_ = None
-ip_ = None
-port_ = None
-
-def set_cmd_cb(resp):
-    print('Command result: {}'.format(resp))
-
-def ondata(data):
-        global socket_
-        global ip_
-        global port_
-        if len(data) > 0:
-            if data[0] == NotifDataType['NTF_EMG_ADC_DATA'] and len(data) == 129:
-                emg = np.array(list(data[1:])).reshape(128 // 8,8)
-                for e in emg:
-                    emg_arr = pickle.dumps(list(e))
-                    socket_.sendto(emg_arr, (ip_, port_))
-
-class OyMotionStreamer():
-    def __init__(self, ip, port,
-                  sampRate=1000,
-                  channelMask=0xFF,
-                  dataLen=128,
-                  resolution=8):
-        global ip_ 
-        ip_ = ip 
-        global port_
-        port_ = port
-        global socket_
-        socket_ = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
-        self.sampRate = sampRate
-        self.channelMask = channelMask
-        self.dataLen = dataLen
-        self.resolution = resolution
-
-    def start_stream(self):
-
-        
-        GF = GForceProfile()
-
-        # Scan all gforces,return [[num,dev_name,dev_addr,dev_Rssi,dev_connectable],...]
-        scan_results = GF.scan(5)
-
-        if scan_results == []:
-            print('No bracelet was found')
-            return
-        else:
-            # TODO: check for gpro in address
-            addr = scan_results[0][2]
-            GF.connect(addr)
-            time.sleep(1)
-
-
-        GF.setEmgRawDataConfig(self.sampRate, self.channelMask, self.dataLen, self.resolution, cb=set_cmd_cb, timeout=1000)
-        GF.setDataNotifSwitch(DataNotifFlags['DNF_EMG_RAW'], set_cmd_cb, 1000)
-        time.sleep(1)
-        GF.startDataNotification(ondata)
-
-## BEGIN HARDWARE SPECIFIC CONFIG
-import platform
-if platform.system() == 'Linux':
-    try:
-        from bluepy import btle
-        from bluepy.btle import DefaultDelegate, Scanner, Peripheral
-    except:
-        pass
-from datetime import datetime, timedelta
-import struct
-from enum import Enum
-import threading
-import time
-import queue
-
-
-class GF_RET_CODE(Enum):
-
-    # Method returns successfully.
-    GF_SUCCESS = 0,
-
-    # Method returns with a generic error.
-    GF_ERROR = 1,
-
-    # Given parameters are not match required.
-    GF_ERROR_BAD_PARAM = 2,
-
-    # Method call is not allowed by the inner state.
-    GF_ERROR_BAD_STATE = 3,
-
-    # Method is not supported at this time.
-    GF_ERROR_NOT_SUPPORT = 4,
-
-    # Hub is busying on device scan and cannot fulfill the call.
-    GF_ERROR_SCAN_BUSY = 5,
-
-    # Insufficient resource to perform the call.
-    GF_ERROR_NO_RESOURCE = 6,
-
-    # A preset timer is expired.
-    GF_ERROR_TIMEOUT = 7,
-
-    # Target device is busy and cannot fulfill the call.
-    GF_ERROR_DEVICE_BUSY = 8,
-
-    # The retrieving data is not ready yet
-    GF_ERROR_NOT_READY = 9
-
-
-CommandType = dict(
-    CMD_GET_PROTOCOL_VERSION=0x00,
-    CMD_GET_FEATURE_MAP=0x01,
-    CMD_GET_DEVICE_NAME=0x02,
-    CMD_GET_MODEL_NUMBER=0x03,
-    CMD_GET_SERIAL_NUMBER=0x04,
-    CMD_GET_HW_REVISION=0x05,
-    CMD_GET_FW_REVISION=0x06,
-    CMD_GET_MANUFACTURER_NAME=0x07,
-    CMD_GET_BOOTLOADER_VERSION=0x0A,
-
-    CMD_GET_BATTERY_LEVEL=0x08,
-    CMD_GET_TEMPERATURE=0x09,
-
-    CMD_POWEROFF=0x1D,
-    CMD_SWITCH_TO_OAD=0x1E,
-    CMD_SYSTEM_RESET=0x1F,
-    CMD_SWITCH_SERVICE=0x20,
-
-    CMD_SET_LOG_LEVEL=0x21,
-    CMD_SET_LOG_MODULE=0x22,
-    CMD_PRINT_KERNEL_MSG=0x23,
-    CMD_MOTOR_CONTROL=0x24,
-    CMD_LED_CONTROL_TEST=0x25,
-    CMD_PACKAGE_ID_CONTROL=0x26,
-    CMD_SEND_TRAINING_PACKAGE=0x27,
-
-    CMD_GET_ACCELERATE_CAP=0x30,
-    CMD_SET_ACCELERATE_CONFIG=0x31,
-
-    CMD_GET_GYROSCOPE_CAP=0x32,
-    CMD_SET_GYROSCOPE_CONFIG=0x33,
-
-    CMD_GET_MAGNETOMETER_CAP=0x34,
-    CMD_SET_MAGNETOMETER_CONFIG=0x35,
-
-    CMD_GET_EULER_ANGLE_CAP=0x36,
-    CMD_SET_EULER_ANGLE_CONFIG=0x37,
-
-    CMD_GET_QUATERNION_CAP=0x38,
-    CMD_SET_QUATERNION_CONFIG=0x39,
-
-    CMD_GET_ROTATION_MATRIX_CAP=0x3A,
-    CMD_SET_ROTATION_MATRIX_CONFIG=0x3B,
-
-    CMD_GET_GESTURE_CAP=0x3C,
-    CMD_SET_GESTURE_CONFIG=0x3D,
-
-    CMD_GET_EMG_RAWDATA_CAP=0x3E,
-    CMD_SET_EMG_RAWDATA_CONFIG=0x3F,
-
-    CMD_GET_MOUSE_DATA_CAP=0x40,
-    CMD_SET_MOUSE_DATA_CONFIG=0x41,
-
-    CMD_GET_JOYSTICK_DATA_CAP=0x42,
-    CMD_SET_JOYSTICK_DATA_CONFIG=0x43,
-
-    CMD_GET_DEVICE_STATUS_CAP=0x44,
-    CMD_SET_DEVICE_STATUS_CONFIG=0x45,
-
-    CMD_GET_EMG_RAWDATA_CONFIG=0x46,
-
-    CMD_SET_DATA_NOTIF_SWITCH=0x4F,
-    # Partial command packet, format: [CMD_PARTIAL_DATA, packet number in reverse order, packet content]
-    MD_PARTIAL_DATA=0xFF
-)
-
-# Response from remote device
-ResponseResult = dict(
-    RSP_CODE_SUCCESS=0x00,
-    RSP_CODE_NOT_SUPPORT=0x01,
-    RSP_CODE_BAD_PARAM=0x02,
-    RSP_CODE_FAILED=0x03,
-    RSP_CODE_TIMEOUT=0x04,
-    # Partial packet, format: [RSP_CODE_PARTIAL_PACKET, packet number in reverse order, packet content]
-    RSP_CODE_PARTIAL_PACKET=0xFF
-)
-
-DataNotifFlags = dict(
-    # Data Notify All Off
-    DNF_OFF=0x00000000,
-
-    # Accelerate On(C.7)
-    DNF_ACCELERATE=0x00000001,
-
-    # Gyroscope On(C.8)
-    DNF_GYROSCOPE=0x00000002,
-
-    # Magnetometer On(C.9)
-    DNF_MAGNETOMETER=0x00000004,
-
-    # Euler Angle On(C.10)
-    DNF_EULERANGLE=0x00000008,
-
-    # Quaternion On(C.11)
-    DNF_QUATERNION=0x00000010,
-
-    # Rotation Matrix On(C.12)
-    DNF_ROTATIONMATRIX=0x00000020,
-
-    # EMG Gesture On(C.13)
-    DNF_EMG_GESTURE=0x00000040,
-
-    # EMG Raw Data On(C.14)
-    DNF_EMG_RAW=0x00000080,
-
-    # HID Mouse On(C.15)
-    DNF_HID_MOUSE=0x00000100,
-
-    # HID Joystick On(C.16)
-    DNF_HID_JOYSTICK=0x00000200,
-
-    # Device Status On(C.17)
-    DNF_DEVICE_STATUS=0x00000400,
-
-    # Device Log On
-    DNF_LOG=0x00000800,
-
-    # Data Notify All On
-    DNF_ALL=0xFFFFFFFF
-)
-
-
-class ProfileCharType(Enum):
-    PROF_SIMPLE_DATA = 0   # simple profile: data char
-    PROF_DATA_CMD = 1,  # data profile: cmd char
-    PROF_DATA_NTF = 2,  # data profile：nty char
-    PROF_OAD_IDENTIFY = 3,  # OAD profile：identify char
-    PROF_OAD_BLOCK = 4,  # OAD profile：block char
-    PROF_OAD_FAST = 5  # OAD profile：fast char
-
-
-NotifDataType = dict(
-    NTF_ACC_DATA=0x01,
-    NTF_GYO_DATA=0x02,
-    NTF_MAG_DATA=0x03,
-    NTF_EULER_DATA=0x04,
-    NTF_QUAT_FLOAT_DATA=0x05,
-    NTF_ROTA_DATA=0x06,
-    NTF_EMG_GEST_DATA=0x07,
-    NTF_EMG_ADC_DATA=0x08,
-    NTF_HID_MOUSE=0x09,
-    NTF_HID_JOYSTICK=0x0A,
-    NTF_DEV_STATUS=0x0B,
-    NTF_LOG_DATA=0x0C,  # Log data
-
-    # Partial packet, format: [NTF_PARTIAL_DATA, packet number in reverse order, packet content]
-    NTF_PARTIAL_DATA=0xFF
-)
-
-LogLevel = dict(
-    LOG_LEVEL_DEBUG=0x00,
-    LOG_LEVEL_INFO=0x01,
-    LOG_LEVEL_WARN=0x02,
-    LOG_LEVEL_ERROR=0x03,
-    LOG_LEVEL_FATAL=0x04,
-    LOG_LEVEL_NONE=0x05
-)
-
-
-class BluetoothDeviceState(Enum):
-    disconnected = 0,
-    connected = 1
-
+from bleak import BleakScanner, BLEDevice, AdvertisementData, BleakClient, BleakGATTCharacteristic
 
 SERVICE_GUID = '0000ffd0-0000-1000-8000-00805f9b34fb'
 CMD_NOTIFY_CHAR_UUID = 'f000ffe1-0451-4000-b000-000000000000'
 DATA_NOTIFY_CHAR_UUID = 'f000ffe2-0451-4000-b000-000000000000'
 
 
-class CommandCallbackTableEntry():
-    def __init__(self, _cmd, _timeoutTime, _cb):
-        self._cmd = _cmd
-        self._timeoutTime = _timeoutTime
-        self._cb = _cb
-
-if platform.system() == 'Linux':
-    try:
-        class MyDelegate(btle.DefaultDelegate):
-            def __init__(self, gforce):
-                super().__init__()
-                self.gforce = gforce
-                self.bluepy_thread = threading.Thread(target=self.bluepy_handler)
-                self.bluepy_thread.setDaemon(True)
-                self.bluepy_thread.start()
-
-            def bluepy_handler(self):
-                while True:
-                    if not self.gforce.send_queue.empty():
-                        cmd = self.gforce.send_queue.get_nowait()
-                        self.gforce.cmdCharacteristic.write(cmd)
-                    self.gforce.device.waitForNotifications(1)
-
-            def handleNotification(self, cHandle, data):
-                # check cHandle
-                #        self.gforce.lock.acquire()
-                if cHandle == self.gforce.cmdCharacteristic.getHandle():
-                    self.gforce._onResponse(data)
-
-                # check cHandle
-                if cHandle == self.gforce.notifyCharacteristic.getHandle():
-                    self.gforce.handleDataNotification(data, self.gforce.onData)
-                # self.gforce.lock.release()
-    except:
-        print('Bluepy not installed...')
+@dataclass
+class Characteristic:
+    uuid: str
+    service_uuid: str
+    descriptor_uuids: List[str]
 
 
-class GForceProfile():
-    def __init__(self):
-        self.device = Peripheral()
-        self.state = BluetoothDeviceState.disconnected
-        self.cmdCharacteristic = None
-        self.notifyCharacteristic = None
-        self.timer = None
-        self.cmdMap = {}
-        self.mtu = None
-        self.cmdForTimeout = -1
-        self.incompleteCmdRespPacket = []
-        self.lastIncompleteCmdRespPacketId = 0
-        self.incompleteNotifPacket = []
-        self.lastIncompleteNotifPacketId = 0
-        self.onData = None
-        self.lock = threading.Lock()
-        self.send_queue = queue.Queue(maxsize=20)
+class Command(IntEnum):
+    GET_PROTOCOL_VERSION = 0x00,
+    GET_FEATURE_MAP = 0x01,
+    GET_DEVICE_NAME = 0x02,
+    GET_MODEL_NUMBER = 0x03,
+    GET_SERIAL_NUMBER = 0x04,
+    GET_HW_REVISION = 0x05,
+    GET_FW_REVISION = 0x06,
+    GET_MANUFACTURER_NAME = 0x07,
+    GET_BOOTLOADER_VERSION = 0x0A,
 
-    def getCharacteristic(self, device, uuid):
-        ches = device.getCharacteristics()
-        for ch in ches:
-            if uuid == str(ch.uuid):
-                return ch
-            else:
-                continue
+    GET_BATTERY_LEVEL = 0x08,
+    GET_TEMPERATURE = 0x09,
 
-    # Establishes a connection to the Bluetooth Device.
-    def connect(self, addr):
-        self.device.connect(addr)
-        print('connection succeeded')
+    POWEROFF = 0x1D,
+    SWITCH_TO_OAD = 0x1E,
+    SYSTEM_RESET = 0x1F,
+    SWITCH_SERVICE = 0x20,
 
-        # set mtu
-        MTU = self.device.setMTU(200)
-        self.mtu = MTU['mtu'][0]
-        # self.device.setMTU(self.mtu)
-        # print('mtu:{}'.format(self.mtu))
+    SET_LOG_LEVEL = 0x21,
+    SET_LOG_MODULE = 0x22,
+    PRINT_KERNEL_MSG = 0x23,
+    MOTOR_CONTROL = 0x24,
+    LED_CONTROL_TEST = 0x25,
+    PACKAGE_ID_CONTROL = 0x26,
+    SEND_TRAINING_PACKAGE = 0x27,
 
-        self.state = BluetoothDeviceState.connected
+    GET_ACCELERATE_CAP = 0x30,
+    SET_ACCELERATE_CONFIG = 0x31,
 
-        self.cmdCharacteristic = self.getCharacteristic(
-            self.device, CMD_NOTIFY_CHAR_UUID)
-        self.notifyCharacteristic = self.getCharacteristic(
-            self.device, DATA_NOTIFY_CHAR_UUID)
+    GET_GYROSCOPE_CAP = 0x32,
+    SET_GYROSCOPE_CONFIG = 0x33,
 
-        # Listen cmd
-        self.setNotify(self.cmdCharacteristic, True)
+    GET_MAGNETOMETER_CAP = 0x34,
+    SET_MAGNETOMETER_CONFIG = 0x35,
 
-        # Open the listening thread
-        self.device.setDelegate(MyDelegate(self))
+    GET_EULER_ANGLE_CAP = 0x36,
+    SET_EULER_ANGLE_CONFIG = 0x37,
 
-    # Connect the bracelet with the strongest signal
+    QUATERNION_CAP = 0x38,
+    QUATERNION_CONFIG = 0x39,
 
-    def connectByRssi(self):
-        scanner = Scanner()
-        devices = scanner.scan(10.0)
-        rssi_devices = {}
+    GET_ROTATION_MATRIX_CAP = 0x3A,
+    SET_ROTATION_MATRIX_CONFIG = 0x3B,
 
-        for dev in devices:
-            print("Device %s (%s), RSSI=%d dB" %
-                  (dev.addr, dev.addrType, dev.rssi))
-            for (_, desc, value) in dev.getScanData():
-                print("  %s = %s" % (desc, value))
-                if (value == SERVICE_GUID):
-                    rssi_devices[dev.rssi] = dev.addr
+    GET_GESTURE_CAP = 0x3C,
+    SET_GESTURE_CONFIG = 0x3D,
 
-        rssi = rssi_devices.keys()
-        dev_addr = rssi_devices[max(rssi)]
+    GET_EMG_RAWDATA_CAP = 0x3E,
+    SET_EMG_RAWDATA_CONFIG = 0x3F,
 
-        # connect the bracelet
-        self.device.connect(dev_addr)
-        print('connection succeeded')
+    GET_MOUSE_DATA_CAP = 0x40,
+    SET_MOUSE_DATA_CONFIG = 0x41,
 
-        # set mtu
-        MTU = self.device.setMTU(2000)
-        self.mtu = MTU['mtu'][0]
-        # self.device.setMTU(self.mtu)
-        # print('mtu:{}'.format(self.mtu))
+    GET_JOYSTICK_DATA_CAP = 0x42,
+    SET_JOYSTICK_DATA_CONFIG = 0x43,
 
-        self.state = BluetoothDeviceState.connected
+    GET_DEVICE_STATUS_CAP = 0x44,
+    SET_DEVICE_STATUS_CONFIG = 0x45,
 
-        self.cmdCharacteristic = self.getCharacteristic(
-            self.device, CMD_NOTIFY_CHAR_UUID)
-        self.notifyCharacteristic = self.getCharacteristic(
-            self.device, DATA_NOTIFY_CHAR_UUID)
+    GET_EMG_RAWDATA_CONFIG = 0x46,
 
-        # Listen cmd
-        self.setNotify(self.cmdCharacteristic, True)
+    SET_DATA_NOTIF_SWITCH = 0x4F,
+    # Partial command packet, format: [CMD_PARTIAL_DATA, packet number in reverse order, packet content]
+    MD_PARTIAL_DATA = 0xFF
 
-        # Open the listening thread
-        self.device.setDelegate(MyDelegate(self))
 
-    # Enable a characteristic's notification
-    def setNotify(self, Chara, swich):
-        if swich:
-            setup_data = b"\x01\x00"
+class DataSubscription(IntEnum):
+    # Data Notify All Off
+    OFF = 0x00000000,
+
+    # Accelerate On(C.7)
+    ACCELERATE = 0x00000001,
+
+    # Gyroscope On(C.8)
+    GYROSCOPE = 0x00000002,
+
+    # Magnetometer On(C.9)
+    MAGNETOMETER = 0x00000004,
+
+    # Euler Angle On(C.10)
+    EULERANGLE = 0x00000008,
+
+    # Quaternion On(C.11)
+    QUATERNION = 0x00000010,
+
+    # Rotation Matrix On(C.12)
+    ROTATIONMATRIX = 0x00000020,
+
+    # EMG Gesture On(C.13)
+    EMG_GESTURE = 0x00000040,
+
+    # EMG Raw Data On(C.14)
+    EMG_RAW = 0x00000080,
+
+    # HID Mouse On(C.15)
+    HID_MOUSE = 0x00000100,
+
+    # HID Joystick On(C.16)
+    HID_JOYSTICK = 0x00000200,
+
+    # Device Status On(C.17)
+    DEVICE_STATUS = 0x00000400,
+
+    # Device Log On
+    LOG = 0x00000800,
+
+    # Data Notify All On
+    ALL = 0xFFFFFFFF
+
+
+class DataType(IntEnum):
+    ACC = 0x01,
+    GYO = 0x02,
+    MAG = 0x03,
+    EULER = 0x04,
+    QUAT = 0x05,
+    ROTA = 0x06,
+    EMG_GEST = 0x07,
+    EMG_ADC = 0x08,
+    HID_MOUSE = 0x09,
+    HID_JOYSTICK = 0x0A,
+    DEV_STATUS = 0x0B,
+    LOG = 0x0C,
+
+    PARTIAL = 0xFF
+
+
+class SampleResolution(IntEnum):
+    BITS_8 = 8,
+    BITS_12 = 12
+
+
+class SamplingRate(IntEnum):
+    HZ_500 = 500,
+    HZ_650 = 650,
+    HZ_1000 = 1000
+
+
+@dataclass
+class EmgRawDataConfig:
+    fs: SamplingRate = SamplingRate.HZ_1000
+    channel_mask: int = 0xFF
+    batch_len: int = 32
+    resolution: SampleResolution = SampleResolution.BITS_8
+
+    def to_bytes(self):
+        body = b''
+        body += struct.pack('<H', self.fs)
+        body += struct.pack('<H', self.channel_mask)
+        body += struct.pack('<B', self.batch_len)
+        body += struct.pack('<B', self.resolution)
+        return body
+
+    @classmethod
+    def from_bytes(cls, data: bytes):
+        fs, channel_mask, batch_len, resolution = struct.unpack(
+            '@HHBB',
+            data,
+        )
+        return cls(fs, channel_mask, batch_len, resolution)
+
+
+@dataclass
+class Request:
+    cmd: Command
+    has_res: bool
+    body: Optional[bytes] = None
+
+
+class ResponseCode(IntEnum):
+    SUCCESS = 0x00,
+    NOT_SUPPORT = 0x01,
+    BAD_PARAM = 0x02,
+    FAILED = 0x03,
+    TIMEOUT = 0x04,
+    PARTIAL_PACKET = 0xFF
+
+
+@dataclass
+class Response:
+    code: ResponseCode
+    cmd: Command
+    data: bytes
+
+
+def _match_nus_uuid(_device: BLEDevice, adv: AdvertisementData):
+    if SERVICE_GUID.lower() in adv.service_uuids:
+        return True
+    return False
+
+def gforce_filter(device, advertisement_data):
+    # Check if device.name exists and contains "gForcePro+"
+    return device.name is not None and "gForcePro+" in device.name
+
+from multiprocessing import Process, Event
+from libemg.shared_memory_manager import SharedMemoryManager
+import numpy as np
+class Gforce(Process):
+    def __init__(self, sampling_rate=1000, res=8, emg=True, imu=False, shared_memory_items=[]):
+        Process.__init__(self, daemon=True)
+        self.emg = emg
+        self.imu = imu
+        self.sampling_rate = sampling_rate
+        self.res = res
+        self.emg_conf = EmgRawDataConfig()
+        if self.sampling_rate == 500:
+            self.emg_conf = EmgRawDataConfig(fs = SamplingRate.HZ_500, resolution=SampleResolution.BITS_12)
+        
+        self.shared_memory_items = shared_memory_items
+        self.smm = SharedMemoryManager()
+        self.signal = Event()
+
+        self.client = None # bluetooth client
+        self.cmd_char = None
+        self.data_char = None
+        self.responses: Dict[Command, Queue] = {}
+        self.resolution = SampleResolution.BITS_12
+
+        self.packet_id = 0
+        self.data_packet = []
+
+    async def connect(self):
+        device = None
+        count = 0
+        while device == None and count < 50:
+            device = await BleakScanner.find_device_by_filter(gforce_filter)
+            if device is None:
+                print(f"LibEMG -> OyMotionStreamer (No GForce device found). N={count}.")
+                count += 1
+
+                
+        if device == None:
+            raise Exception("LibEMG -> OyMotionStreamer (No GForce device found). Tries Exceeded.")
+
+        def handle_disconnect(_: BleakClient):
+            for task in asyncio.all_tasks():
+                task.cancel()
+
+        client = BleakClient(device, disconnected_callback=handle_disconnect)
+        await client.connect()
+
+        await client.start_notify(
+            CMD_NOTIFY_CHAR_UUID, self._on_cmd_response,
+        )
+
+        self.client = client
+        print("LibEMG -> OyMotionStreamer (connected).")
+
+    def _on_data_response(self, q: Queue, bs: bytearray):
+        bs = bytes(bs)
+        full_packet = []
+
+        is_partial_data = bs[0] == ResponseCode.PARTIAL_PACKET
+        if is_partial_data:
+            packet_id = bs[1]
+            if self.packet_id != 0 and self.packet_id != packet_id + 1:
+                raise Exception("Unexpected packet id: expected {} got {}".format(
+                    self.packet_id + 1,
+                    packet_id,
+                ))
+            elif self.packet_id == 0 or self.packet_id > packet_id:
+                self.packet_id = packet_id
+                self.data_packet += bs[2:]
+
+                if self.packet_id == 0:
+                    full_packet = self.data_packet
+                    self.data_packet = []
         else:
-            setup_data = b"\x00\x00"
+            full_packet = bs
 
-        setup_handle = Chara.getHandle() + 1
-        self.device.writeCharacteristic(
-            setup_handle, setup_data, withResponse=False)
+        if len(full_packet) == 0:
+            return
 
-    def scan(self, timeout):
-        scanner = Scanner()
-        devices = scanner.scan(timeout)
-
-        gforce_scan = []
-        i = 1
-        for dev in devices:
-            for (_, _, value) in dev.getScanData():
-                if (value == SERVICE_GUID):
-                    gforce_scan.append([i, dev.getValueText(
-                        9), dev.addr, dev.rssi, str(dev.connectable)])
-                    i += 1
-        return gforce_scan
-
-    # Disconnect from device
-    def disconnect(self):
-
-        if self.timer != None:
-            self.timer.cancel()
-        self.timer = None
-        # Close the listenThread
-
-        if self.state == BluetoothDeviceState.disconnected:
-            return True
+        data = None
+        data_type = DataType(full_packet[0])
+        packet = full_packet[1:]
+        if data_type == DataType.EMG_ADC:
+            data = self._convert_emg_to_uv(packet)
+        elif data_type == DataType.ACC:
+            data = self._convert_acceleration_to_g(packet)
+        elif data_type == DataType.GYO:
+            data = self._convert_gyro_to_dps(packet)
+        elif data_type == DataType.MAG:
+            data = self._convert_magnetometer_to_ut(packet)
+        elif data_type == DataType.EULER:
+            data = self._convert_euler(packet)
+        elif data_type == DataType.QUAT:
+            data = self._convert_quaternion(packet)
+        elif data_type == DataType.ROTA:
+            data = self._convert_rotation_matrix(packet)
         else:
-            self.device.disconnect()
-            self.state == BluetoothDeviceState.disconnected
+            raise Exception(f"Unknown data type {data_type}, full packet: {full_packet}")
 
-    # Set data notification flag
-    def setDataNotifSwitch(self, flags, cb, timeout):
+        q.put_nowait(data)
 
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_SET_DATA_NOTIF_SWITCH'])
-        data.append(0xFF & (flags))
-        data.append(0xFF & (flags >> 8))
-        data.append(0xFF & (flags >> 16))
-        data.append(0xFF & (flags >> 24))
-        data = bytes(data)
+    def _convert_emg_to_uv(self, data: bytes):
+        min_voltage = -1.25
+        max_voltage = 1.25
 
-        def temp(resp, respData):
-            if cb != None:
-                cb(resp)
-
-        # Send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    # def switchToOAD(self,cb,timeout):
-    #     # Pack data
-    #     data = []
-    #     data.append(CommandType['CMD_SWITCH_TO_OAD'])
-    #     data = bytes(data)
-    #     def temp(resp,respData):
-    #         if cb != None:
-    #             cb(resp,None)
-
-    #     # Send data
-    #     return self.sendCommand(ProfileCharType.PROF_DATA_CMD,data,True,temp,timeout)
-
-    def powerOff(self, timeout):
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_POWEROFF'])
-        data = bytes(data)
-
-        def temp(resp, respData):
-            pass
-
-        # Send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    def systemReset(self, timeout):
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_SYSTEM_RESET'])
-        data = bytes(data)
-
-        def temp(resp, respData):
-            pass
-
-        # Send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    def setMotor(self, switchStatus, cb, timeout):
-        data = []
-        data.append(CommandType['CMD_MOTOR_CONTROL'])
-
-        tem = 0x01 if switchStatus else 0x00
-        data.append(tem)
-        data = bytes(data)
-
-        def temp(resp, respData):
-            if cb != None:
-                cb(resp)
-
-        # send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    def setLED(self, switchStatus, cb, timeout):
-        data = []
-        data.append(CommandType['CMD_LED_CONTROL_TEST'])
-
-        tem = 0x01 if switchStatus else 0x00
-        data.append(tem)
-        data = bytes(data)
-
-        def temp(resp, respData):
-            if cb != None:
-                cb(resp)
-
-        # send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    # Get controller firmware version
-    def setLogLevel(self, logLevel, cb, timeout):
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_SET_LOG_LEVEL'])
-        data.append(0xFF & logLevel)
-        data = bytes(data)
-
-        def temp(resp, respData):
-            if cb != None:
-                cb(resp)
-
-        # Send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    # Set Emg Raw Data Config
-    def setEmgRawDataConfig(self, sampRate, channelMask, dataLen, resolution, cb, timeout):
-       # Pack data
-        data = b''
-        data += struct.pack('<B', CommandType['CMD_SET_EMG_RAWDATA_CONFIG'])
-        data += struct.pack('<H', sampRate)
-        data += struct.pack('<H', channelMask)
-        data += struct.pack('<B', dataLen)
-        data += struct.pack('<B', resolution)
-
-        def temp(resp, raspData):
-            if cb != None:
-                cb(resp)
-
-        # Send data
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    # Get Emg Raw Data Config
-    def getEmgRawDataConfig(self, cb, timeout):
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_GET_EMG_RAWDATA_CONFIG'])
-        data = bytes(data)
-
-        def temp(resp, respData):
-            if cb != None:
-                if resp != ResponseResult['RSP_CODE_SUCCESS']:
-                    cb(resp, None, None, None, None)
-                elif len(respData) == 6:
-                    sampRate, channelMask, dataLen, resolution = struct.unpack_from(
-                        '@HHBB', respData)
-                cb(resp, sampRate, channelMask, dataLen, resolution)
-
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    def getFeatureMap(self, cb, timeout):
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_GET_FEATURE_MAP'])
-        data = bytes(data)
-
-        def temp(resp, respData):
-            if cb != None:
-                if resp != ResponseResult['RSP_CODE_SUCCESS']:
-                    cb(resp, None)
-                elif len(respData) == 4:
-                    featureMap = struct.unpack('@I', respData)[0]
-                    cb(resp, featureMap)
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    # Get controller firmware version
-    def getControllerFirmwareVersion(self, cb, timeout):
-        # Pack data
-        data = []
-        data.append(CommandType['CMD_GET_FW_REVISION'])
-        data = bytes(data)
-
-        def temp(resp, respData):
-            if cb != None:
-                if resp != ResponseResult['RSP_CODE_SUCCESS']:
-                    cb(resp, None)
-                else:
-                    if len(respData) > 4:
-                        firmwareVersion = respData.decode('ascii')
-                    else:
-                        firmwareVersion = ''
-                        for i in respData:
-                            firmwareVersion += str(i) + '.'
-                        firmwareVersion = firmwareVersion[0:len(firmwareVersion)]
-                    cb(resp, firmwareVersion)
-        return self.sendCommand(ProfileCharType.PROF_DATA_CMD, data, True, temp, timeout)
-
-    def sendCommand(self, profileCharType, data, hasResponse, cb, timeout):
-        if hasResponse and cb != None:
-            cmd = data[0]
-
-            self.lock.acquire()
-
-            if cmd in self.cmdMap.keys():
-                self.lock.release()
-                return GF_RET_CODE.GF_ERROR_DEVICE_BUSY
-            self.cmdMap[cmd] = CommandCallbackTableEntry(
-                cmd, datetime.now()+timedelta(milliseconds=timeout), cb)
-            self._refreshTimer()
-            self.lock.release()
-
-        if profileCharType == ProfileCharType.PROF_DATA_CMD:
-            if self.cmdCharacteristic == None:
-                return GF_RET_CODE.GF_ERROR_BAD_STATE
-            else:
-                if len(data) > self.mtu:
-                    contentLen = self.mtu - 2
-                    packetCount = (len(data)+contentLen-1)//contentLen
-                    startIndex = 0
-                    buf = []
-
-                    for i in range(packetCount-1, 0, -1):
-                        buf.append(CommandType['CMD_PARTIAL_DATA'])
-                        buf.append(i)
-                        buf += data[startIndex:startIndex+contentLen]
-                        startIndex += contentLen
-                        self.send_queue.put_nowait(buf)
-                        buf.clear()
-                    # Packet end
-                    buf.append(CommandType['CMD_PARTIAL_DATA'])
-                    buf.append(0)
-                    buf += data[startIndex:]
-                    self.send_queue.put_nowait(buf)
-                else:
-                    self.send_queue.put_nowait(data)
-
-                return GF_RET_CODE.GF_SUCCESS
+        if self.resolution == SampleResolution.BITS_8:
+            dtype = np.uint8
+            div = 127.0
+            sub = 128
+        elif self.resolution == SampleResolution.BITS_12:
+            dtype = np.uint16
+            div = 2047.0
+            sub = 2048
         else:
-            return GF_RET_CODE.GF_ERROR_BAD_PARAM
+            raise Exception(f"Unsupported resolution {self.resolution}")
 
-    # Refresh time,need external self.lock
-    def _refreshTimer(self):
-        def cmp_time(cb):
-            return cb._timeoutTime
+        gain = 1200.0
+        conversion_factor = (max_voltage - min_voltage) / gain / div
 
-        if self.timer != None:
-            self.timer.cancel()
+        emg_data = (np.frombuffer(data, dtype=dtype).astype(np.float32) - sub) * conversion_factor
+        num_channels = 8
 
-        self.timer = None
-        cmdlist = self.cmdMap.values()
+        return emg_data.reshape(-1, num_channels)
 
-        if len(cmdlist) > 0:
-            cmdlist = sorted(cmdlist, key=cmp_time)
+    @staticmethod
+    def _convert_acceleration_to_g(data: bytes):
+        normalizing_factor = 65536.0
 
-        # Process timeout entries
-        timeoutTime = None
-        listlen = len(cmdlist)
+        acceleration_data = np.frombuffer(data, dtype=np.int32).astype(np.float32) / normalizing_factor
+        num_channels = 3
 
-        for i in range(listlen):
-            timeoutTime = cmdlist[0]._timeoutTime
-            print('_' * 40)
-            print('system time : ', datetime.now())
-            print('timeout time: ', timeoutTime)
-            print('\ncmd: {0}, timeout: {1}'.format(
-                hex(cmdlist[0]._cmd), timeoutTime < datetime.now()))
-            print('_' * 40)
+        return acceleration_data.reshape(-1, num_channels)
 
-            if timeoutTime > datetime.now():
-                self.cmdForTimeout = cmdlist[0]._cmd
-                ms = int((timeoutTime.timestamp() -
-                          datetime.now().timestamp())*1000)
+    @staticmethod
+    def _convert_gyro_to_dps(data: bytes):
+        normalizing_factor = 65536.0
 
-                if ms <= 0:
-                    ms = 1
-                self.timer = threading.Timer(ms/1000, self._onTimeOut)
-                self.timer.start()
+        gyro_data = np.frombuffer(data, dtype=np.int32).astype(np.float32) / normalizing_factor
+        num_channels = 3
 
-                break
+        return gyro_data.reshape(-1, num_channels)
 
-            cmd = cmdlist.pop(0)
+    @staticmethod
+    def _convert_magnetometer_to_ut(data: bytes):
+        normalizing_factor = 65536.0
 
-            if cmd._cb != None:
-                cmd._cb(ResponseResult['RSP_CODE_TIMEOUT'], None)
+        magnetometer_data = np.frombuffer(data, dtype=np.int32).astype(np.float32) / normalizing_factor
+        num_channels = 3
 
-    def startDataNotification(self, onData):
+        return magnetometer_data.reshape(-1, num_channels)
 
-        self.onData = onData
+    @staticmethod
+    def _convert_euler(data: bytes):
 
+        euler_data = np.frombuffer(data, dtype=np.float32).astype(np.float32)
+        num_channels = 3
+
+        return euler_data.reshape(-1, num_channels)
+
+    @staticmethod
+    def _convert_quaternion(data: bytes):
+
+        quaternion_data = np.frombuffer(data, dtype=np.float32).astype(np.float32)
+        num_channels = 4
+
+        return quaternion_data.reshape(-1, num_channels)
+
+    @staticmethod
+    def _convert_rotation_matrix(data: bytes):
+
+        rotation_matrix_data = np.frombuffer(data, dtype=np.int32).astype(np.float32)
+        num_channels = 9
+
+        return rotation_matrix_data.reshape(-1, num_channels)
+
+    @staticmethod
+    def _convert_emg_gesture(data: bytes):
+
+        emg_gesture_data = np.frombuffer(data, dtype=np.int16).astype(np.float16)
+        num_channels = 6
+
+        return emg_gesture_data.reshape(-1, num_channels)
+
+    def _on_cmd_response(self, _: BleakGATTCharacteristic, bs: bytearray):
         try:
-            self.setNotify(self.notifyCharacteristic, True)
-            success = True
-        except:
-            success = False
+            response = self._parse_response(bytes(bs))
+            if response.cmd in self.responses:
+                self.responses[response.cmd].put_nowait(
+                    response.data,
+                )
+        except Exception as e:
+            raise Exception("Failed to parse response: %s" % e)
 
-        if success:
-            return GF_RET_CODE.GF_SUCCESS
-        else:
-            return GF_RET_CODE.GF_ERROR_BAD_STATE
+    @staticmethod
+    def _parse_response(res: bytes):
+        code = int.from_bytes(res[:1], byteorder='big')
+        code = ResponseCode(code)
 
-    def stopDataNotification(self):
+        cmd = int.from_bytes(res[1:2], byteorder='big')
+        cmd = Command(cmd)
+
+        data = res[2:]
+
+        return Response(
+            code=code,
+            cmd=cmd,
+            data=data,
+        )
+
+    async def get_protocol_version(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_PROTOCOL_VERSION,
+            has_res=True,
+        ))
+        return buf.decode('utf-8')
+
+    async def get_feature_map(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_FEATURE_MAP,
+            has_res=True,
+        ))
+        return int.from_bytes(buf, byteorder='big')  # TODO: check if this is correct
+
+    async def get_device_name(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_DEVICE_NAME,
+            has_res=True,
+        ))
+        return buf.decode('utf-8')
+
+    async def get_firmware_revision(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_FW_REVISION,
+            has_res=True,
+        ))
+        return buf.decode('utf-8')
+
+    async def get_hardware_revision(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_HW_REVISION,
+            has_res=True,
+        ))
+        return buf.decode('utf-8')
+
+    async def get_model_number(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_MODEL_NUMBER,
+            has_res=True,
+        ))
+        return buf.decode('utf-8')
+
+    async def get_serial_number(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_SERIAL_NUMBER,
+            has_res=True,
+        ))
+        return buf.decode('utf-8')
+
+    async def get_manufacturer_name(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_MANUFACTURER_NAME,
+            has_res=True,
+        ))
+
+        return buf.decode('utf-8')
+
+    async def get_bootloader_version(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_BOOTLOADER_VERSION,
+            has_res=True,
+        ))
+
+        return buf.decode('utf-8')
+
+    async def get_battery_level(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_BATTERY_LEVEL,
+            has_res=True,
+        ))
+        return int.from_bytes(buf, byteorder='big')
+
+    async def get_temperature(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_TEMPERATURE,
+            has_res=True,
+        ))
+        return int.from_bytes(buf, byteorder='big')
+
+    async def power_off(self):
+        await self._send_request(Request(
+            cmd=Command.POWEROFF,
+            has_res=False,
+        ))
+
+    async def switch_to_oad(self):
+        await self._send_request(Request(
+            cmd=Command.SWITCH_TO_OAD,
+            has_res=False,
+        ))
+
+    async def system_reset(self):
+        await self._send_request(Request(
+            cmd=Command.SYSTEM_RESET,
+            has_res=False,
+        ))
+
+    async def switch_service(self):
+        await self._send_request(Request(
+            cmd=Command.SWITCH_SERVICE,
+            has_res=False,
+        ))
+
+    async def set_motor(self):  # TODO: check if this works and what it does
+        await self._send_request(Request(
+            cmd=Command.MOTOR_CONTROL,
+            has_res=True,
+        ))
+
+    async def set_led(self):  # TODO: check if this works and what it does
+        await self._send_request(Request(
+            cmd=Command.LED_CONTROL_TEST,
+            has_res=True,
+        ))
+
+    async def set_log_level(self):
+        await self._send_request(Request(
+            cmd=Command.SET_LOG_LEVEL,
+            has_res=False,
+        ))
+
+    async def set_log_module(self):
+        await self._send_request(Request(
+            cmd=Command.SET_LOG_MODULE,
+            has_res=False,
+        ))
+
+    async def print_kernel_msg(self):
+        await self._send_request(Request(
+            cmd=Command.PRINT_KERNEL_MSG,
+            has_res=True,
+        ))
+
+    async def set_package_id(self):
+        await self._send_request(Request(
+            cmd=Command.PACKAGE_ID_CONTROL,
+            has_res=False,
+        ))
+
+    async def send_training_package(self):
+        await self._send_request(Request(
+            cmd=Command.SEND_TRAINING_PACKAGE,
+            has_res=False,
+        ))
+
+    async def set_emg_raw_data_config(self, cfg=EmgRawDataConfig()):
+        body = cfg.to_bytes()
+        await self._send_request(Request(
+            cmd=Command.SET_EMG_RAWDATA_CONFIG,
+            body=body,
+            has_res=True,
+        ))
+        self.resolution = cfg.resolution
+
+    async def get_emg_raw_data_config(self):
+        buf = await self._send_request(Request(
+            cmd=Command.GET_EMG_RAWDATA_CONFIG,
+            has_res=True,
+        ))
+        return EmgRawDataConfig.from_bytes(buf)
+
+    async def set_subscription(self, subscription: DataSubscription):
+        body = [0xFF & subscription, 0xFF & (subscription >> 8), 0xFF & (subscription >> 16),
+                0xFF & (subscription >> 24)]
+        body = bytes(body)
+        await self._send_request(Request(
+            cmd=Command.SET_DATA_NOTIF_SWITCH,
+            body=body,
+            has_res=True,
+        ))
+
+    async def start_streaming(self):
+        q = Queue()
+        await self.client.start_notify(
+            DATA_NOTIFY_CHAR_UUID,
+            lambda _, data: self._on_data_response(q, data),
+        )
+        print("LibEMG -> OyMotionStreamer (streaming started).")
+        return q
+    
+        
+
+    async def stop_streaming(self):
+        exceptions = []
         try:
-            self.setNotify(self.notifyCharacteristic, False)
-            success = True
-        except:
-            success = False
+            await self.set_subscription(DataSubscription.OFF)
+        except Exception as e:
+            exceptions.append(e)
+        try:
+            await self.client.stop_notify(DATA_NOTIFY_CHAR_UUID)
+        except Exception as e:
+            exceptions.append(e)
+        try:
+            await self.client.stop_notify(CMD_NOTIFY_CHAR_UUID)
+        except Exception as e:
+            exceptions.append(e)
 
-        if success:
-            return GF_RET_CODE.GF_SUCCESS
-        else:
-            return GF_RET_CODE.GF_ERROR_BAD_STATE
+        if len(exceptions) > 0:
+            raise Exception("Failed to stop streaming: %s" % exceptions)
+        print("LibEMG -> OyMotionStreamer (streaming stopped).")
 
-    def handleDataNotification(self, data, onData):
-        fullPacket = []
+    async def disconnect(self):
+        with suppress(asyncio.CancelledError):
+            await self.client.disconnect()
+        print("LibEMG -> OyMotionStreamer (disconnected).")
 
-        if len(data) >= 2:
-            if data[0] == NotifDataType['NTF_PARTIAL_DATA']:
-                if self.lastIncompleteNotifPacketId != 0 and self.lastIncompleteNotifPacketId != data[1]+1:
-                    print('Error:lastIncompleteNotifPacketId:{0},current packet id:{1}'.format(
-                        self.lastIncompleteNotifPacketId, data[1]))
-                    # How to do with packet loss?
-                    # Must validate packet len in onData callback!
+    def _get_response_channel(self, cmd: Command):
+        q = Queue()
+        self.responses[cmd] = q
+        return q
 
-                if self.lastIncompleteNotifPacketId == 0 or self.lastIncompleteNotifPacketId > data[1]:
-                    # Only accept packet with smaller packet num
-                    self.lastIncompleteNotifPacketId = data[1]
-                    self.incompleteNotifPacket += data[2:]
+    async def _send_request(self, req: Request):
+        q = None
+        if req.has_res:
+            q = self._get_response_channel(req.cmd)
 
-                    if self.lastIncompleteNotifPacketId == 0:
-                        fullPacket = self.incompleteNotifPacket
-                        self.incompleteNotifPacket = []
+        bs = bytes([req.cmd])
+        if req.body is not None:
+            bs += req.body
+        await self.client.write_gatt_char(CMD_NOTIFY_CHAR_UUID, bs)
 
-            else:
-                fullPacket = data
+        if not req.has_res:
+            return None
 
-        if len(fullPacket) > 0:
-            onData(fullPacket)
+        return await asyncio.wait_for(q.get(), 5)
 
-    # Command notification callback
-    def _onResponse(self, data):
-        print('_onResponse: data=', data)
+    def run(self):
+        asyncio.run(self.start_stream())
 
-        fullPacket = []
+    async def start_stream(self):
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
+        await self.connect()
+        await self.set_emg_raw_data_config(self.emg_conf)
+        await self.set_subscription(
+            DataSubscription.EMG_RAW
+        )
 
-        if len(data) >= 2:
-            if data[0] == ResponseResult['RSP_CODE_PARTIAL_PACKET']:
-                if self.lastIncompleteCmdRespPacketId != 0 and self.lastIncompleteCmdRespPacketId != data[1] + 1:
-                    print('Error: _lastIncompletePacketId:{0}, current packet id:{1}'
-                          .format(self.lastIncompleteCmdRespPacketId, data[1]))
+        q = await self.start_streaming()
+        try:
+            while True:
+                if self.signal.is_set():
+                    break
+                
+                for e in await q.get():
+                    emg = np.expand_dims(np.array(e),0)
+                    self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
+                    self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+                    
+        except Exception as e:
+            print(f"Errored within LibEMG-> OyMotionStreamer: {e}")
+        
+        finally:
+            await self._cleanup()
+            quit()
 
-                if (self.lastIncompleteCmdRespPacketId == 0 or self.lastIncompleteCmdRespPacketId > data[1]):
-                    self.lastIncompleteCmdRespPacketId = data[1]
-                    self.incompleteCmdRespPacket += data[2:]
-                    print('_incompleteCmdRespPacket 等于 ',
-                          self.incompleteCmdRespPacket)
+    async def _cleanup(self):
+        await self.stop_streaming()
+        await self.disconnect()
+        self.smm.cleanup()
+        print("LibEMG -> OyMotionStreamer (smm cleaned up).")
+        print("LibEMG -> OyMotionStreamer (process ended).")
 
-                    if self.lastIncompleteCmdRespPacketId == 0:
-                        fullPacket = self.incompleteCmdRespPacket
-                        self.incompleteCmdRespPacket = []
-            else:
-                fullPacket = data
-
-        if fullPacket != None and len(fullPacket) >= 2:
-            resp = fullPacket[0]
-            cmd = fullPacket[1]
-
-            # Delete command callback table entry & refresh timer's timeout
-
-            self.lock.acquire()
-
-            if cmd > 0 and self.cmdMap.__contains__(cmd):
-                cb = self.cmdMap[cmd]._cb
-
-                del self.cmdMap[cmd]
-
-                self._refreshTimer()
-
-                if cb != None:
-                    cb(resp, fullPacket[2:])
-
-            self.lock.release()
-
-    # Timeout callback function
-    def _onTimeOut(self):
-        print('_onTimeOut: _cmdForTimeout={0}, time={1}'.format(
-            self.cmdForTimeout, datetime.now()))
-
-        # Delete command callback table entry & refresh timer's timeout
-
-        cb = None
-        self.lock.acquire()
-
-        if self.cmdForTimeout > 0 and self.cmdMap.__contains__(self.cmdForTimeout):
-            cb = self.cmdMap[self.cmdForTimeout]._cb
-            del self.cmdMap[self.cmdForTimeout]
-
-        self._refreshTimer()
-
-        self.lock.release()
-
-        if cb != None:
-            cb(ResponseResult['RSP_CODE_TIMEOUT'], None)
+    def stop(self):
+        self.signal.set()
+        self.join()
