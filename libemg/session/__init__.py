@@ -73,6 +73,19 @@ SCHEMA_VERSION = 1
 PROMPT = "prompt"
 REST = "rest"
 PAUSE = "pause"
+# The transitions into and out of a held gesture. Only a collection that shows
+# them as phases of their own (3D hand choreography) records these; the
+# image-folder collection never does. In a choreography session PROMPT is the
+# steady hold, so a C_ file still means what it always has.
+RAMP_IN = "ramp_in"
+RAMP_OUT = "ramp_out"
+STAGE_KINDS = (PROMPT, REST, PAUSE, RAMP_IN, RAMP_OUT)
+
+# A stage whose ``status`` is one of these did not run to plan -- the run was
+# stopped, failed, or lost its stream or display in the middle of it -- so it is
+# left out of a cut unless asked for. Stages without a status (every stage the
+# image-folder collection writes) are always complete.
+INCOMPLETE_STATUSES = ("cancelled", "failed", "interrupted")
 
 # How each kind of stage is named when it is cut to a file. Only a prompt gets
 # the standard ``C_<motion>_R_<rep>_`` name an OfflineDataHandler looks for; the
@@ -82,6 +95,8 @@ NAME_TEMPLATES = {
     PROMPT: "C_{motion}_R_{rep}_{modality}.csv",
     REST: "rest_{motion}_{rep}_{modality}.csv",
     PAUSE: "pause_{index}_{modality}.csv",
+    RAMP_IN: "ramp_in_{motion}_{rep}_{modality}.csv",
+    RAMP_OUT: "ramp_out_{motion}_{rep}_{modality}.csv",
 }
 
 # Passes of the trimmed fit that recovers the sample clock, the fraction of
@@ -240,6 +255,19 @@ class Stage:
     # these are the ones a model is most often blamed for not generalising over.
     factors: dict = field(default_factory=dict)
     indices: dict = field(default_factory=dict)
+    # Optional, written only when set, so a session from the image-folder
+    # collection reads and writes exactly as before. A choreography session
+    # sets them: which phase the stage was (``warmup``, ``rest`` and
+    # ``cycle_pause`` are all REST stages), the choreography interval it is, and
+    # how it ended (``completed``, ``paused``, ``interrupted``, ...).
+    phase: str | None = None
+    interval_id: str | None = None
+    status: str | None = None
+
+    @property
+    def complete(self):
+        """False for a stage that was cut short by a stop, failure or interruption."""
+        return self.status not in INCOMPLETE_STATUSES
 
     @property
     def observed_duration(self):
@@ -258,11 +286,15 @@ class Stage:
         return int(located["start"]), int(located["end"])
 
     def to_dict(self):
-        return {"kind": self.kind, "label": self.label, "motion": self.motion,
-                "rep": self.rep, "t_start": self.t_start, "t_end": self.t_end,
-                "duration": self.duration, "attempt": self.attempt,
-                "superseded": self.superseded, "factors": self.factors,
-                "indices": self.indices}
+        raw = {"kind": self.kind, "label": self.label, "motion": self.motion,
+               "rep": self.rep, "t_start": self.t_start, "t_end": self.t_end,
+               "duration": self.duration, "attempt": self.attempt,
+               "superseded": self.superseded, "factors": self.factors,
+               "indices": self.indices}
+        for name in ("phase", "interval_id", "status"):
+            if getattr(self, name) is not None:
+                raw[name] = getattr(self, name)
+        return raw
 
     @classmethod
     def from_dict(cls, raw):
@@ -274,7 +306,9 @@ class Stage:
                    attempt=int(raw.get("attempt", 0)),
                    superseded=bool(raw.get("superseded", False)),
                    factors=dict(raw.get("factors", {})),
-                   indices={mod: dict(where) for mod, where in raw.get("indices", {}).items()})
+                   indices={mod: dict(where) for mod, where in raw.get("indices", {}).items()},
+                   phase=raw.get("phase"), interval_id=raw.get("interval_id"),
+                   status=raw.get("status"))
 
 
 @dataclass
@@ -332,11 +366,16 @@ class SessionAnnotations:
     timestamps: bool
         Whether the collection asked for a timestamp column on the files it cut.
         Used as the default for :meth:`cut`.
+    metadata: dict
+        Anything else the collection wants kept with the session, written under
+        ``"metadata"`` and omitted when empty. Collections record which mode
+        they ran in (``metadata["collection_mode"]``), its configuration, and a
+        ``collection_session_id`` other files can refer to.
     """
 
     def __init__(self, folder='.', prefix=SESSION_PREFIX, modalities=(),
                  class_map=None, timestamps=False, created='', stages=None,
-                 clocks=None):
+                 clocks=None, metadata=None):
         self.folder = Path(folder)
         self.prefix = prefix
         self.modalities = list(modalities)
@@ -345,6 +384,7 @@ class SessionAnnotations:
         self.created = created
         self.stages = list(stages or [])
         self.clocks = dict(clocks or {})
+        self.metadata = dict(metadata or {})
 
     # -- where things are -------------------------------------------------
 
@@ -360,7 +400,7 @@ class SessionAnnotations:
     # -- persistence ------------------------------------------------------
 
     def to_dict(self):
-        return {
+        raw = {
             "schema": SCHEMA_VERSION,
             "prefix": self.prefix,
             "created": self.created,
@@ -371,6 +411,9 @@ class SessionAnnotations:
             "clocks": {mod: clock.to_dict() for mod, clock in self.clocks.items()},
             "stages": [stage.to_dict() for stage in self.stages],
         }
+        if self.metadata:
+            raw["metadata"] = self.metadata
+        return raw
 
     def save(self, path=None):
         """Write the annotation file. Called after every stage, not just at the end."""
@@ -408,6 +451,7 @@ class SessionAnnotations:
             stages=[Stage.from_dict(s) for s in raw.get("stages", [])],
             clocks={mod: ModalityClock.from_dict(c)
                     for mod, c in raw.get("clocks", {}).items()},
+            metadata=raw.get("metadata", {}),
         )
 
     # -- reading the recording --------------------------------------------
@@ -497,11 +541,16 @@ class SessionAnnotations:
 
     # -- querying ---------------------------------------------------------
 
-    def select(self, kinds=(PROMPT,), include_superseded=False):
-        """The stages of the given kinds, in the order they were collected."""
+    def select(self, kinds=(PROMPT,), include_superseded=False, include_incomplete=False):
+        """The stages of the given kinds, in the order they were collected.
+
+        Stages cut short by a stop, failure or interruption (see
+        :data:`INCOMPLETE_STATUSES`) are left out unless ``include_incomplete``.
+        """
         kinds = tuple(kinds)
         return [s for s in self.stages
-                if s.kind in kinds and (include_superseded or not s.superseded)]
+                if s.kind in kinds and (include_superseded or not s.superseded)
+                and (include_incomplete or s.complete)]
 
     def timeline(self, modality):
         """Every sample of one modality, labelled, with nothing falling between stages.
@@ -709,7 +758,7 @@ def main(argv=None):
     cut.add_argument("--output-folder", default=None,
                      help="Where to write. Defaults to the session's own folder.")
     cut.add_argument("--kinds", nargs="+", default=[PROMPT],
-                     choices=[PROMPT, REST, PAUSE],
+                     choices=list(STAGE_KINDS),
                      help="Which stages to write. Repetitions only by default.")
     cut.add_argument("--timestamps", action="store_true", default=None,
                      help="Prepend the time each sample was produced.")
@@ -731,7 +780,8 @@ def main(argv=None):
 __all__ = ["SessionAnnotations", "Stage", "Span", "ModalityClock", "CutFile",
            "fit_production_clock", "cut_session", "main",
            "SESSION_PREFIX", "ANNOTATIONS_NAME", "SCHEMA_VERSION",
-           "PROMPT", "REST", "PAUSE", "NAME_TEMPLATES"]
+           "PROMPT", "REST", "PAUSE", "RAMP_IN", "RAMP_OUT", "STAGE_KINDS",
+           "INCOMPLETE_STATUSES", "NAME_TEMPLATES"]
 
 
 if __name__ == "__main__":

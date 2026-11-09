@@ -44,6 +44,9 @@ flt = doc.add_node('transform.filter',
 win = doc.add_node('window.enframe',
                    params={'window_size': 200, 'window_increment': 50})
 fea = doc.add_node('features.extract', params={'features': ['MAV', 'RMS']})
+# A live model block loads a fitted predictor, so mdl.pkl must already exist:
+# one saved by the editor's Save button, by pipeline.train(), or pickled by a
+# script. Without it compile_pipeline raises CompileError.
 mdl = doc.add_node('model.classifier', params={'model_path': 'mdl.pkl'})
 snk = doc.add_node('sink.console')
 
@@ -76,15 +79,16 @@ Blocks are grouped in the palette by category.
 | Transform | Channel Mask | samples | samples | Narrows the stream to a subset of channels. |
 | Transform | Split | samples | samples, samples | Divides stored recordings by a metadata field: those whose value is listed go to **Matching**, the rest to **The Rest**. Stored only. See [Splitting stored data](#splitting-stored-data). |
 | Window | Window | samples | windows, labels | Sets the window size and increment. On stored data, **Metadata** carries every field windowed alongside the signal: the labels. See [Windowing the metadata](#windowing-the-metadata). |
-| Features | Features | windows | features | Extracts features once, so several models can share them. |
+| Features | Features | windows | features | Extracts features once, so several models can share them. Pick a published **Feature Group** (`HTD`, `TDPSD`, ...) or leave it on `(custom)` and tick individual **Features**. |
 | Model | Classifier | features or windows; train features and train labels | prediction | Runs a classifier: trained on the block, or loaded from a file. See [Training a model in the editor](#training-a-model-in-the-editor). |
 | Model | Regressor | features or windows; train features and train labels | continuous | Runs a regressor, trained or loaded the same way. |
 | Model | Deep Model | features or windows; train features or windows, and train labels | prediction | Trains a neural network (MLP, CNN, transformer, GRU, LSTM) with its loss drawn live, and runs it, streaming, live. See Deep Models. |
-| Sink | Socket Output | prediction | | Sends each output over UDP or TCP. Live only. |
+| Sink | Socket Output | prediction | | Sends each output over UDP or TCP. Live only. After a classifier each message is the class alone, `<class>`, which is the `predictions` format an environment's Classifier controller reads. After a regressor it is the outputs followed by a timestamp, which a Regressor controller reads. See [Driving an environment with a classifier](../../examples/gui_environment_example/gui_environment_example.rst). |
 | Sink | File Output | prediction | | Appends each output to a file. |
 | Sink | Console Output | prediction | | Prints each output, while a pipeline is being built up. |
 | Sink | Offline Metrics | prediction, labels | metrics | Scores predictions against the **Label Field** of a Window's Metadata. Stored only. |
 | Sink | Feature Viewer | features, labels and a model (both optional) | | Draws the features, and a connected model's latent space, once the recording has been read. Stored only. See [Looking at the features](#looking-at-the-features). |
+| Sink | Feature Selection | windows, labels | | Ranks a bank of features within a subject, across a cohort or leaving one subject out, and opens the results when the run ends. Stored only. See the [feature selection guide](../feature_selection/feature_selection.rst). |
 | Sink | Prediction Viewer | a model's output, labels (optional) | held-out field and values | Draws what the model predicted over the signal, recording by recording or as a stream, on training and held-out data. Stored only. See [Looking at the predictions](#looking-at-the-predictions). |
 
 The device source blocks in this release of LibEMG are:
@@ -101,6 +105,8 @@ The device source blocks in this release of LibEMG are:
 | `source.sifi_biopoint_streamer` |
 
 Each one carries the keyword arguments of the streamer function it was generated from. Those appear under an **Advanced** disclosure on the block, because they have sensible defaults and rarely need touching.
+
+Some parameters appear on the blocks but the compiler does not apply them yet, so changing them has no effect on a run. They are **Rejection Threshold**, **Majority Vote** and **Velocity** on the Classifier, **Deadband** on the Regressor, and **Replay** on Stored Data. To use rejection, majority voting or velocity control now, set them on an `EMGClassifier` in a script (see [post-processing](../prediction/prediction.rst)).
 
 # Port types, and why a wrong connection cannot be made
 
@@ -549,11 +555,11 @@ from libemg.pipeline import PipelineDocument, compile_pipeline
 
 pipeline = compile_pipeline(PipelineDocument.load('split.json'))
 trained = pipeline.train()          # every block with training inputs, saved to its Fitted Model
-print(trained['statistics']['validation']['accuracy'])
+print(trained['statistics']['validation']['accuracy'])   # None when Validation Share is 0
 print(pipeline.run())               # runs what was just trained
 ```
 
-`train(save=False)` keeps the models in `pipeline.models` without writing them, which is what the editor does. `compile_pipeline(document, models=...)` runs models held in memory rather than their files. From a terminal, `python -m libemg.pipeline train split.json` trains and saves every block.
+`train(save=False)` keeps the models in `pipeline.models` without writing them, which is what the editor does. `compile_pipeline(document, models=...)` runs models held in memory rather than their files. From a terminal, `python -m libemg.pipeline train split.json` trains and saves every block. `python -m libemg.pipeline run`, `check` and `blocks` run a saved pipeline, validate one, and list every block with its ports.
 
 The same document then runs live. Point its source at a device instead of a folder, and each model block already holds the file that was saved. A live pipeline has no labels, so its model blocks must load a fitted model: training inputs on a live pipeline are refused.
 

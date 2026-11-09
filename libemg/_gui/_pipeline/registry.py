@@ -116,6 +116,10 @@ class ParamSpec:
         Drawn as a text box rather than a single line. For a parameter whose
         value is a list written one entry per line, which cannot be typed into
         a field that swallows the newline.
+    wide: bool
+        Drawn the block's full width with its name above it, rather than
+        beside it. For a dropdown whose choices are too long to read in the
+        space beside a name.
     """
 
     name: str
@@ -128,6 +132,7 @@ class ParamSpec:
     help: str = ""
     advanced: bool = False
     multiline: bool = False
+    wide: bool = False
 
     def __post_init__(self):
         if self.kind in (ENUM, MULTI_SELECT) and not self.choices:
@@ -761,6 +766,83 @@ def build_registry():
         help="Draws the features once the recording has been read: any column, or a "
              "PCA, ICA or Isomap projection in 1, 2 or 3D, coloured by label. Connect a "
              "model to see its latent space and outputs the same way.",
+        offline_only=True,
+    ))
+
+    from libemg.feature_selector import SCHEME_TITLES
+    from libemg._gui._pipeline.selection_viewer import ALL_FEATURES, metric_choices
+    add(NodeSpec(
+        id="sink.feature_selection",
+        category=SINK,
+        title="Feature Selection",
+        inputs=[PortSpec("windows", PortType.WINDOWS, "Windows"),
+                PortSpec("labels", PortType.LABELS)],
+        params=[
+            ParamSpec("feature_bank", ENUM, choices=["(custom)", ALL_FEATURES] + groups,
+                      default="(custom)", label="Feature Bank",
+                      help="Every feature that may be selected, each one a candidate: a "
+                           "published group, every feature there is, or the features chosen "
+                           "below."),
+            ParamSpec("features", MULTI_SELECT, choices=features,
+                      default=["MAV", "ZC", "SSC", "WL", "RMS", "WAMP", "LS", "MFL", "MSR",
+                               "SKEW", "DFTR", "AR"],
+                      help="The candidates when the bank is set to custom."),
+            ParamSpec("metric", ENUM, choices=metric_choices(), default=metric_choices()[0],
+                      wide=True,
+                      help="What a candidate feature set is judged by. Classification metrics "
+                           "cross-validate a classifier inside the training data; the rest "
+                           "measure the feature space directly."),
+            ParamSpec("scheme", ENUM, choices=list(SCHEME_TITLES.values()),
+                      default=SCHEME_TITLES["within_subject"], wide=True,
+                      help="Within subject: a feature set per subject. Shared features: one "
+                           "set for everyone, judged by each subject's own models. Subject "
+                           "independent: one set and one model for everyone. Cross subject: "
+                           "leave each subject out in turn, selecting from the others."),
+            ParamSpec("label_field", STR, default="classes", label="Class Field",
+                      help=_LABEL_FIELD_HELP),
+            ParamSpec("subject_field", STR, default="subjects", label="Subject Field",
+                      help="The metadata field naming each recording's subject. Leave empty "
+                           "for one subject."),
+            ParamSpec("repetition_field", STR, default="reps", label="Repetition Field",
+                      help="The metadata field naming each recording's repetition: what test "
+                           "repetitions are held out by, and what the repetition metrics use."),
+            ParamSpec("test_values", STR, default="", label="Test Repetitions",
+                      help="Repetitions held out for testing, never seen by the selection: "
+                           "for example 4,5 or 3-4. Leave empty to select on everything (a "
+                           "cross subject run still tests on the left-out subject)."),
+            ParamSpec("max_features", INT, default=0, minimum=0, label="Features To Pick",
+                      help="Stop after this many. 0 ranks the whole bank."),
+            ParamSpec("results_path", PATH, default="", label="Save Results To",
+                      help="Where the results are written after each run, to load again from "
+                           "Pipeline > Feature Selection Results. Leave empty to save from the "
+                           "results window instead."),
+            ParamSpec("strategy", ENUM, choices=["Metric default", "Sequential", "Filter"],
+                      default="Metric default", advanced=True,
+                      help="Sequential adds the best candidate to the set one at a time. "
+                           "Filter scores every candidate alone and ranks them."),
+            ParamSpec("classifier", ENUM, choices=["Shrinkage LDA"] + classifiers,
+                      default="Shrinkage LDA", advanced=True,
+                      help="The model a classification metric cross-validates, and the model "
+                           "the held-out repetitions are tested with."),
+            ParamSpec("cross_validation", ENUM,
+                      choices=["Auto", "Leave one repetition out", "Leave one subject out",
+                               "5-fold"],
+                      default="Auto", advanced=True, label="Cross Validation",
+                      help="How a classification metric is validated inside the training "
+                           "data. Auto mirrors the test: by repetition within a subject or "
+                           "for a pooled model, by subject across subjects."),
+            ParamSpec("aggregate", ENUM, choices=["mean", "median"], default="mean",
+                      advanced=True,
+                      help="Shared features: how each subject's score of a candidate is "
+                           "combined into the one score the candidate is judged by."),
+            ParamSpec("allow_approximations", BOOL, default=False, advanced=True,
+                      label="Approximate Metrics",
+                      help="Allow C, rC and CDM, whose original reference algorithms could not "
+                           "be verified, in their documented variants."),
+        ],
+        help="Chooses features from a bank: by subject, for a cohort, pooled, or leaving each "
+             "subject out. Shows why each feature was chosen over the others, and how the "
+             "chosen set does on held-out repetitions.",
         offline_only=True,
     ))
 

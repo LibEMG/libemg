@@ -54,6 +54,14 @@ LibEMG
    
 .. toctree::
    :maxdepth: 1
+   :caption: GUI Examples:
+
+   examples/gui_annotation_example/gui_annotation_example
+   examples/gui_pipeline_example/gui_pipeline_example
+   examples/gui_environment_example/gui_environment_example
+
+.. toctree::
+   :maxdepth: 1
    :caption: Online Examples:
 
    examples/reactive_example/reactive_example

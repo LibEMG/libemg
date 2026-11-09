@@ -1,0 +1,23 @@
+{
+  "version": "right_hand_choreography.v1",
+  "description": "Numeric class IDs for the right-hand choreography motions. Fixed per version: never derived from which gestures were selected or the order they were listed in. Downstream files name repetitions C_<class_id>_R_<rep>_<modality>.csv with these IDs.",
+  "classes": {
+    "0": "rest",
+    "1": "hand_closed",
+    "2": "hand_open",
+    "3": "wrist_abduction",
+    "4": "wrist_adduction",
+    "5": "wrist_flexion",
+    "6": "wrist_extension",
+    "7": "index_flex",
+    "8": "index_extend",
+    "9": "middle_flex",
+    "10": "middle_extend",
+    "11": "ring_flex",
+    "12": "ring_extend",
+    "13": "pinky_flex",
+    "14": "pinky_extend",
+    "15": "thumb_flex",
+    "16": "thumb_extend"
+  }
+}
