@@ -344,7 +344,7 @@ class OfflineDataHandler(DataHandler):
         all_files = []
         for pattern in ['*.csv', '*.txt', '*.hea']:
             all_files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
-        all_files = [Path(f).as_posix() for f in all_files]
+        all_files = sorted(Path(f).as_posix() for f in all_files)
         data_files = copy.deepcopy(all_files)
         for regex_filter in regex_filters:
             data_files = regex_filter.get_matching_files(data_files)
