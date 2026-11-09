@@ -292,7 +292,6 @@ class EmagerStreamer(Process):
           com_name, vid_pid (tuple), channels (int), samples_per_frame (int)
         """
         super().__init__(daemon=True)
-        self.smm = SharedMemoryManager()
         self.shared_memory_items = shared_memory_items
         self._stop_event = Event()
         self.e = None
@@ -306,6 +305,9 @@ class EmagerStreamer(Process):
         self.emager_kwargs = emager_kwargs or {}
 
     def run(self):
+        # Built here rather than in __init__ so it picks up the notifier pool the
+        # parent attached to this process before starting it.
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
         
@@ -335,11 +337,8 @@ class EmagerStreamer(Process):
                 except Empty:
                     continue
                 try:
-                    # block is samples x channels; stack new rows on top and keep window
-                    self.smm.modify_variable('emg', lambda x, b=block: np.vstack((b, x))[:x.shape[0], :])
-                    # increment count by number of rows written
-                    rows = block.shape[0] if hasattr(block, 'shape') else 1
-                    self.smm.modify_variable('emg_count', lambda x, r=rows: x + r)
+                    # Preserve the device's newest-first block ordering.
+                    self.smm.commit('emg', np.flip(block, axis=0))
                 except Exception:
                     pass
                 finally:

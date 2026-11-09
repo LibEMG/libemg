@@ -167,15 +167,14 @@ class DelsysAPIStreamer(Process):
         from Aero import AeroPy
         # Set up shared memory 
         self.trigbase = AeroPy()
-        self.smm = SharedMemoryManager()
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
 
         def write_emg(emg):
-            # update the samples in "emg"
-            self.smm.modify_variable("emg", lambda x: np.vstack((np.flip(emg,0), x))[:x.shape[0],:])
-            # update the number of samples retrieved
-            self.smm.modify_variable("emg_count", lambda x: x + emg.shape[0])
+            # The packet arrives oldest-first, which is the orientation commit()
+            # expects; it prepends and keeps "emg_count" in step under one lock.
+            self.smm.commit("emg", emg)
         self.add_emg_handler(write_emg)
 
         self.connect(self.key, self.license)

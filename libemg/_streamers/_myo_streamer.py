@@ -516,61 +516,66 @@ class Myo(object):
 import numpy as np
 from multiprocessing import Process, Event
 class MyoStreamer(Process):
-	def __init__(self, filtered, emg, imu, shared_memory_items=[], addr=None):
-		Process.__init__(self, daemon=True)
-		self.filtered = filtered
-		self.emg = emg
-		self.imu = imu
-		self.smm = SharedMemoryManager()
-		self.shared_memory_items = shared_memory_items
-		self.signal = Event()
-		self.addr = addr
+    def __init__(self, filtered, emg, imu, shared_memory_items=[], addr=None):
+        Process.__init__(self, daemon=True)
+        self.filtered = filtered
+        self.emg = emg
+        self.imu = imu
+        self.shared_memory_items = shared_memory_items
+        self.signal = Event()
+        self.addr = addr
 
-	def run(self):
-		for item in self.shared_memory_items:
-			self.smm.create_variable(*item)
+    def run(self):
+        # Built here rather than in __init__ so it picks up the notifier pool the
+        # parent attached to this process before starting it.
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
+        for item in self.shared_memory_items:
+            self.smm.create_variable(*item)
 
-		mode = emg_mode.FILTERED
-		if not self.filtered:
-			mode = emg_mode.RAW
-		self.m = Myo(mode=mode)
-		self.m.connect(addr=self.addr)
+        mode = emg_mode.FILTERED
+        if not self.filtered:
+            mode = emg_mode.RAW
+        self.m = Myo(mode=mode)
+        self.m.connect(addr=self.addr)
 
-		if self.emg:
-			def write_emg(emg):
-				emg = np.array(emg)
-				self.smm.modify_variable("emg", lambda x: np.vstack((emg, x))[:x.shape[0],:])
-				self.smm.modify_variable("emg_count", lambda x: x + 2)
-			self.m.add_emg_handler(write_emg)
+        if self.emg:
+            def write_emg(emg):
+                # Each notification carries the two sequential readings already
+                # stacked newest-first, so they are flipped into the oldest-first
+                # orientation commit() takes. Two rows, which is exactly the "+ 2"
+                # the counter used to be advanced by.
+                emg = np.array(emg)
+                self.smm.commit("emg", np.flip(emg, 0))
+            self.m.add_emg_handler(write_emg)
+        if self.imu:
+            def write_imu(quat, acc, gyro):
+                # A single 1-D row, so orientation does not arise, and commit()
+                # counts the one row the old "+ 1" did.
+                imu_arr = np.array([*quat, *acc, *gyro])
+                self.smm.commit("imu", imu_arr)
+            self.m.add_imu_handler(write_imu)
 
-		if self.imu:
-			def write_imu(quat, acc, gyro):
-				imu_arr = np.array([*quat, *acc, *gyro])
-				self.smm.modify_variable("imu", lambda x: np.vstack((imu_arr, x))[:x.shape[0],:])
-				self.smm.modify_variable("imu_count", lambda x: x + 1)
-			self.m.add_imu_handler(write_imu)
+        self.m.set_leds([128, 0, 0], [128, 0, 0])
+        # Vibrate to show that its connected
+        self.m.vibrate(3)
+        # Disable vibrations
+        self.m.vibrate(0)
+        try:
+            while not self.signal.is_set():
+                self.m.run()
+        finally:
+            self._cleanup()
 
-		self.m.set_leds([128, 0, 0], [128, 0, 0])
-		# Vibrate to show that its connected
-		self.m.vibrate(3)
-		# Disable vibrations
-		self.m.vibrate(0)
-		try:
-			while not self.signal.is_set():
-				self.m.run()
-		finally:
-			self._cleanup()
+    def stop(self):
+        """Stops the streaming process and waits for all threads to finish execution.
 
-	def stop(self):
-		"""Stops the streaming process and waits for all threads to finish execution.
-
-		This method sets a signal indicating that the streamer should stop. It then waits for all
-		background threads associated with the streamer to complete their current tasks before exiting.
-		"""
-		self.signal.set()
-		self.join()
-	
-	def _cleanup(self):
-		self.m.disconnect()
-		self.smm.cleanup()
+        This method sets a signal indicating that the streamer should stop. It then waits for all
+        background threads associated with the streamer to complete their current tasks before exiting.
+        """
+        self.signal.set()
+        self.join()
+    
+    def _cleanup(self):
+        self.m.disconnect()
+        self.smm.cleanup()
 

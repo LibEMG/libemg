@@ -37,14 +37,27 @@ Adaptation
 .. automodule:: libemg.adaptation.memory
    :members:
 
+.. automodule:: libemg.adaptation.hooks
+   :members:
+
 Offline Evaluation Metrics
 ------------------------------
 .. automodule:: libemg.offline_metrics
    :members:
 
+Reactive Pipelines
+------------------------------
+.. automodule:: libemg.reactive
+   :members:
+
 Shared Memory
 ------------------------------
 .. automodule:: libemg.shared_memory_manager
+   :members:
+
+Event Log
+------------------------------
+.. automodule:: libemg.event_log
    :members:
 
 Utils
