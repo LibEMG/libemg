@@ -45,20 +45,42 @@ class MemoryManager(Process):
         ensure_directory(self.save_dir)
 
     def run(self):
-        self.smm = libemg.shared_memory_manager.SharedMemoryManager()
+        from libemg.reactive import default_notifier_pool
+        pool = getattr(self, "notifier_pool", None) or default_notifier_pool()
+        self.smm = libemg.shared_memory_manager.SharedMemoryManager(notifier_pool=pool)
         for smi in self.smi:
             self.smm.create_variable(*smi)
         self.ow[0].write(0) # start at 0
-        
+
+        # Wait to be told feedback arrived rather than asking. The old loop ran
+        # process_data() as fast as the interpreter allowed, and every pass
+        # copied the whole feedback buffer AND the whole model-input buffer
+        # just to compare one counter. Now the slot is woken by the
+        # environment's write and the predicate below reads only the state
+        # block, which is a handful of integers.
+        slot = getattr(self, "_notifier_slot", None)
+        if slot is None:
+            slot = pool.claim()
+        self.smm.subscribe("environment_feedback", slot)
+        seen = self.smm.snapshot("environment_feedback").generation
+
+        def arrived():
+            return int(self.smm._block("environment_feedback")[0]) > seen
+
         self.memory.reset()
         while True:
             if self.signal.is_set():
                 self.memory.save(self.save_dir + "memory_"+str(self.trial_counter) + ".pkl")
                 break
 
+            # The timeout is a safety net, not the mechanism: a writer that
+            # does not share the notifier pool still gets noticed, and the
+            # stop signal above is still reached promptly.
+            pool.wait(slot, arrived, getattr(self, "poll_fallback", 0.05))
+            seen = self.smm.snapshot("environment_feedback").generation
             # check if there is data to process, and if so process it
             self.process_data()
-            
+
 
     def process_data(self):
         # Snapshot the feedback buffer and its counter together (they share a
@@ -191,16 +213,39 @@ class AdaptationManager(Process):
             self.start()
 
     def run(self):
+        from libemg.reactive import default_notifier_pool
         start_time = time.time()
-        self.smm = libemg.shared_memory_manager.SharedMemoryManager()
+        pool = getattr(self, "notifier_pool", None) or default_notifier_pool()
+        self.smm = libemg.shared_memory_manager.SharedMemoryManager(notifier_pool=pool)
         for smi in self.smi:
             self.smm.create_variable(*smi)
+
+        # Subscribe so a finished memory slice wakes this process. Note the
+        # loop below still adapts on every pass by design, so unlike the memory
+        # manager this wait bounds how long an idle pass sleeps rather than
+        # removing the passes; set wait_for_memory=True to train only when a
+        # slice actually arrives.
+        slot = getattr(self, "_notifier_slot", None)
+        if slot is None:
+            slot = pool.claim()
+        self.smm.subscribe("memory_flag", slot)
+        wait_for_memory = getattr(self, "wait_for_memory", False)
 
         while not self.stop_condition(self.memory_count):
 
             if self.signal.is_set():
                 break
-            
+
+            if wait_for_memory:
+                consumed = self.memory_count
+
+                def arrived():
+                    return int(self.smm.get_variable("memory_flag")[0, 0]) > consumed
+
+                pool.wait(slot, arrived, getattr(self, "poll_fallback", 0.05))
+                if self.signal.is_set():
+                    break
+
             memory_count = self.smm.get_variable("memory_flag")[0,0]
             if  memory_count > self.memory_count:
                 num_memories_to_load = memory_count - self.memory_count
@@ -242,5 +287,9 @@ def ensure_directory(directory: str) -> None:
         The directory to ensure exists.
     """
     import os
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    # exist_ok, not a prior existence check. The memory manager's save
+    # directory and the adaptation manager's load directory are by design the
+    # same one, and both processes start at the same moment, so a check
+    # followed by a create lets both see it missing and the loser die with
+    # FileExistsError.
+    os.makedirs(directory, exist_ok=True)

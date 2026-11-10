@@ -14,6 +14,7 @@ LibEMG
    :caption: Modules:
 
    documentation/data/data
+   documentation/reactive/reactive
    documentation/filtering/filtering
    documentation/features/features
    documentation/feature_selection/feature_selection
@@ -52,6 +53,7 @@ LibEMG
    :maxdepth: 1
    :caption: Online Examples:
 
+   examples/reactive_example/reactive_example
    examples/snake_example/snake_example
    examples/unity_example/unity_example
    examples/mouse_example/mouse_example

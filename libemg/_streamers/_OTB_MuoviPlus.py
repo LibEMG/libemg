@@ -382,17 +382,13 @@ class OTBMuoviPlusEMGStreamer(Process):
         Write EMG data to shared memory, FIFO-style.
         """
         emg_array = np.array(packets)
-        num_samples = emg_array.shape[0]
-
-        def update_buffer(buffer):
-            return np.vstack((emg_array, buffer[:-num_samples]))
-
-        self.smm.modify_variable('emg', update_buffer)
-        self.smm.modify_variable('emg_count', lambda x: x + num_samples)
+        # commit accepts oldest-first samples; retain the existing buffer order.
+        self.smm.commit('emg', np.flip(emg_array, axis=0))
 
 
     def _setup_shared_memory(self):
         """Initialize shared memory variables."""
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         for item in self.shared_memory_items:
             self.smm.create_variable(*item)
 

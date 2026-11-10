@@ -13,17 +13,12 @@ class MindroveStreamer(Process):
         params = MindRoveInputParams()  # not sure if we can get the IP here to avoid having to connect to the Wifi network...
         self.board_id = BoardIds.MINDROVE_WIFI_BOARD
         self.board_shim = BoardShim(self.board_id, params)
-        self.smm = SharedMemoryManager()
         self._stop_event = Event()
 
     def run(self):
+        self.smm = SharedMemoryManager(notifier_pool=getattr(self, "notifier_pool", None))
         def write_emg(emg):
-            def add_to_buffer(buffer):
-                new_buffer = np.vstack((emg, buffer))  # put new data on top
-                new_buffer = new_buffer[:buffer.shape[0], :]    # ensure buffer stays the same size
-                return new_buffer
-            self.smm.modify_variable('emg', add_to_buffer)
-            self.smm.modify_variable('emg_count', lambda x: x + 1)
+            self.smm.commit('emg', emg)
 
         # Initialize shared memory in this process
         for item in self.shared_memory_items:
