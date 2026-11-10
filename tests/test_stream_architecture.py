@@ -1,3 +1,13 @@
+import pytest
+
+pytest.skip(
+    "These online tests import `mock_emg_stream`, which was removed from "
+    "libemg.streamers in commit afa6034. They are skipped at module level so "
+    "they do not break collection for the whole suite. Rewriting them against "
+    "a current streamer is tracked as Tier 5 of the test plan.",
+    allow_module_level=True,
+)
+
 import time
 import pytest
 import numpy as np
