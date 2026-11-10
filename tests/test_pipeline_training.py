@@ -20,6 +20,11 @@ import pytest
 
 from libemg._gui._pipeline import PipelineDocument, PortType
 from libemg._gui._pipeline.compile import CompileError, compile_pipeline
+from tests.conftest import requires_display
+
+# Needs a real display; excluded from the per-PR run, exercised nightly
+# under xvfb. See _OPT_IN_MARKERS in tests/conftest.py.
+pytestmark = pytest.mark.gui
 
 
 def _json_from(text):
@@ -284,6 +289,7 @@ def test_the_editor_can_be_closed_and_reopened():
     partway through building the toolbar, having already created a window it
     would never finish.
     """
+    requires_display()
     dpg = pytest.importorskip("dearpygui.dearpygui")
     from libemg._gui._pipeline import editor_panel as module
 

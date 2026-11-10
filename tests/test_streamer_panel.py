@@ -29,6 +29,11 @@ from libemg._gui._pipeline.registry import (_params_from_signature,
                                             _streamer_functions)
 from libemg._gui._streamer_panel import (MESSAGE_TAG, STATUS_TAG, SYNTHETIC,
                                          WINDOW_TAG, StreamerPanel)
+from tests.conftest import requires_display
+
+# Needs a real display; excluded from the per-PR run, exercised nightly
+# under xvfb. See _OPT_IN_MARKERS in tests/conftest.py.
+pytestmark = pytest.mark.gui
 
 #: Every wait in this module has one. A test that hangs is worse than a test
 #: that fails, and the synthetic device answers in well under a second.
@@ -84,6 +89,9 @@ def _total(panel, modality="emg"):
 @pytest.fixture(scope="module", autouse=True)
 def dpg_context():
     """One context for the module, and no window left behind afterwards."""
+    # Must come before show_viewport(): that aborts the process when there is
+    # no display, which no except clause can catch.
+    requires_display()
     try:
         dpg.create_context()
         dpg.create_viewport(title="streamer tests", width=820, height=680)

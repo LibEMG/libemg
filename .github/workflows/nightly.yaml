@@ -23,11 +23,15 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsndfile1 libglib2.0-dev
+          # xvfb gives DearPyGui a real display. Without one, show_viewport()
+          # calls abort() in native code: the run dies with SIGABRT (exit 134)
+          # part-way through, taking every remaining test with it. With xvfb the
+          # GUI tests genuinely execute instead of skipping.
+          sudo apt-get install -y libsndfile1 libglib2.0-dev xvfb
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run slow tests
-        run: pytest --slow -m slow
+        run: xvfb-run -a pytest --slow -m slow
 
   download:
     name: Dataset download tests
@@ -43,8 +47,33 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsndfile1 libglib2.0-dev
+          # xvfb gives DearPyGui a real display. Without one, show_viewport()
+          # calls abort() in native code: the run dies with SIGABRT (exit 134)
+          # part-way through, taking every remaining test with it. With xvfb the
+          # GUI tests genuinely execute instead of skipping.
+          sudo apt-get install -y libsndfile1 libglib2.0-dev xvfb
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run downloading tests
-        run: pytest --download -m download
+        run: xvfb-run -a pytest --download -m download
+
+  gui:
+    name: GUI / viewport tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          # xvfb provides the display DearPyGui's show_viewport() requires.
+          # Without one it calls abort() in native code and the run dies with
+          # SIGABRT rather than a catchable exception.
+          sudo apt-get install -y libsndfile1 libglib2.0-dev xvfb
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run GUI tests
+        run: xvfb-run -a pytest --gui -m gui

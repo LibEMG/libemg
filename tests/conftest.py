@@ -18,6 +18,7 @@ network access.
 
 import os
 import pickle
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -46,6 +47,11 @@ WINDOW_INCREMENT = 25
 _OPT_IN_MARKERS = {
     "download": "needs network access to download a dataset",
     "hardware": "needs a physical EMG device to be connected",
+    # DearPyGui's show_viewport() needs a real display and aborts the process
+    # without one. These run in the nightly workflow under xvfb, not per-PR:
+    # they are slow, they are timing-sensitive, and a crash in one takes the
+    # whole session with it.
+    "gui": "needs a real display for DearPyGui's viewport",
 }
 
 
@@ -240,3 +246,30 @@ def y_true(data_dir):
 def y_predictions(data_dir):
     with open(data_dir / "predictions", "rb") as f:
         return pickle.load(f)
+
+# --------------------------------------------------------------------------- #
+# Display availability
+# --------------------------------------------------------------------------- #
+
+
+def requires_display():
+    """Skip the calling test unless a display is available.
+
+    DearPyGui's show_viewport() calls abort() in native code when it cannot
+    reach a display: the process dies with SIGABRT and the whole pytest
+    session ends with exit code 134, taking every test after it down too.
+    Wrapping the call in try/except cannot help -- there is no Python
+    exception to catch -- so the check has to happen before it.
+
+    CI supplies a display with xvfb-run, so these tests really do execute
+    there rather than being skipped; see .github/workflows/ci.yaml. Locally
+    they skip unless you do the same.
+    """
+    if sys.platform in ("win32", "darwin"):
+        return  # a window server is always present on Windows and macOS
+    if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
+        return
+    pytest.skip(
+        "no display available; run under `xvfb-run -a pytest ...` to exercise "
+        "the DearPyGui viewport tests"
+    )

@@ -6,6 +6,11 @@ import numpy as np
 import pytest
 
 from libemg._gui._visualization_panel import VisualizationPanel
+from tests.conftest import requires_display
+
+# Needs a real display; excluded from the per-PR run, exercised nightly
+# under xvfb. See _OPT_IN_MARKERS in tests/conftest.py.
+pytestmark = pytest.mark.gui
 
 
 class _FakeHandler:
@@ -31,6 +36,9 @@ class _FakeHandler:
 
 @pytest.fixture
 def dpg_context():
+    # Must come before show_viewport(): that aborts the process when there is
+    # no display, which no except clause can catch.
+    requires_display()
     dpg.create_context()
     dpg.create_viewport(title="test", width=900, height=700)
     dpg.setup_dearpygui()
