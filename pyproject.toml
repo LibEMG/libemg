@@ -1,0 +1,158 @@
+# Packaging, test and coverage configuration for LibEMG.
+#
+# To cut a release:
+#     python -m pip install --upgrade build twine
+#     python -m build                 # writes sdist + wheel to dist/
+#     python -m twine check dist/*    # validates metadata before upload
+#     python -m twine upload --repository testpypi dist/*   # test first
+#     python -m twine upload dist/*                         # then real PyPI
+#
+# Bump `version` below before building, and clear out any stale dist/
+# artifacts from previous versions first.
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "libemg"
+version = "3.0.0b2"
+description = "LibEMG - Myoelectric Control Library"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Ethan Eddy" },
+    { name = "Evan Campbell" },
+    { name = "Angkoon Phinyomark" },
+    { name = "Scott Bateman" },
+    { name = "Erik Scheme" },
+]
+keywords = [
+    "emg",
+    "myoelectric_control",
+    "pattern_recognition",
+    "muscle-based input",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+]
+
+# Runtime dependencies. Lower bounds are set where a version is genuinely
+# required; upper bounds only where a newer release is known to break us.
+dependencies = [
+    # numpy 2.0 removed np.float_, which libemg/animator.py still uses. Lift
+    # this ceiling once that is replaced with np.float64.
+    "numpy>=1.22,<2",
+    "scipy>=1.8",
+    "scikit-learn>=1.1",
+    "pillow",
+    "matplotlib>=3.6",
+    "librosa>=0.10",
+    "wfdb",
+    "pyserial",
+    "PyWavelets>=1.4",
+    "requests",
+    "websockets>=12",
+    "opencv-python>=4.6,<5",
+    "pythonnet",
+    "bleak",
+    "dearpygui",
+    "h5py",
+    "onedrivedownloader",
+    "sifi-bridge-py",
+    "pygame",
+    "mindrove",
+    "crc>=2",
+    "tslearn",
+]
+
+[project.optional-dependencies]
+torch = ["torch"]
+
+# Everything needed to run the test suite.
+test = [
+    "pytest>=7.1",
+    "pytest-cov>=4.0",
+    "pytest-skip-slow>=0.0.3",
+    "pandas",
+]
+
+# Everything needed to build the documentation. Capped at the next major so a
+# new Sphinx release cannot break the docs job unannounced; verified against
+# Sphinx 8.1 (Python 3.10) and 9.1 (Python 3.12).
+docs = [
+    "sphinx>=7.0,<10",
+    "sphinx_rtd_theme>=2.0,<4",
+    "myst_parser>=2.0,<6",
+    "linkify-it-py>=2.0,<3",
+]
+
+# Linux-only hardware support for the Oymotion armband. bluepy is unmaintained
+# and often fails to build, so it is deliberately not a hard dependency; the
+# streamer imports it lazily and only when used.
+oymotion = ["bluepy; sys_platform == 'linux'", "pyomyo"]
+
+dev = ["libemg[test,docs,torch]", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/LibEMG/libemg"
+Documentation = "https://libemg.github.io/libemg/"
+Repository = "https://github.com/LibEMG/libemg"
+
+[tool.setuptools.packages.find]
+include = ["libemg*"]
+exclude = ["tests*", "demos*", "docs*", "build*", "dist*"]
+
+# --------------------------------------------------------------------------- #
+# Test configuration (previously pytest.ini)
+# --------------------------------------------------------------------------- #
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+markers = [
+    "slow: long-running test, excluded by default (run with --slow, provided by pytest-skip-slow)",
+    "hardware: requires a physical EMG device to be connected (run with --hardware)",
+    "download: downloads a dataset over the network (run with --download)",
+]
+
+# Third-party noise that drowns out warnings worth reading. libemg's own
+# warnings are deliberately left visible.
+filterwarnings = [
+    "ignore:Importing from numpy.matlib is deprecated:PendingDeprecationWarning",
+    "ignore:`alltrue` is deprecated:DeprecationWarning",
+    "ignore:pkg_resources is deprecated:DeprecationWarning",
+    "ignore:Deprecated call to `pkg_resources:DeprecationWarning",
+]
+
+# --------------------------------------------------------------------------- #
+# Coverage
+# --------------------------------------------------------------------------- #
+
+[tool.coverage.run]
+source = ["libemg"]
+omit = [
+    # Vendor hardware drivers and GUI code: covered only by the import smoke
+    # test, since exercising them needs a device or a display.
+    "libemg/_streamers/*",
+    "libemg/_gui/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

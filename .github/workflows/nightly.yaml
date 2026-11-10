@@ -1,0 +1,46 @@
+name: Nightly (slow and downloading tests)
+
+# The per-PR suite is hermetic and fast. The tests that download datasets or
+# take minutes to fit run here instead, so a slow or flaky external dependency
+# never blocks a pull request.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  slow:
+    name: Slow tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 libglib2.0-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run slow tests
+        run: pytest --slow -m slow
+
+  download:
+    name: Dataset download tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 libglib2.0-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run downloading tests
+        run: pytest --download -m download
