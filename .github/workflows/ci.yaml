@@ -1,26 +1,78 @@
 name: CI pipeline
-on: [push]
+on:
+  push:
+  pull_request:
+
 jobs:
-  run:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    # Supported range is 3.10 - 3.12, matching requires-python in
+    # pyproject.toml. The boundaries are not arbitrary:
+    #
+    #   3.9 and below - libemg uses PEP 604 (`X | None`) in 33 function
+    #     signatures with no `from __future__ import annotations`, so the
+    #     library raises TypeError on import.
+    #
+    #   3.13 and above - blocked by the `numpy<2` ceiling, which exists only
+    #     because libemg/animator.py still annotates with np.float_ (removed
+    #     in numpy 2.0). Replacing those 10 annotations with np.float64 should
+    #     unlock numpy 2 and 3.13.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 libglib2.0-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      # The default run is hermetic: no network, no hardware. Tests that need
+      # either are behind --slow / --download / --hardware (see tests/conftest.py)
+      # and run in the nightly job below.
+      - name: Run tests
+        # Measured at 46% on 3.10, 3.11 and 3.12 (vendor streamers and GUI are
+        # omitted; see [tool.coverage.run] in pyproject.toml). The floor sits
+        # below that so a platform difference cannot fail the build on its
+        # own. Raise it as coverage grows -- it should only ever move up.
+        run: pytest --cov=libemg --cov-report=term-missing --cov-fail-under=44
+
+  docs:
+    name: Build and publish docs
+    runs-on: ubuntu-latest
+    needs: test
+    # Only on a merge to main. Gating the whole job -- rather than just the
+    # publish step -- means pull requests and branch pushes skip the runner
+    # and the dependency install entirely, instead of building docs that are
+    # thrown away.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Set up Python 3.10
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libsndfile1 -y && sudo apt-get install -y libglib2.0-dev && pip install -r requirements.txt
-      # - name: Run pytest
-      #   run: pytest
-      - name: Build docs
-        if: github.ref == 'refs/heads/main'
+          cache: pip
+      - name: Install system dependencies
         run: |
-          sphinx-build docs/source _build
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 libglib2.0-dev
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Build docs
+        run: sphinx-build docs/source _build
       - name: Publish docs
         uses: peaceiris/actions-gh-pages@v3
-        if: github.ref == 'refs/heads/main'
         with:
           publish_branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}
