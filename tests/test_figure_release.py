@@ -34,6 +34,14 @@ except Exception as exc:  # ImportError headless; RuntimeError on some builds
         allow_module_level=True,
     )
 
+# Opening a real Tk figure is exactly what this module tests, so it belongs
+# with the other display-dependent tests: out of the default run, into the
+# nightly --gui job. The importorskip above only takes it out of the run on a
+# machine with no Tk at all; on macOS and Windows the backend switch always
+# succeeds, so without this marker `pytest` flashes real windows across the
+# desktop and pays the deliberate ~1s-per-test finalisation waits.
+pytestmark = pytest.mark.gui
+
 from matplotlib import pyplot                                  # noqa: E402
 from matplotlib._pylab_helpers import Gcf                      # noqa: E402
 

@@ -209,6 +209,14 @@ class FrameBridge:
         # uint8, scale into the float view. No intermediate array survives.
         flat = np.frombuffer(raw, dtype=np.uint8)
         np.divide(flat, 255.0, out=self._pixel_view)
+        # An environment draws on a surface with no alpha channel of its own
+        # (pygame.display.set_mode gives one with an empty alpha mask), and what
+        # tobytes reports for the alpha of such a surface differs by pygame
+        # version: some fill it with 255, others with 0. Zero would hand
+        # DearPyGui a fully transparent texture, so the window showing a game
+        # that is drawing perfectly well stays empty. The frame is opaque by
+        # definition, so say so rather than trusting the surface's format.
+        self._pixel_view[3::4] = 1.0
         now = time.perf_counter()
         elapsed = now - self._last_published
         self._last_published = now

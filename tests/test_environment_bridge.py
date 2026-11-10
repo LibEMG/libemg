@@ -28,7 +28,9 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 
 import itertools
+import sys
 import time
+import traceback
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
 
@@ -87,6 +89,7 @@ def _attach_and_publish(name, width, height):
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
     import pygame
     pygame.init()
+    status = 0
     try:
         bridge = FrameBridge(name)
         assert (bridge.width, bridge.height) == (width, height)
@@ -96,8 +99,17 @@ def _attach_and_publish(name, width, height):
         bridge.publish(surface)
         bridge.report_error(CHILD_MESSAGE)
         bridge.close()
-    finally:
-        pygame.quit()
+    except BaseException:
+        status = 1
+        traceback.print_exc()
+    # Ended here rather than by returning, and without pygame.quit(), for the
+    # same reason EnvironmentRunner.run ends itself: SDL's teardown can block
+    # forever in a child forked from a process that had already initialised a
+    # display, and this child never set up one of its own to replace it. The
+    # frame and the message the parent asserts on are already written.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(status)
 
 
 # ======================================================================

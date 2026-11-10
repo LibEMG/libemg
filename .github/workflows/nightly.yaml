@@ -72,7 +72,11 @@ jobs:
           # xvfb provides the display DearPyGui's show_viewport() requires.
           # Without one it calls abort() in native code and the run dies with
           # SIGABRT rather than a catchable exception.
-          sudo apt-get install -y libsndfile1 libglib2.0-dev xvfb
+          #
+          # python3-tk is for test_figure_release.py, which needs a real TkAgg
+          # backend. It importorskips tkinter, so leaving this out does not
+          # fail the job -- it silently skips the module, which is worse.
+          sudo apt-get install -y libsndfile1 libglib2.0-dev xvfb python3-tk
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run GUI tests
