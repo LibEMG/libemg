@@ -205,11 +205,19 @@ class _RegressorHook(_ModelHook):
 
 
 class _SinkHook(Hook):
-    """Hand each output to a LibEMG output writer."""
+    """Hand each output to a LibEMG output writer.
 
-    def __init__(self, name, source, kind, config):
+    A socket fed by a classifier sends ``'<class>'``, the ``predictions``
+    format of :class:`~libemg.environments.controllers.ClassifierController`,
+    so an environment can be driven straight from the pipeline. Any other
+    output goes as its values followed by a timestamp, which
+    :class:`~libemg.environments.controllers.RegressorController` reads.
+    """
+
+    def __init__(self, name, source, kind, config, classifies=False):
         super().__init__(name, inputs=[Input(source, OnCommit(), mode=LATEST)])
         self.source, self.kind, self.config = source, kind, config
+        self.classifies = classifies
         self._writer = None
 
     def setup(self, context):
@@ -232,6 +240,16 @@ class _SinkHook(Hook):
 
     def step(self, data, snapshots):
         row = np.asarray(data[self.source]).ravel()
+        if self.kind == "socket" and self.classifies and row.size:
+            # The writer would send the list's repr and a timestamp, which a
+            # classifier controller cannot parse: '[2.0, 0.93] 1730...'.
+            message = str(int(row[0])).encode("utf-8")
+            writer = self._writer
+            if writer.protocol == "UDP":
+                writer.sock.sendto(message, (writer.ip, writer.port))
+            else:
+                writer.sock.sendall(message)
+            return None
         self._writer.write({"timestamp": time.time(),
                             "value": row.tolist(),
                             "prediction": row[0] if row.size else None,
@@ -406,6 +424,8 @@ class OfflinePipeline:
         self.feature_view = None
         #: For a Prediction Viewer block: every recording and its predictions.
         self.prediction_view = None
+        #: For a Feature Selection block: the SelectionStudy it ran.
+        self.selection_view = None
         self._values = {}
         self._evaluated = set()
         self._on_progress = None
@@ -506,7 +526,7 @@ class OfflinePipeline:
                  == SINK]
         self._begin(on_progress, self._upstream(sinks))
         self.results, self.results_by_node = {}, {}
-        self.feature_view = self.prediction_view = None
+        self.feature_view = self.prediction_view = self.selection_view = None
         try:
             for node_id in sinks:
                 self.value(node_id, None)
@@ -945,6 +965,141 @@ def _prediction_viewer(pipeline, node_id, params, spec):
     return {}
 
 
+def _feature_selection(pipeline, node_id, params, spec):
+    from libemg.emg_predictor import CLASSIFIER_MODELS
+    from libemg.feature_extractor import FeatureExtractor
+    from libemg.feature_selector import FeatureSelector, SCHEME_TITLES, SelectionStopped
+    from libemg._gui._pipeline.fitting import FitError, check_aligned
+    from libemg._gui._pipeline.offline_data import parse_values
+    from libemg._gui._pipeline.selection_viewer import ALL_FEATURES, metric_code
+    windows = pipeline.input(node_id, "windows")
+    metadata = pipeline.input(node_id, "labels")
+    if windows is None or metadata is None:
+        return {}
+    try:
+        check_aligned(windows, metadata, "windows", "labels")
+    except FitError as error:
+        raise CompileError(str(error)) from error
+    if not len(windows):
+        raise CompileError("That recording produced no windows. Check the folder, the regex "
+                           "filters, and that the window is not longer than the recordings.")
+    where = f"'{spec.title}' ({node_id})"
+    scheme = next((key for key, title in SCHEME_TITLES.items()
+                   if title == params.get("scheme")), "within_subject")
+    labels = np.asarray(_field(metadata, params.get("label_field") or "classes", spec, node_id))
+    if labels.ndim > 1 and labels.shape[1] > 1:
+        raise CompileError(f"{where} needs a class per window, but its Class Field has "
+                           f"{labels.shape[1]} columns: a regression target cannot be selected for.")
+    labels = labels.reshape(len(labels))
+
+    def field_or_none(name, needed_for):
+        name = str(params.get(name) or "").strip()
+        if not name:
+            if needed_for:
+                raise CompileError(f"{where}: {needed_for}")
+            return None, ""
+        return _named_values(metadata, _field(metadata, name, spec, node_id), name), name
+
+    subjects, subject_field = field_or_none(
+        "subject_field", "the scheme compares subjects, so it needs a Subject Field."
+        if scheme in ("within_subject_shared", "cross_subject") else None)
+    test_values = parse_values(params.get("test_values", ""))
+    repetitions, repetition_field = field_or_none(
+        "repetition_field", "holding repetitions out for testing needs a Repetition Field."
+        if test_values else None)
+
+    bank = params.get("feature_bank") or "(custom)"
+    if bank == ALL_FEATURES:
+        feature_list = list(FeatureExtractor().get_feature_list())
+    else:
+        feature_list = _resolve_features({"feature_group": bank,
+                                          "features": params.get("features")})
+    extractor, groups, skipped = FeatureExtractor(), {}, []
+    for name in dict.fromkeys(feature_list):
+        try:
+            values = np.asarray(extractor.extract_features([name], windows.windows)[name],
+                                dtype=float)
+        except Exception as error:
+            skipped.append(f"{name}: could not be extracted ({error})")
+            continue
+        values = values.reshape(len(values), -1)
+        if not np.isfinite(values).all():
+            skipped.append(f"{name}: some windows gave NaN or infinite values")
+            continue
+        groups[name] = values
+    if len(groups) < 1:
+        raise CompileError(f"{where}: none of the features in the bank could be used. "
+                           + "; ".join(skipped))
+
+    classifier_name = params.get("classifier") or "Shrinkage LDA"
+    classifier = None
+    if classifier_name in CLASSIFIER_MODELS:
+        model, arguments = CLASSIFIER_MODELS[classifier_name]
+        classifier = model(**arguments)
+    cv_by = {"Leave one repetition out": "repetition", "Leave one subject out": "subject",
+             "5-fold": 5}.get(params.get("cross_validation"), "auto")
+    strategy = {"Sequential": "sequential", "Filter": "filter"}.get(params.get("strategy"))
+    limit = int(params.get("max_features") or 0)
+    rate = float(windows.sampling_rate)
+    recording = np.repeat(np.arange(len(windows.lengths)), windows.lengths)
+    selector = FeatureSelector(classifier=classifier,
+                               allow_approximations=bool(params.get("allow_approximations")))
+
+    def progress(fraction, unit):
+        pipeline.progress = min(1.0, (len(pipeline._evaluated) + fraction)
+                                / max(1, pipeline._needed))
+        if pipeline._on_progress is not None:
+            pipeline._on_progress(pipeline.progress)
+
+    settings = {
+        "feature_bank": bank, "features": list(groups), "skipped_features": skipped,
+        "label_field": params.get("label_field") or "classes",
+        "subject_field": subject_field, "repetition_field": repetition_field,
+        "classifier": classifier_name, "window_size": windows.window_size,
+        "window_increment": windows.window_increment, "sampling_rate": rate,
+        "recordings": len(windows.lengths),
+        "class_names": _value_names(metadata, params.get("label_field") or "classes")}
+    try:
+        study = selector.run_study(
+            groups, metric_code(params.get("metric")), labels, scheme,
+            subject_var=subjects, repetition_var=repetitions,
+            test_repetitions=test_values or None, early_stop=min(limit, len(groups)) or None,
+            strategy=strategy, cv_by=cv_by, aggregate=params.get("aggregate") or "mean",
+            on_progress=progress, should_stop=lambda: pipeline._stop, settings=settings,
+            raw_emg=windows.windows, recording_var=recording,
+            window_size_ms=1000.0 * windows.window_size / rate,
+            window_increment_ms=1000.0 * windows.window_increment / rate)
+    except SelectionStopped:
+        raise _Stopped()
+    except ValueError as error:
+        raise CompileError(f"{where}: {error}") from error
+    path = str(params.get("results_path") or "").strip()
+    if path:
+        study.save(path)
+        study.settings["saved_to"] = path
+    pipeline.selection_view = study
+    return {}
+
+
+def _named_values(metadata, column, name):
+    """A field's value per window as the filename wrote it, not as a position in its filter."""
+    column = np.asarray(column)
+    column = column.reshape(len(column), -1)[:, 0]
+    written = metadata.recordings.field_values.get(name)
+    if written is None:
+        return column
+    distinct, inverse = np.unique(column, return_inverse=True)
+    names = np.array([str(written[int(v)]) if 0 <= int(v) < len(written) else str(v)
+                      for v in distinct])
+    return names[inverse]
+
+
+def _value_names(metadata, name):
+    """What each position of a filename field stands for, as 'position: written', or {}."""
+    written = metadata.recordings.field_values.get(name)
+    return {str(i): str(v) for i, v in enumerate(written)} if written else {}
+
+
 def _splits(params, predictor, paths, metas):
     """Which recordings a model trained on and which it never saw, and how that is known."""
     from libemg._gui._pipeline.fitting import STATISTICS
@@ -988,6 +1143,7 @@ _OFFLINE_BLOCKS = {
     "sink.metrics": _metrics,
     "sink.feature_viewer": _feature_viewer,
     "sink.prediction_viewer": _prediction_viewer,
+    "sink.feature_selection": _feature_selection,
 }
 
 
@@ -1085,6 +1241,9 @@ def _compile_online(document, log, probe_rows, buffer_rows):
 
     items, streamer_specs, probe_items = [], [], {}
     source_tags, channels_of = {}, {}
+    # Which model outputs are a class rather than continuous values, so a
+    # socket sink can speak the message format its listener expects.
+    classifies_of = {}
 
     def declare(tag, shape, dtype=np.double):
         lock = Lock()
@@ -1191,6 +1350,7 @@ def _compile_online(document, log, probe_rows, buffer_rows):
             target = tag_for(node_id, "output")
             declare(target, (probe_rows, width))
             channels_of[target] = width
+            classifies_of[target] = classifies
             # What the model observes, and how often, comes from whatever feeds
             # it. Features arrive one row at a time; raw windows arrive on the
             # window's increment.
@@ -1209,7 +1369,8 @@ def _compile_online(document, log, probe_rows, buffer_rows):
             kind = spec.id.split(".", 1)[1]
             if kind == "metrics":
                 continue
-            graph.add(_SinkHook(node_id, upstream, kind, dict(node.params)),
+            graph.add(_SinkHook(node_id, upstream, kind, dict(node.params),
+                                classifies=classifies_of.get(upstream, False)),
                       executor=node_id)
 
     # --- probes --------------------------------------------------------

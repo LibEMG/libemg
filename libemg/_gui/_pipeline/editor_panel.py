@@ -178,7 +178,8 @@ class PipelineEditorPanel:
         if getattr(self, "feature_viewer", None) is not None:
             self.feature_viewer.cleanup()
             self.feature_viewer = None
-        for attribute in ("training_view", "history_view", "prediction_viewer"):
+        for attribute in ("training_view", "history_view", "prediction_viewer",
+                          "selection_viewer"):
             if getattr(self, attribute, None) is not None:
                 getattr(self, attribute).cleanup()
                 setattr(self, attribute, None)
@@ -384,8 +385,8 @@ class PipelineEditorPanel:
         tag = f"__param_{node_id}_{param.name}"
         data = (node_id, param.name)
         common = dict(tag=tag, user_data=data, callback=self._param_changed)
-        wide = param.kind in _WIDE or (param.multiline
-                                       and param.kind not in (ENUM, BOOL, INT, FLOAT))
+        wide = param.kind in _WIDE or getattr(param, "wide", False) or (
+            param.multiline and param.kind not in (ENUM, BOOL, INT, FLOAT))
 
         if wide:
             name = dpg.add_text(param.label, color=style.MUTED)
@@ -396,6 +397,9 @@ class PipelineEditorPanel:
                                 callback=self._multi_toggled)
                 dpg.add_text(_summarise(value), tag=f"{tag}__summary", wrap=width,
                              color=style.HEADING)
+            elif param.kind == ENUM:
+                dpg.add_combo(list(param.choices), default_value=value or param.default,
+                              width=width, **common)
             elif param.kind in (PATH, FOLDER):
                 with dpg.group(horizontal=True):
                     dpg.add_input_text(default_value=str(value or ""),
@@ -990,7 +994,7 @@ class PipelineEditorPanel:
         render thread, because DearPyGui items must not be touched from
         anywhere else.
         """
-        for attribute in ("feature_viewer", "prediction_viewer"):
+        for attribute in ("feature_viewer", "prediction_viewer", "selection_viewer"):
             viewer = getattr(self, attribute, None)
             if viewer is not None:
                 viewer.poll()
@@ -1027,11 +1031,15 @@ class PipelineEditorPanel:
             else:
                 view = getattr(self.pipeline, "feature_view", None)
                 predictions = getattr(self.pipeline, "prediction_view", None)
+                selection = getattr(self.pipeline, "selection_view", None)
                 if view is not None:
                     self._show_features(view)
                 if predictions is not None:
                     self._show_predictions(predictions)
-                if self.pipeline.results or (view is None and predictions is None):
+                if selection is not None:
+                    self._show_selection(selection)
+                if self.pipeline.results or (view is None and predictions is None
+                                             and selection is None):
                     self._show_results(self.pipeline.results)
                 if self.pipeline.stopped:
                     self._say(f"Stopped after {self.pipeline.progress:.0%}.")
@@ -1188,6 +1196,15 @@ class PipelineEditorPanel:
             self.prediction_viewer.cleanup()
         self.prediction_viewer = PredictionViewer(
             view, width=min(1200, self.width - 60), height=min(780, self.height - 80),
+            pos=(30, 50)).spawn_window()
+
+    def _show_selection(self, study):
+        """Open the feature selection results the run produced, replacing any already open."""
+        from libemg._gui._pipeline.selection_viewer import SelectionViewer
+        if getattr(self, "selection_viewer", None) is not None:
+            self.selection_viewer.cleanup()
+        self.selection_viewer = SelectionViewer(
+            study, width=min(1240, self.width - 60), height=min(840, self.height - 80),
             pos=(30, 50)).spawn_window()
 
     def _show_results(self, results):

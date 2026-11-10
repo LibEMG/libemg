@@ -22,6 +22,16 @@ Nothing is passed in. The window starts the device itself, and every other panel
 
 There is a fifth item that is useful at any point. **Visualize** then **Live Signal** plots whatever the started device is delivering, which is the quickest way to see that electrodes are on properly before anything is recorded.
 
+The menus hold a few more items around those four.
+
+| Menu | Item | What it is for |
+| --- | --- | --- |
+| File | Start here | A welcome window listing the steps of a session, each with a button that opens it. |
+| Data | Collection Protocol | Designs what Collect Data prompts: gestures or a regression trajectory, order, rests and design factors. See [screen guided training](../screen_guided_training/sgt.rst). |
+| Data | Annotate Contractions | Marks where the contractions are in recordings made outside a cued protocol. See [Annotating contractions](../../examples/gui_annotation_example/gui_annotation_example.rst). |
+| Pipeline | Training History | Draws the loss curves of deep models trained in any session, read from the records saved beside them. |
+| Pipeline | Feature Selection Results | Opens results saved by a Feature Selection block or by `FeatureSelector.run_study`. See [feature selection](../feature_selection/feature_selection.rst). |
+
 The order matters in one place only. Step 1 comes first. The other three can be revisited in any order once a device is running.
 
 # The streamer panel
@@ -83,8 +93,8 @@ The panel does not keep the device to itself. When a device starts, the panel ha
 | --- | --- |
 | Collect Data | Records the live stream against the prompts it shows. |
 | Live Signal | Plots each modality as it arrives. |
-| Pipeline Editor | Offers the running device as a source block. |
-| Launch Environment | Drives a task from a model reading the same stream. |
+| Pipeline Editor | Nothing. A live pipeline starts its own device from its source block, so a device that can only be opened once, such as a Bluetooth armband, has to be stopped here before a live pipeline on it is started. |
+| Launch Environment | Saves the EMG of a run beside the game state, for retraining. The task itself is driven by a model sending to it over a socket. |
 
 This is the reason step 1 comes first. Before a device is started, nothing in the window can see data. Opening Collect Data with no device running gives a panel with nothing to record.
 
@@ -171,7 +181,7 @@ Set its Fitted Model parameter to a saved predictor.
 1. **Device ▸ Streamer**, pick the hardware, press Start. The handler it publishes reaches every other panel.
 2. **Data ▸ Collect Data**, record the prompted gestures.
 3. **Pipeline ▸ Pipeline Editor**, build a stored-data pipeline over that folder, press **Train**, then **Start** to see its offline metrics.
-4. Rebuild the same pipeline against the live device, or open the one you saved, and press **Start**.
-5. **Environments**, set up a task and launch it. It reads the predictions the pipeline is publishing.
+4. Stop the device in the Streamer panel, then rebuild the same pipeline on that device's source block, or open the one you saved, and press **Start**. The pipeline opens the device itself.
+5. **Environments**, set up a task and launch it. It reads the predictions the pipeline sends from a **Socket Output** block. The [classifier environment example](../../examples/gui_environment_example/gui_environment_example.rst) walks through every step.
 
 No step in that list needs Python.

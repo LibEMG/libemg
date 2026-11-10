@@ -8,10 +8,14 @@ from dataclasses import dataclass, field
 from itertools import compress
 import time
 import json
+import uuid
 import yaml
 from datetime import datetime
 from . import _style as style
 from ._utils import Media, set_texture
+from ._choreography_panel import (CHOREOGRAPHY_MODE, IMAGE_FOLDER_MODE, MODE_LABELS,
+                                  ChoreographyConfigSection, ChoreographyRunWindow,
+                                  PanelCollectionLink)
 from ._visualization_panel import VisualizationPanel
 from ..session import (PAUSE, PROMPT, REST, SESSION_PREFIX, SessionAnnotations,
                        Stage)
@@ -95,7 +99,9 @@ class DataCollectionPanel:
                  condition_number=1,
                  visualize_num_samples=500,
                  video_player_width = 720,
-                 video_player_height = 480):
+                 video_player_height = 480,
+                 collection_mode=None,
+                 choreography_config=None):
 
         self.online_data_handler = online_data_handler
         self.num_reps = num_reps
@@ -145,13 +151,28 @@ class DataCollectionPanel:
         self.visualize_num_samples = visualize_num_samples
         self.video_player_width = video_player_width
         self.video_player_height = video_player_height
+        # Which collection Start runs. The 3D hand choreography is the primary
+        # workflow; the image folder (with or without a protocol) is the backup.
+        # A protocol handed in -- one built under Data > Collection Protocol --
+        # is a request for the backup, since it is what drives that mode.
+        if collection_mode is None:
+            collection_mode = IMAGE_FOLDER_MODE if self.protocol is not None else CHOREOGRAPHY_MODE
+        if collection_mode not in MODE_LABELS:
+            raise ValueError(f"collection_mode must be '{CHOREOGRAPHY_MODE}' or "
+                             f"'{IMAGE_FOLDER_MODE}', not {collection_mode!r}.")
+        self.collection_mode = collection_mode
+        self.choreography_config = self._resolve_choreography_config(choreography_config)
+        self.choreography = None        # the settings section, while the window is open
+        self.run_window = None          # the choreography run window, while it is open
+        self._assets = None
 
         # The folder dialogs are listed because they are windows of their own
         # rather than part of the configuration window, so deleting that window
         # does not take them with it.
         self.widget_tags = {"configuration":['__dc_configuration_window','__dc_num_reps','__dc_rep_time','__dc_rest_time', '__dc_media_folder',\
                                              '__dc_auto_advance', '__dc_discrete', *(f"__dc_{name}" for name, _, _ in SUBJECT_FIELDS),
-                                             '__dc_media_dialog', '__dc_output_dialog'],
+                                             '__dc_media_dialog', '__dc_output_dialog',
+                                             '__ch_save_dialog', '__ch_load_dialog'],
                             "collection":   ['__dc_collection_window', '__dc_prompt', '__dc_progress', '__dc_redo_button'],
                             "visualization": ['__vls_visualize_window']}
         # The texture registry set_texture parents its textures to
@@ -190,10 +211,21 @@ class DataCollectionPanel:
             # The settings scroll and Start does not: a long signal report
             # would otherwise push the one button that matters out of the window.
             with dpg.child_window(border=False, autosize_x=True, height=-46):
-                style.note("Each image or video in the media folder is shown in turn, once per "
-                        "repetition, while the device records. Hover over a setting's name "
-                        "to see what it does.", wrap=_FULL_WRAP)
-                dpg.add_spacer(height=2)
+                self._build_mode()
+                with dpg.group(tag="__dc_group_choreography",
+                               show=self.collection_mode == CHOREOGRAPHY_MODE):
+                    style.note("An animated 3D hand shows each gesture: it ramps in, holds, "
+                               "ramps out and rests, while the device records. Every phase is "
+                               "annotated. Hover over a setting's name to see what it does.",
+                               wrap=_FULL_WRAP)
+                    self._build_choreography()
+                with dpg.group(tag="__dc_group_image",
+                               show=self.collection_mode == IMAGE_FOLDER_MODE):
+                    style.note("Each image or video in the media folder is shown in turn, once per "
+                            "repetition, while the device records. Hover over a setting's name "
+                            "to see what it does.", wrap=_FULL_WRAP)
+                    dpg.add_spacer(height=2)
+                    self._build_media_folder()
                 self._build_files()
                 with dpg.table(header_row=False, resizable=False, borders_innerV=True,
                                policy=dpg.mvTable_SizingStretchSame):
@@ -201,7 +233,9 @@ class DataCollectionPanel:
                     dpg.add_table_column()
                     with dpg.table_row():
                         with dpg.group():
-                            self._build_repetitions()
+                            with dpg.group(tag="__dc_group_repetitions",
+                                           show=self.collection_mode == IMAGE_FOLDER_MODE):
+                                self._build_repetitions()
                         with dpg.group():
                             self._build_subject()
                 self._build_signal()
@@ -209,6 +243,9 @@ class DataCollectionPanel:
             with dpg.group(horizontal=True):
                 style.button("Start", "primary", tag="__dc_start", width=120,
                           callback=self.start_callback)
+                style.button("Preview", tag="__dc_preview", width=120,
+                             callback=self.preview_callback,
+                             show=self.collection_mode == CHOREOGRAPHY_MODE)
                 style.note("", tag="__dc_status")
         for dialog, field_tag, folder in (("__dc_media_dialog", "__dc_media_folder", self.media_folder),
                                           ("__dc_output_dialog", "__dc_output_folder", self.data_folder)):
@@ -260,8 +297,34 @@ class DataCollectionPanel:
                     f"prompts of {timing.rep_time:g} s, rests of {timing.rest_time:g}-"
                     f"{timing.rest_time + timing.rest_jitter:g} s.", wrap=_COLUMN_WRAP)
 
-    def _build_files(self):
-        style.section("Files", first=True)
+    def _build_mode(self):
+        style.section("Collection mode", first=True)
+        with style.form():
+            with style.row("Mode", help="3D Hand Choreography is the standard collection: an "
+                        "animated hand, phase-by-phase annotations. Image Folder / Optional "
+                        "Protocol is the backup: one image or video per motion, optionally "
+                        "ordered by a collection protocol, with its own labels."):
+                dpg.add_radio_button([MODE_LABELS[CHOREOGRAPHY_MODE], MODE_LABELS[IMAGE_FOLDER_MODE]],
+                                     tag="__dc_mode", horizontal=True,
+                                     default_value=MODE_LABELS[self.collection_mode],
+                                     callback=self._mode_chosen)
+            with style.row(""):
+                style.note("", tag="__dc_mode_note")
+
+    def _build_choreography(self):
+        try:
+            assets = self.assets()
+        except Exception as error:      # noqa: BLE001 - the backup must stay usable
+            style.note(f"The 3D hand asset could not be loaded ({error}). Use the Image Folder "
+                       "mode.", color=style.ERROR, wrap=_FULL_WRAP)
+            self.choreography = None
+            return
+        self.choreography = ChoreographyConfigSection(
+            assets, config=self.choreography_config, on_change=self._settings_changed,
+            wrap=_FULL_WRAP)
+        self.choreography.build()
+
+    def _build_media_folder(self):
         with style.form():
             with style.row("Media folder", help="One image or video per motion, named for it: "
                         "the file name is the class name. They are prompted in alphabetical "
@@ -273,6 +336,10 @@ class DataCollectionPanel:
                           callback=lambda: dpg.show_item("__dc_media_dialog"))
             with style.row(""):
                 style.note("", tag="__dc_media_found")
+
+    def _build_files(self):
+        style.section("Files")
+        with style.form():
             with style.row("Output folder", help="Where the recordings are written: a file per "
                         "motion, repetition and modality, with the details of the collection "
                         "beside them. Made if it doesn't exist. Files left there by an earlier "
@@ -314,6 +381,9 @@ class DataCollectionPanel:
 
     def _describe(self, media_folder, num_reps):
         """Say what Start will collect, and let it be pressed only when it can start."""
+        if self.collection_mode == CHOREOGRAPHY_MODE:
+            self._describe_choreography()
+            return
         media = _media_in(media_folder)
         if media is None:
             style.set_status("__dc_media_found", "This folder doesn't exist.", "warn")
@@ -337,8 +407,205 @@ class DataCollectionPanel:
         style.set_status("__dc_advance_note", "waits after each repetition" if on
                          else "waits after every prompt")
 
+    def _describe_choreography(self):
+        valid = self.choreography is not None and self.choreography.describe()
+        busy = self.collection_active
+        if self.choreography is None:
+            self._say("The 3D hand is unavailable; switch to the Image Folder mode.", "error")
+        elif busy:
+            self._say("A run is open. Close it before starting another.", "warn")
+        elif not valid:
+            self._say("Fix the settings above to start.", "warn")
+        elif self.online_data_handler is None:
+            self._say("No device is streaming, so only Preview is available. Start one from "
+                      "Device > Streamer, then open Data > Collect Data again to record.", "warn")
+        else:
+            self._say("Start opens the hand window; recording begins when Start is pressed "
+                      "there. Preview records nothing.")
+        style.set_enabled("__dc_start", bool(valid) and not busy
+                          and self.online_data_handler is not None)
+        style.set_enabled("__dc_preview", bool(valid) and not busy)
+
     def _settings_changed(self, *_args):
+        if self.collection_mode == CHOREOGRAPHY_MODE:
+            self._describe_choreography()
+            return
         self._describe(dpg.get_value("__dc_media_folder"), dpg.get_value("__dc_num_reps"))
+
+    # -- collection mode ------------------------------------------------------
+
+    def assets(self):
+        """The packaged 3D hand asset, loaded once per panel."""
+        if self._assets is None:
+            from libemg.choreography.assets import load_assets
+            self._assets = load_assets()
+        return self._assets
+
+    @staticmethod
+    def _resolve_choreography_config(config):
+        """Accept a ChoreographyConfig, a dict of its fields, a preset path, or nothing."""
+        from libemg.choreography.config import ChoreographyConfig
+        if config is None or isinstance(config, ChoreographyConfig):
+            return config
+        if isinstance(config, dict):
+            return ChoreographyConfig.from_dict(config)
+        return ChoreographyConfig.load(config)
+
+    @property
+    def collection_active(self):
+        """A collection is under way in this panel (either mode)."""
+        thread = getattr(self, "spawn_collection_thread", None)
+        if thread is not None and thread.is_alive():
+            return True
+        return self.run_window is not None and self.run_window.active
+
+    def set_collection_mode(self, mode):
+        """Switch between the choreography and image-folder modes.
+
+        Refused while a collection is running, so a recording is never left
+        half in one mode and annotated as the other.
+
+        Returns
+        ----------
+        bool
+            Whether the mode is now ``mode``.
+        """
+        if mode not in MODE_LABELS:
+            raise ValueError(f"Unknown collection mode {mode!r}.")
+        if mode == self.collection_mode:
+            return True
+        if self.collection_active:
+            if dpg.does_item_exist("__dc_mode"):
+                dpg.set_value("__dc_mode", MODE_LABELS[self.collection_mode])
+            style.set_status("__dc_mode_note", "Stop the current run before switching modes.",
+                             "warn")
+            return False
+        self.collection_mode = mode
+        style.set_status("__dc_mode_note", "")
+        choreography = mode == CHOREOGRAPHY_MODE
+        for tag, show in (("__dc_group_choreography", choreography),
+                          ("__dc_group_image", not choreography),
+                          ("__dc_group_repetitions", not choreography),
+                          ("__dc_preview", choreography)):
+            if dpg.does_item_exist(tag):
+                (dpg.show_item if show else dpg.hide_item)(tag)
+        if choreography:
+            self._describe_choreography()
+        elif dpg.does_item_exist("__dc_media_folder"):
+            self._describe(dpg.get_value("__dc_media_folder"), dpg.get_value("__dc_num_reps"))
+        return True
+
+    def _mode_chosen(self, sender, label):
+        mode = next((m for m, text in MODE_LABELS.items() if text == label), None)
+        if mode is not None:
+            self.set_collection_mode(mode)
+
+    def _image_mode_record(self):
+        """What the image-folder collection ran under, for the session metadata."""
+        protocol = None
+        if self.protocol is not None:
+            protocol = {"name": getattr(self.protocol, "name", None),
+                        "order": getattr(self.protocol, "order", None),
+                        "file": "collection_protocol.yaml"}
+        return {"mode": IMAGE_FOLDER_MODE, "label": MODE_LABELS[IMAGE_FOLDER_MODE],
+                "config": {"media_folder": str(self.media_folder), "num_reps": self.num_reps,
+                           "rep_time": self.rep_time, "rest_time": self.rest_time,
+                           "auto_advance": self.auto_advance, "protocol": protocol},
+                "phase_labels": "prompt / rest / pause stages only; this mode shows no "
+                                "ramp-in or ramp-out phases"}
+
+    # -- the choreography mode ------------------------------------------------
+
+    def preview_callback(self):
+        """Animate the configured run without recording anything."""
+        self.open_choreography(recording=False)
+
+    def open_choreography(self, recording):
+        """Open the hand window for the configured run, as a recording or a preview.
+
+        The configuration is frozen here: the window holds a snapshot, so
+        editing the settings afterwards cannot change it.
+
+        Returns
+        ----------
+        ChoreographyRunWindow or None
+            None when the settings do not validate or a run is already open.
+        """
+        from libemg.choreography.controller import PREVIEW, RECORDING
+        if self.collection_active:
+            self._say("A run is already open.", "warn")
+            return None
+        if self.choreography is None:
+            self._say("The 3D hand is unavailable; switch to the Image Folder mode.", "error")
+            return None
+        config, plan, problems = self.choreography.validate()
+        if problems:
+            self._say("Not started: " + " ".join(problems), "error")
+            return None
+        if self.run_window is not None:
+            self.run_window.destroy()
+        link = output_folder = None
+        metadata = {}
+        if recording:
+            if not dpg.does_item_exist("__dc_output_folder"):
+                return None
+            self.get_settings()
+            output_folder = str(Path(self.output_folder).absolute())
+            Path(output_folder).mkdir(parents=True, exist_ok=True)
+            link = PanelCollectionLink(self, plan, self.assets())
+            metadata = {"subject": {name: getattr(self, name) for name, _, _ in SUBJECT_FIELDS},
+                        "output_folder": output_folder}
+        self.choreography_config = config.snapshot()
+        self.run_window = ChoreographyRunWindow(
+            self.assets(), config, mode=RECORDING if recording else PREVIEW, link=link,
+            output_folder=output_folder, on_closed=self._run_window_closed, metadata=metadata)
+        self.run_window.spawn()
+        self._describe_choreography()
+        return self.run_window
+
+    def _run_window_closed(self):
+        self.run_window = None
+        if dpg.does_item_exist("__dc_configuration_window"):
+            self._describe_choreography() if self.collection_mode == CHOREOGRAPHY_MODE else None
+
+    def write_choreography_details(self, plan, assets, header):
+        """``collection_details.json`` for a choreography recording, in the usual layout.
+
+        ``classes``/``class_map`` hold the selected gestures under their fixed
+        class IDs (the IDs in the C_<id>_R_<rep> file names); the versioned map
+        of every ID, and the rest, is under ``motion_class_map``.
+        """
+        class_ids = {name: number for number, name in assets.class_map.items()}
+        selected = list(plan.config.gestures)
+        details = {
+            "num_motions": len(selected),
+            "num_reps": plan.config.repetitions,
+            "classes": selected,
+            "class_map": {class_ids[g]: g for g in selected},
+            "time": datetime.now().isoformat(),
+            "collection_mode": CHOREOGRAPHY_MODE,
+            "requested_repetitions": plan.requested,
+            "motion_class_map": assets.class_map_record(),
+            "run_id": header.get("run_id"),
+            "intensity": header.get("intensity"),
+            "targets": header.get("targets"),
+        }
+        Path(self.output_folder).mkdir(parents=True, exist_ok=True)
+        with open(Path(self.output_folder, "collection_details.json"), 'w') as handle:
+            json.dump(details, handle)
+
+    def poll(self):
+        """Per GUI frame, on the GUI thread: drive an open choreography run."""
+        if self.run_window is not None:
+            self.run_window.poll()
+
+    def shutdown(self):
+        """The application is closing: end and save any choreography run."""
+        if self.run_window is not None:
+            self.run_window.shutdown()
+
+    def cleanup(self):
+        self.shutdown()
 
     def _folder_chosen(self, sender, app_data, user_data):
         folder = (app_data or {}).get("file_path_name", "")
@@ -354,6 +621,9 @@ class DataCollectionPanel:
         # Every refusal below is said in the window as well as raised: raised
         # from a button, it only ever reaches the terminal, and the person at
         # the window is left pressing Start again.
+        if self.collection_active:
+            self._say("A collection is already running.", "warn")
+            return
         if not (self.online_data_handler and sum(list(self.online_data_handler.get_data()[1].values()))):
             self._say("No data is arriving from the device. Check that it is streaming, "
                       "then press Start again.", "error")
@@ -371,6 +641,9 @@ class DataCollectionPanel:
                     'Refusing to start: the signal does not look collectable.\n  '
                     + '\n  '.join(problems)
                     + "\nFix these, or pass signal_check='warn' to collect anyway.")
+        if self.collection_mode == CHOREOGRAPHY_MODE:
+            self.open_choreography(recording=True)
+            return
         dpg.delete_item("__dc_configuration_window")
         self.cleanup_window("configuration")
         media_list = self.gather_media()
@@ -425,6 +698,7 @@ class DataCollectionPanel:
         collection_details["classes"] =   [f.split('.')[0] for f in files]
         collection_details["class_map"] = {index: f.split('.')[0] for index, f in enumerate(files)}
         collection_details["time"]    = datetime.now().isoformat()
+        collection_details["collection_mode"] = IMAGE_FOLDER_MODE
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)
         with open(Path(self.output_folder, "collection_details.json").absolute().as_posix(), 'w') as f:
@@ -811,6 +1085,24 @@ class DataCollectionPanel:
         """
         if self.discrete:
             return None
+        return self._open_session_log(
+            class_map={str(media[2]): media[1] for media in media_list},
+            rep_prefixes=[f"C_{media[2]}_R_{media[3]}_" for media in media_list],
+            metadata={"collection_mode": self._image_mode_record()})
+
+    def _open_session_log(self, class_map, rep_prefixes, metadata=None):
+        """Start the continuous recording and its annotation file (either mode).
+
+        Parameters
+        ----------
+        class_map: dict
+            Class index (as a string) to class name.
+        rep_prefixes: list of str
+            ``C_<class>_R_<rep>_`` file prefixes this collection will write, so
+            a previous take of them is cleared first.
+        metadata: dict, optional
+            Saved in the annotation file beside a fresh ``collection_session_id``.
+        """
         prefix = Path(self.output_folder, SESSION_PREFIX).absolute().as_posix()
         # The logger appends, and the split below overwrites only the
         # repetitions this run actually collects. Both would otherwise inherit a
@@ -819,17 +1111,17 @@ class DataCollectionPanel:
             path = Path(prefix + mod + ".csv")
             if path.exists():
                 path.unlink()
-        for media in media_list:
-            self.clear_rep_files(
-                Path(self.output_folder, f"C_{media[2]}_R_{media[3]}_").absolute().as_posix())
+        for rep_prefix in rep_prefixes:
+            self.clear_rep_files(Path(self.output_folder, rep_prefix).absolute().as_posix())
 
         annotations = SessionAnnotations(
             folder=Path(self.output_folder).absolute(),
             prefix=SESSION_PREFIX,
             modalities=list(self.online_data_handler.modalities),
-            class_map={str(media[2]): media[1] for media in media_list},
+            class_map=class_map,
             timestamps=self.timestamps,
-            created=datetime.now().isoformat())
+            created=datetime.now().isoformat(),
+            metadata={"collection_session_id": uuid.uuid4().hex, **(metadata or {})})
         session = SessionLog(annotations=annotations)
         self.online_data_handler.reset()
         # Timestamps are not optional here, whatever self.timestamps says: they

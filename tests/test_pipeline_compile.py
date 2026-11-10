@@ -754,6 +754,45 @@ def test_a_compiled_pipeline_carries_data_through_every_stage(
     assert not any(executor.is_alive() for executor in pipeline.graph._executors)
 
 
+def test_a_socket_sink_after_a_classifier_drives_an_environment_controller(
+        synthetic_model, tmp_path, running):
+    # The GUI's environments listen with a ClassifierController in its
+    # 'predictions' format, '<class> [speed]'. A socket sink that sent the
+    # output row's repr instead ('[1.0, 0.98] 1730...') ended the task on the
+    # first message it parsed.
+    from libemg.environments.controllers import ClassifierController
+
+    port = 12470 + os.getpid() % 500
+    controller = ClassifierController(output_format="predictions", num_classes=2,
+                                      ip="127.0.0.1", port=port)
+    try:
+        document, nodes = _online_document(synthetic_model, tmp_path / "out.log")
+        document.remove_node(nodes["sink"])
+        sink = document.add_node("sink.socket", node_id=_unique("sock"),
+                                 params={"ip": "127.0.0.1", "port": port,
+                                         "protocol": "UDP"})
+        document.connect(nodes["model"], "output", sink, "input")
+        pipeline = compile_pipeline(document)
+        running.append(pipeline)
+        pipeline.start()
+
+        received = []
+
+        def heard():
+            data = controller.get_data(["predictions", "timestamp"])
+            if data is not None:
+                received.append(data)
+            return len(received) >= 3
+
+        assert _wait_until(heard, timeout=120, interval=0.01), \
+            "the controller never parsed a message from the pipeline"
+        for predictions, timestamp in received:
+            assert predictions[0] in (0.0, 1.0), f"not one of the fitted classes: {predictions}"
+            assert timestamp > 0
+    finally:
+        controller.sock.close()
+
+
 def test_the_newest_prediction_is_a_class_and_a_confidence(
         synthetic_model, tmp_path, running):
     from libemg.shared_memory_manager import SharedMemoryManager
