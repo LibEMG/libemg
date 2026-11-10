@@ -479,6 +479,105 @@ class GUI:
         # an environment launched afterwards should be driven by it.
         panel.online_data_handler = self.online_data_handler
 
+    def _protocol_callback(self):
+        from libemg._gui._protocol_panel import ProtocolPanel
+        self._open_panel("protocol_panel", lambda: ProtocolPanel(
+            protocol=self.args.get("protocol"),
+            media_folder=self.args.get("media_folder", "media/"),
+            on_ready=self._protocol_ready,
+            width=min(self.width, 860), height=min(self.height, 800)))
+
+    def _protocol_ready(self, protocol, media_folder):
+        """Point screen guided training at a protocol that was just built here.
+
+        The protocol decides the prompt order, the timings and the design
+        factors, and it names the folder its media went into -- so once it is
+        built, Collect Data needs nothing typed into it.
+        """
+        self.args["protocol"] = protocol
+        self.args["media_folder"] = media_folder
+
+    def _annotation_callback(self):
+        from libemg._gui._annotation_panel import AnnotationPanel
+        self._open_panel("annotation_panel", lambda: AnnotationPanel(
+            dataset_folder=self.args.get("annotation_folder", ""),
+            sampling_rate=self.args.get("sampling_rate", 2000.0),
+            spec=self.args.get("annotation_spec"),
+            width=self.width, height=self.height))
+
+    def _visualize_livesignal_callback(self):
+        # Without a stream there is nothing to draw, and the panel says so by
+        # raising -- which from a menu click went to the console and left the
+        # window looking as if the click had been ignored.
+        if self.online_data_handler is None:
+            self._notice("Nothing to watch yet",
+                         "No device is streaming. Start one from Device > Streamer, "
+                         "then open Visualize > Live Signal again.")
+            return
+        panel_arguments = list(inspect.signature(VisualizationPanel.__init__).parameters)
+        passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
+        self.vp = VisualizationPanel(self.online_data_handler, **passed_arguments)
+        try:
+            self.vp.spawn_window()
+        except ConnectionError:
+            self._notice("Nothing to watch yet",
+                         "The device is connected but no data has arrived yet. Wait a "
+                         "moment, then open Visualize > Live Signal again.")
+
+    def _notice(self, title, text):
+        """A small window saying why something the user asked for did not happen."""
+        from libemg._gui import _style as style
+        if dpg.does_item_exist("__notice"):
+            dpg.delete_item("__notice")
+        with dpg.window(label=title, tag="__notice", modal=True, no_collapse=True,
+                        width=440, pos=(max(20, self.width // 2 - 220), 160)):
+            style.note(text, color=style.TEXT, wrap=400)
+            dpg.add_spacer(height=4)
+            style.button("OK", "primary", width=90,
+                         callback=lambda: dpg.delete_item("__notice"))
+
+    def _pipeline_editor_callback(self):
+        from libemg._gui._pipeline.editor_panel import PipelineEditorPanel
+        self._open_panel("pep", lambda: PipelineEditorPanel(
+            width=self.width, height=self.height))
+
+    def _training_history_callback(self):
+        """Deep model training runs from any session, loaded from their records."""
+        from libemg._gui._pipeline.training_view import TrainingView
+        if getattr(self, "training_history", None) is not None:
+            self.training_history.cleanup()
+        self.training_history = TrainingView("Training History", pos=(60, 60)).spawn_window()
+
+    def _streamer_callback(self):
+        from libemg._gui._streamer_panel import StreamerPanel
+        self._open_panel("sp", lambda: StreamerPanel(
+            on_started=self._streamer_started,
+            on_stopped=self._streamer_stopped))
+
+    def _streamer_started(self, online_data_handler, shared_memory_items):
+        """Make a device started here available to every other panel.
+
+        The panels that need live data read this attribute when they are
+        opened, so publishing it is what lets somebody start a device and then
+        collect training data or watch the signal without leaving the window.
+        """
+        self.online_data_handler = online_data_handler
+        self.args["shared_memory_items"] = shared_memory_items
+        self._welcome_device_status()
+
+    def _streamer_stopped(self):
+        self.online_data_handler = None
+        self._welcome_device_status()
+
+    def _environments_callback(self):
+        from libemg._gui._environments.panel import EnvironmentsPanel
+        panel = self._open_panel("env_panel", lambda: EnvironmentsPanel(
+            online_data_handler=self.online_data_handler,
+            width=min(self.width, 1280), height=min(self.height, 820)))
+        # A device may have been started since this panel was first opened, and
+        # an environment launched afterwards should be driven by it.
+        panel.online_data_handler = self.online_data_handler
+
     def _import_data_callback(self):
         panel_arguments = list(inspect.signature(DataImportPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
