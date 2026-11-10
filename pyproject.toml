@@ -1,9 +1,51 @@
+# To cut a release:
+#     python -m pip install --upgrade build twine
+#     python -m build                 # writes sdist + wheel to dist/
+#     python -m twine check dist/*    # validate metadata before uploading
+#     python -m twine upload --repository testpypi dist/*   # test first
+#     python -m twine upload dist/*                         # then real PyPI
+#
+# Bump `version` below first, and clear stale artifacts out of dist/.
+# (`python setup.py sdist` no longer works -- setup.py is gone and the build is
+# driven entirely by this file.)
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "libemg"
 version = "3.0.0b2"
 description = "LibEMG - Myoelectric Control Library"
 readme = "README.md"
 requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Ethan Eddy" },
+    { name = "Evan Campbell" },
+    { name = "Angkoon Phinyomark" },
+    { name = "Scott Bateman" },
+    { name = "Erik Scheme" },
+]
+keywords = [
+    "emg",
+    "myoelectric_control",
+    "pattern_recognition",
+    "muscle-based input",
+]
+classifiers = [
+    # Was "Development Status :: 5 - Production/Stable  " in setup.py. The
+    # trailing spaces made it an invalid trove classifier, which PyPI rejects
+    # on upload.
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+]
 # Runtime only. Test and documentation tooling live in [dependency-groups]
 # below: none of it is imported by the library, and declaring it here made
 # every downstream project inherit an exact pytest/sphinx pin, which collides
@@ -72,6 +114,18 @@ docs = [
     "sphinx>=8.1.3",
     "sphinx-rtd-theme>=3.0.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/LibEMG/libemg"
+Documentation = "https://libemg.github.io/libemg/"
+Repository = "https://github.com/LibEMG/libemg"
+
+# Replaces find_packages(exclude=["*tests*"]) from setup.py. Without this,
+# setuptools auto-discovery runs against a flat layout that also contains
+# tests/, docs/, examples/ and demos/.
+[tool.setuptools.packages.find]
+include = ["libemg*"]
+exclude = ["tests*", "docs*", "examples*", "demos*", "build*", "dist*"]
 
 # Runtime files that live inside the package: the 3D hand model, its manifest
 # and its class-ID map. Read through libemg.resources, never by absolute path.
