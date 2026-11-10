@@ -9,17 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # Supported range is 3.10 - 3.12, matching requires-python in
-    # pyproject.toml. The boundaries are not arbitrary:
-    #
-    #   3.9 and below - libemg uses PEP 604 (`X | None`) in 33 function
-    #     signatures with no `from __future__ import annotations`, so the
-    #     library raises TypeError on import.
-    #
-    #   3.13 and above - blocked by the `numpy<2` ceiling, which exists only
-    #     because libemg/animator.py still annotates with np.float_ (removed
-    #     in numpy 2.0). Replacing those 10 annotations with np.float64 should
-    #     unlock numpy 2 and 3.13.
+    # NOTE: pyproject.toml now declares requires-python = ">=3.13", so this
+    # matrix tests three versions the package says it does not support. It
+    # passes only because requirements.txt installs a flat dependency list and
+    # never installs libemg itself, so pip never checks requires-python.
+    # Either the matrix or requires-python should move -- that is a support
+    # policy call, so it is left as-is rather than guessed at here.
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +37,13 @@ jobs:
       # either are behind --slow / --download / --hardware (see tests/conftest.py)
       # and run in the nightly job below.
       - name: Run tests
-        # Measured at 46% on 3.10, 3.11 and 3.12 (vendor streamers and GUI are
-        # omitted; see [tool.coverage.run] in pyproject.toml). The floor sits
-        # below that so a platform difference cannot fail the build on its
-        # own. Raise it as coverage grows -- it should only ever move up.
-        run: pytest --cov=libemg --cov-report=term-missing --cov-fail-under=44
+        # Measured at 66% with the [tool.coverage.run] omit list in
+        # pyproject.toml applied (vendor streamers and GUI panels need a device
+        # or a display). That block went missing in the #145-#148 merge, which
+        # is why a run briefly reported 18%. The floor sits well below the
+        # measured value so a platform difference cannot fail the build on its
+        # own; raise it as coverage grows -- it should only ever move up.
+        run: pytest --cov=libemg --cov-report=term-missing --cov-fail-under=55
 
   docs:
     name: Build and publish docs

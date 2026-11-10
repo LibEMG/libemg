@@ -15,9 +15,25 @@ import time
 
 import matplotlib
 import pytest
-import tkinter
 
-matplotlib.use("TkAgg", force=True)
+# This module is specifically about Tk's finalisation behaviour, so it needs a
+# real TkAgg backend and cannot be exercised headless. Both the import and the
+# backend switch have to be guarded: a CI runner may lack the _tkinter
+# extension entirely, and even with tkinter installed matplotlib refuses
+# "TkAgg" when it detects no display. Without these guards the module raised at
+# import time, which is a *collection* error -- and one collection error aborts
+# the whole pytest session, so every other test in the repository silently
+# stopped running.
+tkinter = pytest.importorskip("tkinter", reason="needs the tk interactive framework")
+
+try:
+    matplotlib.use("TkAgg", force=True)
+except Exception as exc:  # ImportError headless; RuntimeError on some builds
+    pytest.skip(
+        f"TkAgg backend unavailable ({exc}); these tests need a real display",
+        allow_module_level=True,
+    )
+
 from matplotlib import pyplot                                  # noqa: E402
 from matplotlib._pylab_helpers import Gcf                      # noqa: E402
 

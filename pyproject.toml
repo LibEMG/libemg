@@ -131,3 +131,53 @@ exclude = ["tests*", "docs*", "examples*", "demos*", "build*", "dist*"]
 # and its class-ID map. Read through libemg.resources, never by absolute path.
 [tool.setuptools.package-data]
 "libemg.resources" = ["choreography/*.glb", "choreography/*.json", "choreography/*.md"]
+
+# --------------------------------------------------------------------------- #
+# Test configuration
+#
+# This block went missing in the #145-#148 merge, which is why `download` and
+# `hardware` started reporting as unknown marks. The flags and skip logic that
+# back them live in tests/conftest.py; only the registration was lost.
+# --------------------------------------------------------------------------- #
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+markers = [
+    "slow: long-running test, excluded by default (run with --slow, provided by pytest-skip-slow)",
+    "hardware: requires a physical EMG device to be connected (run with --hardware)",
+    "download: downloads a dataset over the network (run with --download)",
+]
+
+# Third-party noise that drowns out warnings worth reading. libemg's own
+# warnings are deliberately left visible.
+filterwarnings = [
+    "ignore:Importing from numpy.matlib is deprecated:PendingDeprecationWarning",
+    "ignore:`alltrue` is deprecated:DeprecationWarning",
+    "ignore:pkg_resources is deprecated:DeprecationWarning",
+    "ignore:Deprecated call to `pkg_resources:DeprecationWarning",
+]
+
+# --------------------------------------------------------------------------- #
+# Coverage
+# --------------------------------------------------------------------------- #
+
+[tool.coverage.run]
+source = ["libemg"]
+omit = [
+    # Vendor hardware drivers and GUI panels: covered only by the import smoke
+    # test, since exercising them needs a device or a display. Counting them in
+    # the denominator makes the headline number a measure of how much GUI code
+    # exists rather than how well the library is tested.
+    "libemg/_streamers/*",
+    "libemg/_gui/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
