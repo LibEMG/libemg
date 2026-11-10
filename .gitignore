@@ -73,21 +73,12 @@ sifibridge-*
 TEST.ipynb
 /DATASET_85
 /DATASET_85PROCESSED
-
-# ---------------------------------------------------------------------------
-# Un-ignore the test suite.
-#
-# The broad `test_*.py`, `*.csv` and `*.txt` patterns above are aimed at
-# throwaway scratch scripts and recordings at the repository root. They also
-# matched everything under tests/, which silently kept new test files and
-# fixtures out of git. Negate them for tests/ specifically.
-# ---------------------------------------------------------------------------
-!tests/**/test_*.py
-!tests/**/conftest.py
-!tests/data/**/*.csv
-!tests/data/**/*.txt
-!tests/data/golden/
-
-# libemg/environments/ is ignored above, but its contents are tracked source.
-# Without this, any new module added there is invisible to git.
-!libemg/environments/**/*.py
+research/*
+.claude/*
+heartrate_classes_speed/*
+tests/*
+# test_*.py and tests/* above are meant for the scratch scripts at the repo
+# root and for what a run leaves behind in tests/, not for the suite itself.
+# This exemption has to come last, or a new test file is silently untracked --
+# which is how several already were.
+!tests/test_*.py

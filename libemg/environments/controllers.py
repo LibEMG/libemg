@@ -195,7 +195,10 @@ class ClassifierController(SocketController):
 
     def _parse_timestamp(self, action: str) -> float:
         if self.output_format == 'predictions':
-            raise ValueError("Output format is set to 'predictions', so timestamp cannot be parsed because timestamp is not sent when output_format='predictions'.")
+            # This format ('<class> [velocity]') has no timestamp, but every environment asks for one to log, so
+            # raising here ended Fitts on the first message -- and 'predictions' is what the GUI's Classifier
+            # controller uses. Take the time the message was read instead, as KeyboardController does.
+            return time.time()
         return float(action.split(' ')[-1])
 
     def _parse_proportional_control(self, action: str) -> list[float]:

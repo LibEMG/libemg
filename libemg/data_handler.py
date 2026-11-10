@@ -345,7 +345,7 @@ class OfflineDataHandler(DataHandler):
         all_files = []
         for pattern in ['*.csv', '*.txt', '*.hea']:
             all_files.extend([y for x in os.walk(folder_location) for y in glob(os.path.join(x[0], pattern))])
-        all_files = sorted(Path(f).as_posix() for f in all_files)
+        all_files = [Path(f).as_posix() for f in all_files]
         data_files = copy.deepcopy(all_files)
         for regex_filter in regex_filters:
             data_files = regex_filter.get_matching_files(data_files)
@@ -780,6 +780,22 @@ class OnlineDataHandler(DataHandler):
             self.log_signal.clear()
             self._log_process = None
         return counts
+
+    def log_counts(self):
+        """How many samples the active thread logger has written so far, per modality.
+
+        Readable while :meth:`start_log` is still running, unlike the totals
+        :meth:`stop_log` returns. A caller that needs to know what a stretch of
+        one continuous recording contains -- a single repetition, say -- reads
+        this either side of that stretch rather than starting and stopping a log
+        around it.
+
+        Returns
+        ----------
+        counts: dict
+            A snapshot keyed by modality. Empty when no thread logger is running.
+        """
+        return dict(self._log_counts)
 
     def stop_visualize(self):
         self.visualize_signal.set()

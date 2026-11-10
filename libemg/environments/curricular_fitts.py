@@ -1,6 +1,7 @@
 from libemg.output_writer import OutputWriter
 from libemg.environments.controllers import Controller
 from libemg.environments._base import Environment
+from libemg.environments.recording import RecordingConfig
 from libemg.adaptation._base import produce_tciil_feedback
 from dataclasses import dataclass
 from multiprocessing import Process
@@ -413,19 +414,22 @@ class CurricularFitts(Environment):
                   config: CurricularFittsConfig,
                   target_generator: BaseTargetGenerator = None,
                   environment_ow: list[OutputWriter] = [],
-                  save_file: str | None = None):
-        
-        super().__init__(controller, 
+                  save_file: str | None = None,
+                  recording: RecordingConfig | None = None):
+
+        super().__init__(controller,
                          fps=config.fps,
                          log_dictionary=None,
-                         save_file=save_file)
+                         save_file=save_file,
+                         recording=recording)
         
         self.config = config
 
-        self.target_generator = target_generator or ConstantTargetGenerator(
-            radius  = self.config.default_target_radius,
-            timeout = self.config.default_timeout 
-        )
+        # ConstantTargetGenerator takes the config, and reads the radius and
+        # the timeout off it itself. Passing them as keywords raised a
+        # TypeError, which meant a CurricularFitts could not be built at all
+        # without supplying a target generator explicitly.
+        self.target_generator = target_generator or ConstantTargetGenerator(self.config)
 
         self.environment_ow = environment_ow
 
@@ -454,7 +458,10 @@ class CurricularFitts(Environment):
         """
         # if we've finished a trial, save the log, increment the trial counter
         if not initial:
-            self.log.save(self.save_file, self.trial_number, result)
+            # save_file is the folder the per-trial logs go in. Without one there is nowhere to put
+            # them, and Log.save would fail on None + "/" at the end of the very first trial.
+            if self.save_file is not None:
+                self.log.save(self.save_file, self.trial_number, result)
             self.log = Log()
             self.trial_number += 1
         
@@ -480,10 +487,40 @@ class CurricularFitts(Environment):
     
     def _run_loop(self):
         self.input()
+        if self.recording_frames:
+            # After input, before update moves the cursor: the frame the user was looking at.
+            self._record()
         self.update()
         self.draw()
         if self.trial_number > self.config.num_trials:
             self.done = True
+
+    def _record(self):
+        """Record this frame: the regressor's output, where things are, and the CIIL label."""
+        to_target = [t - c for t, c in zip(self.target.position, self.cursor.position)]
+        norm = float(np.linalg.norm(to_target))
+        in_target = bool(self.target.contact)
+        optimal = [0., 0.] if in_target or norm == 0 else [v / norm for v in to_target]
+        # controller_map takes the model's outputs into screen space; its entries are +-1, so it is
+        # its own inverse and takes the optimal direction back into the model's space.
+        optimal = [v * m for v, m in zip(optimal, self.config.controller_map)]
+        predictions = self.predictions or [None, None]
+        feedback = self.model_feedback or [None, None]
+        self.record_frame(
+            self.trial_number,
+            model={'output_x': predictions[0], 'output_y': predictions[1]},
+            game={'cursor_x': self.cursor.position[0], 'cursor_y': self.cursor.position[1],
+                  'target_x': self.target.position[0], 'target_y': self.target.position[1],
+                  'target_radius': self.target.radius, 'in_target': in_target},
+            adaptation={'optimal_x': optimal[0], 'optimal_y': optimal[1],
+                        'ciil_x': feedback[0], 'ciil_y': feedback[1]})
+
+    def recording_details(self):
+        details = super().recording_details()
+        details['config'] = {k: v for k, v in vars(self.config).items() if not callable(v)}
+        details['coordinates'] = ("cursor/target in screen pixels, y down; optimal, output and ciil in "
+                                  "the model's space (controller_map applied)")
+        return details
 
     def input(self):
         self.pygame_inputs()
@@ -516,8 +553,11 @@ class CurricularFitts(Environment):
                          'direction': self.direction}
             self.log.record(self.trial_number, self.target.position, self.cursor.position, self.target.radius, self.game_feedback, self.timestamp)
 
-            if self.environment_ow is not None:
-                
+            # Truthiness, not "is not None". environment_ow defaults to an
+            # empty list, which is not None, so the index below raised
+            # IndexError on the first frame that produced a control signal
+            # whenever the task was run without adaptation writers attached.
+            if self.environment_ow:
                 self.environment_ow[0].write(self.info)
             # make self._info,
             # save last timestamp, last controller output, etc.
@@ -555,3 +595,4 @@ class CurricularFitts(Environment):
 
     def save_results(self):
         self.target_generator.save_yields()
+        super().save_results()

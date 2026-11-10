@@ -1,14 +1,35 @@
-# Development environment for LibEMG (Python 3.10+).
-#
-# Runtime dependencies live in pyproject.toml and are the source of truth for
-# what `pip install libemg` pulls in. This file installs the library in
-# editable mode plus the test and docs extras, so a contributor gets a working
-# environment in one command:
-#
-#     pip install -r requirements.txt
-#
-# Previously this file pinned exact versions (scipy==1.7.2, matplotlib==3.5.0,
-# websockets==8.1 and others). None of those publish wheels past cp310, which
-# is what stopped the project installing on Python 3.11 and newer.
-
--e .[test,docs,torch]
+scipy
+pytest==7.1.3
+pytest-cov==4.0.0
+scikit-learn
+pillow
+matplotlib
+librosa
+pyomyo==0.0.5
+pyserial
+wfdb
+bleak
+requests
+h5py
+# For Docs
+sphinx>=8.1.3
+sphinx_rtd_theme>=3.0.2
+myst_parser>=4.0.0
+linkify-it-py==2.0.0
+# For testing
+pytest-skip-slow==0.0.3
+dearpygui
+PyWavelets
+PyYAML
+# for new sgt
+dearpygui
+opencv-python
+datetime
+websockets>=14
+h5py
+onedrivedownloader
+sifi-bridge-py==2.0.1
+mindrove
+crc
+torch
+tslearn
