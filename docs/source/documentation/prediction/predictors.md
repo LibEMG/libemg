@@ -38,3 +38,25 @@ classifier.fit(data_set)
 ## Deep Learning (Pytorch)
 
 Another available option is to use [pytorch](https://pytorch.org/) models (i.e., a library for deep learning) to train the model, although this involves making some custom code for preparing the dataset and the deep learning model. For a guide on how to use deep learning models, consult the deep learning example. The same methods are expected to be implemented for both deep and statistical classifiers/regressors.
+
+## Online Prediction
+
+`OnlineEMGClassifier` and `OnlineEMGRegressor` wrap a trained model and run it against live data in their own process. They are event driven. A write to the shared memory item a predictor consumes announces itself, the predictor is woken, and it then decides whether enough new samples have accrued to form a window. It no longer copies and filters the whole buffer to find that out.
+
+None of this shows up in your code. The constructor arguments, the streamed output, the installed filters and the post-processing options are all unchanged. What changes is the cost of running a predictor:
+
+| Measurement | Value |
+| ------------------ | ----------- |
+| Sampling rate | 1000 Hz |
+| Channels | 8 |
+| Window size | 200 |
+| Window increment | 50 |
+| CPU used by the streaming process, original polling loop | 93.7% |
+| CPU used by the streaming process, event-driven loop | 10.7% |
+| Latency, last sample of a window to a prediction on the wire | 0.57 ms mean |
+
+Those runs produce the same predictions, with a bandpass and a notch filter installed on the data handler.
+
+One case keeps the original loop. If you have replaced `window_trigger_function_handle` with your own predicate, that loop is used automatically, because an arbitrary predicate cannot be restated as a per-item criterion. Setting `classifier.reactive = False` selects the original loop explicitly.
+
+For the mechanism behind this, and for hooking your own stages into the same notifications, see the Reactive Pipelines section.

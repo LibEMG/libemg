@@ -1,7 +1,6 @@
 from PIL import Image
 import numpy as np
 import dearpygui.dearpygui as dpg
-import matplotlib.pyplot as plt
 import cv2
 
 class Media:
@@ -95,7 +94,7 @@ class Media:
         if grayscale:
             dpg_img = dpg_img.convert("L")
         dpg_img = dpg_img.convert("RGBA")
-        dpg_img = np.asfarray(dpg_img, dtype='f').ravel()
+        dpg_img = np.asarray(dpg_img, dtype=np.float32).ravel()
         dpg_img = np.true_divide(dpg_img, 255.0)
         return dpg_img
 
@@ -109,13 +108,3 @@ def set_texture(tag, texture, width, height, format=dpg.mvFormat_Float_rgba):
                                 default_value=texture,
                                 tag=tag,
                                 format=format)
-
-def init_matplotlib_canvas(width=720, height=480):
-    plt.figure(figsize=(width/80,height/80), dpi=80)
-    
-def matplotlib_to_numpy():
-    canvas = plt.gca().figure.canvas
-    canvas.draw()
-    data = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
-    image = data.reshape(canvas.get_width_height()[::-1] + (3,))
-    return image

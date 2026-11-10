@@ -1,21 +1,20 @@
 import shutil
 from pathlib import Path
 import dearpygui.dearpygui as dpg
-import numpy as np
 import os
 from itertools import compress
 import time
-import csv
 import json
 from datetime import datetime
-from ._utils import Media, set_texture, init_matplotlib_canvas, matplotlib_to_numpy
+from ._utils import Media, set_texture
+from ._visualization_panel import VisualizationPanel
 
 import threading
-import matplotlib.pyplot as plt
 
 
 class DataCollectionPanel:
     def __init__(self,
+                 online_data_handler,
                  num_reps=3,
                  rep_time=3,
                  media_folder='media/',
@@ -24,10 +23,12 @@ class DataCollectionPanel:
                  auto_advance=True,
                  discrete=False,
                  exclude_files=[],
-                 gui = None,
+                 timestamps=False,
+                 visualize_num_samples=500,
                  video_player_width = 720,
                  video_player_height = 480):
-
+        
+        self.online_data_handler = online_data_handler
         self.num_reps = num_reps
         self.rep_time = rep_time
         self.media_folder = media_folder
@@ -36,7 +37,8 @@ class DataCollectionPanel:
         self.auto_advance=auto_advance
         self.discrete = discrete
         self.exclude_files = exclude_files
-        self.gui = gui
+        self.timestamps = timestamps
+        self.visualize_num_samples = visualize_num_samples
         self.video_player_width = video_player_width
         self.video_player_height = video_player_height
 
@@ -58,7 +60,7 @@ class DataCollectionPanel:
         self.cleanup_window("visualization")
 
         # Get UI scale from main GUI (default to 1.0 if not set)
-        ui_scale = getattr(self.gui, 'ui_scale', 1.0)
+        ui_scale = getattr(self, 'ui_scale', 1.0)
         input_width = int(100 * ui_scale)
         folder_input_width = int(250 * ui_scale)
         button_width = int(80 * ui_scale)
@@ -124,7 +126,7 @@ class DataCollectionPanel:
 
 
     def start_callback(self):
-        if not (self.gui.online_data_handler and sum(list(self.gui.online_data_handler.get_data()[1].values()))):
+        if not (self.online_data_handler and sum(list(self.online_data_handler.get_data()[1].values()))):
             raise ConnectionError('Attempted to start data collection, but data are not being received. Please ensure the OnlineDataHandler is receiving data.')
 
         self.get_settings()
@@ -193,7 +195,7 @@ class DataCollectionPanel:
 
     def spawn_collection_window(self, media_list):
         # open first frame of gif
-        self.gui.online_data_handler.prepare_smm()
+        self.online_data_handler.prepare_smm()
         texture = media_list[0][0].get_dpg_formatted_texture(width=self.video_player_width,height=self.video_player_height)
         set_texture("__dc_collection_visual", texture, width=self.video_player_width, height=self.video_player_height)
         
@@ -246,23 +248,29 @@ class DataCollectionPanel:
     def run_sgt(self, media_list):
         self.i = 0
         self.advance = True
-        self.gui.online_data_handler.reset()
+        self.online_data_handler.reset()
         while self.i < len(media_list):
-            self.rep_buffer = {mod:[] for mod in self.gui.online_data_handler.modalities}
-            self.rep_count  = {mod:0 for mod in self.gui.online_data_handler.modalities}
-            # do the rest (skip in discrete mode)
+            # do the rest
             if self.rest_time and self.i < len(media_list) and not self.discrete:
                 self.play_collection_visual(media_list[self.i], active=False)
                 media_list[self.i][0].reset()
-            self.gui.online_data_handler.reset()
 
+            file_prefix = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + "_").absolute().as_posix()
+            self.clear_rep_files(file_prefix)
+            self.online_data_handler.reset()
+            # Arm the logger before the prompt goes up: start_log only returns
+            # once shared memory is being watched, so the file covers the whole
+            # collection phase and nothing else.
             if self.discrete:
-                self.play_collection_visual_discrete(media_list[self.i])
+                self.play_collection_visual_discrete(media_list[self.i], file_prefix)
             else:
-                self.play_collection_visual(media_list[self.i], active=True)
+                self.online_data_handler.start_log(file_path=file_prefix, timestamps=self.timestamps)
+                try:
+                    self.play_collection_visual(media_list[self.i], active=True)
+                finally:
+                    logged = self.online_data_handler.stop_log()
+                self.verify_rep_logged(logged, file_prefix)
 
-            output_path = Path(self.output_folder, "C_" + str(media_list[self.i][2]) + "_R_" + str(media_list[self.i][3]) + ".csv").absolute().as_posix()
-            self.save_data(output_path)
             last_rep = media_list[self.i][3]
             self.i = self.i+1
             is_final_media = self.i == len(media_list)
@@ -327,75 +335,62 @@ class DataCollectionPanel:
             set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
             # update progress bar
             progress = min(1,(time.perf_counter_ns() - motion_timer)/(1e9*timer_duration))
-            # grab incoming new data
-            if active:
-                vals, count = self.gui.online_data_handler.get_data()
-                for mod in self.gui.online_data_handler.modalities:
-                    new_samples = count[mod][0][0]-self.rep_count[mod]
-                    self.rep_buffer[mod] = [vals[mod][:new_samples,:]] + self.rep_buffer[mod]
-                    self.rep_count[mod]  = self.rep_count[mod] + new_samples
-
-            dpg.set_value("__dc_progress", value = progress)
-
-    def play_collection_visual_discrete(self, media):
-        """Record while spacebar is held, stop when released."""
-        # Display gesture name and grayscale image (waiting state)
+            dpg.set_value("__dc_progress", value = progress)        
+    
+    def play_collection_visual_discrete(self, media, file_prefix):
+        """Retain latest's spacebar-controlled collection with atomic logging."""
         dpg.set_value("__dc_prompt", value=media[1])
         dpg.set_item_width("__dc_prompt_spacer", width=self.video_player_width/2+30 - (7*len(media[1]))/2)
-
         texture = media[0].get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height, grayscale=True)
         set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
         dpg.set_value("__dc_progress", value=0.0)
-
-        # Wait for spacebar press
         while not dpg.is_key_down(dpg.mvKey_Spacebar):
             time.sleep(0.05)
+        self.online_data_handler.reset()
+        self.online_data_handler.start_log(file_path=file_prefix, timestamps=self.timestamps)
+        try:
+            motion_timer = time.perf_counter_ns()
+            while dpg.is_key_down(dpg.mvKey_Spacebar):
+                time.sleep(1/media[0].fps)
+                elapsed = (time.perf_counter_ns() - motion_timer) / 1e9
+                media[0].advance_to(elapsed)
+                texture = media[0].get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height, grayscale=False)
+                set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
+                dpg.set_value("__dc_progress", value=min(1.0, elapsed / 10.0))
+        finally:
+            logged = self.online_data_handler.stop_log()
+        self.verify_rep_logged(logged, file_prefix)
 
-        # Reset data handler and counters right when spacebar is pressed
-        # This ensures we only capture data from when recording actually starts
-        self.gui.online_data_handler.reset()
-        self.rep_buffer = {mod: [] for mod in self.gui.online_data_handler.modalities}
-        self.rep_count = {mod: 0 for mod in self.gui.online_data_handler.modalities}
+    def clear_rep_files(self, file_prefix):
+        """Remove a previous take of this rep, since the logger appends to its files."""
+        for mod in self.online_data_handler.modalities:
+            path = Path(file_prefix + mod + ".csv")
+            if path.exists():
+                path.unlink()
 
-        # Start recording - show in color
-        motion_timer = time.perf_counter_ns()
+    def verify_rep_logged(self, logged, file_prefix=''):
+        """Confirm every modality contributed samples to the rep that just finished.
 
-        # Record while spacebar held
-        while dpg.is_key_down(dpg.mvKey_Spacebar):
-            time.sleep(1/media[0].fps)
-            elapsed = (time.perf_counter_ns() - motion_timer) / 1e9
-
-            # Update visual
-            media[0].advance_to(elapsed)
-            texture = media[0].get_dpg_formatted_texture(width=self.video_player_width, height=self.video_player_height, grayscale=False)
-            set_texture("__dc_collection_visual", texture, self.video_player_width, self.video_player_height)
-
-            # Update progress bar (scale to 10s for display purposes)
-            dpg.set_value("__dc_progress", value=min(1.0, elapsed / 10.0))
-
-            # Collect EMG data
-            vals, count = self.gui.online_data_handler.get_data()
-            for mod in self.gui.online_data_handler.modalities:
-                new_samples = count[mod][0][0] - self.rep_count[mod]
-                self.rep_buffer[mod] = [vals[mod][:new_samples, :]] + self.rep_buffer[mod]
-                self.rep_count[mod] = self.rep_count[mod] + new_samples
-
-    def save_data(self, filename):
-        file_parts = filename.split('.')
-        
-        for mod in self.rep_buffer:
-            filename = file_parts[0] + "_" + mod + "." + file_parts[1]
-            data = np.vstack(self.rep_buffer[mod])[::-1,:]
-            if data.size == 0:
-                raise ConnectionError('Attempting to store data, but received 0 samples during repetition, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
-            with open(filename, "w", newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                for row in data:
-                    writer.writerow(row)
+        A rep can also come back complete-looking but short: if the logger is
+        held off the shared memory long enough for the device to lap the buffer,
+        the samples it missed are simply absent from the file, with the samples
+        either side of the gap written adjacent to each other. Nothing in the
+        file marks that, so it is called out here while the rep can still be
+        redone.
+        """
+        empty = [mod for mod in self.online_data_handler.modalities if not logged.get(mod, 0)]
+        if empty:
+            raise ConnectionError(f'Attempting to store data, but received 0 samples during repetition for {", ".join(empty)}, suggesting that the data stream from the device has been interrupted. Please check the device connection and verify that previous files are not missing samples.')
+        dropped = getattr(self.online_data_handler, 'log_dropped', {})
+        incomplete = {mod: n for mod, n in dropped.items() if n}
+        if incomplete:
+            detail = ", ".join(f"{n} {mod}" for mod, n in sorted(incomplete.items()))
+            print(f'LibEMG -> DataCollectionPanel (this repetition is missing samples: {detail} '
+                  f'were overwritten in shared memory before they could be written to '
+                  f'{file_prefix}*.csv. The gap is not marked in the file. Redo the repetition '
+                  f'if the recording has to be continuous.)')
 
     def visualize_callback(self):
-        self.visualization_thread = threading.Thread(target=self._run_visualization_helper)
-        self.visualization_thread.start()
-    
-    def _run_visualization_helper(self):
-        self.gui.online_data_handler.visualize(block=False)
+        self.visualization_panel = VisualizationPanel(self.online_data_handler,
+                                                      num_samples=self.visualize_num_samples)
+        self.visualization_panel.spawn_window()

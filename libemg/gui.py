@@ -1,6 +1,8 @@
 import dearpygui.dearpygui as dpg
 from libemg._gui._data_collection_panel import DataCollectionPanel
 from libemg._gui._data_import_panel import DataImportPanel
+from libemg._gui._visualization_panel import VisualizationPanel
+import gc
 import inspect
 import time
 import os
@@ -28,6 +30,8 @@ class GUI:
         the number of frames (assumed to be 24 FPS). When 'discrete' is True, recording is controlled by
         holding the spacebar instead of using a timer - recording starts when spacebar is pressed and
         stops when released.  
+        'timestamps' (default False) prepends timestamps to logged samples.
+        Visualize > Live Signal accepts 'num_samples', 'refresh_rate' and 'plot_height'.
     width: int, default=1920
         The width of the SGT window. 
     height: int, default=1080
@@ -63,6 +67,14 @@ class GUI:
         """
         Launches the Screen Guided Training UI.
         """
+        # Everything past this point runs alongside worker threads that must not
+        # be stalled -- the file logger above all. Anything left unfinalized by
+        # the script that got us here is collected now, on the main thread, so a
+        # worker is not the one to trigger it later. A matplotlib window closed
+        # before this call is the usual culprit: its Tk widgets each block a
+        # non-main thread for a full second on finalization (see
+        # libemg.utils._release_interactive_plot).
+        gc.collect()
         self._window_init(self.width, self.height, self.debug)
         
     def _install_global_fields(self):
@@ -130,9 +142,9 @@ class GUI:
                 #dpg.add_menu_item(label="Export Data",  callback=self._export_data_callback)
                 #dpg.add_menu_item(label="Inspect Data", callback=self._inspect_data_callback)
             
-            # with dpg.menu(label="Visualize"):
-                # dpg.add_menu_item(label="Live Signal", callback=self._visualize_livesignal_callback)
-            
+            with dpg.menu(label="Visualize"):
+                dpg.add_menu_item(label="Live Signal", callback=self._visualize_livesignal_callback)
+
             # with dpg.menu(label="Model"):
                 # dpg.add_menu_item(label="Train Classifier", callback=self._train_classifier_callback)
 
@@ -142,8 +154,14 @@ class GUI:
     def _data_collection_callback(self):
         panel_arguments = list(inspect.signature(DataCollectionPanel.__init__).parameters)
         passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
-        self.dcp = DataCollectionPanel(**passed_arguments, gui=self, video_player_width=self.video_player_width, video_player_height=self.video_player_height)
+        self.dcp = DataCollectionPanel(self.online_data_handler, **passed_arguments, video_player_width=self.video_player_width, video_player_height=self.video_player_height)
         self.dcp.spawn_configuration_window()
+
+    def _visualize_livesignal_callback(self):
+        panel_arguments = list(inspect.signature(VisualizationPanel.__init__).parameters)
+        passed_arguments = {i: self.args[i] for i in self.args.keys() if i in panel_arguments}
+        self.vp = VisualizationPanel(self.online_data_handler, **passed_arguments)
+        self.vp.spawn_window()
 
     def _import_data_callback(self):
         panel_arguments = list(inspect.signature(DataImportPanel.__init__).parameters)

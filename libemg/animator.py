@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from pathlib import Path
 import os
 from typing import Callable, Sequence
@@ -11,6 +12,60 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.patches import Circle
 import cv2
+
+
+class _IncrementalVideoWriter:
+    """Encodes frames to a .mp4 file one at a time instead of buffering the whole animation.
+
+    A single 480x480 RGBA frame is ~0.92 MB, so collecting every frame before encoding costs
+    ~1.3 GB of RAM for a 60 s @ 24 fps animation. Writing incrementally keeps memory flat.
+    cv2.VideoWriter needs frameSize up front, so the underlying writer is opened lazily from the
+    first frame handed to write().
+    """
+    def __init__(self, output_filepath: str, fps: int):
+        """
+        Parameters
+        ----------
+        output_filepath: string
+            Path to output .mp4 file.
+        fps: int
+            Frames per second of output file.
+        """
+        self.output_filepath = output_filepath
+        self.fps = fps
+        self._writer = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
+        return False
+
+    def write(self, frame: Image.Image):
+        """Encode a single frame, which can then be discarded by the caller.
+
+        Parameters
+        ----------
+        frame: PIL.Image
+            Frame to append to the video.
+        """
+        if self._writer is None:
+            # frameSize is only known once the first frame arrives, hence the lazy open
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            self._writer = cv2.VideoWriter(self.output_filepath, fourcc, fps=self.fps, frameSize=frame.size)
+        # np.asarray() already materializes a new array from the PIL buffer, so an additional
+        # frame.copy() would just be a wasted ~0.92 MB memcpy per frame.
+        # COLOR_RGB2BGR accepts 3- or 4-channel input and always emits 3 channels, so the alpha of
+        # RGBA frames (what matplotlib produces) is dropped here and never reaches the encoder.
+        bgr_frame = cv2.cvtColor(np.asarray(frame), cv2.COLOR_RGB2BGR)
+        self._writer.write(bgr_frame)
+
+    def release(self):
+        """Finalize the output file. Safe to call more than once."""
+        if self._writer is not None:
+            self._writer.release()
+            self._writer = None
 
 
 class Animator:
@@ -54,14 +109,11 @@ class Animator:
         frames: list
             List of frames, where each element is a PIL.Image object.
         """
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        video = cv2.VideoWriter(self.output_filepath, fourcc, fps=self.fps, frameSize=frames[0].size)
-        
-        for frame in frames:
-            img = frame.copy()
-            bgr_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-            video.write(bgr_img)
-        video.release()
+        # Delegate to the incremental writer so callers that already hold every frame and callers
+        # that stream frames share a single encoding path.
+        with _IncrementalVideoWriter(self.output_filepath, self.fps) as video:
+            for frame in frames:
+                video.write(frame)
     
     def save_video(self, frames: Sequence[Image.Image]):
         """Save a video file from a list of images.
@@ -120,24 +172,35 @@ class Animator:
         if match_filename_function is None:
             # Combine all images in directory
             match_filename_function = lambda x: True
-        frames = []
         filenames = os.listdir(directory_path)
         filenames.sort()    # sort alphabetically
         matching_filenames = [] # images used to create .gif
 
-        for filename in filenames:
-            absolute_path = os.path.join(directory_path, filename)
-            if match_filename_function(filename):
-                # File matches the user pattern and is an accepted image format
-                try:
-                    image = Image.open(absolute_path)
-                    frames.append(image)
+        # Only the .gif path needs every frame at once (PIL's save_all), so .mp4 frames are encoded
+        # and released one file at a time rather than opening the whole directory up front.
+        frames = []
+        mp4_context = _IncrementalVideoWriter(self.output_filepath, self.fps) if self.video_format == '.mp4' else nullcontext()
+        with mp4_context as mp4_writer:
+            for filename in filenames:
+                absolute_path = os.path.join(directory_path, filename)
+                if match_filename_function(filename):
+                    # File matches the user pattern and is an accepted image format
+                    try:
+                        image = Image.open(absolute_path)
+                    except UnidentifiedImageError:
+                        # Reading non-image file
+                        print(f'Skipping {absolute_path} because it is not an image file.')
+                        continue
                     matching_filenames.append(absolute_path)
-                except UnidentifiedImageError:
-                    # Reading non-image file
-                    print(f'Skipping {absolute_path} because it is not an image file.')
-        
-        self.save_video(frames)
+                    if mp4_writer is not None:
+                        with image:
+                            mp4_writer.write(image) # encode now so the image can be freed
+                    else:
+                        frames.append(image)
+
+        if mp4_writer is None:
+            # .gif, or an unrecognized extension which save_video reports
+            self.save_video(frames)
 
         if delete_images:
             # Delete all images used to create .gif
@@ -179,7 +242,7 @@ class PlotAnimator(Animator):
         self.fpd = fps * self.tpd  # number of frames to generate to travel a distance of 1
     
     
-    def convert_distance_to_frames(self, coordinates1: npt.NDArray[np.float_], coordinates2: npt.NDArray[np.float_]):
+    def convert_distance_to_frames(self, coordinates1: npt.NDArray[np.float64], coordinates2: npt.NDArray[np.float64]):
         """Calculate the number of frames needed to move from coordinates1 to coordinates2.
         
         Parameters
@@ -199,7 +262,7 @@ class PlotAnimator(Animator):
         return int(distance * self.fpd)
     
     @staticmethod
-    def _normalize_to_unit_distance(x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]):
+    def _normalize_to_unit_distance(x: npt.NDArray[np.float64], y: npt.NDArray[np.float64]):
         """Normalize coordinates to a unit circle distance.
         
         Parameters
@@ -258,7 +321,7 @@ class PlotAnimator(Animator):
         ax = plt.gca()
         return fig, ax
     
-    def _preprocess_coordinates(self, coordinates: npt.NDArray[np.float_]):
+    def _preprocess_coordinates(self, coordinates: npt.NDArray[np.float64]):
         """Modify coordinates before plotting (e.g., normalization).
         
         Parameters
@@ -273,7 +336,7 @@ class PlotAnimator(Animator):
         """Plot boundary to axis."""
         pass    # going to be different for each implementation, so don't implement it here
 
-    def _show_countdown(self, coordinates: npt.NDArray[np.float_], text: str):
+    def _show_countdown(self, coordinates: npt.NDArray[np.float64], text: str):
         """Show a countdown based on the current coordinates and frame index.
         
         Parameters
@@ -285,7 +348,7 @@ class PlotAnimator(Animator):
         """
         plt.text(coordinates[0], coordinates[1], text, fontweight='bold', c='red', ha='center', va='center')
     
-    def _show_direction(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0):
+    def _show_direction(self, coordinates: npt.NDArray[np.float64], alpha: float = 1.0):
         """Show the direction of the next part of the movement.
         
         Parameters
@@ -299,7 +362,7 @@ class PlotAnimator(Animator):
         self.plot_icon(coordinates, alpha=alpha, colour='green')
 
     
-    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float64], alpha: float = 1.0, colour: str = 'black'):
         """Plot target / icon on axis.
         
         Parameters
@@ -314,7 +377,7 @@ class PlotAnimator(Animator):
         plt.plot(coordinates[0], coordinates[1], alpha=alpha, c=colour)
     
     
-    def save_plot_video(self, coordinates: npt.NDArray[np.float_], title: str = '', xlabel: str = '', ylabel: str = '', save_coordinates: bool = False, verbose: bool = False):
+    def save_plot_video(self, coordinates: npt.NDArray[np.float64], title: str = '', xlabel: str = '', ylabel: str = '', save_coordinates: bool = False, verbose: bool = False):
         """Save a video file of an icon moving around a 2D plane.
         
         Parameters
@@ -372,53 +435,63 @@ class PlotAnimator(Animator):
         # Adjust coordinates if desired
         coordinates = self._preprocess_coordinates(coordinates)
         
+        # PIL's save_all needs the entire sequence in memory, so frames are only accumulated for
+        # the .gif path. For .mp4 each frame is encoded as soon as it is rendered, which keeps
+        # memory flat instead of growing by ~0.92 MB per frame (~1.3 GB for 60 s @ 24 fps).
         frames = []
+        mp4_context = _IncrementalVideoWriter(self.output_filepath, self.fps) if self.video_format == '.mp4' else nullcontext()
+
         current_steady_state_idx = 0
         target_alpha = 0.05
-        for frame_idx, frame_coordinates in enumerate(coordinates):
-            if verbose and frame_idx % 10 == 0:
-                print(f'Frame {frame_idx} / {coordinates.shape[0]}')
-            
-            # Plot additional information
-            if self.show_boundary:
-                # Show boundaries
-                self._show_boundary()
-            
-            if (self.show_direction or self.show_countdown) and split_steady_state_indices is not None and steady_state_start_indices is not None and steady_state_end_indices is not None:
-                # Calculate next steady state frame
-                next_steady_state_idx = min(current_steady_state_idx, len(steady_state_end_indices) - 1)    # limit max index
-                if frame_idx > steady_state_end_indices[current_steady_state_idx]:
-                    current_steady_state_idx += 1
-                    target_alpha = 0.05 # reset alpha
-                
-                if self.show_direction:
-                    # Show path until a change in direction
-                    next_steady_state_idx = current_steady_state_idx + 1 if frame_idx > steady_state_start_indices[current_steady_state_idx] else current_steady_state_idx
-                    next_steady_state_start = steady_state_start_indices[next_steady_state_idx]
-                    target_alpha += 0.01    # add in fade
-                    target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
-                    self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
-                    
-                if self.show_countdown:
-                    # Show countdown during steady state
-                    steady_state_end = steady_state_end_indices[current_steady_state_idx]
-                    time_until_movement = (steady_state_end - frame_idx) * self.duration / 1000   # convert from frames to seconds
-                    if time_until_movement >= 0.25 and frame_idx in split_steady_state_indices[current_steady_state_idx]:
-                        # Only show countdown if the steady state is longer than 1 second
-                        self._show_countdown(frame_coordinates, str(int(time_until_movement)))
-                
-            # Plot icon
-            self.plot_icon(frame_coordinates)
-                
-            # Save frame
-            frame = self._convert_plot_to_image(fig)
-            frames.append(frame)
-            # Clear axis while retaining formatting
-            for artist in ax.lines + ax.collections + ax.patches + ax.texts:
-                artist.remove()
-        
-        # Save file
-        self.save_video(frames)
+        with mp4_context as mp4_writer:
+            for frame_idx, frame_coordinates in enumerate(coordinates):
+                if verbose and frame_idx % 10 == 0:
+                    print(f'Frame {frame_idx} / {coordinates.shape[0]}')
+
+                # Plot additional information
+                if self.show_boundary:
+                    # Show boundaries
+                    self._show_boundary()
+
+                if (self.show_direction or self.show_countdown) and split_steady_state_indices is not None and steady_state_start_indices is not None and steady_state_end_indices is not None:
+                    # Calculate next steady state frame
+                    next_steady_state_idx = min(current_steady_state_idx, len(steady_state_end_indices) - 1)    # limit max index
+                    if frame_idx > steady_state_end_indices[current_steady_state_idx]:
+                        current_steady_state_idx += 1
+                        target_alpha = 0.05 # reset alpha
+
+                    if self.show_direction:
+                        # Show path until a change in direction
+                        next_steady_state_idx = current_steady_state_idx + 1 if frame_idx > steady_state_start_indices[current_steady_state_idx] else current_steady_state_idx
+                        next_steady_state_start = steady_state_start_indices[next_steady_state_idx]
+                        target_alpha += 0.01    # add in fade
+                        target_alpha = min(0.4, target_alpha) # limit alpha to 0.4
+                        self._show_direction(coordinates[next_steady_state_start], alpha=target_alpha)
+
+                    if self.show_countdown:
+                        # Show countdown during steady state
+                        steady_state_end = steady_state_end_indices[current_steady_state_idx]
+                        time_until_movement = (steady_state_end - frame_idx) * self.duration / 1000   # convert from frames to seconds
+                        if time_until_movement >= 0.25 and frame_idx in split_steady_state_indices[current_steady_state_idx]:
+                            # Only show countdown if the steady state is longer than 1 second
+                            self._show_countdown(frame_coordinates, str(int(time_until_movement)))
+
+                # Plot icon
+                self.plot_icon(frame_coordinates)
+
+                # Save frame
+                frame = self._convert_plot_to_image(fig)
+                if mp4_writer is not None:
+                    mp4_writer.write(frame) # encode immediately instead of buffering the animation
+                else:
+                    frames.append(frame)
+                # Clear axis while retaining formatting
+                for artist in ax.lines + ax.collections + ax.patches + ax.texts:
+                    artist.remove()
+
+        if mp4_writer is None:
+            # Save file (.gif, or an unrecognized extension which save_video reports)
+            self.save_video(frames)
 
 
 class CartesianPlotAnimator(PlotAnimator):
@@ -484,7 +557,7 @@ class CartesianPlotAnimator(PlotAnimator):
         ax.set(xlim=axis_limits, ylim=axis_limits)
         return fig, ax
     
-    def _preprocess_coordinates(self, coordinates: npt.NDArray[np.float_]):
+    def _preprocess_coordinates(self, coordinates: npt.NDArray[np.float64]):
         coordinates = super()._preprocess_coordinates(coordinates)
 
         if self.normalize_distance:
@@ -496,7 +569,7 @@ class CartesianPlotAnimator(PlotAnimator):
         an = np.linspace(0, 2 * np.pi, 100)
         plt.plot(np.cos(an), np.sin(an), 'b--', alpha=0.7)
     
-    def _show_countdown(self, coordinates: npt.NDArray[np.float_], text: str):
+    def _show_countdown(self, coordinates: npt.NDArray[np.float64], text: str):
         x = coordinates[0]
         y = coordinates[1] - 0.2
         return super()._show_countdown((x, y), text)
@@ -568,7 +641,7 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
         self.plot_line = plot_line
 
     
-    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float64], alpha: float = 1.0, colour: str = 'black'):
         # Parse coordinates
         x = coordinates[0]
         y = coordinates[1]
@@ -582,7 +655,7 @@ class ScatterPlotAnimator(CartesianPlotAnimator):
 
 
 class ArrowPlotAnimator(CartesianPlotAnimator):
-    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float64], alpha: float = 1.0, colour: str = 'black'):
         # Parse coordinates
         x_tail = coordinates[0]
         y_tail = coordinates[1]
@@ -607,7 +680,7 @@ class TargetPlotAnimator(CartesianPlotAnimator):
         circle = Circle(xy, radius=radius, edgecolor=edgecolor, facecolor=facecolor, alpha=alpha)
         plt.gca().add_patch(circle)
     
-    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1.0, colour: str = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float64], alpha: float = 1.0, colour: str = 'black'):
         # Parse coordinates
         x = coordinates[0]
         y = coordinates[1]
@@ -668,13 +741,13 @@ class BarPlotAnimator(PlotAnimator):
         ax.set(ylim=axis_limits)
         return fig, ax
     
-    def _plot_border(self, coordinates: npt.NDArray[np.float_], edgecolor: str = 'black'):
+    def _plot_border(self, coordinates: npt.NDArray[np.float64], edgecolor: str = 'black'):
         plt.bar(self.bar_labels, coordinates, color='none', edgecolor=edgecolor, linewidth=2, width=self.bar_width)
     
-    def _show_direction(self, coordinates: npt.NDArray[np.float_], alpha: float = 1):
+    def _show_direction(self, coordinates: npt.NDArray[np.float64], alpha: float = 1):
         self._plot_border(coordinates, edgecolor='green')
         
-    def _show_countdown(self, coordinates: npt.NDArray[np.float_], text: str):
+    def _show_countdown(self, coordinates: npt.NDArray[np.float64], text: str):
         adjustment = 0.05
         for label, dof_value in zip(self.bar_labels, coordinates):
             modifier = -adjustment if dof_value < 0 else adjustment
@@ -684,7 +757,7 @@ class BarPlotAnimator(PlotAnimator):
         self._plot_border(-1)
         self._plot_border(1)
     
-    def plot_icon(self, coordinates: npt.NDArray[np.float_], alpha: float = 1, colour: str = 'black'):
+    def plot_icon(self, coordinates: npt.NDArray[np.float64], alpha: float = 1, colour: str = 'black'):
         plt.bar(self.bar_labels, coordinates, alpha=alpha, color=colour, width=self.bar_width)
 
         axis_limits = plt.gca().get_ylim()
