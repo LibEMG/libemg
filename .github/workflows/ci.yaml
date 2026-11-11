@@ -9,21 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # Supported range is 3.10 - 3.12, matching requires-python in
-    # pyproject.toml. The boundaries are not arbitrary:
-    #
-    #   3.9 and below - libemg uses PEP 604 (`X | None`) in 33 function
-    #     signatures with no `from __future__ import annotations`, so the
-    #     library raises TypeError on import.
-    #
-    #   3.13 and above - blocked by the `numpy<2` ceiling, which exists only
-    #     because libemg/animator.py still annotates with np.float_ (removed
-    #     in numpy 2.0). Replacing those 10 annotations with np.float64 should
-    #     unlock numpy 2 and 3.13.
+    # Matches requires-python = ">=3.11" in pyproject.toml: the matrix covers
+    # every version the package claims, so a release cannot promise one that
+    # nothing runs against. 3.10 was dropped when the floor moved up.
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.11', '3.12', '3.13']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,15 +30,19 @@ jobs:
           sudo apt-get install -y libsndfile1 libglib2.0-dev
       - name: Install dependencies
         run: pip install -r requirements.txt
-      # The default run is hermetic: no network, no hardware. Tests that need
-      # either are behind --slow / --download / --hardware (see tests/conftest.py)
-      # and run in the nightly job below.
+      # The default run is hermetic: no network, no hardware. Tests needing
+      # either sit behind --slow / --download / --hardware (see
+      # tests/conftest.py) and run in the nightly workflow. Nothing in the
+      # suite needs a display any more: the tests that drove a real DearPyGui
+      # viewport were removed rather than carried as a second CI lane.
       - name: Run tests
-        # Measured at 46% on 3.10, 3.11 and 3.12 (vendor streamers and GUI are
-        # omitted; see [tool.coverage.run] in pyproject.toml). The floor sits
-        # below that so a platform difference cannot fail the build on its
-        # own. Raise it as coverage grows -- it should only ever move up.
-        run: pytest --cov=libemg --cov-report=term-missing --cov-fail-under=44
+        # Measured at 66% with the [tool.coverage.run] omit list in
+        # pyproject.toml applied (vendor streamers and GUI panels need a device
+        # or a display). That block went missing in the #145-#148 merge, which
+        # is why a run briefly reported 18%. The floor sits well below the
+        # measured value so a platform difference cannot fail the build on its
+        # own; raise it as coverage grows -- it should only ever move up.
+        run: pytest --cov=libemg --cov-report=term-missing --cov-fail-under=55
 
   docs:
     name: Build and publish docs
@@ -62,10 +58,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: pip
       - name: Install system dependencies
         run: |

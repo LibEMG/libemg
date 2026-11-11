@@ -215,17 +215,13 @@ class TestParseWindows:
         windows, metadata = myo_odh.parse_windows(596, 1)
         assert windows.shape[0] == metadata["classes"].shape[0]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "A file shorter than the window crashes metadata windowing. "
-            "get_windows correctly returns an empty (0, C, L) array, but "
-            "_get_mode_windows then calls np.apply_along_axis on it and numpy "
-            "raises 'Cannot apply_along_axis when any iteration dimensions are "
-            "0'. One short recording in a folder takes down the whole load."
-        ),
-    )
     def test_file_shorter_than_window_is_skipped_not_fatal(self, data_dir, tmp_path):
+        """A recording shorter than the window contributes no windows.
+
+        This used to crash: _get_mode_windows called np.apply_along_axis on an
+        empty array. Fixed by the _get_mode_windows rewrite in #145-#148, so
+        the xfail that documented it has been removed.
+        """
         import shutil
 
         source = data_dir / "myo_dataset"

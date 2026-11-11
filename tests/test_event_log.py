@@ -295,13 +295,15 @@ def test_the_null_log_survives_being_sent_to_another_process():
     revived.emit(event_log.COMMIT, origin="emg")
 
 
-def test_a_real_log_hands_a_child_what_it_needs_and_nothing_it_should_not_have():
+def test_a_real_log_hands_a_child_what_it_needs_and_nothing_it_should_not_have(tmp_path):
     # A real log carries a multiprocessing queue, which the platform only
     # transfers while a process is actually being spawned, never through a
     # plain pickle round-trip. So the transferred state is checked directly;
     # that it genuinely arrives in a child is covered by the cross-process
     # test above, which passes it through Process args as the library does.
-    log = EventLog(path="unused.log", keep=5, kinds=[event_log.DIRTY])
+    # start() opens this path, so it has to be a real temp location. A bare
+    # relative name wrote the log into the repository root on every run.
+    log = EventLog(path=str(tmp_path / "unused.log"), keep=5, kinds=[event_log.DIRTY])
     log.start()
     try:
         state = log.__getstate__()

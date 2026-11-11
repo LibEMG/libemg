@@ -25,6 +25,7 @@ Examples
 """
 
 import datetime
+import functools
 import json
 import os
 import re
@@ -314,9 +315,9 @@ class DatasetIndex:
         for path in root.rglob("*"):
             relative = path.relative_to(root).as_posix()
             pure = PurePosixPath(relative)
-            if not any(pure.full_match(g) for g in includes):
+            if not any(_glob_match(relative, g) for g in includes):
                 continue
-            if any(pure.full_match(g) for g in excludes) or not path.is_file():
+            if any(_glob_match(relative, g) for g in excludes) or not path.is_file():
                 continue
             if parse is not None:
                 match = parse.fullmatch(relative)
@@ -354,6 +355,66 @@ def read_dataset_description(root):
     import yaml
     with open(description) as handle:
         return yaml.safe_load(handle) or {}
+
+
+@functools.lru_cache(maxsize=None)
+def _glob_regex(pattern):
+    """One ``data_files``/``exclude_files`` glob as an anchored regex.
+
+    This is what :meth:`pathlib.PurePath.full_match` does, done here because
+    that method arrived in Python 3.13 and libemg supports 3.11. The two
+    methods available before it are both wrong for this: ``fnmatch`` lets
+    ``*`` run across separators, so ``*/*/*.txt`` would match a path of any
+    depth, and ``PurePath.match`` is neither anchored at the left nor
+    ``**``-aware, so ``S1/notes.txt`` matches the pattern ``*.txt`` and the
+    notes files this spec exists to exclude come back as recordings.
+
+    Within one segment ``*`` and ``?`` stop at a separator; ``**`` as a whole
+    segment matches zero or more segments, so ``**/*.txt`` covers both
+    ``notes.txt`` and ``S1/Key/aff_0.txt``.
+    """
+    segments = pattern.split("/")
+    expression = ""
+    for index, segment in enumerate(segments):
+        last = index == len(segments) - 1
+        if segment == "**":
+            # Zero or more segments, the separator after them included, so the
+            # next piece appends directly. Trailing "**" is everything below.
+            expression += ".*" if last else "(?:[^/]+/)*"
+            continue
+        expression += _glob_segment(segment)
+        if not last:
+            expression += "/"
+    return re.compile(expression)
+
+
+def _glob_segment(segment):
+    """One path segment of a glob, as a regex that cannot cross a separator."""
+    out, index = "", 0
+    while index < len(segment):
+        character = segment[index]
+        if character == "*":
+            out += "[^/]*"
+        elif character == "?":
+            out += "[^/]"
+        elif character == "[":
+            close = segment.find("]", index + 1)
+            if close < 0:
+                out += re.escape("[")         # unclosed: a literal bracket
+            else:
+                body = segment[index + 1:close].replace("\\", "\\\\")
+                out += "[" + ("^" + body[1:] if body.startswith("!") else body) + "]"
+                index = close + 1
+                continue
+        else:
+            out += re.escape(character)
+        index += 1
+    return out
+
+
+def _glob_match(relative, pattern):
+    """Whether a ``/``-joined relative path matches one glob, whole."""
+    return _glob_regex(pattern).fullmatch(relative) is not None
 
 
 def _as_list(value):

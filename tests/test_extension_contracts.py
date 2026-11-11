@@ -29,6 +29,8 @@ import pytest
 import libemg
 import libemg.emg_predictor as emg_predictor
 import libemg.filtering as filtering
+from libemg.emg_predictor import CLASSIFIER_MODELS as _CLASSIFIER_MODELS
+from libemg.emg_predictor import REGRESSOR_MODELS as _REGRESSOR_MODELS
 from libemg.emg_predictor import EMGClassifier, EMGRegressor
 from libemg.feature_extractor import FeatureExtractor
 from libemg.filtering import Filter
@@ -37,23 +39,6 @@ from libemg.offline_metrics import OfflineMetrics
 # --------------------------------------------------------------------------- #
 # Deriving the registries from source
 # --------------------------------------------------------------------------- #
-
-
-def model_config_names(class_name):
-    """Model strings accepted by EMGClassifier / EMGRegressor.
-
-    `model_config` is a dict literal local to each __init__, so it cannot be
-    imported -- but it can be read off the syntax tree, which is enough to keep
-    this test honest when a model is added.
-    """
-    tree = ast.parse(inspect.getsource(emg_predictor))
-    class_def = next(
-        n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == class_name
-    )
-    for node in ast.walk(class_def):
-        if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", None) == "model_config":
-            return [key.value for key in node.value.keys]
-    raise AssertionError(f"no model_config dict found in {class_name}")
 
 
 def filter_names():
@@ -83,8 +68,12 @@ def filter_names():
     return sorted(names)
 
 
-CLASSIFIER_MODELS = model_config_names("EMGClassifier")
-REGRESSOR_MODELS = model_config_names("EMGRegressor")
+# The model tables moved to module level in #145-#148, so they can simply be
+# imported. Previously this had to parse them out of a dict literal inside
+# each __init__; that parser broke the moment they were refactored, which is
+# exactly the kind of brittleness a derived list is supposed to avoid.
+CLASSIFIER_MODELS = sorted(_CLASSIFIER_MODELS)
+REGRESSOR_MODELS = sorted(_REGRESSOR_MODELS)
 FILTER_NAMES = filter_names()
 FEATURES = FeatureExtractor().get_feature_list()
 FEATURE_GROUPS = list(FeatureExtractor().get_feature_groups())
@@ -104,7 +93,10 @@ def test_registries_were_actually_discovered():
     assert len(FILTER_NAMES) >= 6, FILTER_NAMES
     assert len(FEATURES) >= 50
     assert len(FEATURE_GROUPS) >= 10
-    assert len(AVAILABLE_METRICS) >= 20
+    # 14 today: the classification and regression metrics. The separability
+    # family moved to libemg/_feature_selection_metrics.py (#147), so it is no
+    # longer counted here.
+    assert len(AVAILABLE_METRICS) >= 12
 
 
 # --------------------------------------------------------------------------- #

@@ -1,9 +1,53 @@
+# To cut a release:
+#     python -m pip install --upgrade build twine
+#     python -m build                 # writes sdist + wheel to dist/
+#     python -m twine check dist/*    # validate metadata before uploading
+#     python -m twine upload --repository testpypi dist/*   # test first
+#     python -m twine upload dist/*                         # then real PyPI
+#
+# Bump `version` below first, and clear stale artifacts out of dist/.
+# (`python setup.py sdist` no longer works -- setup.py is gone and the build is
+# driven entirely by this file.)
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "libemg"
 version = "3.0.0b2"
 description = "LibEMG - Myoelectric Control Library"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Ethan Eddy" },
+    { name = "Evan Campbell" },
+    { name = "Angkoon Phinyomark" },
+    { name = "Scott Bateman" },
+    { name = "Erik Scheme" },
+]
+keywords = [
+    "emg",
+    "myoelectric_control",
+    "pattern_recognition",
+    "muscle-based input",
+]
+classifiers = [
+    # Was "Development Status :: 5 - Production/Stable  " in setup.py. The
+    # trailing spaces made it an invalid trove classifier, which PyPI rejects
+    # on upload.
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+]
 # Runtime only. Test and documentation tooling live in [dependency-groups]
 # below: none of it is imported by the library, and declaring it here made
 # every downstream project inherit an exact pytest/sphinx pin, which collides
@@ -12,9 +56,9 @@ requires-python = ">=3.13"
 # Floors are deliberately conservative. They were previously generated from
 # whichever versions happened to be installed, which pinned consumers to
 # near-latest releases for no reason -- requests>=2.34.2 alone was enough to
-# make libemg uninstallable alongside label-studio. requires-python >=3.13
+# make libemg uninstallable alongside label-studio. requires-python >=3.11
 # already rules out genuinely old releases, so a low floor here cannot resolve
-# to one that predates Python 3.13 support.
+# to one that predates Python 3.11 support.
 #
 # websockets was pinned to ==8.1, which cannot run here at all: 8.1 passes
 # loop= to asyncio.Lock, removed in Python 3.10, so importing _leap_streamer
@@ -73,7 +117,69 @@ docs = [
     "sphinx-rtd-theme>=3.0.2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/LibEMG/libemg"
+Documentation = "https://libemg.github.io/libemg/"
+Repository = "https://github.com/LibEMG/libemg"
+
+# Replaces find_packages(exclude=["*tests*"]) from setup.py. Without this,
+# setuptools auto-discovery runs against a flat layout that also contains
+# tests/, docs/, examples/ and demos/.
+[tool.setuptools.packages.find]
+include = ["libemg*"]
+exclude = ["tests*", "docs*", "examples*", "demos*", "build*", "dist*"]
+
 # Runtime files that live inside the package: the 3D hand model, its manifest
 # and its class-ID map. Read through libemg.resources, never by absolute path.
 [tool.setuptools.package-data]
 "libemg.resources" = ["choreography/*.glb", "choreography/*.json", "choreography/*.md"]
+
+# --------------------------------------------------------------------------- #
+# Test configuration
+#
+# This block went missing in the #145-#148 merge, which is why `download` and
+# `hardware` started reporting as unknown marks. The flags and skip logic that
+# back them live in tests/conftest.py; only the registration was lost.
+# --------------------------------------------------------------------------- #
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+markers = [
+    "slow: long-running test, excluded by default (run with --slow, provided by pytest-skip-slow)",
+    "hardware: requires a physical EMG device to be connected (run with --hardware)",
+    "download: downloads a dataset over the network (run with --download)",
+]
+
+# Third-party noise that drowns out warnings worth reading. libemg's own
+# warnings are deliberately left visible.
+filterwarnings = [
+    "ignore:Importing from numpy.matlib is deprecated:PendingDeprecationWarning",
+    "ignore:`alltrue` is deprecated:DeprecationWarning",
+    "ignore:pkg_resources is deprecated:DeprecationWarning",
+    "ignore:Deprecated call to `pkg_resources:DeprecationWarning",
+]
+
+# --------------------------------------------------------------------------- #
+# Coverage
+# --------------------------------------------------------------------------- #
+
+[tool.coverage.run]
+source = ["libemg"]
+omit = [
+    # Vendor hardware drivers and GUI panels: covered only by the import smoke
+    # test, since exercising them needs a device or a display. Counting them in
+    # the denominator makes the headline number a measure of how much GUI code
+    # exists rather than how well the library is tested.
+    "libemg/_streamers/*",
+    "libemg/_gui/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

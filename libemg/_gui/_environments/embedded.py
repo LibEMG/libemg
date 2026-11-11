@@ -18,8 +18,9 @@ pygame for key state rather than reading the queue.
 """
 
 import os
+import sys
 import traceback
-from multiprocessing import Process
+from multiprocessing import Process, parent_process
 
 from libemg._gui._environments.frame_bridge import FORWARDED_KEYS, FrameBridge
 
@@ -57,6 +58,9 @@ class EnvironmentRunner(Process):
 
         bridge = self.bridge
         environment = None
+        # Set up front so the exit status is defined even on a way out that
+        # neither branch below covers, such as a KeyboardInterrupt.
+        status = 1
         try:
             pygame.init()
             pygame.font.init()
@@ -92,12 +96,14 @@ class EnvironmentRunner(Process):
 
             if environment.done:
                 bridge.mark_finished()
+            status = 0
         except Exception as error:
             # The reason goes back through the bridge as well as to the
             # console. An environment validates its own settings and raises
             # here, in a process with no window and no terminal anybody is
             # watching, so without this the window that launched it simply
             # stays black with nothing to explain why.
+            status = 1
             bridge.report_error(f"{type(error).__name__}: {error}")
             print("LibEMG -> embedded environment failed:\n"
                   + traceback.format_exc())
@@ -111,12 +117,32 @@ class EnvironmentRunner(Process):
                     print("LibEMG -> could not save the environment's results:\n"
                           + traceback.format_exc())
             bridge.mark_running(False)
-            try:
-                import pygame as _pygame
-                _pygame.quit()
-            except Exception:
-                pass
             bridge.close()
+            # Everything the GUI needs has been handed back, so end the process
+            # here instead of unwinding out of it. SDL's teardown can block
+            # forever in a child that inherited an initialised display from the
+            # process which started it, and nothing re-initialised it here --
+            # the case being an environment rejected in its constructor, before
+            # it ever reached set_mode. Such a child reports why it failed and
+            # then never exits, which leaves the panel waiting on a process that
+            # is never coming back. A process whose only job was this
+            # environment has nothing left to run on the way out, so there is
+            # nothing to lose by not running it; the OS reclaims the display,
+            # the audio device and the segments either way.
+            #
+            # Guarded on actually being the child: run() is reachable in-process
+            # on a directly constructed runner, and taking the caller's process
+            # down with it would be indefensible.
+            if parent_process() is not None:
+                sys.stdout.flush()
+                sys.stderr.flush()
+                os._exit(status)
+            else:
+                try:
+                    import pygame as _pygame
+                    _pygame.quit()
+                except Exception:
+                    pass
 
 
 def _pump(pygame, bridge):
