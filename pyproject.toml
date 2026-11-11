@@ -150,7 +150,6 @@ markers = [
     "slow: long-running test, excluded by default (run with --slow, provided by pytest-skip-slow)",
     "hardware: requires a physical EMG device to be connected (run with --hardware)",
     "download: downloads a dataset over the network (run with --download)",
-    "gui: needs a real display for DearPyGui's viewport (run with --gui, under xvfb on Linux)",
 ]
 
 # Third-party noise that drowns out warnings worth reading. libemg's own

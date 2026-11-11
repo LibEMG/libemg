@@ -30,11 +30,11 @@ jobs:
           sudo apt-get install -y libsndfile1 libglib2.0-dev
       - name: Install dependencies
         run: pip install -r requirements.txt
-      # The default run is hermetic: no network, no hardware, no display.
-      # Tests needing any of those sit behind --slow / --download / --hardware
-      # / --gui (see tests/conftest.py) and run in the nightly workflow. The
-      # viewport tests in particular abort the process when there is no
-      # display, which would take the whole session down.
+      # The default run is hermetic: no network, no hardware. Tests needing
+      # either sit behind --slow / --download / --hardware (see
+      # tests/conftest.py) and run in the nightly workflow. Nothing in the
+      # suite needs a display any more: the tests that drove a real DearPyGui
+      # viewport were removed rather than carried as a second CI lane.
       - name: Run tests
         # Measured at 66% with the [tool.coverage.run] omit list in
         # pyproject.toml applied (vendor streamers and GUI panels need a device

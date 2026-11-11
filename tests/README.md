@@ -19,19 +19,21 @@ CI runs the default suite on every push and pull request, with a coverage
 floor. `.github/workflows/nightly.yaml` runs the `--slow` and `--download`
 tests once a day.
 
-**Supported: Python 3.10, 3.11 and 3.12**, all three in the CI matrix and all
-three verified to install and pass the full suite. The boundaries are real
-constraints, not arbitrary choices:
+**Supported: Python 3.11, 3.12 and 3.13**, all three in the CI matrix, and
+`requires-python = ">=3.11"` in `pyproject.toml` says the same thing — a
+release should never promise a version nothing runs against.
 
+- **3.10** — dropped as a support decision, not because anything broke. It was
+  in the matrix until the floor moved up.
 - **3.9 and below** — libemg uses PEP 604 (`X | None`) in 33 function
   signatures with no `from __future__ import annotations`. Parameter
   annotations are evaluated at definition time, so the library raises
   `TypeError` on import. Adding that one import to the eight affected modules
   would fix it.
-- **3.13 and above** — blocked by the `numpy<2` ceiling in `pyproject.toml`,
-  which exists only because `libemg/animator.py` annotates with `np.float_`
-  (removed in numpy 2.0). Replacing those 10 annotations with `np.float64`
-  should unlock numpy 2 and 3.13.
+
+Code has to run on the whole range, which rules out anything 3.13-only. The
+live example is `pathlib.PurePath.full_match`: `libemg/annotations.py`
+translates its dataset globs by hand rather than calling it.
 
 ### Setting up a dev environment
 

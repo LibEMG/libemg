@@ -336,8 +336,9 @@ def test_the_block_says_what_a_scheme_needs(tmp_path):
 # ======================================================================
 @pytest.fixture
 def dpg_context():
-    # Items only, no viewport: a DearPyGui viewport shown in this process makes a
-    # later Tk window (tests/test_figure_release.py) crash on Windows.
+    # Items only, no viewport: create_context() needs no display, which is what
+    # keeps this test in the default run. Showing a viewport here would also
+    # make any later Tk window in the same process crash on Windows.
     import dearpygui.dearpygui as dpg
     dpg.create_context()
     yield dpg
