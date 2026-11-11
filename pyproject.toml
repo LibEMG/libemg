@@ -18,7 +18,7 @@ name = "libemg"
 version = "3.0.0b2"
 description = "LibEMG - Myoelectric Control Library"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -41,6 +41,8 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Operating System :: Unix",
     "Operating System :: MacOS :: MacOS X",
@@ -54,9 +56,9 @@ classifiers = [
 # Floors are deliberately conservative. They were previously generated from
 # whichever versions happened to be installed, which pinned consumers to
 # near-latest releases for no reason -- requests>=2.34.2 alone was enough to
-# make libemg uninstallable alongside label-studio. requires-python >=3.13
+# make libemg uninstallable alongside label-studio. requires-python >=3.11
 # already rules out genuinely old releases, so a low floor here cannot resolve
-# to one that predates Python 3.13 support.
+# to one that predates Python 3.11 support.
 #
 # websockets was pinned to ==8.1, which cannot run here at all: 8.1 passes
 # loop= to asyncio.Lock, removed in Python 3.10, so importing _leap_streamer

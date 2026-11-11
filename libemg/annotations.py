@@ -362,7 +362,7 @@ def _glob_regex(pattern):
     """One ``data_files``/``exclude_files`` glob as an anchored regex.
 
     This is what :meth:`pathlib.PurePath.full_match` does, done here because
-    that method arrived in Python 3.13 and libemg supports 3.10. The two
+    that method arrived in Python 3.13 and libemg supports 3.11. The two
     methods available before it are both wrong for this: ``fnmatch`` lets
     ``*`` run across separators, so ``*/*/*.txt`` would match a path of any
     depth, and ``PurePath.match`` is neither anchored at the left nor

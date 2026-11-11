@@ -34,6 +34,11 @@ DROP = "drop"                # work was skipped, with a reason
 ERROR = "error"              # a hook raised
 LIFECYCLE = "lifecycle"      # start/stop of an executor or graph
 
+#: How long stop() waits for events already handed to the queue to come out the
+#: other side. Reached only when something has gone wrong with the feeder, so it
+#: is a backstop rather than a delay anybody should notice.
+_FLUSH_TIMEOUT = 2.0
+
 
 @dataclass
 class Event:
@@ -175,6 +180,12 @@ class EventLog:
         self._stop = threading.Event()
         self._handle = None
         self._owner_pid = os.getpid()
+        # Events this process has handed to the queue, against events the drain
+        # thread has recorded. stop() waits for the second to catch up with the
+        # first; see the note there.
+        self._queued = 0
+        self._written = 0
+        self._counting = threading.Lock()
 
     # ------------------------------------------------------------------
     # emitting (runs in any process)
@@ -195,7 +206,9 @@ class EventLog:
         except Exception:
             # A full or closed queue must never take the pipeline down with
             # it; losing a debug event is always better than losing a sample.
-            pass
+            return
+        with self._counting:
+            self._queued += 1
 
     # ------------------------------------------------------------------
     # draining (runs only in the owning process)
@@ -232,6 +245,9 @@ class EventLog:
                 return
 
     def _write(self, event):
+        # Only the drain thread runs this, so the increment needs no lock; the
+        # waiter in stop() only ever reads it.
+        self._written += 1
         if self.keep:
             self._records.append(event)
             if len(self._records) > self.keep:
@@ -246,9 +262,27 @@ class EventLog:
         """Stop draining and flush what is still queued."""
         if self._thread is None:
             return
+        # multiprocessing.Queue is asynchronous: put_nowait() hands the event to
+        # a feeder thread which pickles it into a pipe, so an event emitted a
+        # moment ago is not necessarily readable yet -- get_nowait() is
+        # documented as free to raise Empty straight after a put. Stopping the
+        # drain thread immediately therefore drops whatever is still in flight,
+        # and that is always the most recently emitted events: the ones
+        # describing the shutdown being diagnosed. So wait for the drain thread
+        # to account for everything this process queued before pulling it.
+        #
+        # Only this process's own puts can be counted, because a child's
+        # increments land on its own copy. Cross-process events stay
+        # best-effort, which is what they already were.
+        deadline = time.monotonic() + _FLUSH_TIMEOUT
+        while self._written < self._queued and time.monotonic() < deadline:
+            time.sleep(0.002)
         self._stop.set()
         self._thread.join(timeout=3)
         self._thread = None
+        # Whatever has not arrived by now is lost, so leave the counts balanced
+        # rather than making a later stop() wait out the timeout for it.
+        self._queued = self._written
         if self._handle is not None:
             self._handle.flush()
             self._handle.close()
@@ -307,8 +341,15 @@ class EventLog:
         state["_handle"] = None
         state["_records"] = []
         state["_stop"] = None
+        # A lock will not pickle, and the counts it guards describe the owner's
+        # own queueing, which means nothing in a child that only emits. Both are
+        # rebuilt on the other side.
+        state["_counting"] = None
+        state["_queued"] = 0
+        state["_written"] = 0
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self._stop = threading.Event()
+        self._counting = threading.Lock()

@@ -9,16 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # NOTE: pyproject.toml now declares requires-python = ">=3.13", so this
-    # matrix tests three versions the package says it does not support. It
-    # passes only because requirements.txt installs a flat dependency list and
-    # never installs libemg itself, so pip never checks requires-python.
-    # Either the matrix or requires-python should move -- that is a support
-    # policy call, so it is left as-is rather than guessed at here.
+    # Matches requires-python = ">=3.11" in pyproject.toml: the matrix covers
+    # every version the package claims, so a release cannot promise one that
+    # nothing runs against. 3.10 was dropped when the floor moved up.
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.11', '3.12', '3.13']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,10 +58,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: pip
       - name: Install system dependencies
         run: |
